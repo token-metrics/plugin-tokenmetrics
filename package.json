@@ -1,0 +1,46 @@
+{
+  "name": "@elizaos-plugins/plugin-tokenmetrics",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "@elizaos/source": "./src/index.ts",
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@elizaos/core": "^0.25.9",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "tsup": "8.3.5",
+    "vitest": "^3.0.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --tsconfig ./tsconfig.json",
+    "dev": "tsup src/index.ts --format esm --dts --watch --tsconfig ./tsconfig.json",
+    "test": "npx elizaos test"
+  },
+  "agentConfig": {
+    "pluginType": "elizaos:client:1.0.0",
+    "pluginParameters": {
+      "TOKENMETRICS_API_KEY": {
+        "type": "string",
+        "minLength": 1,
+        "description": "The plugin requires the following environment variable: TOKENMETRICS_API_KEY=your_tokenmetrics_api_key",
+        "optional": false
+      }
+    }
+  }
+}
