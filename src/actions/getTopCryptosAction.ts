@@ -1,35 +1,28 @@
 import type { Action } from "@elizaos/core";
 import axios from "axios";
-import { TopTokenResponse } from "../types";
+import { TopMarketCapResponse } from "../types";
 
 export const getTopCryptosAction: Action = {
   name: "getTopCryptos",
   description: "Get top cryptocurrencies by ranking",
   similes: ["Give me the top 10 coins", "Show best performing tokens"],
-  parameters: {
-    type: "object",
-    properties: {
-      limit: {
-        type: "number",
-        description: "Number of top cryptocurrencies to retrieve"
-      }
-    },
-    required: ["limit"]
-  },
   examples: [
-    {
-      input: {
-        type: "tokenName",
+    [
+      {
+        user: "{{user1}}",
         content: {
+          text: "Give me the top 3 cryptocurrencies",
           limit: 3
-      result: {
-        data: [
-          { name: "Bitcoin", symbol: "BTC" },
-          { name: "Ethereum", symbol: "ETH" },
-          { name: "Solana", symbol: "SOL" }
-        ]
+        }
+      },
+      {
+        user: "{{user2}}",
+        content: {
+          text: "I'll get the top 3 cryptocurrencies for you.",
+          action: "GET_TOP_CRYPTOS"
+        }
       }
-    }
+    ]
   ],
   async handler(runtime, message, _state) {
     // Directly retrieve the limit from the message object
@@ -42,7 +35,7 @@ export const getTopCryptosAction: Action = {
     }
 
     // Fetch the top cryptocurrencies
-    const response = await axios.get<TopTokenResponse>("https://api.tokenmetrics.com/v2/ai-reports-tokens", {
+    const response = await axios.get<TopMarketCapResponse>("https://api.tokenmetrics.com/v2/ai-reports-tokens", {
       params: { limit },
       headers: {
         Authorization: `Bearer ${apiKey}`
