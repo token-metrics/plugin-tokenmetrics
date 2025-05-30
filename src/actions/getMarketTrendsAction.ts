@@ -1,10 +1,10 @@
 import axios from "axios";
-import { TokenMetricsResponse } from "../types";
+import { TokenMetricsBaseResponse } from "../types";
 
 export const getMarketTrendsAction = {
   name: "getMarketTrends",
   description: "Get current market trends from Token Metrics",
-  run: async (_: any, context: any): Promise<TokenMetricsResponse> => {
+  run: async (_: any, context: any): Promise<TokenMetricsBaseResponse> => {
     const apiKey = process.env.TOKENMETRICS_API_KEY;
     if (!apiKey) throw new Error("Missing TOKENMETRICS_API_KEY");
 
