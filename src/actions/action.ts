@@ -1,15 +1,15 @@
 // CORRECTED TokenMetrics Common Action Utilities
-// Based on Real API Endpoints from developers.tokenmetrics.com
+// Based on ACTUAL API Documentation from developers.tokenmetrics.com
 
 import axios, { type AxiosRequestConfig } from "axios";
 
-// Default configuration values based on actual TokenMetrics API
+// Configuration values based on actual TokenMetrics API
 export const DEFAULT_BASE_URL = process.env.TOKENMETRICS_BASE_URL || "https://api.tokenmetrics.com";
 export const DEFAULT_API_VERSION = process.env.TOKENMETRICS_API_VERSION || "v2";
 export const DEFAULT_TIMEOUT = 30000; // 30 seconds
-export const DEFAULT_PAGE_LIMIT = Number.parseInt(process.env.TOKENMETRICS_PAGE_LIMIT || "100", 10);
+export const DEFAULT_PAGE_LIMIT = Number.parseInt(process.env.TOKENMETRICS_PAGE_LIMIT || "50", 10);
 
-// Real TokenMetrics API endpoints based on official documentation
+// CORRECTED TokenMetrics API endpoints based on actual documentation
 export const TOKENMETRICS_ENDPOINTS = {
     tokens: "/v2/tokens",
     quantmetrics: "/v2/quantmetrics", 
@@ -17,23 +17,15 @@ export const TOKENMETRICS_ENDPOINTS = {
     marketMetrics: "/v2/market-metrics",
     tradingSignals: "/v2/trading-signals",
     price: "/v2/price",
-    topMarketCap: "/v2/top-market-cap-tokens", // ✅ ADDED: Real endpoint for market leaders
-    tmai: "/v2/tmai",
-    correlation: "/v2/correlation",
-    resistanceSupport: "/v2/resistance-support",
-    aiReports: "/v2/ai-reports",
-    sectorIndicesHoldings: "/v2/sector-indices-holdings",
-    indexPerformance: "/v2/index-specific-performance",
-    sectorIndexTransaction: "/v2/sector-index-transaction"
+    topMarketCap: "/v2/top-market-cap-tokens",
+    // CORRECTED sector indices endpoints based on actual API docs
+    sectorIndicesHoldings: "/v2/indices-index-specific-tree-map",
+    indexPerformance: "/v2/indices-index-specific-performance", 
+    sectorIndexTransaction: "/v2/indices-index-specific-index-transaction"
 } as const;
 
 /**
- * Validate input parameters for TokenMetrics API requests.
- * This function ensures we send properly formatted data to the real API endpoints.
- * The validation is based on the actual parameter requirements from TokenMetrics documentation.
- * 
- * @param params - The parameters object to validate
- * @throws Will throw an error if parameters don't meet TokenMetrics API requirements
+ * CORRECTED validation function based on actual TokenMetrics API requirements
  */
 export function validateTokenMetricsParams(params: Record<string, any>): void {
     // Validate token_id - must be a positive integer when provided
@@ -49,19 +41,18 @@ export function validateTokenMetricsParams(params: Record<string, any>): void {
         if (typeof params.symbol !== 'string' || params.symbol.trim().length === 0) {
             throw new Error("symbol must be a non-empty string (e.g., 'BTC', 'ETH')");
         }
-        // TokenMetrics expects symbols in uppercase
         params.symbol = params.symbol.toUpperCase();
     }
 
-    // Validate date formats - TokenMetrics expects YYYY-MM-DD format
-    const dateFields = ['start_date', 'end_date'];
-    dateFields.forEach(field => {
-        if (params[field] && !isValidDateFormat(params[field])) {
-            throw new Error(`${field} must be in YYYY-MM-DD format (e.g., '2024-01-01')`);
-        }
-    });
+    // CORRECTED: Validate date formats - API expects startDate/endDate, not start_date/end_date
+    if (params.startDate && !isValidDateFormat(params.startDate)) {
+        throw new Error("startDate must be in YYYY-MM-DD format (e.g., '2024-01-01')");
+    }
+    if (params.endDate && !isValidDateFormat(params.endDate)) {
+        throw new Error("endDate must be in YYYY-MM-DD format (e.g., '2024-01-01')");
+    }
 
-    // Validate pagination parameters for endpoints that support them
+    // CORRECTED: Validate pagination - API uses 'page' not 'offset'
     if (params.limit !== undefined) {
         const limit = Number(params.limit);
         if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
@@ -69,62 +60,44 @@ export function validateTokenMetricsParams(params: Record<string, any>): void {
         }
     }
 
-    if (params.offset !== undefined) {
-        const offset = Number(params.offset);
-        if (!Number.isInteger(offset) || offset < 0) {
-            throw new Error("offset must be a non-negative integer");
+    if (params.page !== undefined) {
+        const page = Number(params.page);
+        if (!Number.isInteger(page) || page < 1) {
+            throw new Error("page must be a positive integer starting from 1");
+        }
+    }
+
+    // CORRECTED: Validate top_k for top market cap endpoint (not limit)
+    if (params.top_k !== undefined) {
+        const topK = Number(params.top_k);
+        if (!Number.isInteger(topK) || topK < 1 || topK > 1000) {
+            throw new Error("top_k must be between 1 and 1000");
+        }
+    }
+
+    // Validate indexName for indices endpoints (required)
+    if (params.indexName !== undefined) {
+        if (typeof params.indexName !== 'string' || params.indexName.trim().length === 0) {
+            throw new Error("indexName must be a non-empty string (e.g., 'meme')");
         }
     }
 
     // Validate signal_type for trading signals endpoint
-    if (params.signal_type !== undefined) {
-        const validSignalTypes = ['long', 'short', 'all'];
-        if (!validSignalTypes.includes(params.signal_type.toLowerCase())) {
-            throw new Error("signal_type must be 'long', 'short', or 'all'");
+    if (params.signal !== undefined) {
+        const validSignalTypes = ['1', '-1', '0']; // Based on actual API docs
+        if (!validSignalTypes.includes(String(params.signal))) {
+            throw new Error("signal must be '1' (bullish), '-1' (bearish), or '0' (no signal)");
         }
-        params.signal_type = params.signal_type.toLowerCase();
-    }
-
-    // Validate token_ids and symbols for price endpoint (comma-separated lists)
-    if (params.token_ids !== undefined) {
-        if (typeof params.token_ids !== 'string') {
-            throw new Error("token_ids must be a comma-separated string (e.g., '3375,1027,825')");
-        }
-        // Validate that all token IDs are valid numbers
-        const ids = params.token_ids.split(',').map(id => id.trim());
-        ids.forEach(id => {
-            const numId = Number(id);
-            if (!Number.isInteger(numId) || numId <= 0) {
-                throw new Error(`Invalid token_id in token_ids list: ${id}`);
-            }
-        });
-    }
-
-    if (params.symbols !== undefined) {
-        if (typeof params.symbols !== 'string') {
-            throw new Error("symbols must be a comma-separated string (e.g., 'BTC,ETH,ADA')");
-        }
-        // Convert all symbols to uppercase for consistency
-        params.symbols = params.symbols.toUpperCase();
     }
 }
 
-/**
- * Helper function to validate date format according to TokenMetrics API requirements.
- * TokenMetrics expects dates in YYYY-MM-DD format for all date parameters.
- * 
- * @param dateString - The date string to validate
- * @returns True if the date is in correct format and represents a valid date
- */
 function isValidDateFormat(dateString: string): boolean {
-    // Check format with regex first
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(dateString)) {
         return false;
     }
     
-    // Verify it's actually a valid date
-    const date = new Date(dateString + 'T00:00:00.000Z'); // Add time to avoid timezone issues
+    const date = new Date(dateString + 'T00:00:00.000Z');
     const parts = dateString.split('-');
     const year = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10);
@@ -136,11 +109,7 @@ function isValidDateFormat(dateString: string): boolean {
 }
 
 /**
- * Validate the presence and format of the TokenMetrics API key.
- * TokenMetrics uses Bearer token authentication for all API requests.
- * 
- * @throws Will throw an error if the API key is missing or invalid format
- * @returns The validated API key
+ * CORRECTED API key validation - returns the validated API key
  */
 export function validateApiKey(): string {
     const apiKey = process.env.TOKENMETRICS_API_KEY;
@@ -151,7 +120,6 @@ export function validateApiKey(): string {
         );
     }
 
-    // Basic format validation for TokenMetrics API keys
     if (apiKey.length < 10) {
         throw new Error("TokenMetrics API key appears to be invalid (too short)");
     }
@@ -160,15 +128,7 @@ export function validateApiKey(): string {
 }
 
 /**
- * Send a request to the TokenMetrics API using the real endpoint structure.
- * This function handles authentication, error responses, and rate limiting
- * according to TokenMetrics API specifications.
- * 
- * @param endpoint - The API endpoint path from TOKENMETRICS_ENDPOINTS
- * @param params - Query parameters for the request
- * @param method - HTTP method (GET is default for all current TokenMetrics endpoints)
- * @returns The response data from TokenMetrics API
- * @throws Will throw detailed errors for various failure scenarios
+ * CORRECTED API call function using the proper authentication method
  */
 export async function callTokenMetricsApi<T>(
     endpoint: string,
@@ -178,25 +138,21 @@ export async function callTokenMetricsApi<T>(
     try {
         const apiKey = validateApiKey();
         
-        // Construct the full URL using the real base URL
         const baseUrl = DEFAULT_BASE_URL;
         const url = `${baseUrl}${endpoint}`;
 
-        // Prepare request configuration according to TokenMetrics API requirements
+        // CORRECTED: Use x-api-key header instead of Authorization Bearer
         const config: AxiosRequestConfig = {
             method,
             url,
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                // TokenMetrics may track user agents for analytics
-                'User-Agent': 'ElizaOS-TokenMetrics-Plugin/1.0.0'
+                'x-api-key': apiKey, // CORRECTED: This is the actual header format
+                'accept': 'application/json',
+                'Content-Type': 'application/json'
             },
             timeout: DEFAULT_TIMEOUT,
         };
 
-        // Add parameters based on HTTP method
         if (method === 'GET') {
             config.params = params;
         } else {
@@ -216,7 +172,6 @@ export async function callTokenMetricsApi<T>(
                      error instanceof Error ? error.message : String(error));
         
         if (axios.isAxiosError(error)) {
-            // Handle specific TokenMetrics API error responses
             const status = error.response?.status;
             const errorData = error.response?.data;
             
@@ -224,12 +179,11 @@ export async function callTokenMetricsApi<T>(
                 case 401:
                     throw new Error(
                         "Invalid TokenMetrics API key. Please check your TOKENMETRICS_API_KEY. " +
-                        "Get a valid key from https://developers.tokenmetrics.com"
+                        "Ensure you're using the x-api-key header format."
                     );
                 case 403:
                     throw new Error(
-                        "Access forbidden. Your TokenMetrics API key may not have permission for this endpoint, " +
-                        "or you may need to upgrade your subscription plan."
+                        "Access forbidden. Your TokenMetrics API key may not have permission for this endpoint."
                     );
                 case 404:
                     throw new Error(
@@ -238,44 +192,27 @@ export async function callTokenMetricsApi<T>(
                     );
                 case 429:
                     throw new Error(
-                        "TokenMetrics API rate limit exceeded. Please wait before making more requests. " +
-                        "Consider upgrading your plan for higher rate limits."
+                        "TokenMetrics API rate limit exceeded. Please wait before making more requests."
                     );
                 case 422:
                     throw new Error(
-                        `Invalid parameters for TokenMetrics API: ${JSON.stringify(errorData)}. ` +
-                        "Please check your request parameters."
-                    );
-                case 500:
-                case 502:
-                case 503:
-                    throw new Error(
-                        "TokenMetrics API server error. Please try again later. " +
-                        "If the problem persists, contact TokenMetrics support."
+                        `Invalid parameters for TokenMetrics API: ${JSON.stringify(errorData)}`
                     );
                 default:
-                    // Include any specific error message from TokenMetrics
                     const apiErrorMessage = errorData?.message || errorData?.error || error.message;
                     throw new Error(`TokenMetrics API error (${status}): ${apiErrorMessage}`);
             }
         }
         
-        // Handle network and other errors
         throw new Error(
-            "Failed to communicate with TokenMetrics API. Please check your internet connection. " +
+            "Failed to communicate with TokenMetrics API. " +
             "Original error: " + (error instanceof Error ? error.message : String(error))
         );
     }
 }
 
 /**
- * Build standardized request parameters for TokenMetrics API calls.
- * This function ensures consistent parameter formatting and removes undefined values
- * that might cause issues with the TokenMetrics API.
- * 
- * @param baseParams - The core parameters for the request
- * @param additionalParams - Any additional endpoint-specific parameters
- * @returns Clean parameter object ready for API request
+ * CORRECTED parameter building function
  */
 export function buildTokenMetricsParams(
     baseParams: Record<string, any> = {},
@@ -283,13 +220,9 @@ export function buildTokenMetricsParams(
 ): Record<string, any> {
     const params = { ...baseParams, ...additionalParams };
     
-    // Remove undefined and null values to keep requests clean
+    // Remove undefined and null values
     Object.keys(params).forEach(key => {
-        if (params[key] === undefined || params[key] === null) {
-            delete params[key];
-        }
-        // Also remove empty strings that might cause API issues
-        if (params[key] === '') {
+        if (params[key] === undefined || params[key] === null || params[key] === '') {
             delete params[key];
         }
     });
@@ -298,47 +231,32 @@ export function buildTokenMetricsParams(
 }
 
 /**
- * Format and normalize TokenMetrics API response data.
- * TokenMetrics API responses may have different structures depending on the endpoint,
- * so this function provides consistent data access patterns.
- * 
- * @param rawResponse - The raw response from TokenMetrics API
- * @param actionName - The name of the action for logging purposes
- * @returns Normalized response data
+ * CORRECTED response formatting function
  */
 export function formatTokenMetricsResponse<T>(rawResponse: any, actionName: string): T {
     console.log(`TokenMetrics ${actionName} response processed successfully`);
     
-    // TokenMetrics API typically returns data directly or in a 'data' field
-    // Some endpoints may wrap the response differently
+    // Handle the actual API response structure
     if (rawResponse.data !== undefined) {
         return rawResponse.data;
     }
     
-    // If there's no 'data' field, return the whole response
-    // This handles cases where the API returns data directly
     return rawResponse;
 }
 
 /**
- * Extract token identifier from message content with enhanced logic.
- * This function intelligently parses user input to find token references
- * in various formats that users might provide.
- * 
- * @param messageContent - The content of the user's message
- * @returns Object containing extracted token_id and/or symbol
+ * Enhanced token identifier extraction with proper field mapping
  */
 export function extractTokenIdentifier(messageContent: any): { token_id?: number; symbol?: string } {
     const result: { token_id?: number; symbol?: string } = {};
     
-    // Direct token_id extraction (various possible field names)
+    // Extract token_id
     const tokenIdFields = ['token_id', 'tokenId', 'TOKEN_ID', 'id'];
     for (const field of tokenIdFields) {
         if (typeof messageContent[field] === 'number' && messageContent[field] > 0) {
             result.token_id = messageContent[field];
             break;
         }
-        // Handle string numbers
         if (typeof messageContent[field] === 'string') {
             const numValue = parseInt(messageContent[field], 10);
             if (!isNaN(numValue) && numValue > 0) {
@@ -348,7 +266,7 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
         }
     }
     
-    // Symbol extraction (various possible field names)
+    // Extract symbol
     const symbolFields = ['symbol', 'SYMBOL', 'token', 'coin', 'cryptocurrency'];
     for (const field of symbolFields) {
         if (typeof messageContent[field] === 'string' && messageContent[field].trim().length > 0) {
@@ -357,11 +275,9 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
         }
     }
     
-    // Try to extract symbol from text content using common patterns
+    // Try to extract from text content
     if (!result.symbol && typeof messageContent.text === 'string') {
         const text = messageContent.text.toUpperCase();
-        
-        // Common cryptocurrency symbols
         const commonSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'MATIC', 'DOT', 'LINK', 'UNI', 'AVAX', 'ATOM'];
         for (const symbol of commonSymbols) {
             if (text.includes(symbol)) {
@@ -370,10 +286,8 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
             }
         }
         
-        // Pattern matching for symbol-like strings (2-5 uppercase letters)
         const symbolMatch = text.match(/\b([A-Z]{2,5})\b/);
         if (symbolMatch && !result.symbol) {
-            // Validate it's not a common English word
             const commonWords = ['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'GET'];
             if (!commonWords.includes(symbolMatch[1])) {
                 result.symbol = symbolMatch[1];
@@ -384,33 +298,19 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
     return result;
 }
 
-/**
- * Helper function to convert TokenMetrics timestamp formats to user-friendly dates.
- * TokenMetrics may return dates in various formats, so this normalizes them.
- * 
- * @param timestamp - Timestamp in various possible formats from TokenMetrics
- * @returns Formatted date string
- */
+// Utility functions remain the same
 export function formatTokenMetricsDate(timestamp: string | number | Date): string {
     try {
         const date = new Date(timestamp);
         if (isNaN(date.getTime())) {
-            return String(timestamp); // Return as-is if can't parse
+            return String(timestamp);
         }
-        return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
+        return date.toISOString().split('T')[0];
     } catch {
         return String(timestamp);
     }
 }
 
-/**
- * Helper function to format large numbers (market caps, prices, etc.) for display.
- * Makes TokenMetrics numerical data more readable for users.
- * 
- * @param value - Numerical value to format
- * @param type - Type of value for appropriate formatting
- * @returns Human-readable formatted string
- */
 export function formatTokenMetricsNumber(value: number, type: 'currency' | 'percentage' | 'number' = 'number'): string {
     if (typeof value !== 'number' || isNaN(value)) {
         return 'N/A';

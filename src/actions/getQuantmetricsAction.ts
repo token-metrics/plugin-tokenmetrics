@@ -11,24 +11,11 @@ import {
 import type { QuantmetricsResponse, QuantmetricsRequest } from "../types";
 
 /**
- * Action to get quantitative metrics for cryptocurrency tokens from TokenMetrics.
- * This action provides comprehensive statistical and financial metrics essential
- * for quantitative analysis, risk assessment, and investment decision-making.
- * 
+ * CORRECTED Quantmetrics Action - Based on actual TokenMetrics API documentation
  * Real Endpoint: GET https://api.tokenmetrics.com/v2/quantmetrics
  * 
- * The quantitative metrics include:
- * - VOLATILITY: Price volatility measurements for risk assessment
- * - ALL_TIME_RETURN: Cumulative return calculations since inception
- * - CAGR: Compound Annual Growth Rate for annualized returns
- * - SHARPE: Sharpe ratio for risk-adjusted returns analysis
- * - SORTINO: Sortino ratio for downside-adjusted returns
- * - MAX_DRAWDOWN: Maximum peak-to-trough decline analysis
- * - MARKET_CAP: Current market capitalization
- * - VOLUME: Trading volume data
- * - FDV: Fully Diluted Valuation for complete market assessment
- * 
- * Note: TokenMetrics pricing data starts on 2019-01-01 for most tokens.
+ * This action provides comprehensive quantitative metrics for cryptocurrency analysis.
+ * According to the API docs, it supports extensive filtering and uses page-based pagination.
  */
 export const getQuantmetricsAction: Action = {
     name: "getQuantmetrics",
@@ -40,120 +27,117 @@ export const getQuantmetricsAction: Action = {
         "calculate sharpe ratio",
         "get volatility data",
         "analyze returns",
-        "get financial metrics",
-        "risk assessment data",
-        "get quantmetrics",
         "portfolio risk analysis"
     ],
     
     async handler(_runtime, message, _state) {
         try {
-            // Extract parameters from the message content
             const messageContent = message.content as any;
             
-            // Extract token identifiers from the user's request
+            // Extract token identifiers
             const tokenIdentifier = extractTokenIdentifier(messageContent);
             
-            // Build request parameters for the real TokenMetrics quantmetrics endpoint
+            // CORRECTED: Build parameters based on actual API documentation
             const requestParams: QuantmetricsRequest = {
-                // Token identification - use either token_id or symbol
-                token_id: tokenIdentifier.token_id,
-                symbol: tokenIdentifier.symbol,
+                // Token identification
+                token_id: tokenIdentifier.token_id || 
+                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
+                symbol: tokenIdentifier.symbol || 
+                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
                 
-                // Date range parameters for historical analysis
-                start_date: typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
-                end_date: typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
+                // Extensive filtering options from API docs
+                category: typeof messageContent.category === 'string' ? messageContent.category : undefined,
+                exchange: typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined,
+                marketcap: typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined,
+                volume: typeof messageContent.volume === 'number' ? messageContent.volume : undefined,
+                fdv: typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined,
                 
-                // Pagination for large datasets
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : undefined,
+                // CORRECTED: Use page instead of offset for pagination
+                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
+                page: typeof messageContent.page === 'number' ? messageContent.page : 1
             };
             
-            // Validate all parameters according to TokenMetrics API requirements
+            // Validate parameters according to actual API requirements
             validateTokenMetricsParams(requestParams);
             
-            // Build clean parameters for the API request
+            // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
             console.log("Fetching quantitative metrics from TokenMetrics v2/quantmetrics endpoint");
             
-            // Make the API call to the real TokenMetrics quantmetrics endpoint
+            // Make API call with corrected authentication
             const response = await callTokenMetricsApi<QuantmetricsResponse>(
                 TOKENMETRICS_ENDPOINTS.quantmetrics,
                 apiParams,
                 "GET"
             );
             
-            // Format the response data for consistent structure
+            // Format response data
             const formattedData = formatTokenMetricsResponse<QuantmetricsResponse>(response, "getQuantmetrics");
-            
-            // Process the real API response structure
             const quantmetrics = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
             
-            // Analyze the quantitative data to provide investment insights
+            // Analyze the quantitative data
             const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics);
             
-            // Return comprehensive quantitative analysis with interpretations
             return {
                 success: true,
                 message: `Successfully retrieved quantitative metrics for ${quantmetrics.length} data points`,
                 quantmetrics: quantmetrics,
                 analysis: quantAnalysis,
-                // Include metadata about the request
                 metadata: {
                     endpoint: TOKENMETRICS_ENDPOINTS.quantmetrics,
                     requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
-                    date_range: {
-                        start: requestParams.start_date,
-                        end: requestParams.end_date
+                    filters_applied: {
+                        category: requestParams.category,
+                        exchange: requestParams.exchange,
+                        min_marketcap: requestParams.marketcap,
+                        min_volume: requestParams.volume,
+                        min_fdv: requestParams.fdv
+                    },
+                    pagination: {
+                        page: requestParams.page,
+                        limit: requestParams.limit
                     },
                     data_points: quantmetrics.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
                 },
-                // Provide educational context about the metrics from TokenMetrics
                 metrics_explanation: {
                     VOLATILITY: "Price volatility measurement - higher values indicate more volatile assets",
                     SHARPE: "Risk-adjusted return metric - higher values indicate better risk-adjusted performance",
                     SORTINO: "Downside risk-adjusted return - focuses only on negative volatility",
                     MAX_DRAWDOWN: "Largest peak-to-trough decline - indicates worst-case scenario losses",
                     CAGR: "Compound Annual Growth Rate - annualized return over the investment period",
-                    ALL_TIME_RETURN: "Cumulative return since the token's inception",
-                    data_period: "TokenMetrics pricing data starts on 2019-01-01 for most tokens"
+                    ALL_TIME_RETURN: "Cumulative return since the token's inception"
                 }
             };
             
         } catch (error) {
             console.error("Error in getQuantmetricsAction:", error);
             
-            // Return detailed error information with troubleshooting guidance
             return {
                 success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred while fetching quantitative metrics",
+                error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve quantitative metrics from TokenMetrics API",
-                // Include helpful troubleshooting steps for the real endpoint
                 troubleshooting: {
                     endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/quantmetrics is accessible",
                     parameter_validation: [
                         "Verify the token symbol or ID is correct and supported by TokenMetrics",
-                        "Check that date ranges are in YYYY-MM-DD format",
-                        "Ensure dates are not before 2019-01-01 (TokenMetrics data start date)",
-                        "Confirm your API key has access to quantmetrics endpoint"
+                        "Check that numeric filters (marketcap, volume, fdv) are positive numbers",
+                        "Ensure your API key has access to quantmetrics endpoint",
+                        "Verify the token has sufficient historical data for analysis"
                     ],
                     common_solutions: [
                         "Try using a major token (BTC=3375, ETH=1027) to test functionality",
                         "Use the tokens endpoint first to verify correct TOKEN_ID",
                         "Check if your subscription includes quantitative metrics access",
-                        "Verify the token has sufficient historical data for analysis"
+                        "Remove filters to get broader results"
                     ]
                 }
             };
         }
     },
     
-    /**
-     * Validate that the runtime environment supports quantmetrics access.
-     * Quantmetrics may require specific subscription levels.
-     */
     validate: async (runtime, _message) => {
         const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
         if (!apiKey) {
@@ -163,10 +147,6 @@ export const getQuantmetricsAction: Action = {
         return true;
     },
     
-    /**
-     * Examples showing different ways to use the quantmetrics endpoint.
-     * These examples reflect real TokenMetrics API usage patterns.
-     */
     examples: [
         [
             {
@@ -188,31 +168,15 @@ export const getQuantmetricsAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Show me risk metrics for Ethereum over the past year",
-                    symbol: "ETH",
-                    start_date: "2024-01-01",
-                    end_date: "2024-12-31"
+                    text: "Show me risk metrics for DeFi tokens with market cap over $500M",
+                    category: "defi",
+                    marketcap: 500000000
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll analyze Ethereum's risk metrics for 2024, including volatility and drawdown analysis.",
-                    action: "GET_QUANTMETRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "What's the Sharpe ratio and volatility for token ID 3375?"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the risk-adjusted return metrics and volatility measurements for that token.",
+                    text: "I'll analyze quantitative risk metrics for large-cap DeFi tokens.",
                     action: "GET_QUANTMETRICS"
                 }
             }
@@ -221,255 +185,216 @@ export const getQuantmetricsAction: Action = {
 };
 
 /**
- * Advanced analysis function for quantitative metrics from TokenMetrics.
- * This function interprets the real API response data and provides meaningful insights.
- * 
- * @param quantData - Array of quantitative metric data from TokenMetrics API
- * @returns Comprehensive analysis with risk assessment and performance insights
+ * Analyze quantitative metrics to provide investment insights
  */
 function analyzeQuantitativeMetrics(quantData: any[]): any {
     if (!quantData || quantData.length === 0) {
         return {
             summary: "No quantitative data available for analysis",
             risk_assessment: "Cannot assess risk without data",
-            performance_insights: [],
-            recommendations: []
+            insights: []
         };
     }
     
-    // Get the most recent data point for current analysis
-    const latestData = quantData[quantData.length - 1];
-    
-    // Calculate aggregate statistics if multiple data points
-    const metrics = {
-        current_volatility: latestData.VOLATILITY,
-        current_sharpe: latestData.SHARPE,
-        current_sortino: latestData.SORTINO,
-        current_cagr: latestData.CAGR,
-        max_drawdown: latestData.MAX_DRAWDOWN,
-        all_time_return: latestData.ALL_TIME_RETURN,
-        current_market_cap: latestData.MARKET_CAP,
-        current_volume: latestData.VOLUME,
-        total_data_points: quantData.length
-    };
-    
-    // Assess risk level based on TokenMetrics metrics
-    const riskLevel = assessRiskLevel(metrics.current_volatility, metrics.max_drawdown);
-    
-    // Evaluate performance quality based on risk-adjusted returns
-    const performanceQuality = evaluatePerformance(metrics.current_sharpe, metrics.current_sortino, metrics.current_cagr);
-    
-    // Generate actionable insights based on TokenMetrics analysis
-    const insights = generateQuantitativeInsights(metrics, riskLevel, performanceQuality);
-    
-    // Provide comparative context using TokenMetrics data
-    const benchmarkComparison = compareToBenchmarks(metrics);
+    // Calculate aggregate statistics
+    const riskAnalysis = analyzeRiskMetrics(quantData);
+    const returnAnalysis = analyzeReturnMetrics(quantData);
+    const portfolioImplications = generatePortfolioImplications(riskAnalysis, returnAnalysis);
+    const insights = generateQuantitativeInsights(quantData, riskAnalysis, returnAnalysis);
     
     return {
-        summary: `TokenMetrics analysis of ${latestData.NAME} (${latestData.SYMBOL}) shows ${riskLevel.level} risk with ${performanceQuality.quality} performance`,
-        
-        current_metrics: {
-            volatility: formatTokenMetricsNumber(metrics.current_volatility, 'percentage'),
-            sharpe_ratio: metrics.current_sharpe?.toFixed(2) || 'N/A',
-            sortino_ratio: metrics.current_sortino?.toFixed(2) || 'N/A',
-            cagr: formatTokenMetricsNumber(metrics.current_cagr, 'percentage'),
-            max_drawdown: formatTokenMetricsNumber(metrics.max_drawdown, 'percentage'),
-            all_time_return: formatTokenMetricsNumber(metrics.all_time_return, 'percentage'),
-            market_cap: formatTokenMetricsNumber(metrics.current_market_cap, 'currency'),
-            volume: formatTokenMetricsNumber(metrics.current_volume, 'currency')
-        },
-        
-        risk_assessment: {
-            level: riskLevel.level,
-            score: riskLevel.score,
-            explanation: riskLevel.explanation,
-            volatility_interpretation: interpretVolatility(metrics.current_volatility)
-        },
-        
-        performance_evaluation: {
-            quality: performanceQuality.quality,
-            risk_adjusted_rating: performanceQuality.rating,
-            explanation: performanceQuality.explanation
-        },
-        
+        summary: `Quantitative analysis of ${quantData.length} data points shows ${riskAnalysis.overall_risk_level} risk with ${returnAnalysis.return_quality} returns`,
+        risk_analysis: riskAnalysis,
+        return_analysis: returnAnalysis,
+        portfolio_implications: portfolioImplications,
         insights: insights,
-        
-        benchmark_comparison: benchmarkComparison,
-        
-        recommendations: generateRecommendations(riskLevel, performanceQuality, metrics),
-        
+        comparative_analysis: generateComparativeAnalysis(quantData),
         data_quality: {
             source: "TokenMetrics Official API",
             data_points: quantData.length,
-            latest_date: latestData.DATE,
             reliability: "High - TokenMetrics verified data"
         }
     };
 }
 
-// Helper functions for analyzing TokenMetrics quantitative data
-
-function assessRiskLevel(volatility: number | null, maxDrawdown: number | null): any {
-    if (volatility === null) {
-        return { level: "Unknown", score: 0, explanation: "Insufficient volatility data for risk assessment" };
+function analyzeRiskMetrics(quantData: any[]): any {
+    const volatilities = quantData.map(d => d.VOLATILITY).filter(v => v !== null && v !== undefined);
+    const maxDrawdowns = quantData.map(d => d.MAX_DRAWDOWN).filter(d => d !== null && d !== undefined);
+    
+    if (volatilities.length === 0) {
+        return { overall_risk_level: "Unknown", risk_assessment: "Insufficient data" };
     }
     
-    let level, score, explanation;
+    const avgVolatility = volatilities.reduce((sum, v) => sum + v, 0) / volatilities.length;
+    const avgMaxDrawdown = maxDrawdowns.length > 0 ? 
+        maxDrawdowns.reduce((sum, d) => sum + Math.abs(d), 0) / maxDrawdowns.length : 0;
     
-    if (volatility > 80) {
-        level = "Very High";
-        score = 5;
-        explanation = "Extremely volatile asset with significant price swings - suitable only for high-risk tolerance investors";
-    } else if (volatility > 60) {
-        level = "High";
-        score = 4;
-        explanation = "High volatility indicates substantial price movements - requires careful risk management";
-    } else if (volatility > 40) {
-        level = "Moderate";
-        score = 3;
-        explanation = "Moderate volatility typical of established cryptocurrencies - manageable risk for experienced investors";
-    } else if (volatility > 20) {
-        level = "Low-Moderate";
-        score = 2;
-        explanation = "Relatively stable for crypto markets - appropriate for moderate risk tolerance";
-    } else {
-        level = "Low";
-        score = 1;
-        explanation = "Low volatility suggests price stability - rare in cryptocurrency markets";
-    }
+    // Assess overall risk level
+    let riskLevel;
+    if (avgVolatility > 80) riskLevel = "Very High";
+    else if (avgVolatility > 60) riskLevel = "High";
+    else if (avgVolatility > 40) riskLevel = "Moderate";
+    else if (avgVolatility > 20) riskLevel = "Low-Moderate";
+    else riskLevel = "Low";
     
-    return { level, score, explanation };
+    // Risk distribution
+    const highRisk = volatilities.filter(v => v > 60).length;
+    const moderateRisk = volatilities.filter(v => v > 30 && v <= 60).length;
+    const lowRisk = volatilities.filter(v => v <= 30).length;
+    
+    return {
+        overall_risk_level: riskLevel,
+        average_volatility: avgVolatility.toFixed(2),
+        average_max_drawdown: avgMaxDrawdown.toFixed(2) + '%',
+        risk_distribution: {
+            high_risk: `${highRisk} tokens (${((highRisk / volatilities.length) * 100).toFixed(1)}%)`,
+            moderate_risk: `${moderateRisk} tokens (${((moderateRisk / volatilities.length) * 100).toFixed(1)}%)`,
+            low_risk: `${lowRisk} tokens (${((lowRisk / volatilities.length) * 100).toFixed(1)}%)`
+        },
+        risk_assessment: generateRiskAssessment(avgVolatility, avgMaxDrawdown)
+    };
 }
 
-function evaluatePerformance(sharpe: number | null, sortino: number | null, cagr: number | null): any {
-    if (sharpe === null && sortino === null) {
-        return { 
-            quality: "Unknown", 
-            rating: 0, 
-            explanation: "Insufficient data for performance evaluation" 
-        };
+function analyzeReturnMetrics(quantData: any[]): any {
+    const sharpeRatios = quantData.map(d => d.SHARPE).filter(s => s !== null && s !== undefined);
+    const cagrs = quantData.map(d => d.CAGR).filter(c => c !== null && c !== undefined);
+    const allTimeReturns = quantData.map(d => d.ALL_TIME_RETURN).filter(r => r !== null && r !== undefined);
+    
+    if (sharpeRatios.length === 0 && cagrs.length === 0) {
+        return { return_quality: "Unknown", performance_assessment: "Insufficient data" };
     }
     
-    const primaryMetric = sharpe || sortino || 0;
-    let quality, rating, explanation;
+    const avgSharpe = sharpeRatios.length > 0 ? sharpeRatios.reduce((sum, s) => sum + s, 0) / sharpeRatios.length : 0;
+    const avgCAGR = cagrs.length > 0 ? cagrs.reduce((sum, c) => sum + c, 0) / cagrs.length : 0;
+    const avgAllTimeReturn = allTimeReturns.length > 0 ? 
+        allTimeReturns.reduce((sum, r) => sum + r, 0) / allTimeReturns.length : 0;
     
-    if (primaryMetric > 2.0) {
-        quality = "Excellent";
-        rating = 5;
-        explanation = "Outstanding risk-adjusted returns - significantly outperforming risk-free alternatives";
-    } else if (primaryMetric > 1.0) {
-        quality = "Good";
-        rating = 4;
-        explanation = "Solid risk-adjusted performance - generating positive returns relative to risk taken";
-    } else if (primaryMetric > 0.5) {
-        quality = "Fair";
-        rating = 3;
-        explanation = "Modest risk-adjusted returns - some compensation for risk but room for improvement";
-    } else if (primaryMetric > 0) {
-        quality = "Poor";
-        rating = 2;
-        explanation = "Weak risk-adjusted performance - minimal compensation for risk undertaken";
-    } else {
-        quality = "Very Poor";
-        rating = 1;
-        explanation = "Negative risk-adjusted returns - losing money relative to risk-free alternatives";
-    }
+    // Assess return quality
+    let returnQuality;
+    if (avgSharpe > 1.5) returnQuality = "Excellent";
+    else if (avgSharpe > 1.0) returnQuality = "Good";
+    else if (avgSharpe > 0.5) returnQuality = "Fair";
+    else if (avgSharpe > 0) returnQuality = "Poor";
+    else returnQuality = "Very Poor";
     
-    return { quality, rating, explanation };
+    return {
+        return_quality: returnQuality,
+        average_sharpe_ratio: avgSharpe.toFixed(3),
+        average_cagr: formatTokenMetricsNumber(avgCAGR, 'percentage'),
+        average_all_time_return: formatTokenMetricsNumber(avgAllTimeReturn, 'percentage'),
+        performance_assessment: generatePerformanceAssessment(avgSharpe, avgCAGR)
+    };
 }
 
-function generateQuantitativeInsights(metrics: any, riskLevel: any, performanceQuality: any): string[] {
+function generatePortfolioImplications(riskAnalysis: any, returnAnalysis: any): string[] {
+    const implications = [];
+    
+    // Risk-based implications
+    if (riskAnalysis.overall_risk_level === "Very High" || riskAnalysis.overall_risk_level === "High") {
+        implications.push("High volatility levels suggest smaller position sizes and active risk management required");
+        implications.push("Consider these tokens as satellite holdings rather than core positions");
+    } else if (riskAnalysis.overall_risk_level === "Low-Moderate" || riskAnalysis.overall_risk_level === "Low") {
+        implications.push("Lower volatility suggests these tokens could serve as core portfolio holdings");
+    }
+    
+    // Return-based implications
+    if (returnAnalysis.return_quality === "Excellent" || returnAnalysis.return_quality === "Good") {
+        implications.push("Strong risk-adjusted returns support higher allocation consideration");
+        implications.push("Good Sharpe ratios indicate efficient risk-return profiles");
+    } else if (returnAnalysis.return_quality === "Poor" || returnAnalysis.return_quality === "Very Poor") {
+        implications.push("Weak risk-adjusted returns suggest these assets may not adequately compensate for risk");
+    }
+    
+    // General portfolio implications
+    implications.push("Diversification across different risk profiles recommended");
+    implications.push("Monitor quantitative metrics regularly for changing risk characteristics");
+    
+    return implications;
+}
+
+function generateQuantitativeInsights(quantData: any[], riskAnalysis: any, returnAnalysis: any): string[] {
     const insights = [];
     
-    // Risk-based insights from TokenMetrics data
-    if (riskLevel.score >= 4) {
-        insights.push("TokenMetrics data shows high volatility - consider smaller position sizes and active risk management.");
+    // Risk insights
+    const avgVol = parseFloat(riskAnalysis.average_volatility);
+    if (avgVol > 70) {
+        insights.push("High volatility levels indicate significant price movements and require careful position sizing");
+    } else if (avgVol < 30) {
+        insights.push("Relatively low volatility for crypto markets suggests more stable price behavior");
     }
     
-    // Performance-based insights
-    if (performanceQuality.rating >= 4 && riskLevel.score <= 3) {
-        insights.push("Strong risk-adjusted returns with manageable volatility create an attractive risk-reward profile.");
-    } else if (performanceQuality.rating <= 2) {
-        insights.push("TokenMetrics analysis suggests poor risk-adjusted performance - asset may not adequately compensate for risk.");
+    // Return insights
+    const avgSharpe = parseFloat(returnAnalysis.average_sharpe_ratio);
+    if (avgSharpe > 1.0) {
+        insights.push("Positive Sharpe ratios indicate these assets have historically provided good risk-adjusted returns");
+    } else if (avgSharpe < 0) {
+        insights.push("Negative Sharpe ratios suggest poor risk-adjusted performance historically");
     }
     
-    // Sharpe ratio specific insights
-    if (metrics.current_sharpe !== null) {
-        if (metrics.current_sharpe > 1.0) {
-            insights.push(`Strong Sharpe ratio (${metrics.current_sharpe.toFixed(2)}) indicates good risk-adjusted returns according to TokenMetrics.`);
-        } else if (metrics.current_sharpe < 0) {
-            insights.push("Negative Sharpe ratio suggests the asset is underperforming risk-free investments.");
-        }
-    }
-    
-    // Drawdown insights
-    if (metrics.max_drawdown < -50) {
-        insights.push("Significant maximum drawdown indicates potential for substantial losses during market stress periods.");
+    // Comparative insights
+    if (quantData.length > 1) {
+        const topPerformer = quantData.reduce((best, current) => 
+            (current.SHARPE || 0) > (best.SHARPE || 0) ? current : best);
+        insights.push(`${topPerformer.NAME} (${topPerformer.SYMBOL}) shows the best risk-adjusted performance in this analysis`);
     }
     
     return insights;
 }
 
-function compareToBenchmarks(metrics: any): any {
-    // Cryptocurrency market benchmarks (these are general industry standards)
-    const cryptoBenchmarks = {
-        avg_volatility: 65,
-        avg_sharpe: 0.8,
-        avg_cagr: 15
+function generateComparativeAnalysis(quantData: any[]): any {
+    if (quantData.length < 2) {
+        return { comparison: "Insufficient data for comparative analysis" };
+    }
+    
+    // Sort by Sharpe ratio for performance ranking
+    const sortedBySharpe = quantData
+        .filter(d => d.SHARPE !== null && d.SHARPE !== undefined)
+        .sort((a, b) => b.SHARPE - a.SHARPE);
+    
+    // Sort by volatility for risk ranking
+    const sortedByVolatility = quantData
+        .filter(d => d.VOLATILITY !== null && d.VOLATILITY !== undefined)
+        .sort((a, b) => a.VOLATILITY - b.VOLATILITY);
+    
+    return {
+        performance_ranking: sortedBySharpe.slice(0, 3).map((token, index) => ({
+            rank: index + 1,
+            name: `${token.NAME} (${token.SYMBOL})`,
+            sharpe_ratio: token.SHARPE.toFixed(3),
+            cagr: token.CAGR ? formatTokenMetricsNumber(token.CAGR, 'percentage') : 'N/A'
+        })),
+        risk_ranking: sortedByVolatility.slice(0, 3).map((token, index) => ({
+            rank: index + 1,
+            name: `${token.NAME} (${token.SYMBOL})`,
+            volatility: token.VOLATILITY.toFixed(2),
+            max_drawdown: token.MAX_DRAWDOWN ? formatTokenMetricsNumber(token.MAX_DRAWDOWN, 'percentage') : 'N/A'
+        })),
+        analysis_scope: `${quantData.length} tokens analyzed`
     };
-    
-    const comparison: { [key: string]: string } = {};
-    
-    if (metrics.current_volatility !== null) {
-        comparison.volatility_vs_market = metrics.current_volatility > cryptoBenchmarks.avg_volatility ? "Above Average" : "Below Average";
-    }
-    
-    if (metrics.current_sharpe !== null) {
-        comparison.sharpe_vs_market = metrics.current_sharpe > cryptoBenchmarks.avg_sharpe ? "Above Average" : "Below Average";
-    }
-    
-    if (metrics.current_cagr !== null) {
-        comparison.return_vs_market = metrics.current_cagr > cryptoBenchmarks.avg_cagr ? "Above Average" : "Below Average";
-    }
-    
-    return comparison;
 }
 
-function generateRecommendations(riskLevel: any, performanceQuality: any, metrics: any): string[] {
-    const recommendations = [];
-    
-    // Risk management recommendations based on TokenMetrics data
-    if (riskLevel.score >= 4) {
-        recommendations.push("High volatility detected - implement smaller position sizes and stop-loss strategies.");
-        recommendations.push("Monitor TokenMetrics updates closely for risk level changes.");
+function generateRiskAssessment(avgVolatility: number, avgMaxDrawdown: number): string {
+    if (avgVolatility > 80 && avgMaxDrawdown > 50) {
+        return "Extremely high risk - significant volatility and drawdown potential";
+    } else if (avgVolatility > 60) {
+        return "High risk - substantial price movements expected";
+    } else if (avgVolatility > 40) {
+        return "Moderate risk - typical for established cryptocurrencies";
+    } else {
+        return "Lower risk - relatively stable for crypto markets";
     }
-    
-    // Performance-based recommendations
-    if (performanceQuality.rating >= 4) {
-        recommendations.push("Strong TokenMetrics performance metrics suggest potential for core portfolio allocation.");
-    } else if (performanceQuality.rating <= 2) {
-        recommendations.push("Weak performance metrics suggest reconsidering investment or waiting for improved TokenMetrics scores.");
-    }
-    
-    // Market cap based recommendations
-    if (metrics.current_market_cap < 100e6) {
-        recommendations.push("Small market cap indicates higher risk - suitable only for speculative allocation.");
-    }
-    
-    // General recommendations
-    recommendations.push("Continue monitoring TokenMetrics quantitative updates for changing risk profiles.");
-    recommendations.push("Always maintain portfolio diversification regardless of individual asset performance.");
-    
-    return recommendations;
 }
 
-function interpretVolatility(volatility: number | null): string {
-    if (volatility === null) return "Unable to assess volatility";
-    
-    if (volatility > 100) return "Extremely high volatility - expect dramatic price movements";
-    if (volatility > 80) return "Very high volatility - significant daily price changes likely";
-    if (volatility > 60) return "High volatility - substantial price movements expected";
-    if (volatility > 40) return "Moderate volatility - typical for established cryptocurrencies";
-    if (volatility > 20) return "Low-moderate volatility - relatively stable for crypto";
-    return "Low volatility - unusually stable for cryptocurrency markets";
+function generatePerformanceAssessment(avgSharpe: number, avgCAGR: number): string {
+    if (avgSharpe > 1.5 && avgCAGR > 20) {
+        return "Excellent performance - strong returns with good risk management";
+    } else if (avgSharpe > 1.0) {
+        return "Good performance - positive risk-adjusted returns";
+    } else if (avgSharpe > 0.5) {
+        return "Fair performance - modest risk-adjusted returns";
+    } else if (avgSharpe > 0) {
+        return "Weak performance - minimal risk compensation";
+    } else {
+        return "Poor performance - negative risk-adjusted returns";
+    }
 }

@@ -11,106 +11,111 @@ import {
 import type { TraderGradesResponse, TraderGradesRequest } from "../types";
 
 /**
- * Action to get trader grades from TokenMetrics.
- * This action provides AI-powered short-term trading grades that help traders
- * make informed buy and sell decisions using TokenMetrics' proprietary algorithms.
- * 
+ * CORRECTED Trader Grades Action - Based on actual TokenMetrics API documentation
  * Real Endpoint: GET https://api.tokenmetrics.com/v2/trader-grades
  * 
- * The trader grades include:
- * - TM_TRADER_GRADE: Overall short-term trading attractiveness (0-100)
- * - TRADER_GRADE_24H_PERCENT_CHANGE: 24-hour change in the trader grade
- * - TA_GRADE: Technical Analysis grade based on price movements and indicators
- * - QUANTITATIVE_GRADE: Grade based on quantitative-driven performance metrics
- * - ONCHAIN_GRADE: Grade based on on-chain metrics and blockchain data
- * 
- * These grades combine Technical Analysis, Quantitative Performance Metrics,
- * and On-chain Analysis to provide comprehensive short-term trading insights.
+ * This action provides AI-powered short-term trading grades.
+ * According to the API docs, it uses parameters like startDate/endDate (not start_date/end_date),
+ * and supports filtering by various criteria including marketcap, volume, etc.
  */
 export const getTraderGradesAction: Action = {
     name: "getTraderGrades",
-    description: "Get AI-powered trader grades for short-term trading decisions, including technical analysis and on-chain metrics from TokenMetrics",
+    description: "Get AI-powered trader grades for short-term trading decisions from TokenMetrics",
     similes: [
         "get trader grades",
         "get trading grades", 
         "check trader score",
         "get short term grades",
         "analyze trading potential",
-        "get AI trading grades",
-        "check TM trader grade",
-        "get technical analysis grades"
+        "get AI trading grades"
     ],
     
     async handler(_runtime, message, _state) {
         try {
-            // Extract parameters from the message content
             const messageContent = message.content as any;
             
-            // Extract token identifiers from the user's request
+            // Extract token identifiers
             const tokenIdentifier = extractTokenIdentifier(messageContent);
             
-            // Build request parameters for the real TokenMetrics trader-grades endpoint
+            // CORRECTED: Build parameters based on actual API documentation
             const requestParams: TraderGradesRequest = {
-                // Token identification - use either token_id or symbol
-                token_id: tokenIdentifier.token_id,
-                symbol: tokenIdentifier.symbol,
+                // Token identification
+                token_id: tokenIdentifier.token_id || 
+                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
+                symbol: tokenIdentifier.symbol || 
+                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
                 
-                // Date range parameters for historical grade analysis
-                start_date: typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
-                end_date: typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
+                // CORRECTED: Use startDate/endDate as shown in actual API docs
+                startDate: typeof messageContent.startDate === 'string' ? messageContent.startDate : 
+                          typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
+                endDate: typeof messageContent.endDate === 'string' ? messageContent.endDate :
+                        typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
                 
-                // Pagination for large datasets
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : undefined,
+                // Additional filtering parameters from API docs
+                category: typeof messageContent.category === 'string' ? messageContent.category : undefined,
+                exchange: typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined,
+                marketcap: typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined,
+                fdv: typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined,
+                volume: typeof messageContent.volume === 'number' ? messageContent.volume : undefined,
+                traderGrade: typeof messageContent.traderGrade === 'number' ? messageContent.traderGrade : undefined,
+                traderGradePercentChange: typeof messageContent.traderGradePercentChange === 'number' ? 
+                    messageContent.traderGradePercentChange : undefined,
+                
+                // CORRECTED: Use page instead of offset for pagination
+                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
+                page: typeof messageContent.page === 'number' ? messageContent.page : 1
             };
             
-            // Validate all parameters according to TokenMetrics API requirements
+            // Validate parameters according to actual API requirements
             validateTokenMetricsParams(requestParams);
             
-            // Build clean parameters for the API request
+            // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
             console.log("Fetching trader grades from TokenMetrics v2/trader-grades endpoint");
             
-            // Make the API call to the real TokenMetrics trader-grades endpoint
+            // Make API call with corrected authentication
             const response = await callTokenMetricsApi<TraderGradesResponse>(
                 TOKENMETRICS_ENDPOINTS.traderGrades,
                 apiParams,
                 "GET"
             );
             
-            // Format the response data for consistent structure
+            // Format response data
             const formattedData = formatTokenMetricsResponse<TraderGradesResponse>(response, "getTraderGrades");
-            
-            // Process the real API response structure
             const traderGrades = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
             
-            // Analyze the trader grades to provide trading insights
+            // Analyze the trader grades
             const gradesAnalysis = analyzeTraderGrades(traderGrades);
             
-            // Return comprehensive trader grades analysis with actionable insights
             return {
                 success: true,
                 message: `Successfully retrieved trader grades for ${traderGrades.length} data points`,
                 trader_grades: traderGrades,
                 analysis: gradesAnalysis,
-                // Include metadata about the request
                 metadata: {
                     endpoint: TOKENMETRICS_ENDPOINTS.traderGrades,
                     requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
                     date_range: {
-                        start: requestParams.start_date,
-                        end: requestParams.end_date
+                        start: requestParams.startDate,
+                        end: requestParams.endDate
+                    },
+                    filters_applied: {
+                        category: requestParams.category,
+                        exchange: requestParams.exchange,
+                        min_marketcap: requestParams.marketcap,
+                        min_volume: requestParams.volume
+                    },
+                    pagination: {
+                        page: requestParams.page,
+                        limit: requestParams.limit
                     },
                     data_points: traderGrades.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
                 },
-                // Provide educational context about TokenMetrics grades
                 grades_explanation: {
                     TM_TRADER_GRADE: "Overall short-term trading attractiveness (0-100) - TokenMetrics' primary trading signal",
-                    TA_GRADE: "Technical Analysis grade focusing on price movements and trading indicators",
-                    QUANTITATIVE_GRADE: "Quantitative-driven performance metrics grade",
-                    ONCHAIN_GRADE: "On-chain metrics analysis grade based on blockchain data",
                     TRADER_GRADE_24H_PERCENT_CHANGE: "24-hour percentage change in the trader grade",
                     grade_interpretation: {
                         "80-100": "Excellent - Strong short-term trading opportunity",
@@ -125,35 +130,29 @@ export const getTraderGradesAction: Action = {
         } catch (error) {
             console.error("Error in getTraderGradesAction:", error);
             
-            // Return detailed error information with troubleshooting guidance
             return {
                 success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred while fetching trader grades",
+                error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve trader grades from TokenMetrics API",
-                // Include helpful troubleshooting steps for the real endpoint
                 troubleshooting: {
                     endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/trader-grades is accessible",
                     parameter_validation: [
-                        "Verify the token symbol or ID is correct and supported by TokenMetrics",
-                        "Check that date ranges are in YYYY-MM-DD format",
-                        "Ensure your API key has access to trader grades endpoint",
-                        "Confirm the token has recent grade calculations available"
+                        "Verify that date parameters use startDate/endDate format (YYYY-MM-DD)",
+                        "Check that token_id or symbol is correct and supported",
+                        "Ensure numeric filters (marketcap, volume) are positive numbers",
+                        "Confirm your API key has access to trader grades endpoint"
                     ],
                     common_solutions: [
-                        "Try using a major token (BTC, ETH) to test trader grades functionality",
+                        "Try using a major token (BTC, ETH) to test functionality",
                         "Use the tokens endpoint first to verify correct TOKEN_ID",
                         "Check if your subscription includes trader grades access",
-                        "Verify the token is actively tracked by TokenMetrics"
+                        "Remove filters to get broader results"
                     ]
                 }
             };
         }
     },
     
-    /**
-     * Validate that the runtime environment supports trader grades access.
-     * Trader grades may require specific subscription levels.
-     */
     validate: async (runtime, _message) => {
         const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
         if (!apiKey) {
@@ -163,10 +162,6 @@ export const getTraderGradesAction: Action = {
         return true;
     },
     
-    /**
-     * Examples showing different ways to use the trader grades endpoint.
-     * These examples reflect real TokenMetrics API usage patterns.
-     */
     examples: [
         [
             {
@@ -188,16 +183,15 @@ export const getTraderGradesAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Show me Ethereum's trading grades over the past month",
-                    symbol: "ETH",
-                    start_date: "2024-12-01",
-                    end_date: "2024-12-31"
+                    text: "Show me trading grades for DeFi tokens",
+                    category: "defi",
+                    limit: 20
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll analyze Ethereum's trader grade history for December 2024.",
+                    text: "I'll analyze DeFi token trader grades from TokenMetrics.",
                     action: "GET_TRADER_GRADES"
                 }
             }
@@ -206,13 +200,14 @@ export const getTraderGradesAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Is this a good time to trade Solana based on AI grades?"
+                    text: "Get trader grades for tokens with market cap over $1B",
+                    marketcap: 1000000000
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll check Solana's current TokenMetrics trader grades to assess short-term trading potential.",
+                    text: "I'll get trader grades for large-cap cryptocurrencies.",
                     action: "GET_TRADER_GRADES"
                 }
             }
@@ -221,73 +216,173 @@ export const getTraderGradesAction: Action = {
 };
 
 /**
- * Advanced analysis function for trader grades from TokenMetrics.
- * This function interprets the real API response data and provides trading insights.
- * 
- * @param gradesData - Array of trader grades data from TokenMetrics API
- * @returns Comprehensive analysis with trading recommendations and insights
+ * Analyze trader grades data to provide trading insights
  */
 function analyzeTraderGrades(gradesData: any[]): any {
     if (!gradesData || gradesData.length === 0) {
         return {
             summary: "No trader grades data available for analysis",
             trading_recommendation: "Cannot assess",
-            grade_trend: "Unknown",
             insights: []
         };
     }
     
-    // Get the most recent grades for current analysis
-    const latestGrades = gradesData[gradesData.length - 1];
+    // Calculate grade distribution
+    const gradeDistribution = analyzeGradeDistribution(gradesData);
     
-    // Analyze grade trends if we have multiple data points
-    const trendAnalysis = gradesData.length > 1 ? analyzeTrendDirection(gradesData) : null;
+    // Identify top trading opportunities
+    const topOpportunities = identifyTopOpportunities(gradesData);
     
-    // Assess current trading potential
-    const tradingAssessment = assessTradingPotential(latestGrades);
+    // Analyze grade trends if multiple data points
+    const trendAnalysis = analyzeGradeTrends(gradesData);
     
-    // Generate grade-specific insights
-    const gradeInsights = generateGradeInsights(latestGrades, trendAnalysis);
-    
-    // Determine overall trading recommendation
-    const tradingRecommendation = generateTradingRecommendation(latestGrades, trendAnalysis);
+    // Generate insights
+    const insights = generateGradeInsights(gradesData, gradeDistribution, topOpportunities);
     
     return {
-        summary: `TokenMetrics trader grade analysis for ${latestGrades.NAME} (${latestGrades.SYMBOL}) shows ${tradingAssessment.overall_rating} short-term trading potential`,
-        
-        current_grades: {
-            tm_trader_grade: `${latestGrades.TM_TRADER_GRADE}/100 - ${interpretGrade(latestGrades.TM_TRADER_GRADE)}`,
-            grade_24h_change: formatTokenMetricsNumber(latestGrades.TRADER_GRADE_24H_PERCENT_CHANGE, 'percentage'),
-            ta_grade: `${latestGrades.TA_GRADE || 'N/A'}/100`,
-            quantitative_grade: `${latestGrades.QUANTITATIVE_GRADE || 'N/A'}/100`,
-            onchain_grade: `${latestGrades.ONCHAIN_GRADE || 'N/A'}/100`,
-            date: latestGrades.DATE
-        },
-        
-        trading_assessment: tradingAssessment,
-        
+        summary: `TokenMetrics trader grade analysis shows ${gradeDistribution.average_grade.toFixed(1)} average grade across ${gradesData.length} tokens`,
+        grade_distribution: gradeDistribution,
+        top_opportunities: topOpportunities,
         trend_analysis: trendAnalysis,
-        
-        grade_breakdown: {
-            strongest_component: identifyStrongestComponent(latestGrades),
-            weakest_component: identifyWeakestComponent(latestGrades),
-            grade_consistency: assessGradeConsistency(latestGrades)
-        },
-        
-        insights: gradeInsights,
-        
-        trading_recommendation: tradingRecommendation,
-        
+        insights: insights,
+        trading_recommendations: generateTradingRecommendations(gradeDistribution, topOpportunities),
         data_quality: {
             source: "TokenMetrics Official API",
             data_points: gradesData.length,
-            latest_date: latestGrades.DATE,
-            reliability: "High - TokenMetrics AI-powered analysis"
+            reliability: "High - AI-powered analysis"
         }
     };
 }
 
-// Helper functions for analyzing TokenMetrics trader grades
+function analyzeGradeDistribution(gradesData: any[]): any {
+    const grades = gradesData.map(d => d.TM_TRADER_GRADE).filter(g => g !== null && g !== undefined);
+    
+    if (grades.length === 0) {
+        return { average_grade: 0, distribution: "No data" };
+    }
+    
+    const averageGrade = grades.reduce((sum, grade) => sum + grade, 0) / grades.length;
+    
+    // Categorize grades
+    const excellent = grades.filter(g => g >= 80).length;
+    const good = grades.filter(g => g >= 60 && g < 80).length;
+    const fair = grades.filter(g => g >= 40 && g < 60).length;
+    const poor = grades.filter(g => g < 40).length;
+    
+    return {
+        average_grade: averageGrade,
+        total_tokens: grades.length,
+        distribution: {
+            excellent: `${excellent} tokens (${((excellent / grades.length) * 100).toFixed(1)}%)`,
+            good: `${good} tokens (${((good / grades.length) * 100).toFixed(1)}%)`,
+            fair: `${fair} tokens (${((fair / grades.length) * 100).toFixed(1)}%)`,
+            poor: `${poor} tokens (${((poor / grades.length) * 100).toFixed(1)}%)`
+        },
+        market_sentiment: averageGrade >= 60 ? "Positive" : averageGrade >= 40 ? "Neutral" : "Negative"
+    };
+}
+
+function identifyTopOpportunities(gradesData: any[]): any {
+    // Sort by trader grade and get top opportunities
+    const topGrades = gradesData
+        .filter(d => d.TM_TRADER_GRADE >= 60) // Only good grades
+        .sort((a, b) => b.TM_TRADER_GRADE - a.TM_TRADER_GRADE)
+        .slice(0, 5);
+    
+    const opportunities = topGrades.map(token => ({
+        name: `${token.NAME} (${token.SYMBOL})`,
+        trader_grade: `${token.TM_TRADER_GRADE}/100`,
+        grade_change_24h: token.TRADER_GRADE_24H_PERCENT_CHANGE ? 
+            formatTokenMetricsNumber(token.TRADER_GRADE_24H_PERCENT_CHANGE, 'percentage') : 'N/A',
+        interpretation: interpretGrade(token.TM_TRADER_GRADE),
+        market_cap: token.MARKET_CAP ? formatTokenMetricsNumber(token.MARKET_CAP, 'currency') : 'N/A'
+    }));
+    
+    return {
+        count: opportunities.length,
+        opportunities: opportunities,
+        quality_assessment: opportunities.length >= 3 ? "Good" : opportunities.length >= 1 ? "Limited" : "Poor"
+    };
+}
+
+function analyzeGradeTrends(gradesData: any[]): any {
+    // Analyze 24h changes if available
+    const changes = gradesData
+        .map(d => d.TRADER_GRADE_24H_PERCENT_CHANGE)
+        .filter(c => c !== null && c !== undefined);
+    
+    if (changes.length === 0) {
+        return { trend: "No trend data available" };
+    }
+    
+    const averageChange = changes.reduce((sum, change) => sum + change, 0) / changes.length;
+    const improving = changes.filter(c => c > 0).length;
+    const declining = changes.filter(c => c < 0).length;
+    
+    let trendDirection;
+    if (improving > declining * 1.5) trendDirection = "Improving";
+    else if (declining > improving * 1.5) trendDirection = "Declining";
+    else trendDirection = "Mixed";
+    
+    return {
+        trend_direction: trendDirection,
+        average_24h_change: formatTokenMetricsNumber(averageChange, 'percentage'),
+        tokens_improving: improving,
+        tokens_declining: declining,
+        trend_strength: Math.abs(averageChange) > 2 ? "Strong" : Math.abs(averageChange) > 0.5 ? "Moderate" : "Weak"
+    };
+}
+
+function generateGradeInsights(gradesData: any[], gradeDistribution: any, topOpportunities: any): string[] {
+    const insights = [];
+    
+    // Distribution insights
+    if (gradeDistribution.market_sentiment === "Positive") {
+        insights.push("Strong overall trader grade sentiment suggests favorable short-term trading conditions.");
+    } else if (gradeDistribution.market_sentiment === "Negative") {
+        insights.push("Low trader grades suggest caution in short-term trading strategies.");
+    }
+    
+    // Opportunity insights
+    if (topOpportunities.count >= 3) {
+        insights.push(`${topOpportunities.count} high-quality trading opportunities identified with grades above 60.`);
+    } else if (topOpportunities.count === 0) {
+        insights.push("No high-grade trading opportunities currently available - consider waiting for better conditions.");
+    }
+    
+    // Quality insights
+    const excellentCount = gradesData.filter(d => d.TM_TRADER_GRADE >= 80).length;
+    if (excellentCount > 0) {
+        insights.push(`${excellentCount} tokens showing excellent trader grades (80+) indicating strong trading potential.`);
+    }
+    
+    return insights;
+}
+
+function generateTradingRecommendations(gradeDistribution: any, topOpportunities: any): string[] {
+    const recommendations = [];
+    
+    // Based on overall distribution
+    if (gradeDistribution.market_sentiment === "Positive") {
+        recommendations.push("Favorable conditions for active short-term trading strategies");
+    } else if (gradeDistribution.market_sentiment === "Negative") {
+        recommendations.push("Conservative approach recommended - focus on defensive positioning");
+    }
+    
+    // Based on opportunities
+    if (topOpportunities.count >= 3) {
+        recommendations.push("Multiple trading opportunities available - consider diversified approach");
+        recommendations.push("Focus on tokens with trader grades above 70 for better success probability");
+    } else {
+        recommendations.push("Limited opportunities - be highly selective with trading decisions");
+    }
+    
+    // General recommendations
+    recommendations.push("Monitor trader grade changes daily for evolving opportunities");
+    recommendations.push("Always use proper risk management regardless of grade levels");
+    
+    return recommendations;
+}
 
 function interpretGrade(grade: number): string {
     if (grade >= 80) return "Excellent";
@@ -295,210 +390,4 @@ function interpretGrade(grade: number): string {
     if (grade >= 40) return "Fair";
     if (grade >= 20) return "Poor";
     return "Very Poor";
-}
-
-function assessTradingPotential(grades: any): any {
-    const traderGrade = grades.TM_TRADER_GRADE;
-    const gradeChange = grades.TRADER_GRADE_24H_PERCENT_CHANGE;
-    
-    let overall_rating, confidence, momentum;
-    
-    // Assess overall rating based on trader grade
-    if (traderGrade >= 80) {
-        overall_rating = "Excellent";
-        confidence = "High";
-    } else if (traderGrade >= 60) {
-        overall_rating = "Good";
-        confidence = "Moderate";
-    } else if (traderGrade >= 40) {
-        overall_rating = "Fair";
-        confidence = "Low";
-    } else {
-        overall_rating = "Poor";
-        confidence = "Very Low";
-    }
-    
-    // Assess momentum based on 24h change
-    if (gradeChange > 5) {
-        momentum = "Strongly Positive";
-    } else if (gradeChange > 1) {
-        momentum = "Positive";
-    } else if (gradeChange > -1) {
-        momentum = "Neutral";
-    } else if (gradeChange > -5) {
-        momentum = "Negative";
-    } else {
-        momentum = "Strongly Negative";
-    }
-    
-    return {
-        overall_rating,
-        confidence,
-        momentum,
-        grade_strength: traderGrade,
-        recent_change: gradeChange
-    };
-}
-
-function analyzeTrendDirection(gradesData: any[]): any {
-    if (gradesData.length < 2) return null;
-    
-    const recentGrades = gradesData.slice(-5); // Last 5 data points
-    const grades = recentGrades.map(d => d.TM_TRADER_GRADE);
-    
-    // Calculate trend direction
-    const firstGrade = grades[0];
-    const lastGrade = grades[grades.length - 1];
-    const trendChange = ((lastGrade - firstGrade) / firstGrade) * 100;
-    
-    let direction;
-    if (trendChange > 10) direction = "Strong Upward";
-    else if (trendChange > 2) direction = "Upward";
-    else if (trendChange > -2) direction = "Sideways";
-    else if (trendChange > -10) direction = "Downward";
-    else direction = "Strong Downward";
-    
-    // Calculate consistency
-    let improvements = 0;
-    for (let i = 1; i < grades.length; i++) {
-        if (grades[i] > grades[i-1]) improvements++;
-    }
-    const consistency = (improvements / (grades.length - 1)) * 100;
-    
-    return {
-        direction,
-        change_percent: trendChange.toFixed(2),
-        consistency: `${consistency.toFixed(1)}%`,
-        data_points: grades.length,
-        time_period: `${recentGrades[0].DATE} to ${recentGrades[recentGrades.length - 1].DATE}`
-    };
-}
-
-function generateGradeInsights(grades: any, trendAnalysis: any): string[] {
-    const insights = [];
-    
-    // Main trader grade insights
-    if (grades.TM_TRADER_GRADE >= 80) {
-        insights.push("Excellent trader grade suggests strong short-term trading opportunity according to TokenMetrics AI.");
-    } else if (grades.TM_TRADER_GRADE >= 60) {
-        insights.push("Good trader grade indicates positive short-term trading potential.");
-    } else if (grades.TM_TRADER_GRADE < 40) {
-        insights.push("Low trader grade suggests avoiding short-term trading until conditions improve.");
-    }
-    
-    // 24h change insights
-    if (Math.abs(grades.TRADER_GRADE_24H_PERCENT_CHANGE) > 5) {
-        insights.push(`Significant 24h grade change (${grades.TRADER_GRADE_24H_PERCENT_CHANGE.toFixed(1)}%) indicates rapidly evolving trading conditions.`);
-    }
-    
-    // Component grade insights
-    if (grades.TA_GRADE > grades.TM_TRADER_GRADE + 10) {
-        insights.push("Technical analysis shows stronger signals than overall grade - good for technical traders.");
-    }
-    
-    if (grades.ONCHAIN_GRADE > grades.TM_TRADER_GRADE + 10) {
-        insights.push("On-chain metrics are particularly strong - fundamental demand may be building.");
-    }
-    
-    // Trend insights
-    if (trendAnalysis && trendAnalysis.direction.includes("Upward")) {
-        insights.push("Grade trend is improving - trading conditions are becoming more favorable.");
-    } else if (trendAnalysis && trendAnalysis.direction.includes("Downward")) {
-        insights.push("Grade trend is declining - exercise caution with new positions.");
-    }
-    
-    return insights;
-}
-
-function generateTradingRecommendation(grades: any, trendAnalysis: any): any {
-    const traderGrade = grades.TM_TRADER_GRADE;
-    const gradeChange = grades.TRADER_GRADE_24H_PERCENT_CHANGE;
-    const isImproving = trendAnalysis && trendAnalysis.direction.includes("Upward");
-    
-    let action, confidence, reasoning;
-    
-    if (traderGrade >= 70 && gradeChange >= 0) {
-        action = "Consider Long Position";
-        confidence = "High";
-        reasoning = "High trader grade with positive or stable recent change";
-    } else if (traderGrade >= 60 && isImproving) {
-        action = "Cautious Long Position";
-        confidence = "Moderate";
-        reasoning = "Good grade with improving trend";
-    } else if (traderGrade >= 40 && gradeChange > 2) {
-        action = "Monitor for Entry";
-        confidence = "Low";
-        reasoning = "Fair grade but showing improvement";
-    } else if (traderGrade < 40 || gradeChange < -5) {
-        action = "Avoid or Exit";
-        confidence = "High";
-        reasoning = "Low grade or declining rapidly";
-    } else {
-        action = "Hold/Monitor";
-        confidence = "Medium";
-        reasoning = "Mixed signals require careful monitoring";
-    }
-    
-    return {
-        action,
-        confidence,
-        reasoning,
-        risk_level: traderGrade < 50 ? "High" : traderGrade < 70 ? "Medium" : "Low",
-        time_horizon: "Short-term (days to weeks)",
-        next_review: "Monitor daily for grade changes"
-    };
-}
-
-function identifyStrongestComponent(grades: any): string {
-    const components = {
-        "Technical Analysis": grades.TA_GRADE,
-        "Quantitative": grades.QUANTITATIVE_GRADE,
-        "On-chain": grades.ONCHAIN_GRADE
-    };
-    
-    let strongest = "Unknown";
-    let highestScore = -1;
-    
-    Object.entries(components).forEach(([name, score]) => {
-        if (score && score > highestScore) {
-            highestScore = score;
-            strongest = name;
-        }
-    });
-    
-    return `${strongest} (${highestScore}/100)`;
-}
-
-function identifyWeakestComponent(grades: any): string {
-    const components = {
-        "Technical Analysis": grades.TA_GRADE,
-        "Quantitative": grades.QUANTITATIVE_GRADE,
-        "On-chain": grades.ONCHAIN_GRADE
-    };
-    
-    let weakest = "Unknown";
-    let lowestScore = 101;
-    
-    Object.entries(components).forEach(([name, score]) => {
-        if (score && score < lowestScore) {
-            lowestScore = score;
-            weakest = name;
-        }
-    });
-    
-    return `${weakest} (${lowestScore}/100)`;
-}
-
-function assessGradeConsistency(grades: any): string {
-    const components = [grades.TA_GRADE, grades.QUANTITATIVE_GRADE, grades.ONCHAIN_GRADE].filter(g => g !== null && g !== undefined);
-    
-    if (components.length < 2) return "Insufficient data";
-    
-    const max = Math.max(...components);
-    const min = Math.min(...components);
-    const range = max - min;
-    
-    if (range <= 15) return "Highly Consistent";
-    else if (range <= 30) return "Moderately Consistent";
-    else return "Inconsistent";
 }

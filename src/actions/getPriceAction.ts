@@ -11,22 +11,11 @@ import {
 import type { PriceResponse, PriceRequest } from "../types";
 
 /**
- * Action to get token price data from TokenMetrics.
- * This action provides real-time and comprehensive price information
- * for cryptocurrencies based on the provided token IDs or symbols.
- * 
+ * CORRECTED Price Action - Based on actual TokenMetrics API documentation
  * Real Endpoint: GET https://api.tokenmetrics.com/v2/price
  * 
- * The price data includes:
- * - PRICE: Current token price
- * - PRICE_24H_CHANGE: Absolute 24-hour price change
- * - PRICE_24H_CHANGE_PERCENT: Percentage 24-hour price change
- * - MARKET_CAP: Current market capitalization
- * - VOLUME_24H: 24-hour trading volume
- * - TIMESTAMP: Last updated timestamp
- * 
- * This endpoint accepts comma-separated lists of token IDs or symbols,
- * making it efficient for getting price data for multiple tokens in a single request.
+ * This action provides real-time price information for cryptocurrencies.
+ * According to the API docs, it accepts token_id parameter for specific tokens.
  */
 export const getPriceAction: Action = {
     name: "getPrice",
@@ -38,101 +27,73 @@ export const getPriceAction: Action = {
         "current market price",
         "token price info",
         "get market data",
-        "check token value",
-        "price and volume data"
+        "check token value"
     ],
     
     async handler(_runtime, message, _state) {
         try {
-            // Extract parameters from the message content
             const messageContent = message.content as any;
             
             // Extract token identifiers from the user's request
             const tokenIdentifier = extractTokenIdentifier(messageContent);
             
-            // Build request parameters for the real TokenMetrics price endpoint
+            // CORRECTED: Build parameters based on actual API documentation
             const requestParams: PriceRequest = {
-                // Token identification - can use comma-separated lists
-                token_ids: undefined,
-                symbols: undefined
+                // According to API docs, this endpoint accepts token_id parameter
+                token_id: tokenIdentifier.token_id || 
+                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined)
             };
             
-            // Handle single token requests
-            if (tokenIdentifier.token_id) {
-                requestParams.token_ids = String(tokenIdentifier.token_id);
-            } else if (tokenIdentifier.symbol) {
-                requestParams.symbols = tokenIdentifier.symbol;
+            // If no specific token requested, we can call without parameters to get multiple tokens
+            if (!requestParams.token_id) {
+                // Remove undefined token_id to get general price data
+                delete requestParams.token_id;
             }
             
-            // Handle multiple token requests from message content
-            if (typeof messageContent.token_ids === 'string') {
-                requestParams.token_ids = messageContent.token_ids;
-            } else if (Array.isArray(messageContent.token_ids)) {
-                requestParams.token_ids = messageContent.token_ids.join(',');
-            }
-            
-            if (typeof messageContent.symbols === 'string') {
-                requestParams.symbols = messageContent.symbols;
-            } else if (Array.isArray(messageContent.symbols)) {
-                requestParams.symbols = messageContent.symbols.join(',');
-            }
-            
-            // Validate that we have at least one token identifier
-            if (!requestParams.token_ids && !requestParams.symbols) {
-                throw new Error("At least one token identifier required. Provide token_ids or symbols parameter.");
-            }
-            
-            // Validate all parameters according to TokenMetrics API requirements
+            // Validate parameters according to actual API requirements
             validateTokenMetricsParams(requestParams);
             
-            // Build clean parameters for the API request
+            // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
             console.log("Fetching price data from TokenMetrics v2/price endpoint");
             
-            // Make the API call to the real TokenMetrics price endpoint
+            // Make API call with corrected authentication
             const response = await callTokenMetricsApi<PriceResponse>(
                 TOKENMETRICS_ENDPOINTS.price,
                 apiParams,
                 "GET"
             );
             
-            // Format the response data for consistent structure
+            // Format response data
             const formattedData = formatTokenMetricsResponse<PriceResponse>(response, "getPrice");
-            
-            // Process the real API response structure
             const priceData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
             
-            // Analyze the price data to provide market insights
+            // Analyze the price data
             const priceAnalysis = analyzePriceData(priceData);
             
-            // Return comprehensive price analysis with market insights
             return {
                 success: true,
                 message: `Successfully retrieved price data for ${priceData.length} tokens`,
                 price_data: priceData,
                 analysis: priceAnalysis,
-                // Include metadata about the request
                 metadata: {
                     endpoint: TOKENMETRICS_ENDPOINTS.price,
-                    requested_tokens: requestParams.symbols || requestParams.token_ids,
+                    requested_token_id: requestParams.token_id,
                     data_points: priceData.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
                 },
-                // Provide educational context about TokenMetrics price data
                 price_data_explanation: {
                     PRICE: "Current market price of the token",
                     PRICE_24H_CHANGE: "Absolute price change in the last 24 hours",
                     PRICE_24H_CHANGE_PERCENT: "Percentage price change in the last 24 hours",
                     MARKET_CAP: "Total market value (price × circulating supply)",
                     VOLUME_24H: "Total trading volume in the last 24 hours",
-                    TIMESTAMP: "Last updated time for the price data",
                     usage_tips: [
                         "24h change indicates short-term momentum",
                         "High volume usually confirms price movements",
-                        "Market cap shows relative size and stability",
-                        "Compare volume to market cap for liquidity assessment"
+                        "Market cap shows relative size and stability"
                     ]
                 }
             };
@@ -140,41 +101,27 @@ export const getPriceAction: Action = {
         } catch (error) {
             console.error("Error in getPriceAction:", error);
             
-            // Return detailed error information with troubleshooting guidance
             return {
                 success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred while fetching price data",
+                error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve price data from TokenMetrics API",
-                // Include helpful troubleshooting steps for the real endpoint
                 troubleshooting: {
                     endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/price is accessible",
                     parameter_validation: [
-                        "Verify token symbols are correct (e.g., BTC, ETH, ADA)",
-                        "Check token IDs are valid numbers (e.g., 3375 for BTC)",
-                        "Ensure comma-separated format for multiple tokens",
-                        "Confirm your API key has access to price endpoint"
+                        "Verify token_id is a valid number if provided",
+                        "Ensure your API key has access to price endpoint",
+                        "Check that the token is actively traded and supported"
                     ],
                     common_solutions: [
-                        "Try using a single major token (BTC or ETH) to test",
-                        "Use the tokens endpoint first to verify correct identifiers",
-                        "Check if the tokens are actively traded and supported",
-                        "Verify your subscription includes price data access"
-                    ],
-                    example_requests: [
-                        "Single token by symbol: symbols=BTC",
-                        "Multiple tokens by symbol: symbols=BTC,ETH,ADA",
-                        "Single token by ID: token_ids=3375",
-                        "Multiple tokens by ID: token_ids=3375,1027,825"
+                        "Try calling without token_id to get general price data",
+                        "Use the tokens endpoint first to verify correct TOKEN_ID",
+                        "Check if your subscription includes price data access"
                     ]
                 }
             };
         }
     },
     
-    /**
-     * Validate that the runtime environment supports price data access.
-     * Price data is usually available to all TokenMetrics API subscribers.
-     */
     validate: async (runtime, _message) => {
         const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
         if (!apiKey) {
@@ -184,17 +131,13 @@ export const getPriceAction: Action = {
         return true;
     },
     
-    /**
-     * Examples showing different ways to use the price endpoint.
-     * These examples reflect real TokenMetrics API usage patterns.
-     */
     examples: [
         [
             {
                 user: "{{user1}}",
                 content: {
                     text: "What's the current price of Bitcoin?",
-                    symbol: "BTC"
+                    token_id: 3375
                 }
             },
             {
@@ -209,29 +152,13 @@ export const getPriceAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Get prices for Bitcoin, Ethereum, and Cardano",
-                    symbols: "BTC,ETH,ADA"
+                    text: "Get current market prices"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll retrieve current prices and market data for Bitcoin, Ethereum, and Cardano.",
-                    action: "GET_PRICE"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Check price and volume for token ID 3375"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the price and trading volume data for that token.",
+                    text: "I'll retrieve current market prices and data from TokenMetrics.",
                     action: "GET_PRICE"
                 }
             }
@@ -240,59 +167,39 @@ export const getPriceAction: Action = {
 };
 
 /**
- * Comprehensive analysis function for price data from TokenMetrics.
- * This function processes real API response data and provides market insights.
- * 
- * @param priceData - Array of price data from TokenMetrics API
- * @returns Analysis with market insights and performance assessment
+ * Analyze price data to provide market insights
  */
 function analyzePriceData(priceData: any[]): any {
     if (!priceData || priceData.length === 0) {
         return {
             summary: "No price data available for analysis",
             market_overview: "Cannot assess market conditions",
-            insights: [],
-            performance_summary: "Insufficient data"
+            insights: []
         };
     }
     
-    // Analyze overall market performance
+    // Analyze overall market performance if multiple tokens
     const marketOverview = analyzeMarketOverview(priceData);
     
     // Identify top performers and underperformers
     const performanceAnalysis = analyzePerformance(priceData);
     
-    // Assess market conditions based on price movements
-    const marketConditions = assessMarketConditions(priceData);
-    
-    // Generate insights based on the price data
+    // Generate insights
     const insights = generatePriceInsights(priceData, marketOverview, performanceAnalysis);
     
     return {
-        summary: `Price analysis of ${priceData.length} tokens shows ${marketConditions.overall_sentiment} market conditions`,
-        
+        summary: `Price analysis of ${priceData.length} tokens shows ${marketOverview.trend} market conditions`,
         market_overview: marketOverview,
-        
         performance_analysis: performanceAnalysis,
-        
-        market_conditions: marketConditions,
-        
         insights: insights,
-        
         volume_analysis: analyzeVolumePatterns(priceData),
-        
-        market_cap_analysis: analyzeMarketCapDistribution(priceData),
-        
         data_quality: {
             source: "TokenMetrics Official API",
             tokens_analyzed: priceData.length,
-            latest_update: getMostRecentTimestamp(priceData),
             data_freshness: "Real-time price data"
         }
     };
 }
-
-// Helper functions for price data analysis
 
 function analyzeMarketOverview(priceData: any[]): any {
     const validPriceChanges = priceData
@@ -316,7 +223,6 @@ function analyzeMarketOverview(priceData: any[]): any {
         average_24h_change: formatTokenMetricsNumber(averageChange, 'percentage'),
         tokens_positive: positiveCount,
         tokens_negative: negativeCount,
-        tokens_neutral: validPriceChanges.length - positiveCount - negativeCount,
         market_trend: trend,
         positive_percentage: ((positiveCount / validPriceChanges.length) * 100).toFixed(1)
     };
@@ -350,49 +256,6 @@ function analyzePerformance(priceData: any[]): any {
     };
 }
 
-function assessMarketConditions(priceData: any[]): any {
-    const changes = priceData
-        .map(token => token.PRICE_24H_CHANGE_PERCENT)
-        .filter(change => change !== null && change !== undefined);
-    
-    if (changes.length === 0) {
-        return { overall_sentiment: "Unknown", volatility: "Unknown", momentum: "Unknown" };
-    }
-    
-    const averageChange = changes.reduce((sum, change) => sum + change, 0) / changes.length;
-    const volatility = calculateVolatility(changes);
-    
-    let sentiment;
-    if (averageChange > 2) sentiment = "Bullish";
-    else if (averageChange > 0.5) sentiment = "Mildly Bullish";
-    else if (averageChange > -0.5) sentiment = "Neutral";
-    else if (averageChange > -2) sentiment = "Mildly Bearish";
-    else sentiment = "Bearish";
-    
-    let volatilityLevel;
-    if (volatility > 8) volatilityLevel = "Very High";
-    else if (volatility > 5) volatilityLevel = "High";
-    else if (volatility > 3) volatilityLevel = "Moderate";
-    else volatilityLevel = "Low";
-    
-    let momentum;
-    const strongMoves = changes.filter(change => Math.abs(change) > 5).length;
-    const momentumPercentage = (strongMoves / changes.length) * 100;
-    
-    if (momentumPercentage > 30) momentum = "Strong";
-    else if (momentumPercentage > 15) momentum = "Moderate";
-    else momentum = "Weak";
-    
-    return {
-        overall_sentiment: sentiment,
-        average_change: formatTokenMetricsNumber(averageChange, 'percentage'),
-        volatility: volatilityLevel,
-        volatility_score: volatility.toFixed(2),
-        momentum: momentum,
-        strong_movers: strongMoves
-    };
-}
-
 function generatePriceInsights(priceData: any[], marketOverview: any, performanceAnalysis: any): string[] {
     const insights = [];
     
@@ -413,6 +276,7 @@ function generatePriceInsights(priceData: any[], marketOverview: any, performanc
     
     // Volume insights
     const highVolumeTokens = priceData.filter(token => {
+        if (!token.VOLUME_24H || !token.MARKET_CAP) return false;
         const volumeToMcap = token.VOLUME_24H / token.MARKET_CAP;
         return volumeToMcap > 0.1; // Volume > 10% of market cap
     });
@@ -450,50 +314,4 @@ function analyzeVolumePatterns(priceData: any[]): any {
         })),
         liquidity_assessment: averageVolumeRatio > 0.05 ? "Good" : "Moderate"
     };
-}
-
-function analyzeMarketCapDistribution(priceData: any[]): any {
-    const marketCaps = priceData
-        .filter(token => token.MARKET_CAP)
-        .map(token => token.MARKET_CAP)
-        .sort((a, b) => b - a);
-    
-    if (marketCaps.length === 0) {
-        return { distribution: "No market cap data available" };
-    }
-    
-    const totalMarketCap = marketCaps.reduce((sum, cap) => sum + cap, 0);
-    const largeCapCount = marketCaps.filter(cap => cap > 10e9).length;
-    const midCapCount = marketCaps.filter(cap => cap > 1e9 && cap <= 10e9).length;
-    const smallCapCount = marketCaps.filter(cap => cap <= 1e9).length;
-    
-    return {
-        total_market_cap: formatTokenMetricsNumber(totalMarketCap, 'currency'),
-        large_cap_tokens: largeCapCount,
-        mid_cap_tokens: midCapCount,
-        small_cap_tokens: smallCapCount,
-        largest_token_cap: formatTokenMetricsNumber(marketCaps[0], 'currency'),
-        market_concentration: ((marketCaps[0] / totalMarketCap) * 100).toFixed(1) + '%'
-    };
-}
-
-// Utility functions
-
-function calculateVolatility(changes: number[]): number {
-    if (changes.length < 2) return 0;
-    
-    const mean = changes.reduce((sum, change) => sum + change, 0) / changes.length;
-    const squaredDiffs = changes.map(change => Math.pow(change - mean, 2));
-    const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / changes.length;
-    
-    return Math.sqrt(variance);
-}
-
-function getMostRecentTimestamp(priceData: any[]): string {
-    const timestamps = priceData
-        .map(token => token.TIMESTAMP)
-        .filter(timestamp => timestamp)
-        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    
-    return timestamps.length > 0 ? timestamps[0] : 'N/A';
 }
