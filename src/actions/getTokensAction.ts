@@ -64,13 +64,20 @@ export const getTokensAction: Action = {
             const formattedData = formatTokenMetricsResponse<TokensResponse>(response, "getTokens");
             const tokens = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
             
+            // Normalize field names to match expected format
+            const normalizedTokens = tokens.map(token => ({
+                ...token,
+                SYMBOL: token.TOKEN_SYMBOL || token.SYMBOL, // Normalize TOKEN_SYMBOL to SYMBOL
+                NAME: token.TOKEN_NAME || token.NAME // Normalize TOKEN_NAME to NAME
+            }));
+
             return {
                 success: true,
-                message: `Successfully retrieved ${tokens.length} tokens from TokenMetrics`,
-                tokens: tokens,
+                message: `Successfully retrieved ${normalizedTokens.length} tokens from TokenMetrics`,
+                tokens: normalizedTokens,
                 metadata: {
                     endpoint: TOKENMETRICS_ENDPOINTS.tokens,
-                    total_tokens: tokens.length,
+                    total_tokens: normalizedTokens.length,
                     page: requestParams.page,
                     limit: requestParams.limit,
                     api_version: "v2",
