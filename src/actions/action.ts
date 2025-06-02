@@ -1,4 +1,3 @@
-// CORRECTED TokenMetrics Common Action Utilities
 // Based on ACTUAL API Documentation from developers.tokenmetrics.com
 
 import axios, { type AxiosRequestConfig } from "axios";
@@ -9,8 +8,9 @@ export const DEFAULT_API_VERSION = process.env.TOKENMETRICS_API_VERSION || "v2";
 export const DEFAULT_TIMEOUT = 30000; // 30 seconds
 export const DEFAULT_PAGE_LIMIT = Number.parseInt(process.env.TOKENMETRICS_PAGE_LIMIT || "50", 10);
 
-// CORRECTED TokenMetrics API endpoints based on actual documentation
+// COMPLETE TokenMetrics API endpoints based on actual documentation
 export const TOKENMETRICS_ENDPOINTS = {
+    // Core endpoints
     tokens: "/v2/tokens",
     quantmetrics: "/v2/quantmetrics", 
     traderGrades: "/v2/trader-grades",
@@ -18,7 +18,24 @@ export const TOKENMETRICS_ENDPOINTS = {
     tradingSignals: "/v2/trading-signals",
     price: "/v2/price",
     topMarketCap: "/v2/top-market-cap-tokens",
-    // CORRECTED sector indices endpoints based on actual API docs
+    
+    // OHLCV endpoints
+    hourlyOhlcv: "/v2/hourly-ohlcv",
+    dailyOhlcv: "/v2/daily-ohlcv",
+    
+    // Analysis endpoints
+    investorGrades: "/v2/investor-grades",
+    aiReports: "/v2/ai-reports",
+    cryptoInvestors: "/v2/crypto-investors",
+    resistanceSupport: "/v2/resistance-support",
+    sentiment: "/v2/sentiments",
+    scenarioAnalysis: "/v2/scenario-analysis",
+    correlation: "/v2/correlation",
+    
+    // AI endpoint
+    tmai: "/v2/tmai",
+    
+    // Sector indices endpoints
     sectorIndicesHoldings: "/v2/indices-index-specific-tree-map",
     indexPerformance: "/v2/indices-index-specific-performance", 
     sectorIndexTransaction: "/v2/indices-index-specific-index-transaction"
@@ -87,6 +104,13 @@ export function validateTokenMetricsParams(params: Record<string, any>): void {
         const validSignalTypes = ['1', '-1', '0']; // Based on actual API docs
         if (!validSignalTypes.includes(String(params.signal))) {
             throw new Error("signal must be '1' (bullish), '-1' (bearish), or '0' (no signal)");
+        }
+    }
+
+    // Validate messages for TMAI endpoint
+    if (params.messages !== undefined) {
+        if (!Array.isArray(params.messages) || params.messages.length === 0) {
+            throw new Error("messages must be a non-empty array for TMAI endpoint");
         }
     }
 }
@@ -286,11 +310,16 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
             }
         }
         
-        const symbolMatch = text.match(/\b([A-Z]{2,5})\b/);
-        if (symbolMatch && !result.symbol) {
-            const commonWords = ['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'GET'];
-            if (!commonWords.includes(symbolMatch[1])) {
-                result.symbol = symbolMatch[1];
+        // Only extract unknown symbols if they look like valid crypto symbols
+        if (!result.symbol) {
+            const symbolMatch = text.match(/\b([A-Z]{2,5})\b/);
+            if (symbolMatch) {
+                const potentialSymbol = symbolMatch[1];
+                // Filter out common English words and invalid symbols
+                const invalidWords = ['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'GET', 'WHAT', 'HOW', 'WHY', 'WHEN', 'WHERE', 'WHO', 'WILL', 'WOULD', 'COULD', 'SHOULD', 'HAVE', 'HAS', 'HAD', 'BEEN', 'BEING', 'WERE', 'WAS', 'THEY', 'THEM', 'THEIR', 'THIS', 'THAT', 'THESE', 'THOSE', 'WITH', 'FROM', 'INTO', 'OVER', 'UNDER', 'ABOVE', 'BELOW'];
+                if (!invalidWords.includes(potentialSymbol) && potentialSymbol.length >= 2 && potentialSymbol.length <= 5) {
+                    result.symbol = potentialSymbol;
+                }
             }
         }
     }
