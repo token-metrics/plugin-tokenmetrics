@@ -20,18 +20,28 @@
   ],
   "dependencies": {
     "@elizaos/core": "^0.25.9",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.18",
     "tsup": "8.3.5",
+    "tsx": "^4.7.0",
     "typescript": "^5.8.3",
     "vitest": "^3.0.0"
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --tsconfig ./tsconfig.json",
     "dev": "tsup src/index.ts --format esm --dts --watch --tsconfig ./tsconfig.json",
-    "test": "npx elizaos test"
+    "test": "npx elizaos test",
+    "test:connection": "npx tsx -r dotenv/config src/tests/manual/01-basic-connection.js",
+    "test:endpoints": "npx tsx -r dotenv/config src/tests/manual/02-endpoint-testing.js", 
+    "test:elizaos": "npx tsx -r dotenv/config src/tests/manual/03-elizaos-integration-testing.js",
+    "test:ui": "node -r dotenv/config src/tests/ui/start-server.js",
+    "test:all": "npm run test:connection && npm run test:endpoints && npm run test:elizaos",
+    "start:test-server": "node -r dotenv/config src/tests/ui/start-server.js",
+    "chat": "npx tsx -r dotenv/config src/tests/manual/04-interactive-ai-agent.js"
   },
   "agentConfig": {
     "pluginType": "elizaos:client:1.0.0",

@@ -38,37 +38,73 @@ export const getTradingSignalsAction: Action = {
             // Extract token identifiers
             const tokenIdentifier = extractTokenIdentifier(messageContent);
             
+            // FIXED: Use only one token identifier to avoid conflicts
+            // Prefer SYMBOL over token_id for trading signals endpoint (more reliable)
+            let finalTokenId: number | undefined;
+            let finalSymbol: string | undefined;
+            
+            if (tokenIdentifier.symbol) {
+                finalSymbol = tokenIdentifier.symbol;
+                // Don't include token_id when we have symbol to avoid conflicts
+            } else if (tokenIdentifier.token_id) {
+                finalTokenId = tokenIdentifier.token_id;
+            } else if (typeof messageContent.symbol === 'string') {
+                finalSymbol = messageContent.symbol.toUpperCase();
+            } else if (typeof messageContent.token_id === 'number') {
+                finalTokenId = messageContent.token_id;
+            } else {
+                // Default to Bitcoin symbol for market overview queries
+                finalSymbol = "BTC";
+            }
+            
+            // CORRECTED: Signal filtering - API uses specific numeric values
+            // 1 = bullish/long signal, -1 = bearish/short signal, 0 = no signal
+            const signal = typeof messageContent.signal === 'number' ? messageContent.signal :
+                           typeof messageContent.signal_type === 'string' ? 
+                           (messageContent.signal_type.toLowerCase() === 'long' ? 1 :
+                            messageContent.signal_type.toLowerCase() === 'short' ? -1 : undefined) : undefined;
+            
+            // CORRECTED: Use startDate/endDate as shown in actual API docs  
+            const startDate = typeof messageContent.startDate === 'string' ? messageContent.startDate : 
+                              typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined;
+            const endDate = typeof messageContent.endDate === 'string' ? messageContent.endDate :
+                            typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined;
+            
+            // Extensive filtering options from API docs
+            const category = typeof messageContent.category === 'string' ? messageContent.category : undefined;
+            const exchange = typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined;
+            const marketcap = typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined;
+            const volume = typeof messageContent.volume === 'number' ? messageContent.volume : undefined;
+            const fdv = typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined;
+            
+            // CORRECTED: Use page instead of offset for pagination
+            const limit = typeof messageContent.limit === 'number' ? messageContent.limit : 50;
+            const page = typeof messageContent.page === 'number' ? messageContent.page : 1;
+            
             // CORRECTED: Build parameters based on actual API documentation
             const requestParams: TradingSignalsRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
+                // Token identification - use only one to avoid conflicts
+                token_id: finalTokenId,
+                symbol: finalSymbol,
                 
                 // CORRECTED: Signal filtering - API uses specific numeric values
                 // 1 = bullish/long signal, -1 = bearish/short signal, 0 = no signal
-                signal: typeof messageContent.signal === 'number' ? messageContent.signal :
-                       typeof messageContent.signal_type === 'string' ? 
-                       (messageContent.signal_type.toLowerCase() === 'long' ? 1 :
-                        messageContent.signal_type.toLowerCase() === 'short' ? -1 : undefined) : undefined,
+                signal: signal,
                 
                 // CORRECTED: Use startDate/endDate as shown in actual API docs  
-                startDate: typeof messageContent.startDate === 'string' ? messageContent.startDate : 
-                          typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
-                endDate: typeof messageContent.endDate === 'string' ? messageContent.endDate :
-                        typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
+                startDate: startDate,
+                endDate: endDate,
                 
                 // Extensive filtering options from API docs
-                category: typeof messageContent.category === 'string' ? messageContent.category : undefined,
-                exchange: typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined,
-                marketcap: typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined,
-                volume: typeof messageContent.volume === 'number' ? messageContent.volume : undefined,
-                fdv: typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined,
+                category: category,
+                exchange: exchange,
+                marketcap: marketcap,
+                volume: volume,
+                fdv: fdv,
                 
                 // CORRECTED: Use page instead of offset for pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
+                limit: limit,
+                page: page
             };
             
             // Validate parameters according to actual API requirements
@@ -78,6 +114,7 @@ export const getTradingSignalsAction: Action = {
             const apiParams = buildTokenMetricsParams(requestParams);
             
             console.log("Fetching trading signals from TokenMetrics v2/trading-signals endpoint");
+            console.log("Trading signals request params:", JSON.stringify(apiParams, null, 2));
             
             // Make API call with corrected authentication (x-api-key header)
             const response = await callTokenMetricsApi<TradingSignalsResponse>(
@@ -100,7 +137,7 @@ export const getTradingSignalsAction: Action = {
                 analysis: signalsAnalysis,
                 metadata: {
                     endpoint: TOKENMETRICS_ENDPOINTS.tradingSignals,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    requested_token: finalSymbol || finalTokenId,
                     signal_filter: requestParams.signal,
                     date_range: {
                         start: requestParams.startDate,
@@ -139,25 +176,49 @@ export const getTradingSignalsAction: Action = {
         } catch (error) {
             console.error("Error in getTradingSignalsAction:", error);
             
+            // Provide more specific error information
+            let errorMessage = "Failed to retrieve trading signals from TokenMetrics API";
+            let troubleshootingInfo = {};
+            
+            if (error instanceof Error) {
+                if (error.message.includes("404")) {
+                    errorMessage = "Trading signals endpoint not found - this may indicate an API version issue";
+                    troubleshootingInfo = {
+                        endpoint_issue: "The /v2/trading-signals endpoint returned 404",
+                        possible_causes: [
+                            "API endpoint URL may have changed",
+                            "Your API subscription may not include trading signals",
+                            "Token parameters may be invalid"
+                        ],
+                        suggested_solutions: [
+                            "Verify your TokenMetrics subscription includes trading signals",
+                            "Check if the token_id or symbol exists in TokenMetrics database",
+                            "Try with a major token like BTC (token_id: 3375) or ETH (symbol: ETH)"
+                        ]
+                    };
+                } else if (error.message.includes("Data not found")) {
+                    errorMessage = "No trading signals found for the specified token";
+                    troubleshootingInfo = {
+                        data_issue: "TokenMetrics API returned 'Data not found'",
+                        possible_causes: [
+                            "Token may not have active trading signals",
+                            "Token_id and symbol parameters may be mismatched",
+                            "Token may not be supported for trading signals"
+                        ],
+                        suggested_solutions: [
+                            "Try with a different token that has active signals",
+                            "Use either token_id OR symbol, not both",
+                            "Check TokenMetrics platform for available tokens"
+                        ]
+                    };
+                }
+            }
+            
             return {
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve trading signals from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/trading-signals is accessible",
-                    parameter_validation: [
-                        "Verify that signal parameter uses numeric values: 1 (bullish), -1 (bearish), 0 (neutral)",
-                        "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
-                        "Ensure numeric filters (marketcap, volume, fdv) are positive numbers",
-                        "Confirm your API key has access to trading signals endpoint"
-                    ],
-                    common_solutions: [
-                        "Try calling without signal filter to get all signal types",
-                        "Use a major token (BTC, ETH) to test functionality",
-                        "Check if your subscription includes AI trading signals",
-                        "Remove filters to get broader results"
-                    ]
-                }
+                message: errorMessage,
+                troubleshooting: troubleshootingInfo
             };
         }
     },

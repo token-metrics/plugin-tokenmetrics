@@ -15,7 +15,7 @@ import type { PriceResponse, PriceRequest } from "../types";
  * Real Endpoint: GET https://api.tokenmetrics.com/v2/price
  * 
  * This action provides real-time price information for cryptocurrencies.
- * According to the API docs, it accepts token_id parameter for specific tokens.
+ * According to the API docs, it requires token_id parameter for specific tokens.
  */
 export const getPriceAction: Action = {
     name: "getPrice",
@@ -34,20 +34,38 @@ export const getPriceAction: Action = {
         try {
             const messageContent = message.content as any;
             
-            // Extract token identifiers from the user's request
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
+            // CORRECTED: Handle symbol to token_id conversion for common tokens
+            let tokenId = messageContent.token_id;
+            
+            // If symbol is provided but no token_id, convert common symbols to token_ids
+            if (!tokenId && messageContent.symbol) {
+                const symbolToTokenId: Record<string, number> = {
+                    'BTC': 3375,
+                    'ETH': 3306,
+                    'ADA': 3408,
+                    'SOL': 3718,
+                    'MATIC': 3890,
+                    'DOT': 3635,
+                    'AVAX': 3718,
+                    'LINK': 3463
+                };
+                
+                const symbol = messageContent.symbol.toUpperCase();
+                tokenId = symbolToTokenId[symbol];
+                
+                if (!tokenId) {
+                    throw new Error(`Token ID not found for symbol ${symbol}. Please use the tokens endpoint to find the correct TOKEN_ID, or provide token_id directly.`);
+                }
+            }
             
             // CORRECTED: Build parameters based on actual API documentation
             const requestParams: PriceRequest = {
-                // According to API docs, this endpoint accepts token_id parameter
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined)
+                token_id: tokenId
             };
             
-            // If no specific token requested, we can call without parameters to get multiple tokens
+            // According to API docs, token_id is required for this endpoint
             if (!requestParams.token_id) {
-                // Remove undefined token_id to get general price data
-                delete requestParams.token_id;
+                throw new Error("token_id parameter is required. Use the tokens endpoint to find TOKEN_IDs or provide a known token_id (e.g., Bitcoin = 3375)");
             }
             
             // Validate parameters according to actual API requirements
@@ -69,18 +87,26 @@ export const getPriceAction: Action = {
             const formattedData = formatTokenMetricsResponse<PriceResponse>(response, "getPrice");
             const priceData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
             
+            // Normalize field names to match expected format
+            const normalizedPriceData = priceData.map(item => ({
+                ...item,
+                PRICE: item.CURRENT_PRICE || item.PRICE, // Normalize CURRENT_PRICE to PRICE
+                SYMBOL: item.TOKEN_SYMBOL || item.SYMBOL, // Normalize TOKEN_SYMBOL to SYMBOL
+                NAME: item.TOKEN_NAME || item.NAME // Normalize TOKEN_NAME to NAME
+            }));
+            
             // Analyze the price data
-            const priceAnalysis = analyzePriceData(priceData);
+            const priceAnalysis = analyzePriceData(normalizedPriceData);
             
             return {
                 success: true,
-                message: `Successfully retrieved price data for ${priceData.length} tokens`,
-                price_data: priceData,
+                message: `Successfully retrieved price data for ${normalizedPriceData.length} tokens`,
+                price_data: normalizedPriceData,
                 analysis: priceAnalysis,
                 metadata: {
                     endpoint: TOKENMETRICS_ENDPOINTS.price,
                     requested_token_id: requestParams.token_id,
-                    data_points: priceData.length,
+                    data_points: normalizedPriceData.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
                 },
@@ -108,13 +134,13 @@ export const getPriceAction: Action = {
                 troubleshooting: {
                     endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/price is accessible",
                     parameter_validation: [
-                        "Verify token_id is a valid number if provided",
-                        "Ensure your API key has access to price endpoint",
-                        "Check that the token is actively traded and supported"
+                        "Verify token_id is a valid number (required parameter)",
+                        "Use tokens endpoint to find correct TOKEN_ID for symbols",
+                        "Common TOKEN_IDs: Bitcoin=3375, Ethereum=3306, Cardano=3408"
                     ],
                     common_solutions: [
-                        "Try calling without token_id to get general price data",
-                        "Use the tokens endpoint first to verify correct TOKEN_ID",
+                        "Get TOKEN_ID from tokens endpoint first: /v2/tokens?symbol=BTC",
+                        "Use known TOKEN_IDs for major cryptocurrencies",
                         "Check if your subscription includes price data access"
                     ]
                 }
@@ -152,13 +178,14 @@ export const getPriceAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Get current market prices"
+                    text: "Get current price for BTC",
+                    symbol: "BTC"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll retrieve current market prices and data from TokenMetrics.",
+                    text: "I'll retrieve current Bitcoin price data from TokenMetrics.",
                     action: "GET_PRICE"
                 }
             }
