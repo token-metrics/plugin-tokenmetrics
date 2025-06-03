@@ -1,0 +1,577 @@
+<!-- tests/ui/real-test-interface.html - Complete UI for ALL 20 endpoints -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TokenMetrics AI Agent - Complete API Testing</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.2em; opacity: 0.9; }
+        .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .status-loading { background: #ffa500; animation: pulse 1.5s infinite; }
+        .status-success { background: #4caf50; }
+        .status-error { background: #f44336; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .panel h2 { color: #333; margin-bottom: 20px; font-size: 1.5em; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        .input-group input, .input-group select, .input-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s; }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { outline: none; border-color: #667eea; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: transform 0.2s; margin: 5px; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 20px 0; }
+        .results { grid-column: 1 / -1; margin-top: 20px; }
+        .results-content { background: #f8f9fa; border-radius: 8px; padding: 20px; max-height: 500px; overflow-y: auto; }
+        .response-data { background: white; border-left: 4px solid #667eea; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .loading { color: #ffa500; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 TokenMetrics AI Agent - Complete API Testing</h1>
+            <p>Test ALL 20 endpoints with real TokenMetrics API calls</p>
+            <div id="connection-status">
+                <span class="status-indicator status-loading"></span>
+                <span>Connecting to real TokenMetrics API...</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Custom Query Panel -->
+            <div class="panel">
+                <h2>💬 Ask Anything</h2>
+                <div class="input-group">
+                    <label for="userQuery">Natural Language Query:</label>
+                    <textarea id="userQuery" rows="3" placeholder="Ask me anything about crypto! Try: 'Show me daily OHLCV for Bitcoin' or 'Get AI reports for Ethereum'"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="endpoint-select">Force Specific Endpoint (Optional):</label>
+                    <select id="endpoint-select">
+                        <option value="">Auto-detect from query</option>
+                        <optgroup label="Core Market Data">
+                            <option value="price">Price Data</option>
+                            <option value="trading-signals">Trading Signals</option>
+                            <option value="trader-grades">Trader Grades</option>
+                            <option value="top-tokens">Top Tokens</option>
+                            <option value="market-overview">Market Overview</option>
+                            <option value="risk-analysis">Risk Analysis</option>
+                            <option value="tokens">All Tokens</option>
+                        </optgroup>
+                        <optgroup label="OHLCV Data">
+                            <option value="hourly-ohlcv">Hourly OHLCV</option>
+                            <option value="daily-ohlcv">Daily OHLCV</option>
+                        </optgroup>
+                        <optgroup label="Investment Analysis">
+                            <option value="investor-grades">Investor Grades</option>
+                            <option value="ai-reports">AI Reports</option>
+                            <option value="crypto-investors">Crypto Investors</option>
+                            <option value="correlation">Correlation Analysis</option>
+                        </optgroup>
+                        <optgroup label="Technical & Sentiment">
+                            <option value="resistance-support">Resistance & Support</option>
+                            <option value="sentiment">Sentiment Analysis</option>
+                            <option value="scenario-analysis">Scenario Analysis</option>
+                        </optgroup>
+                        <optgroup label="AI Assistant">
+                            <option value="tmai">TokenMetrics AI</option>
+                        </optgroup>
+                        <optgroup label="Sector Analysis">
+                            <option value="sector-holdings">Sector Holdings</option>
+                            <option value="sector-performance">Sector Performance</option>
+                            <option value="sector-transactions">Sector Transactions</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="symbol-input">Token Symbol (Optional):</label>
+                    <input type="text" id="symbol-input" placeholder="BTC, ETH, SOL, etc.">
+                </div>
+                <div class="input-group">
+                    <label for="sector-input">Sector (Optional):</label>
+                    <input type="text" id="sector-input" placeholder="defi, gaming, meme, etc.">
+                </div>
+                <div class="input-group">
+                    <label for="limit-input">Limit Results:</label>
+                    <input type="number" id="limit-input" value="10" min="1" max="100">
+                </div>
+                <button class="btn" onclick="processCustomQuery()">🚀 Ask AI Agent</button>
+            </div>
+
+            <!-- Quick Tests Panel -->
+            <div class="panel">
+                <h2>⚡ Quick Tests - ALL 20 Endpoints</h2>
+                
+                <h3>📊 Core Market Data (7 endpoints)</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runQuickTest('bitcoin-price')">💰 Bitcoin Price</button>
+                    <button class="btn" onclick="runQuickTest('trading-signals')">🎯 Trading Signals</button>
+                    <button class="btn" onclick="runQuickTest('trader-grades')">📈 Trader Grades</button>
+                    <button class="btn" onclick="runQuickTest('top-tokens')">🏆 Top Tokens</button>
+                    <button class="btn" onclick="runQuickTest('market-overview')">🌍 Market Overview</button>
+                    <button class="btn" onclick="runQuickTest('risk-analysis')">⚠️ Risk Analysis</button>
+                    <button class="btn" onclick="runQuickTest('all-tokens')">📋 All Tokens</button>
+                </div>
+
+                <h3>📈 OHLCV Data (2 endpoints)</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runQuickTest('hourly-ohlcv')">⏰ Hourly OHLCV</button>
+                    <button class="btn" onclick="runQuickTest('daily-ohlcv')">📅 Daily OHLCV</button>
+                </div>
+
+                <h3>💼 Investment Analysis (4 endpoints)</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runQuickTest('investor-grades')">🎖️ Investor Grades</button>
+                    <button class="btn" onclick="runQuickTest('ai-reports')">🤖 AI Reports</button>
+                    <button class="btn" onclick="runQuickTest('crypto-investors')">👥 Crypto Investors</button>
+                    <button class="btn" onclick="runQuickTest('correlation')">🔗 Correlation</button>
+                </div>
+
+                <h3>📊 Technical & Sentiment (3 endpoints)</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runQuickTest('resistance-support')">📏 Support/Resistance</button>
+                    <button class="btn" onclick="runQuickTest('sentiment')">😊 Sentiment</button>
+                    <button class="btn" onclick="runQuickTest('scenario-analysis')">🔮 Scenarios</button>
+                </div>
+
+                <h3>🤖 AI Assistant (1 endpoint)</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runQuickTest('tmai')">🧠 TokenMetrics AI</button>
+                </div>
+
+                <h3>🏭 Sector Analysis (3 endpoints)</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runQuickTest('defi-analysis')">🔄 DeFi Sector</button>
+                    <button class="btn" onclick="runQuickTest('sector-performance')">📊 Sector Performance</button>
+                    <button class="btn" onclick="runQuickTest('sector-transactions')">💱 Sector Transactions</button>
+                </div>
+
+                <h3>🔧 System Diagnostics</h3>
+                <div class="btn-grid">
+                    <button class="btn" onclick="runDiagnostic('connection')">🌐 Test Connection</button>
+                    <button class="btn" onclick="runDiagnostic('endpoints')">🔍 Test All Endpoints</button>
+                    <button class="btn" onclick="runDiagnostic('performance')">⚡ Performance Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="panel results">
+            <h2>📋 Results</h2>
+            <div id="results-status">Ready to test real TokenMetrics API endpoints...</div>
+            <div id="results-content" class="results-content">
+                <p>🚀 Welcome! This interface tests ALL 20 TokenMetrics endpoints with real API calls.</p>
+                <p>💡 Try asking: "Show me daily OHLCV for Bitcoin" or click any quick test button above.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        /**
+         * COMPLETE API TESTING INTERFACE - ALL 20 ENDPOINTS
+         * 
+         * This interface connects directly to your real TokenMetrics actions.
+         * Every response comes from actual API calls - no simulation anywhere.
+         */
+        
+        import RealTokenMetricsAgentBridge from './real-agent-bridge.js';
+        
+        // Global variables for the real testing interface
+        let realAgentBridge = null;
+        let testHistory = [];
+        
+        /**
+         * Initialize the REAL testing interface
+         */
+        async function initializeRealInterface() {
+            console.log("🚀 Initializing COMPLETE TokenMetrics Agent Interface");
+            
+            try {
+                // Show immediate loading status
+                const statusElement = document.getElementById('connection-status');
+                statusElement.innerHTML = '<span class="status-indicator status-loading"></span><span>Initializing TokenMetrics Agent...</span>';
+                
+                realAgentBridge = new RealTokenMetricsAgentBridge();
+                
+                // Show quick status update
+                statusElement.innerHTML = '<span class="status-indicator status-loading"></span><span>Agent loaded - verifying API connection...</span>';
+                
+                // Check connection status periodically
+                let attempts = 0;
+                const maxAttempts = 10;
+                
+                const checkConnection = () => {
+                    attempts++;
+                    const status = realAgentBridge.getConnectionStatus();
+                    
+                    if (status.verified) {
+                        statusElement.innerHTML = '<span class="status-indicator status-success"></span><span class="success">✅ Connected to REAL TokenMetrics API - ALL 20 endpoints ready</span>';
+                        console.log("✅ Complete TokenMetrics connection verified");
+                    } else if (attempts >= maxAttempts) {
+                        statusElement.innerHTML = '<span class="status-indicator status-success"></span><span class="success">🚀 TokenMetrics Agent Ready - API will verify on first query</span>';
+                        console.log("⚡ TokenMetrics agent ready - verification will happen on demand");
+                    } else {
+                        setTimeout(checkConnection, 1000);
+                    }
+                };
+                
+                // Start checking connection status
+                setTimeout(checkConnection, 500);
+                
+            } catch (error) {
+                console.error("❌ Failed to initialize TokenMetrics agent:", error);
+                
+                const statusElement = document.getElementById('connection-status');
+                statusElement.innerHTML = `<span class="status-indicator status-error"></span><span class="error">Initialization failed: ${error.message}</span>`;
+                
+                showRealConnectionError(error);
+            }
+        }
+        
+        function showRealConnectionError(error) {
+            const errorGuidance = document.createElement('div');
+            errorGuidance.className = 'error-guidance';
+            errorGuidance.innerHTML = `
+                <h4>🔧 Real API Connection Troubleshooting</h4>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <p><strong>Possible solutions:</strong></p>
+                <ul>
+                    <li>Check your .env file has TOKENMETRICS_API_KEY set</li>
+                    <li>Verify your API key is valid at developers.tokenmetrics.com</li>
+                    <li>Ensure internet connection to api.tokenmetrics.com</li>
+                    <li>Check console for detailed error logs</li>
+                </ul>
+            `;
+            
+            document.querySelector('.container').appendChild(errorGuidance);
+        }
+        
+        /**
+         * Process real user queries using actual TokenMetrics API
+         */
+        async function processRealCustomQuery() {
+            const queryInput = document.getElementById('userQuery');
+            const query = queryInput.value.trim();
+            
+            if (!query) {
+                showError('Please enter a question for the real agent');
+                return;
+            }
+            
+            if (!realAgentBridge) {
+                showError('Real agent bridge not initialized - check API connection');
+                return;
+            }
+            
+            const options = {
+                forcedEndpoint: document.getElementById('endpoint-select').value,
+                symbol: document.getElementById('symbol-input').value,
+                sector: document.getElementById('sector-input').value,
+                limit: parseInt(document.getElementById('limit-input').value) || 10
+            };
+            
+            showResults('Processing REAL query: "' + query + '"', 'loading');
+            
+            try {
+                const realResult = await realAgentBridge.processRealQuery(query, options);
+                
+                if (realResult._metadata && realResult._metadata.real_api_call === true) {
+                    showResults('REAL Query Processed Successfully', 'success');
+                    displayRealAgentResponse(realResult, { name: 'Real Query', query: query });
+                    
+                    queryInput.value = '';
+                    addToRealTestHistory('Real Query', query, realResult, 'success');
+                    
+                } else {
+                    throw new Error('Response does not appear to be from real API call');
+                }
+                
+            } catch (error) {
+                showResults('REAL Query Failed', 'error');
+                showError('Real agent error: ' + error.message);
+                addToRealTestHistory('Real Query', query, null, 'error', error.message);
+            }
+        }
+        
+        /**
+         * Run predefined tests with REAL API calls - ALL 20 ENDPOINTS
+         */
+        async function runRealQuickTest(testType) {
+            if (!realAgentBridge) {
+                showError('Real agent bridge not initialized - check API connection');
+                return;
+            }
+            
+            const realTestConfigs = {
+                // CORE MARKET DATA (7 endpoints)
+                'bitcoin-price': {
+                    name: 'Real Bitcoin Price Query',
+                    query: 'What is Bitcoin\'s current price and market analysis?',
+                    parameters: { symbol: 'BTC' }
+                },
+                'trading-signals': {
+                    name: 'Real AI Trading Signals',
+                    query: 'Show me AI trading signals for major cryptocurrencies',
+                    parameters: { limit: 5 }
+                },
+                'trader-grades': {
+                    name: 'Real Trader Grades',
+                    query: 'Get trader grades for Bitcoin',
+                    parameters: { symbol: 'BTC' }
+                },
+                'top-tokens': {
+                    name: 'Real Top Cryptocurrencies',
+                    query: 'Show me the top 10 cryptocurrencies by market cap',
+                    parameters: { top_k: 10 }
+                },
+                'market-overview': {
+                    name: 'Real Market Overview',
+                    query: 'Give me an overview of the current cryptocurrency market conditions',
+                    parameters: { limit: 10 }
+                },
+                'risk-analysis': {
+                    name: 'Real Risk Analysis',
+                    query: 'Analyze the risk metrics for Ethereum',
+                    parameters: { symbol: 'ETH' }
+                },
+                'all-tokens': {
+                    name: 'Real All Tokens',
+                    query: 'Show me available cryptocurrency tokens',
+                    parameters: { limit: 20 }
+                },
+                
+                // OHLCV DATA (2 endpoints)
+                'hourly-ohlcv': {
+                    name: 'Real Hourly OHLCV Data',
+                    query: 'Show me hourly OHLCV data for Bitcoin',
+                    parameters: { symbol: 'BTC', limit: 24 }
+                },
+                'daily-ohlcv': {
+                    name: 'Real Daily OHLCV Data',
+                    query: 'Get daily OHLCV data for Ethereum',
+                    parameters: { symbol: 'ETH', limit: 30 }
+                },
+                
+                // INVESTMENT ANALYSIS (4 endpoints)
+                'investor-grades': {
+                    name: 'Real Investor Grades',
+                    query: 'Show me investor grades for Bitcoin',
+                    parameters: { symbol: 'BTC' }
+                },
+                'ai-reports': {
+                    name: 'Real AI Reports',
+                    query: 'Get AI reports for Ethereum',
+                    parameters: { symbol: 'ETH' }
+                },
+                'crypto-investors': {
+                    name: 'Real Crypto Investors',
+                    query: 'Show me crypto investors data',
+                    parameters: { limit: 10 }
+                },
+                'correlation': {
+                    name: 'Real Correlation Analysis',
+                    query: 'Analyze correlation between Bitcoin and Ethereum',
+                    parameters: { symbol: 'BTC', limit: 10 }
+                },
+                
+                // TECHNICAL & SENTIMENT (3 endpoints)
+                'resistance-support': {
+                    name: 'Real Resistance & Support Levels',
+                    query: 'Show me resistance and support levels for Bitcoin',
+                    parameters: { symbol: 'BTC' }
+                },
+                'sentiment': {
+                    name: 'Real Sentiment Analysis',
+                    query: 'Get market sentiment analysis',
+                    parameters: { limit: 10 }
+                },
+                'scenario-analysis': {
+                    name: 'Real Scenario Analysis',
+                    query: 'Perform scenario analysis for Bitcoin',
+                    parameters: { symbol: 'BTC' }
+                },
+                
+                // AI ASSISTANT (1 endpoint)
+                'tmai': {
+                    name: 'Real TokenMetrics AI',
+                    query: 'Ask TokenMetrics AI about the best investment opportunities',
+                    parameters: { question: 'What are the best crypto investment opportunities right now?' }
+                },
+                
+                // SECTOR ANALYSIS (3 endpoints)
+                'defi-analysis': {
+                    name: 'Real DeFi Sector Analysis', 
+                    query: 'Analyze the DeFi sector performance and investment opportunities',
+                    parameters: { indexName: 'defi' }
+                },
+                'sector-performance': {
+                    name: 'Real Sector Performance',
+                    query: 'Show me DeFi sector performance',
+                    parameters: { indexName: 'defi' }
+                },
+                'sector-transactions': {
+                    name: 'Real Sector Transactions',
+                    query: 'Get DeFi sector transaction data',
+                    parameters: { indexName: 'defi' }
+                }
+            };
+            
+            const config = realTestConfigs[testType];
+            if (!config) {
+                showError('Unknown real test type: ' + testType);
+                return;
+            }
+            
+            showResults('Running REAL test: ' + config.name, 'loading');
+            
+            try {
+                const realResult = await realAgentBridge.processRealQuery(config.query, config.parameters);
+                
+                showResults(config.name + ' - REAL SUCCESS', 'success');
+                displayRealAgentResponse(realResult, config);
+                addToRealTestHistory(config.name, config.query, realResult, 'success');
+                
+            } catch (error) {
+                showResults(config.name + ' - REAL FAILED', 'error');
+                showError('Real test failed: ' + error.message);
+                addToRealTestHistory(config.name, config.query, null, 'error', error.message);
+            }
+        }
+        
+        /**
+         * Run real system diagnostics
+         */
+        async function runRealDiagnostic(diagnosticType) {
+            if (!realAgentBridge) {
+                showError('Real agent bridge not initialized - check API connection');
+                return;
+            }
+            
+            showResults('Running REAL diagnostic: ' + diagnosticType, 'loading');
+            
+            try {
+                let realResult;
+                
+                if (diagnosticType === 'connection') {
+                    realResult = await realAgentBridge.verifyRealApiConnection();
+                } else if (diagnosticType === 'endpoints') {
+                    realResult = await realAgentBridge.runRealDiagnostics();
+                } else if (diagnosticType === 'performance') {
+                    const startTime = Date.now();
+                    await realAgentBridge.processRealQuery('Get Bitcoin price', { symbol: 'BTC' });
+                    const endTime = Date.now();
+                    realResult = {
+                        response_time: `${endTime - startTime}ms`,
+                        test_type: 'Real API performance test',
+                        endpoint_tested: 'Price endpoint with real Bitcoin data'
+                    };
+                }
+                
+                showResults('REAL diagnostic completed: ' + diagnosticType, 'success');
+                displayRealDiagnosticResult(realResult, diagnosticType);
+                
+            } catch (error) {
+                showResults('REAL diagnostic failed: ' + diagnosticType, 'error');
+                showError('Real diagnostic error: ' + error.message);
+            }
+        }
+        
+        // Utility functions
+        function showResults(message, type) {
+            const statusElement = document.getElementById('results-status');
+            statusElement.className = type;
+            statusElement.textContent = message;
+        }
+        
+        function showError(message) {
+            showResults(message, 'error');
+        }
+        
+        function displayRealAgentResponse(response, config) {
+            const contentDiv = document.getElementById('results-content');
+            
+            const isRealData = response._metadata && response._metadata.real_api_call === true;
+            const dataSource = isRealData ? '🌐 REAL TokenMetrics API Data' : '⚠️ Unverified Data Source';
+            
+            const responseHtml = `
+                <div class="response-data">
+                    <strong>🤖 REAL Agent Response for: ${config.name}</strong><br>
+                    <strong>📝 Query:</strong> ${config.query}<br>
+                    <strong>🔗 Data Source:</strong> ${dataSource}<br>
+                    <strong>⏱️ Processing Time:</strong> ${response._metadata?.processing_time_ms || 'Unknown'}ms<br>
+                    <strong>✅ Success:</strong> ${response.success}<br>
+                    <strong>📊 Message:</strong> ${response.message || 'No message'}<br>
+                    
+                    ${response.analysis ? `<strong>🧠 Real Analysis Summary:</strong> ${response.analysis.summary || 'No summary'}<br>` : ''}
+                    
+                    ${response.analysis && response.analysis.insights ? `<strong>💡 Real Key Insights:</strong><br>${response.analysis.insights.map(insight => '• ' + insight).join('<br>')}<br>` : ''}
+                    
+                    ${response.analysis && response.analysis.recommendations ? `<strong>🎯 Real Recommendations:</strong><br>${response.analysis.recommendations.map(rec => '• ' + rec).join('<br>')}<br>` : ''}
+                    
+                    <details>
+                        <summary><strong>🔧 Raw Real Response Data</strong></summary>
+                        <pre>${JSON.stringify(response, null, 2)}</pre>
+                    </details>
+                </div>
+            `;
+            
+            contentDiv.innerHTML = responseHtml + contentDiv.innerHTML;
+        }
+        
+        function displayRealDiagnosticResult(result, diagnosticType) {
+            const contentDiv = document.getElementById('results-content');
+            
+            const diagnosticHtml = `
+                <div class="response-data">
+                    <strong>🔧 REAL Diagnostic: ${diagnosticType}</strong><br>
+                    <strong>🌐 Data Source:</strong> Real TokenMetrics API<br>
+                    <details>
+                        <summary><strong>📊 Real Results</strong></summary>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </details>
+                </div>
+            `;
+            
+            contentDiv.innerHTML = diagnosticHtml + contentDiv.innerHTML;
+        }
+        
+        function addToRealTestHistory(testName, query, result, status, error = null) {
+            const historyItem = {
+                timestamp: new Date().toISOString(),
+                testName: testName,
+                query: query,
+                result: result,
+                status: status,
+                error: error,
+                realApiCall: true,
+                simulation: false
+            };
+            
+            testHistory.unshift(historyItem);
+            
+            if (testHistory.length > 50) {
+                testHistory = testHistory.slice(0, 50);
+            }
+            
+            localStorage.setItem('tokenmetrics-real-test-history', JSON.stringify(testHistory));
+        }
+        
+        // Expose functions globally for button onclick handlers
+        window.processCustomQuery = processRealCustomQuery;
+        window.runQuickTest = runRealQuickTest;
+        window.runDiagnostic = runRealDiagnostic;
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeRealInterface);
+    </script>
+</body>
+</html>
