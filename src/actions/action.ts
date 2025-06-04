@@ -269,62 +269,77 @@ export function formatTokenMetricsResponse<T>(rawResponse: any, actionName: stri
 }
 
 /**
- * Enhanced token identifier extraction with proper field mapping
+ * IMPROVED: Extract token identifier from message content with better validation
  */
 export function extractTokenIdentifier(messageContent: any): { token_id?: number; symbol?: string } {
     const result: { token_id?: number; symbol?: string } = {};
     
-    // Extract token_id
-    const tokenIdFields = ['token_id', 'tokenId', 'TOKEN_ID', 'id'];
-    for (const field of tokenIdFields) {
-        if (typeof messageContent[field] === 'number' && messageContent[field] > 0) {
-            result.token_id = messageContent[field];
-            break;
-        }
-        if (typeof messageContent[field] === 'string') {
-            const numValue = parseInt(messageContent[field], 10);
-            if (!isNaN(numValue) && numValue > 0) {
-                result.token_id = numValue;
-                break;
-            }
+    // Direct token_id from message
+    if (typeof messageContent.token_id === 'number' && messageContent.token_id > 0) {
+        result.token_id = messageContent.token_id;
+    }
+    
+    // Direct symbol from message (must be valid crypto symbol format)
+    if (typeof messageContent.symbol === 'string') {
+        const symbol = messageContent.symbol.trim().toUpperCase();
+        // Only accept if it looks like a valid crypto symbol (2-10 chars, alphanumeric)
+        if (/^[A-Z0-9]{2,10}$/.test(symbol) && isKnownCryptoSymbol(symbol)) {
+            result.symbol = symbol;
         }
     }
     
-    // Extract symbol
-    const symbolFields = ['symbol', 'SYMBOL', 'token', 'coin', 'cryptocurrency'];
-    for (const field of symbolFields) {
-        if (typeof messageContent[field] === 'string' && messageContent[field].trim().length > 0) {
-            result.symbol = messageContent[field].trim().toUpperCase();
-            break;
-        }
-    }
-    
-    // Try to extract from text content
-    if (!result.symbol && typeof messageContent.text === 'string') {
-        const text = messageContent.text.toUpperCase();
-        const commonSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'MATIC', 'DOT', 'LINK', 'UNI', 'AVAX', 'ATOM'];
-        for (const symbol of commonSymbols) {
-            if (text.includes(symbol)) {
+    // Extract from text content using known patterns
+    if (typeof messageContent.text === 'string') {
+        const text = messageContent.text;
+        
+        // Look for known crypto symbols in the text
+        const knownSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'MATIC', 'LINK', 'UNI', 'AVAX', 'DOT', 'ATOM', 'XRP', 'LTC', 'BCH', 'ETC', 'XLM', 'TRX', 'VET', 'FIL', 'THETA', 'EOS'];
+        
+        for (const symbol of knownSymbols) {
+            // Look for symbol as whole word (case insensitive)
+            const regex = new RegExp(`\\b${symbol}\\b`, 'i');
+            if (regex.test(text)) {
                 result.symbol = symbol;
-                break;
+                break; // Take the first match
             }
         }
         
-        // Only extract unknown symbols if they look like valid crypto symbols
-        if (!result.symbol) {
-            const symbolMatch = text.match(/\b([A-Z]{2,5})\b/);
-            if (symbolMatch) {
-                const potentialSymbol = symbolMatch[1];
-                // Filter out common English words and invalid symbols
-                const invalidWords = ['THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'GET', 'WHAT', 'HOW', 'WHY', 'WHEN', 'WHERE', 'WHO', 'WILL', 'WOULD', 'COULD', 'SHOULD', 'HAVE', 'HAS', 'HAD', 'BEEN', 'BEING', 'WERE', 'WAS', 'THEY', 'THEM', 'THEIR', 'THIS', 'THAT', 'THESE', 'THOSE', 'WITH', 'FROM', 'INTO', 'OVER', 'UNDER', 'ABOVE', 'BELOW'];
-                if (!invalidWords.includes(potentialSymbol) && potentialSymbol.length >= 2 && potentialSymbol.length <= 5) {
-                    result.symbol = potentialSymbol;
-                }
+        // Look for full coin names
+        const coinNamePatterns = [
+            { pattern: /\bbitcoin\b/i, symbol: 'BTC', id: 3375 },
+            { pattern: /\bethereum\b/i, symbol: 'ETH', id: 3306 },
+            { pattern: /\bcardano\b/i, symbol: 'ADA', id: 2010 },
+            { pattern: /\bsolana\b/i, symbol: 'SOL', id: 5426 },
+            { pattern: /\bpolygon\b/i, symbol: 'MATIC', id: 3890 },
+            { pattern: /\bchainlink\b/i, symbol: 'LINK', id: 1975 },
+            { pattern: /\buniswap\b/i, symbol: 'UNI', id: 7083 },
+            { pattern: /\bavalanche\b/i, symbol: 'AVAX', id: 5805 }
+        ];
+        
+        for (const { pattern, symbol, id } of coinNamePatterns) {
+            if (pattern.test(text)) {
+                result.symbol = symbol;
+                result.token_id = id;
+                break;
             }
         }
     }
     
     return result;
+}
+
+/**
+ * Check if a symbol is a known cryptocurrency symbol
+ */
+function isKnownCryptoSymbol(symbol: string): boolean {
+    const knownSymbols = [
+        'BTC', 'ETH', 'ADA', 'SOL', 'MATIC', 'LINK', 'UNI', 'AVAX', 'DOT', 'ATOM', 
+        'XRP', 'LTC', 'BCH', 'ETC', 'XLM', 'TRX', 'VET', 'FIL', 'THETA', 'EOS',
+        'DOGE', 'SHIB', 'USDT', 'USDC', 'BNB', 'BUSD', 'DAI', 'WBTC', 'STETH',
+        'MATIC', 'CRO', 'NEAR', 'ALGO', 'MANA', 'SAND', 'APE', 'LRC', 'ENJ',
+        'COMP', 'MKR', 'AAVE', 'SNX', 'UMA', 'BAL', 'YFI', 'SUSHI', 'CRV'
+    ];
+    return knownSymbols.includes(symbol);
 }
 
 // Utility functions remain the same
