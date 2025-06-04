@@ -145,6 +145,7 @@ export class EnhancedTokenMetricsHandler {
             'trading-signals': 'getTradingSignals',
             'risk-analysis': 'getQuantmetrics',
             'market-overview': 'getMarketMetrics',
+            'market-metrics': 'getMarketMetrics',
             'sector-analysis': 'getSectorIndicesHoldings',
             'sector-performance': 'getIndexPerformance',
             'sector-holdings': 'getSectorIndicesHoldings',
@@ -199,12 +200,15 @@ export class EnhancedTokenMetricsHandler {
             }
         };
 
-        // Add detected tokens
+        // Add detected tokens ONLY if they are valid and confident
         if (analysis.detectedTokens.length > 0) {
             const primaryToken = analysis.detectedTokens[0]; // Highest confidence token
-            (message.content as any).symbol = primaryToken.symbol;
-            if (primaryToken.token_id) {
-                (message.content as any).token_id = primaryToken.token_id;
+            // Only add token info if confidence is high enough (>= 0.8)
+            if (primaryToken.confidence >= 0.8) {
+                (message.content as any).symbol = primaryToken.symbol;
+                if (primaryToken.token_id) {
+                    (message.content as any).token_id = primaryToken.token_id;
+                }
             }
         }
 
@@ -215,6 +219,14 @@ export class EnhancedTokenMetricsHandler {
                 break;
                 
             case 'trading-signals':
+                // For general trading signals queries, don't specify a token
+                // Let the API return general signals
+                if (!analysis.detectedTokens.length || analysis.detectedTokens[0].confidence < 0.8) {
+                    // Remove any invalid symbol that might have been extracted
+                    delete (message.content as any).symbol;
+                    delete (message.content as any).token_id;
+                }
+                
                 // Add signal type preference
                 if (preferences?.riskTolerance === 'low') {
                     (message.content as any).signal = 1; // Prefer bullish signals for conservative users
@@ -222,11 +234,25 @@ export class EnhancedTokenMetricsHandler {
                 break;
                 
             case 'risk-analysis':
+                // For general risk analysis, don't specify a token
+                if (!analysis.detectedTokens.length || analysis.detectedTokens[0].confidence < 0.8) {
+                    delete (message.content as any).symbol;
+                    delete (message.content as any).token_id;
+                }
+                
                 // Add analysis depth based on user preference
                 if (preferences?.analysisDepth === 'detailed') {
                     (message.content as any).limit = 50;
                 } else {
                     (message.content as any).limit = 20;
+                }
+                break;
+                
+            case 'trader-grades':
+                // For general trader grades queries, don't specify a token
+                if (!analysis.detectedTokens.length || analysis.detectedTokens[0].confidence < 0.8) {
+                    delete (message.content as any).symbol;
+                    delete (message.content as any).token_id;
                 }
                 break;
                 
@@ -255,7 +281,11 @@ export class EnhancedTokenMetricsHandler {
                 
             case 'investor-grades':
             case 'investment-grades':
-                // Investment grade analysis
+                // For general investor grades queries, don't specify a token
+                if (!analysis.detectedTokens.length || analysis.detectedTokens[0].confidence < 0.8) {
+                    delete (message.content as any).symbol;
+                    delete (message.content as any).token_id;
+                }
                 (message.content as any).limit = 50;
                 break;
                 
@@ -490,7 +520,18 @@ export class EnhancedTokenMetricsHandler {
                         
                         // Show categories if available
                         if (token.CATEGORY_LIST && token.CATEGORY_LIST.length > 0) {
-                            summary += `   Categories: ${token.CATEGORY_LIST.slice(0, 2).map((cat: any) => cat.CATEGORY_NAME || cat).join(', ')}${token.CATEGORY_LIST.length > 2 ? '...' : ''}\n`;
+                            const categoryNames = token.CATEGORY_LIST.slice(0, 2).map((cat: any) => {
+                                if (typeof cat === 'object' && cat.category_name) {
+                                    return cat.category_name;
+                                } else if (typeof cat === 'object' && cat.CATEGORY_NAME) {
+                                    return cat.CATEGORY_NAME;
+                                } else if (typeof cat === 'string') {
+                                    return cat;
+                                } else {
+                                    return 'Unknown Category';
+                                }
+                            });
+                            summary += `   Categories: ${categoryNames.join(', ')}${token.CATEGORY_LIST.length > 2 ? '...' : ''}\n`;
                         }
                         
                         summary += '\n';

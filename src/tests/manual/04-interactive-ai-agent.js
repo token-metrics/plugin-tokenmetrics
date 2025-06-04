@@ -64,11 +64,16 @@ class TokenMetricsAIAgent {
     }
 
     setupEventHandlers() {
+        // Detect if input is piped
+        const isPiped = !process.stdin.isTTY;
+        
         this.rl.on('line', async (input) => {
             const query = input.trim();
             
             if (!query) {
-                this.rl.prompt();
+                if (!isPiped) {
+                    this.rl.prompt();
+                }
                 return;
             }
 
@@ -79,11 +84,19 @@ class TokenMetricsAIAgent {
 
             // Process AI query
             await this.processAIQuery(query);
+            
+            // If input is piped, exit after processing the query
+            if (isPiped) {
+                console.log(chalk.blue('\n👋 Thanks for using TokenMetrics AI Agent! Happy trading!'));
+                process.exit(0);
+            }
         });
 
         this.rl.on('close', () => {
-            console.log(chalk.blue('\n👋 Thanks for using TokenMetrics AI Agent! Happy trading!'));
-            process.exit(0);
+            if (!this.isProcessing) {
+                console.log(chalk.blue('\n👋 Thanks for using TokenMetrics AI Agent! Happy trading!'));
+                process.exit(0);
+            }
         });
 
         // Handle Ctrl+C gracefully
@@ -160,7 +173,10 @@ class TokenMetricsAIAgent {
         } finally {
             this.isProcessing = false;
             console.log('');
-            this.rl.prompt();
+            // Only prompt if not piped input
+            if (process.stdin.isTTY) {
+                this.rl.prompt();
+            }
         }
     }
 
