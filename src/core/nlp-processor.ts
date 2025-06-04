@@ -150,6 +150,18 @@ export class TokenMetricsNLPProcessor {
             ]
         },
         
+        // Tokens Database/List intents - NEW (FIXED: Added missing pattern)
+        {
+            patterns: [/tokens.*database|database.*token|tokens.*list|list.*token|available.*token|supported.*token|all.*token|token.*catalog|show.*token/i],
+            intent: 'tokens-list',
+            confidence: 0.9,
+            followUpQuestions: [
+                "Are you looking for specific tokens?",
+                "Would you like to filter by market cap or category?",
+                "Are you exploring new investment opportunities?"
+            ]
+        },
+        
         // Trading signal intents
         {
             patterns: [/trading signal|buy|sell|signal|trade|should i|recommendation/i],
@@ -159,6 +171,30 @@ export class TokenMetricsNLPProcessor {
                 "Are you looking for short-term or long-term signals?",
                 "What's your risk tolerance for this trade?",
                 "Would you like to see the reasoning behind the signal?"
+            ]
+        },
+        
+        // Trader Grades intents - NEW (FIXED: Added missing pattern)
+        {
+            patterns: [/trader.*grade|grade.*trader|trading.*grade|grade.*trading|short.*term.*grade/i],
+            intent: 'trader-grades',
+            confidence: 0.9,
+            followUpQuestions: [
+                "Are you looking for specific tokens?",
+                "Would you like to see grade changes over time?",
+                "Are you planning short-term trades?"
+            ]
+        },
+        
+        // Market Metrics intents - NEW (FIXED: Added missing pattern)
+        {
+            patterns: [/market.*metric|metric.*market|market.*data|market.*analysis|volume.*data|market.*statistics/i],
+            intent: 'market-metrics',
+            confidence: 0.9,
+            followUpQuestions: [
+                "Are you looking for specific metrics?",
+                "Would you like historical data?",
+                "Are you analyzing market trends?"
             ]
         },
         
@@ -188,7 +224,7 @@ export class TokenMetricsNLPProcessor {
         
         // Risk analysis intents - FIXED: Made patterns more specific to avoid conflicts
         {
-            patterns: [/\brisk\b|volatility|sharpe|drawdown|dangerous|safe|stability|risky.*is/i],
+            patterns: [/\brisk\b|volatility|sharpe|drawdown|dangerous|safe|stability|risky.*is|quantmetrics|quantitative.*analysis|quant.*data/i],
             intent: 'risk-analysis',
             confidence: 0.8,
             followUpQuestions: [
