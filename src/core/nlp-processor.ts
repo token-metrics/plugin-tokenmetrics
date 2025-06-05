@@ -6,9 +6,21 @@ import { memoryManager, type ConversationContext, type UserPreferences } from '.
  */
 export class TokenMetricsNLPProcessor {
     private intentPatterns: IntentPattern[] = [
-        // Price-related intents
+        // Scenario Analysis intents - MOVED TO TOP for priority
         {
-            patterns: [/price|cost|value|worth|current.*price|how much/i],
+            patterns: [/scenario.*analysis|scenario.*prediction|price.*prediction|future.*price.*prediction|market.*scenario|scenario.*modeling|what.*if.*analysis|price.*forecast|forecast.*price/i],
+            intent: 'scenario-analysis',
+            confidence: 0.95, // Higher confidence for specific scenario queries
+            followUpQuestions: [
+                "What timeframe are you considering?",
+                "Are you planning investments?",
+                "Would you like multiple scenarios?"
+            ]
+        },
+        
+        // Price-related intents - MADE MORE SPECIFIC
+        {
+            patterns: [/\bcurrent.*price\b|\bprice\b(?!.*prediction)(?!.*forecast)(?!.*scenario)|cost|value|worth|how much.*cost|what.*price/i],
             intent: 'price',
             confidence: 0.9,
             followUpQuestions: [
@@ -123,18 +135,6 @@ export class TokenMetricsNLPProcessor {
                 "Are you tracking sentiment changes?",
                 "Would you like historical sentiment?",
                 "Are you timing market entries?"
-            ]
-        },
-        
-        // Scenario Analysis intents - NEW
-        {
-            patterns: [/scenario.*analysis|scenario|prediction|forecast|future.*price|price.*prediction/i],
-            intent: 'scenario-analysis',
-            confidence: 0.9,
-            followUpQuestions: [
-                "What timeframe are you considering?",
-                "Are you planning investments?",
-                "Would you like multiple scenarios?"
             ]
         },
         
