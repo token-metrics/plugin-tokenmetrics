@@ -8,9 +8,6 @@ import { getTraderGradesAction } from "./actions/getTraderGradesAction";
 import { getQuantmetricsAction } from "./actions/getQuantmetricsAction";
 import { getTradingSignalsAction } from "./actions/getTradingSignalsAction";
 import { getMarketMetricsAction } from "./actions/getMarketMetricsAction";
-import { getSectorIndicesHoldingsAction } from "./actions/getSectorIndicesHoldingsAction";
-import { getIndexPerformanceAction } from "./actions/getIndexPerformanceAction";
-import { getSectorIndexTransactionAction } from "./actions/getSectorIndexTransactionAction";
 
 // Import all NEW actions from your implementation
 import { getHourlyOhlcvAction } from "./actions/getHourlyOhlcvAction";
@@ -25,6 +22,11 @@ import { getResistanceSupportAction } from "./actions/getResistanceSupportAction
 import { getTMAIAction } from "./actions/getTmaiAction";
 import { getSentimentAction } from "./actions/getSentimentAction";
 import { getScenarioAnalysisAction } from "./actions/getScenarioAnalysisAction";
+
+// Import all actions
+import { getIndicesAction } from "./actions/getIndicesAction";
+import { getIndicesHoldingsAction } from "./actions/getIndicesHoldingsAction";
+import { getIndicesPerformanceAction } from "./actions/getIndicesPerformanceAction";
 
 // Enhanced terminal output showing complete integration
 console.log("\n=======================================");
@@ -46,7 +48,7 @@ console.log("✅ Response Handling: Proper structure");
 console.log("");
 console.log("📋 ALL 20 ENDPOINTS IMPLEMENTED:");
 console.log("");
-console.log("🏆 CORE MARKET DATA (10 endpoints):");
+console.log("🏆 CORE MARKET DATA (7 endpoints):");
 console.log("  1. getTokensAction           (/v2/tokens)");
 console.log("  2. getTopMarketCapAction     (/v2/top-market-cap-tokens)");
 console.log("  3. getPriceAction            (/v2/price)");
@@ -54,21 +56,23 @@ console.log("  4. getTraderGradesAction     (/v2/trader-grades)");
 console.log("  5. getQuantmetricsAction     (/v2/quantmetrics)");
 console.log("  6. getTradingSignalsAction   (/v2/trading-signals)");
 console.log("  7. getMarketMetricsAction    (/v2/market-metrics)");
-console.log("  8. getSectorIndicesHoldings  (/v2/indices-index-specific-tree-map)");
-console.log("  9. getIndexPerformance       (/v2/indices-index-specific-performance)");
-console.log(" 10. getSectorIndexTransaction (/v2/indices-index-specific-index-transaction)");
 console.log("");
 console.log("📊 ADVANCED ANALYSIS (10 endpoints):");
-console.log(" 11. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
-console.log(" 12. getDailyOhlcvAction       (/v2/daily-ohlcv)");
-console.log(" 13. getInvestorGradesAction   (/v2/investor-grades)");
-console.log(" 14. getAiReportsAction        (/v2/ai-reports)");
-console.log(" 15. getCryptoInvestorsAction  (/v2/crypto-investors)");
-console.log(" 16. getCorrelationAction      (/v2/correlation)");
-console.log(" 17. getResistanceSupportAction (/v2/resistance-support)");
-console.log(" 18. getTMAIAction            (/v2/tmai) [POST]");
-console.log(" 19. getSentimentAction       (/v2/sentiments)");
-console.log(" 20. getScenarioAnalysisAction (/v2/scenario-analysis)");
+console.log("  8. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
+console.log("  9. getDailyOhlcvAction       (/v2/daily-ohlcv)");
+console.log(" 10. getInvestorGradesAction   (/v2/investor-grades)");
+console.log(" 11. getAiReportsAction        (/v2/ai-reports)");
+console.log(" 12. getCryptoInvestorsAction  (/v2/crypto-investors)");
+console.log(" 13. getCorrelationAction      (/v2/correlation)");
+console.log(" 14. getResistanceSupportAction (/v2/resistance-support)");
+console.log(" 15. getTMAIAction            (/v2/tmai) [POST]");
+console.log(" 16. getSentimentAction       (/v2/sentiments)");
+console.log(" 17. getScenarioAnalysisAction (/v2/scenario-analysis)");
+console.log("");
+console.log("📋 ADDITIONAL ACTIONS (3 endpoints):");
+console.log(" 18. getIndicesAction          (/v2/indices)");
+console.log(" 19. getIndicesHoldingsAction  (/v2/indices-holdings)");
+console.log(" 20. getIndicesPerformanceAction (/v2/indices-performance)");
 console.log("");
 console.log("🎯 COMPLETE TOKENMETRICS INTEGRATION");
 console.log("✅ All major endpoints from API documentation");
@@ -91,11 +95,6 @@ export const tokenmetricsPlugin: Plugin = {
         getTradingSignalsAction,           // ✅ AI-generated trading signals
         getMarketMetricsAction,            // ✅ Overall market sentiment and metrics
         
-        // ===== SECTOR INDICES ACTIONS =====
-        getSectorIndicesHoldingsAction,    // ✅ Sector composition and holdings
-        getIndexPerformanceAction,         // ✅ Historical sector performance
-        getSectorIndexTransactionAction,   // ✅ Sector rebalancing transactions
-        
         // ===== OHLCV DATA ACTIONS =====
         getHourlyOhlcvAction,              // ✅ Hourly price/volume data for technical analysis
         getDailyOhlcvAction,               // ✅ Daily price/volume data for swing trading
@@ -115,6 +114,11 @@ export const tokenmetricsPlugin: Plugin = {
         
         // ===== PREDICTIVE ANALYSIS ACTIONS =====
         getScenarioAnalysisAction,         // ✅ Price predictions under different market scenarios
+
+        // ===== ADDITIONAL ACTIONS =====
+        getIndicesAction,                  // ✅ Token indices data
+        getIndicesHoldingsAction,          // ✅ Token indices holdings data
+        getIndicesPerformanceAction,        // ✅ Token indices performance data
     ],
     evaluators: [],
     providers: []
@@ -130,7 +134,7 @@ export const tokenmetricsTests = [
                 fn: async (runtime: any) => {
                     console.log("🧪 Testing COMPLETE endpoint integration");
                     const totalEndpoints = 20;
-                    const coreEndpoints = 10;
+                    const coreEndpoints = 7;
                     const advancedEndpoints = 10;
                     
                     console.log(`✅ Core Market Data: ${coreEndpoints} endpoints implemented`);
@@ -155,9 +159,6 @@ export const tokenmetricsTests = [
                         "Core Market Data": [
                             "Tokens", "Top Market Cap", "Price", "Trader Grades", 
                             "Quantmetrics", "Trading Signals", "Market Metrics"
-                        ],
-                        "Sector Analysis": [
-                            "Sector Holdings", "Index Performance", "Index Transactions"
                         ],
                         "OHLCV Data": [
                             "Hourly OHLCV", "Daily OHLCV"
@@ -256,11 +257,10 @@ export const tokenmetricsTests = [
                         "📊 Swing Trading: Daily OHLCV + Trader Grades + Technical Analysis",
                         "💼 Portfolio Management: Investor Grades + Correlation + Market Metrics",
                         "🎯 Market Timing: Sentiment + Scenario Analysis + AI Insights",
-                        "🔍 Research: AI Reports + Crypto Investors + Sector Analysis",
+                        "🔍 Research: AI Reports + Crypto Investors + Market Analysis",
                         "⚖️ Risk Management: Quantmetrics + Correlation + Scenario Analysis",
                         "🚀 Discovery: Top Market Cap + Tokens + AI Assistant",
                         "📰 Market Intelligence: Sentiment + News + Market Metrics",
-                        "🏗️ Sector Allocation: Sector Holdings + Performance + Transactions",
                         "🤖 AI-Driven Insights: TMAI + AI Reports + Predictive Analysis"
                     ];
                     

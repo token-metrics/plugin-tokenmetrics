@@ -46,7 +46,6 @@ export const getCryptoInvestorsAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching crypto investors from TokenMetrics v2/crypto-investors endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<CryptoInvestorsResponse>(
