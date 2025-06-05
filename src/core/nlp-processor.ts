@@ -150,6 +150,42 @@ export class TokenMetricsNLPProcessor {
             ]
         },
         
+        // INDICES intents - NEW
+        {
+            patterns: [/\bindices\b|\bindex\b|crypto.*indices|crypto.*index|index.*funds|passive.*index|active.*index|fund.*index/i],
+            intent: 'indices',
+            confidence: 0.9,
+            followUpQuestions: [
+                "Are you looking for active or passive indices?",
+                "Would you like to see performance data?",
+                "Are you considering index investing?"
+            ]
+        },
+        
+        // Indices Holdings intents - NEW
+        {
+            patterns: [/indices.*holdings|index.*holdings|index.*composition|index.*allocations|holdings.*index|composition.*index|what.*in.*index/i],
+            intent: 'indices-holdings',
+            confidence: 0.95,
+            followUpQuestions: [
+                "Which index are you interested in?",
+                "Would you like to see allocation percentages?",
+                "Are you analyzing diversification?"
+            ]
+        },
+        
+        // Indices Performance intents - NEW
+        {
+            patterns: [/indices.*performance|index.*performance|index.*returns|index.*history|performance.*index|returns.*index|how.*index.*performing/i],
+            intent: 'indices-performance',
+            confidence: 0.95,
+            followUpQuestions: [
+                "Which index would you like to analyze?",
+                "What timeframe are you interested in?",
+                "Would you like to compare with other indices?"
+            ]
+        },
+        
         // Tokens Database/List intents - NEW (FIXED: Added missing pattern)
         {
             patterns: [/tokens.*database|database.*token|tokens.*list|list.*token|available.*token|supported.*token|all.*token|token.*catalog|show.*token/i],

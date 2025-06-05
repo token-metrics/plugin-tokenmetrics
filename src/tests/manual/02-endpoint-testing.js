@@ -14,20 +14,14 @@
  * - Resistance & Support, Token Metrics AI, Sentiment, Scenario Analysis, Correlation
  */
 
-import { 
-    // EXISTING ENDPOINTS
+import {
     getTokensAction,
-    getPriceAction,
     getTopMarketCapAction,
+    getPriceAction,
     getTraderGradesAction,
     getQuantmetricsAction,
     getTradingSignalsAction,
     getMarketMetricsAction,
-    getSectorIndicesHoldingsAction,
-    getIndexPerformanceAction,
-    getSectorIndexTransactionAction,
-    
-    // NEW ENDPOINTS
     getHourlyOhlcvAction,
     getDailyOhlcvAction,
     getInvestorGradesAction,
@@ -37,7 +31,10 @@ import {
     getTMAIAction,
     getSentimentAction,
     getScenarioAnalysisAction,
-    getCorrelationAction
+    getCorrelationAction,
+    getIndicesAction,
+    getIndicesHoldingsAction,
+    getIndicesPerformanceAction
 } from '../../actions/index.ts';
 
 // Mock runtime for testing (simulates ElizaOS environment)
@@ -186,61 +183,6 @@ const endpointTests = [
         successCriteria: (result) => {
             return result.success && 
                    result.market_metrics;
-        }
-    },
-    
-    {
-        name: "DeFi Sector Holdings",
-        description: "Get DeFi sector index composition",
-        action: getSectorIndicesHoldingsAction,
-        category: "EXISTING",
-        testMessage: {
-            content: { 
-                indexName: "defi",
-                limit: 5
-            }
-        },
-        expectedKeys: ['success', 'holdings', 'analysis'],
-        successCriteria: (result) => {
-            return result.success && 
-                   result.holdings;
-        }
-    },
-    
-    {
-        name: "DeFi Index Performance",
-        description: "Get DeFi sector performance metrics",
-        action: getIndexPerformanceAction,
-        category: "EXISTING",
-        testMessage: {
-            content: { 
-                indexName: "defi",
-                startDate: "2024-01-01",
-                endDate: "2024-12-31"
-            }
-        },
-        expectedKeys: ['success', 'performance_data', 'analysis'],
-        successCriteria: (result) => {
-            return result.success && 
-                   result.performance_data;
-        }
-    },
-    
-    {
-        name: "DeFi Sector Transactions",
-        description: "Get DeFi sector rebalancing transactions",
-        action: getSectorIndexTransactionAction,
-        category: "EXISTING",
-        testMessage: {
-            content: { 
-                indexName: "defi",
-                limit: 5
-            }
-        },
-        expectedKeys: ['success', 'transactions', 'analysis'],
-        successCriteria: (result) => {
-            return result.success && 
-                   result.transactions;
         }
     },
 
@@ -453,12 +395,70 @@ const endpointTests = [
                    Array.isArray(result.correlation_data) &&
                    result.correlation_data.length >= 0;
         }
+    },
+
+    // ===== NEW INDICES ENDPOINTS =====
+    {
+        name: "getIndices",
+        action: getIndicesAction,
+        category: "NEW",
+        testMessage: {
+            content: { 
+                indicesType: "active",
+                limit: 10
+            }
+        },
+        expectedKeys: ['success', 'indices_data', 'analysis'],
+        successCriteria: (result) => {
+            return result.success && 
+                   result.indices_data && 
+                   Array.isArray(result.indices_data) &&
+                   result.indices_data.length >= 0;
+        }
+    },
+    {
+        name: "getIndicesHoldings",
+        action: getIndicesHoldingsAction,
+        category: "NEW",
+        testMessage: {
+            content: { 
+                id: 1  // Required parameter for indices holdings
+            }
+        },
+        expectedKeys: ['success', 'indices_holdings', 'analysis'],
+        successCriteria: (result) => {
+            return result.success && 
+                   result.indices_holdings && 
+                   Array.isArray(result.indices_holdings) &&
+                   result.indices_holdings.length >= 0;
+        }
+    },
+    {
+        name: "getIndicesPerformance",
+        action: getIndicesPerformanceAction,
+        category: "NEW",
+        testMessage: {
+            content: { 
+                id: 1,  // Required parameter for indices performance
+                limit: 30
+            }
+        },
+        expectedKeys: ['success', 'indices_performance', 'analysis'],
+        successCriteria: (result) => {
+            return result.success && 
+                   result.indices_performance && 
+                   Array.isArray(result.indices_performance) &&
+                   result.indices_performance.length >= 0;
+        }
     }
 ];
 
 async function runEndpointTests() {
-    console.log("🧪 COMPREHENSIVE ENDPOINT TESTING - ALL 20 ENDPOINTS");
-    console.log("=" * 70);
+    console.log("🧪 TOKENMETRICS PLUGIN - COMPREHENSIVE ENDPOINT TESTING");
+    console.log("=" .repeat(60));
+    console.log("📋 Testing ALL 20 TokenMetrics API endpoints");
+    console.log("🎯 Validating complete plugin functionality");
+    console.log("");
     
     const existingEndpoints = endpointTests.filter(test => test.category === "EXISTING");
     const newEndpoints = endpointTests.filter(test => test.category === "NEW");
@@ -597,6 +597,28 @@ async function runEndpointTests() {
                         if (corrValue !== undefined) console.log(`      Correlation: ${corrValue}`);
                         console.log(`      Total correlations: ${result.correlation_data.length}`);
                     }
+                    // NEW INDICES ENDPOINTS SAMPLE DATA
+                    else if (result.indices_data && result.indices_data.length > 0) {
+                        const index = result.indices_data[0];
+                        console.log(`      Index: ${index.INDEX_NAME} (${index.INDEX_SYMBOL})`);
+                        console.log(`      Type: ${index.INDEX_TYPE}`);
+                        if (index.TOTAL_RETURN) console.log(`      Total Return: ${index.TOTAL_RETURN}%`);
+                        console.log(`      Total indices: ${result.indices_data.length}`);
+                    }
+                    else if (result.indices_holdings && result.indices_holdings.length > 0) {
+                        const holding = result.indices_holdings[0];
+                        console.log(`      Index: ${holding.INDEX_NAME}`);
+                        console.log(`      Top Holding: ${holding.TOKEN_NAME} (${holding.TOKEN_SYMBOL})`);
+                        console.log(`      Weight: ${holding.WEIGHT_PERCENTAGE}%`);
+                        console.log(`      Total holdings: ${result.indices_holdings.length}`);
+                    }
+                    else if (result.indices_performance && result.indices_performance.length > 0) {
+                        const performance = result.indices_performance[0];
+                        console.log(`      Index: ${performance.INDEX_NAME}`);
+                        console.log(`      Latest Value: ${performance.INDEX_VALUE}`);
+                        if (performance.DAILY_RETURN_PERCENTAGE) console.log(`      Daily Return: ${performance.DAILY_RETURN_PERCENTAGE}%`);
+                        console.log(`      Total data points: ${result.indices_performance.length}`);
+                    }
                     else if (result.trader_grades && result.trader_grades.length > 0) {
                         const grade = result.trader_grades[0];
                         console.log(`      Token: ${grade.TOKEN_NAME || grade.SYMBOL} - Grade: ${grade.GRADE}`);
@@ -617,21 +639,6 @@ async function runEndpointTests() {
                     }
                     else if (result.market_metrics) {
                         console.log(`      Market metrics available: ${typeof result.market_metrics}`);
-                    }
-                    else if (result.holdings) {
-                        if (Array.isArray(result.holdings) && result.holdings.length > 0) {
-                            console.log(`      Holdings count: ${result.holdings.length}`);
-                        }
-                    }
-                    else if (result.performance_data) {
-                        if (Array.isArray(result.performance_data) && result.performance_data.length > 0) {
-                            console.log(`      Performance records: ${result.performance_data.length}`);
-                        }
-                    }
-                    else if (result.transactions) {
-                        if (Array.isArray(result.transactions) && result.transactions.length > 0) {
-                            console.log(`      Transaction count: ${result.transactions.length}`);
-                        }
                     }
                     
                     // Analysis summary (common to most endpoints)
@@ -660,8 +667,6 @@ async function runEndpointTests() {
                 console.log("   💡 Check your TOKENMETRICS_API_KEY environment variable");
             } else if (error.message.includes('messages')) {
                 console.log("   💡 TMAI endpoint requires a messages array with user queries");
-            } else if (error.message.includes('indexName')) {
-                console.log("   💡 This endpoint requires a valid sector index name");
             } else if (error.message.includes('401')) {
                 console.log("   💡 Authentication failed - verify your API key is valid");
             } else if (error.message.includes('404')) {
@@ -689,7 +694,7 @@ async function runEndpointTests() {
     
     // Final comprehensive summary
     console.log("🏁 COMPREHENSIVE TESTING SUMMARY - ALL 20 ENDPOINTS");
-    console.log("=" * 60);
+    console.log("=".repeat(60));
     console.log(`📊 OVERALL RESULTS:`);
     console.log(`   ✅ Total Passed: ${results.passed}/${endpointTests.length}`);
     console.log(`   ❌ Total Failed: ${results.failed}/${endpointTests.length}`);
@@ -743,6 +748,9 @@ async function runEndpointTests() {
     console.log("      • Sentiment: Social sentiment for market timing");
     console.log("      • Scenario Analysis: Risk assessment and price predictions");
     console.log("      • Correlation: Portfolio diversification insights");
+    console.log("      • Indices: Crypto index funds and performance tracking");
+    console.log("      • Indices Holdings: Index composition and allocation analysis");
+    console.log("      • Indices Performance: Historical index performance data");
     
     return results;
 }

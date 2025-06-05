@@ -63,7 +63,6 @@ export const getHourlyOhlcvAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching hourly OHLCV data from TokenMetrics v2/hourly-ohlcv endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<HourlyOhlcvResponse>(

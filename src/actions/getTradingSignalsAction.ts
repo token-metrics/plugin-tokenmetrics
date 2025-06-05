@@ -113,7 +113,6 @@ export const getTradingSignalsAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching trading signals from TokenMetrics v2/trading-signals endpoint");
             console.log("Trading signals request params:", JSON.stringify(apiParams, null, 2));
             
             // Make API call with corrected authentication (x-api-key header)

@@ -35,10 +35,10 @@ export const TOKENMETRICS_ENDPOINTS = {
     // AI endpoint
     tmai: "/v2/tmai",
     
-    // Sector indices endpoints
-    sectorIndicesHoldings: "/v2/indices-index-specific-tree-map",
-    indexPerformance: "/v2/indices-index-specific-performance", 
-    sectorIndexTransaction: "/v2/indices-index-specific-index-transaction"
+    // Indices endpoints
+    indices: "/v2/indices",
+    indicesHoldings: "/v2/indices-holdings",
+    indicesPerformance: "/v2/indices-performance"
 } as const;
 
 /**
@@ -182,13 +182,9 @@ export async function callTokenMetricsApi<T>(
         } else {
             config.data = params;
         }
-
-        console.log(`Making TokenMetrics API request to: ${endpoint}`, 
-                   { params: Object.keys(params) });
         
         const response = await axios.request<T>(config);
         
-        console.log(`TokenMetrics API request successful: ${endpoint} (${response.status})`);
         return response.data;
         
     } catch (error) {
@@ -258,8 +254,6 @@ export function buildTokenMetricsParams(
  * CORRECTED response formatting function
  */
 export function formatTokenMetricsResponse<T>(rawResponse: any, actionName: string): T {
-    console.log(`TokenMetrics ${actionName} response processed successfully`);
-    
     // Handle the actual API response structure
     if (rawResponse.data !== undefined) {
         return rawResponse.data;

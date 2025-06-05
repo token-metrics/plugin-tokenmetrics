@@ -466,74 +466,90 @@ export interface CorrelationResponse extends TokenMetricsBaseResponse {
   data: CorrelationData[];
 }
 
-// ===== SECTOR INDICES ENDPOINTS =====
+// ===== NEW INDICES ENDPOINTS =====
 
-// SectorIndicesHoldingsRequest/Response
-export interface SectorIndicesHoldingsRequest {
-  indexName: string;
+// IndicesRequest/Response
+export interface IndicesRequest {
+  indicesType?: string; // Filter by type: "active" for actively managed, "passive" for passively managed
   limit?: number;
   page?: number;
 }
 
-export interface SectorIndicesHoldingsData {
+export interface IndicesData {
+  INDEX_ID: number;
   INDEX_NAME: string;
-  TOKEN_ID: number;
-  SYMBOL: string;
-  TOKEN_NAME?: string;
-  WEIGHT?: number;
-  ALLOCATION_PERCENT?: number;
-  MARKET_CAP?: number;
-  CATEGORY?: string;
-}
-
-export interface SectorIndicesHoldingsResponse extends TokenMetricsBaseResponse {
-  data: SectorIndicesHoldingsData[];
-}
-
-// IndexPerformanceRequest/Response
-export interface IndexPerformanceRequest {
-  indexName: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-export interface IndexPerformanceData {
-  INDEX_NAME: string;
-  DATE: string;
-  INDEX_VALUE?: number;
-  DAILY_RETURN?: number;
-  CUMULATIVE_RETURN?: number;
+  INDEX_SYMBOL: string;
+  INDEX_TYPE: 'active' | 'passive';
+  DESCRIPTION?: string;
+  CREATION_DATE?: string;
+  TOTAL_RETURN?: number;
+  ANNUAL_RETURN?: number;
   VOLATILITY?: number;
   SHARPE_RATIO?: number;
   MAX_DRAWDOWN?: number;
+  ASSETS_COUNT?: number;
+  MARKET_CAP?: number;
+  CATEGORY?: string;
+  STATUS?: string;
 }
 
-export interface IndexPerformanceResponse extends TokenMetricsBaseResponse {
-  data: IndexPerformanceData[];
+export interface IndicesResponse extends TokenMetricsBaseResponse {
+  data: IndicesData[];
 }
 
-// SectorIndexTransactionRequest/Response
-export interface SectorIndexTransactionRequest {
-  indexName: string;
+// IndicesHoldingsRequest/Response
+export interface IndicesHoldingsRequest {
+  id: number; // Required - ID of the index
+}
+
+export interface IndicesHoldingsData {
+  INDEX_ID: number;
+  INDEX_NAME: string;
+  TOKEN_ID: number;
+  TOKEN_NAME: string;
+  TOKEN_SYMBOL: string;
+  WEIGHT_PERCENTAGE: number;
+  ALLOCATION_VALUE?: number;
+  PRICE?: number;
+  MARKET_CAP?: number;
+  VOLUME_24H?: number;
+  PRICE_CHANGE_24H?: number;
+  PRICE_CHANGE_PERCENTAGE_24H?: number;
+  LAST_UPDATED?: string;
+  CATEGORY?: string;
+}
+
+export interface IndicesHoldingsResponse extends TokenMetricsBaseResponse {
+  data: IndicesHoldingsData[];
+}
+
+// IndicesPerformanceRequest/Response
+export interface IndicesPerformanceRequest {
+  id: number; // Required - ID of the index
+  startDate?: string; // Start date for performance data (YYYY-MM-DD format)
+  endDate?: string; // End date for performance data (YYYY-MM-DD format)
   limit?: number;
   page?: number;
 }
 
-export interface SectorIndexTransactionData {
+export interface IndicesPerformanceData {
+  INDEX_ID: number;
   INDEX_NAME: string;
-  TOKEN_ID: number;
-  SYMBOL: string;
-  TRANSACTION_TYPE: 'BUY' | 'SELL';
-  TRANSACTION_DATE: string;
-  PRICE: number;
-  QUANTITY: number;
-  REASONING?: string;
-  TOTAL_VALUE?: number;
-  WEIGHT_CHANGE?: number;
+  DATE: string;
+  INDEX_VALUE: number;
+  DAILY_RETURN?: number;
+  DAILY_RETURN_PERCENTAGE?: number;
+  CUMULATIVE_RETURN?: number;
+  CUMULATIVE_RETURN_PERCENTAGE?: number;
+  VOLATILITY?: number;
+  BENCHMARK_COMPARISON?: number;
+  VOLUME?: number;
+  MARKET_CAP?: number;
+  ASSETS_COUNT?: number;
 }
 
-export interface SectorIndexTransactionResponse extends TokenMetricsBaseResponse {
-  data: SectorIndexTransactionData[];
+export interface IndicesPerformanceResponse extends TokenMetricsBaseResponse {
+  data: IndicesPerformanceData[];
 }
 
 // ===== UTILITY TYPES =====
@@ -564,7 +580,6 @@ export type ValidPageNumber = number; // Positive integer starting from 1
 export type ValidLimitNumber = number; // 1-1000 for most endpoints
 export type ValidTopK = number; // 1-1000 for top market cap endpoint
 export type ValidSignalValue = 1 | -1 | 0; // For trading signals
-export type ValidIndexName = string; // Required for sector indices endpoints
 
 // Parameter correction utility type
 export interface CorrectedRequestParams {
@@ -574,5 +589,4 @@ export interface CorrectedRequestParams {
   limit?: ValidLimitNumber;
   top_k?: ValidTopK;
   signal?: ValidSignalValue;
-  indexName?: ValidIndexName;
 }
