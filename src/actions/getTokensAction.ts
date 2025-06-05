@@ -51,7 +51,6 @@ export const getTokensAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching tokens from TokenMetrics v2/tokens endpoint");
             
             // Make API call with corrected authentication
             const response = await callTokenMetricsApi<TokensResponse>(

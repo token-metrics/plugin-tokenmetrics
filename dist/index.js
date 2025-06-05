@@ -26,10 +26,10 @@ var TOKENMETRICS_ENDPOINTS = {
   correlation: "/v2/correlation",
   // AI endpoint
   tmai: "/v2/tmai",
-  // Sector indices endpoints
-  sectorIndicesHoldings: "/v2/indices-index-specific-tree-map",
-  indexPerformance: "/v2/indices-index-specific-performance",
-  sectorIndexTransaction: "/v2/indices-index-specific-index-transaction"
+  // Indices endpoints
+  indices: "/v2/indices",
+  indicesHoldings: "/v2/indices-holdings",
+  indicesPerformance: "/v2/indices-performance"
 };
 function validateTokenMetricsParams(params) {
   if (params.token_id !== void 0) {
@@ -130,12 +130,7 @@ async function callTokenMetricsApi(endpoint, params = {}, method = "GET") {
     } else {
       config.data = params;
     }
-    console.log(
-      `Making TokenMetrics API request to: ${endpoint}`,
-      { params: Object.keys(params) }
-    );
     const response = await axios.request(config);
-    console.log(`TokenMetrics API request successful: ${endpoint} (${response.status})`);
     return response.data;
   } catch (error) {
     console.error(
@@ -186,7 +181,6 @@ function buildTokenMetricsParams(baseParams = {}, additionalParams = {}) {
   return params;
 }
 function formatTokenMetricsResponse(rawResponse, actionName) {
-  console.log(`TokenMetrics ${actionName} response processed successfully`);
   if (rawResponse.data !== void 0) {
     return rawResponse.data;
   }
@@ -194,48 +188,96 @@ function formatTokenMetricsResponse(rawResponse, actionName) {
 }
 function extractTokenIdentifier(messageContent) {
   const result = {};
-  const tokenIdFields = ["token_id", "tokenId", "TOKEN_ID", "id"];
-  for (const field of tokenIdFields) {
-    if (typeof messageContent[field] === "number" && messageContent[field] > 0) {
-      result.token_id = messageContent[field];
-      break;
-    }
-    if (typeof messageContent[field] === "string") {
-      const numValue = parseInt(messageContent[field], 10);
-      if (!isNaN(numValue) && numValue > 0) {
-        result.token_id = numValue;
-        break;
-      }
+  if (typeof messageContent.token_id === "number" && messageContent.token_id > 0) {
+    result.token_id = messageContent.token_id;
+  }
+  if (typeof messageContent.symbol === "string") {
+    const symbol = messageContent.symbol.trim().toUpperCase();
+    if (/^[A-Z0-9]{2,10}$/.test(symbol) && isKnownCryptoSymbol(symbol)) {
+      result.symbol = symbol;
     }
   }
-  const symbolFields = ["symbol", "SYMBOL", "token", "coin", "cryptocurrency"];
-  for (const field of symbolFields) {
-    if (typeof messageContent[field] === "string" && messageContent[field].trim().length > 0) {
-      result.symbol = messageContent[field].trim().toUpperCase();
-      break;
-    }
-  }
-  if (!result.symbol && typeof messageContent.text === "string") {
-    const text = messageContent.text.toUpperCase();
-    const commonSymbols = ["BTC", "ETH", "ADA", "SOL", "MATIC", "DOT", "LINK", "UNI", "AVAX", "ATOM"];
-    for (const symbol of commonSymbols) {
-      if (text.includes(symbol)) {
+  if (typeof messageContent.text === "string") {
+    const text = messageContent.text;
+    const knownSymbols = ["BTC", "ETH", "ADA", "SOL", "MATIC", "LINK", "UNI", "AVAX", "DOT", "ATOM", "XRP", "LTC", "BCH", "ETC", "XLM", "TRX", "VET", "FIL", "THETA", "EOS"];
+    for (const symbol of knownSymbols) {
+      const regex = new RegExp(`\\b${symbol}\\b`, "i");
+      if (regex.test(text)) {
         result.symbol = symbol;
         break;
       }
     }
-    if (!result.symbol) {
-      const symbolMatch = text.match(/\b([A-Z]{2,5})\b/);
-      if (symbolMatch) {
-        const potentialSymbol = symbolMatch[1];
-        const invalidWords = ["THE", "AND", "FOR", "ARE", "BUT", "NOT", "YOU", "ALL", "CAN", "GET", "WHAT", "HOW", "WHY", "WHEN", "WHERE", "WHO", "WILL", "WOULD", "COULD", "SHOULD", "HAVE", "HAS", "HAD", "BEEN", "BEING", "WERE", "WAS", "THEY", "THEM", "THEIR", "THIS", "THAT", "THESE", "THOSE", "WITH", "FROM", "INTO", "OVER", "UNDER", "ABOVE", "BELOW"];
-        if (!invalidWords.includes(potentialSymbol) && potentialSymbol.length >= 2 && potentialSymbol.length <= 5) {
-          result.symbol = potentialSymbol;
-        }
+    const coinNamePatterns = [
+      { pattern: /\bbitcoin\b/i, symbol: "BTC", id: 3375 },
+      { pattern: /\bethereum\b/i, symbol: "ETH", id: 3306 },
+      { pattern: /\bcardano\b/i, symbol: "ADA", id: 2010 },
+      { pattern: /\bsolana\b/i, symbol: "SOL", id: 5426 },
+      { pattern: /\bpolygon\b/i, symbol: "MATIC", id: 3890 },
+      { pattern: /\bchainlink\b/i, symbol: "LINK", id: 1975 },
+      { pattern: /\buniswap\b/i, symbol: "UNI", id: 7083 },
+      { pattern: /\bavalanche\b/i, symbol: "AVAX", id: 5805 }
+    ];
+    for (const { pattern, symbol, id } of coinNamePatterns) {
+      if (pattern.test(text)) {
+        result.symbol = symbol;
+        result.token_id = id;
+        break;
       }
     }
   }
   return result;
+}
+function isKnownCryptoSymbol(symbol) {
+  const knownSymbols = [
+    "BTC",
+    "ETH",
+    "ADA",
+    "SOL",
+    "MATIC",
+    "LINK",
+    "UNI",
+    "AVAX",
+    "DOT",
+    "ATOM",
+    "XRP",
+    "LTC",
+    "BCH",
+    "ETC",
+    "XLM",
+    "TRX",
+    "VET",
+    "FIL",
+    "THETA",
+    "EOS",
+    "DOGE",
+    "SHIB",
+    "USDT",
+    "USDC",
+    "BNB",
+    "BUSD",
+    "DAI",
+    "WBTC",
+    "STETH",
+    "MATIC",
+    "CRO",
+    "NEAR",
+    "ALGO",
+    "MANA",
+    "SAND",
+    "APE",
+    "LRC",
+    "ENJ",
+    "COMP",
+    "MKR",
+    "AAVE",
+    "SNX",
+    "UMA",
+    "BAL",
+    "YFI",
+    "SUSHI",
+    "CRV"
+  ];
+  return knownSymbols.includes(symbol);
 }
 function formatTokenMetricsNumber(value, type = "number") {
   if (typeof value !== "number" || isNaN(value)) {
@@ -284,7 +326,6 @@ var getTokensAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching tokens from TokenMetrics v2/tokens endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.tokens,
         apiParams,
@@ -406,7 +447,6 @@ var getTopMarketCapAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching top market cap tokens from TokenMetrics v2/top-market-cap-tokens endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.topMarketCap,
         apiParams,
@@ -629,7 +669,6 @@ var getPriceAction = {
       }
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching price data from TokenMetrics v2/price endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.price,
         apiParams,
@@ -883,7 +922,6 @@ var getTraderGradesAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching trader grades from TokenMetrics v2/trader-grades endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.traderGrades,
         apiParams,
@@ -1173,7 +1211,6 @@ var getQuantmetricsAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching quantitative metrics from TokenMetrics v2/quantmetrics endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.quantmetrics,
         apiParams,
@@ -1508,7 +1545,6 @@ var getTradingSignalsAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching trading signals from TokenMetrics v2/trading-signals endpoint");
       console.log("Trading signals request params:", JSON.stringify(apiParams, null, 2));
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.tradingSignals,
@@ -1892,7 +1928,6 @@ var getMarketMetricsAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching market metrics from TokenMetrics v2/market-metrics endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.marketMetrics,
         apiParams,
@@ -2284,1171 +2319,6 @@ function identifyRiskFactors2(trendAnalysis, signalAnalysis) {
   return risks;
 }
 
-// src/actions/getSectorIndicesHoldingsAction.ts
-var getSectorIndicesHoldingsAction = {
-  name: "getSectorIndicesHoldings",
-  description: "Get the current holdings of a specific sector index from TokenMetrics with allocation weights",
-  similes: [
-    "get sector holdings",
-    "sector index composition",
-    "index holdings breakdown",
-    "sector allocation weights",
-    "get index components",
-    "show sector diversification",
-    "sector portfolio breakdown"
-  ],
-  async handler(_runtime, message, _state) {
-    try {
-      const messageContent = message.content;
-      const requestParams = {
-        // Critical parameter: indexName is required (e.g., 'meme', 'defi', 'gaming')
-        // We check multiple possible field names to be flexible with user input
-        indexName: typeof messageContent.indexName === "string" ? messageContent.indexName : typeof messageContent.index_name === "string" ? messageContent.index_name : typeof messageContent.sector === "string" ? messageContent.sector : void 0,
-        // Pagination parameters for large datasets
-        limit: typeof messageContent.limit === "number" ? messageContent.limit : 50,
-        page: typeof messageContent.page === "number" ? messageContent.page : 1
-      };
-      if (!requestParams.indexName) {
-        throw new Error("indexName is required for sector indices holdings. Example values: 'meme', 'defi', 'gaming', 'layer1', 'layer2', etc.");
-      }
-      validateTokenMetricsParams(requestParams);
-      const apiParams = buildTokenMetricsParams(requestParams);
-      console.log(`Fetching sector indices holdings for ${requestParams.indexName} from TokenMetrics API`);
-      const response = await callTokenMetricsApi(
-        TOKENMETRICS_ENDPOINTS.sectorIndicesHoldings,
-        // Maps to /v2/indices-index-specific-tree-map
-        apiParams,
-        "GET"
-      );
-      const formattedData = formatTokenMetricsResponse(response, "getSectorIndicesHoldings");
-      const holdings = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-      const holdingsAnalysis = analyzeHoldingsData(holdings, requestParams.indexName);
-      return {
-        success: true,
-        message: `Successfully retrieved ${holdings.length} holdings for ${requestParams.indexName} sector index`,
-        holdings,
-        analysis: holdingsAnalysis,
-        metadata: {
-          endpoint: TOKENMETRICS_ENDPOINTS.sectorIndicesHoldings,
-          index_name: requestParams.indexName,
-          total_holdings: holdings.length,
-          pagination: {
-            page: requestParams.page,
-            limit: requestParams.limit
-          },
-          api_version: "v2",
-          data_source: "TokenMetrics Official API"
-        },
-        holdings_explanation: {
-          purpose: "Shows current composition and weights of the sector index",
-          weight_interpretation: "Higher weights indicate larger allocation within the index",
-          usage: "Use for understanding sector exposure and diversification within each index",
-          investment_context: "Similar to analyzing mutual fund holdings to understand portfolio composition"
-        }
-      };
-    } catch (error) {
-      console.error("Error in getSectorIndicesHoldingsAction:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve sector indices holdings from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/indices-index-specific-tree-map is accessible",
-          parameter_validation: [
-            "indexName is REQUIRED - try values like 'meme', 'defi', 'gaming', 'layer1', 'layer2'",
-            "Check that indexName corresponds to an existing TokenMetrics sector index",
-            "Verify your API key has access to sector indices endpoints",
-            "Ensure pagination parameters (page, limit) are positive integers"
-          ],
-          common_solutions: [
-            "Try with a well-known index name like 'meme' or 'defi' first",
-            "Check if your TokenMetrics subscription includes sector indices access",
-            "Verify the index name spelling and formatting (usually lowercase)",
-            "Contact TokenMetrics support to confirm available sector index names"
-          ],
-          api_documentation: "Refer to https://developers.tokenmetrics.com for complete parameter specifications"
-        }
-      };
-    }
-  },
-  // Validate that the runtime environment has the necessary configuration
-  validate: async (runtime, _message) => {
-    const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-    if (!apiKey) {
-      console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-      return false;
-    }
-    return true;
-  },
-  // Examples showing different ways users might interact with this action
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me the holdings of the meme sector index",
-          indexName: "meme"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get the current holdings and weights for the meme sector index from TokenMetrics.",
-          action: "GET_SECTOR_INDICES_HOLDINGS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What tokens are in the DeFi index and how are they weighted?",
-          indexName: "defi"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll analyze the DeFi sector index composition and provide insights on token allocation and diversification.",
-          action: "GET_SECTOR_INDICES_HOLDINGS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Analyze the gaming sector portfolio breakdown",
-          sector: "gaming"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get the gaming sector holdings and analyze the portfolio composition and concentration risk.",
-          action: "GET_SECTOR_INDICES_HOLDINGS"
-        }
-      }
-    ]
-  ]
-};
-function analyzeHoldingsData(holdings, indexName) {
-  if (!holdings || holdings.length === 0) {
-    return {
-      summary: `No holdings data available for ${indexName} sector index`,
-      diversification: "Unknown - no data to analyze",
-      insights: ["No holdings data available - the sector index may be new or temporarily unavailable"],
-      recommendation: "Check back later or try a different sector index"
-    };
-  }
-  const totalWeight = holdings.reduce((sum, holding) => {
-    return sum + (holding.WEIGHT || holding.ALLOCATION_PERCENT || 0);
-  }, 0);
-  const sortedHoldings = holdings.filter((h) => h.WEIGHT || h.ALLOCATION_PERCENT).sort((a, b) => (b.WEIGHT || b.ALLOCATION_PERCENT) - (a.WEIGHT || a.ALLOCATION_PERCENT)).slice(0, 10);
-  const topHoldingWeight = sortedHoldings.length > 0 ? sortedHoldings[0].WEIGHT || sortedHoldings[0].ALLOCATION_PERCENT : 0;
-  const top3Weight = sortedHoldings.slice(0, 3).reduce((sum, h) => sum + (h.WEIGHT || h.ALLOCATION_PERCENT || 0), 0);
-  const top5Weight = sortedHoldings.slice(0, 5).reduce((sum, h) => sum + (h.WEIGHT || h.ALLOCATION_PERCENT || 0), 0);
-  let concentrationLevel;
-  let riskLevel;
-  if (topHoldingWeight > 40) {
-    concentrationLevel = "Extremely High";
-    riskLevel = "Very High Risk";
-  } else if (topHoldingWeight > 30) {
-    concentrationLevel = "Very High";
-    riskLevel = "High Risk";
-  } else if (topHoldingWeight > 20) {
-    concentrationLevel = "High";
-    riskLevel = "Moderate-High Risk";
-  } else if (topHoldingWeight > 15) {
-    concentrationLevel = "Moderate";
-    riskLevel = "Moderate Risk";
-  } else {
-    concentrationLevel = "Low";
-    riskLevel = "Lower Risk";
-  }
-  const insights = [];
-  if (concentrationLevel === "Extremely High" || concentrationLevel === "Very High") {
-    insights.push(`Warning: ${topHoldingWeight.toFixed(1)}% concentration in top holding creates significant single-token risk`);
-    insights.push("Consider this sector only as a small portion of your overall crypto allocation");
-  } else if (concentrationLevel === "High") {
-    insights.push(`Moderate concentration risk with ${topHoldingWeight.toFixed(1)}% in top holding`);
-    insights.push("Suitable for moderate risk tolerance with proper position sizing");
-  } else {
-    insights.push(`Good diversification with ${topHoldingWeight.toFixed(1)}% maximum single-token exposure`);
-    insights.push("Lower concentration risk makes this suitable for larger allocations");
-  }
-  if (top3Weight > 60) {
-    insights.push("Top 3 holdings dominate the index - limited diversification within sector");
-  } else if (top5Weight < 50) {
-    insights.push("Well-diversified across multiple tokens within the sector");
-  }
-  if (totalWeight < 90 || totalWeight > 110) {
-    insights.push(`Total allocation is ${totalWeight.toFixed(1)}% - may indicate rebalancing in progress or data quality issues`);
-  }
-  const recommendations = [];
-  if (riskLevel === "Very High Risk") {
-    recommendations.push("Suitable only for high-risk tolerance investors");
-    recommendations.push("Use very small position sizes (1-2% of portfolio)");
-    recommendations.push("Monitor top holding closely for concentration changes");
-  } else if (riskLevel === "High Risk") {
-    recommendations.push("Appropriate for moderate to high risk tolerance");
-    recommendations.push("Consider 3-5% portfolio allocation maximum");
-  } else {
-    recommendations.push("Suitable for most risk tolerance levels");
-    recommendations.push("Can consider larger allocations (5-10% of crypto portfolio)");
-  }
-  recommendations.push(`Monitor ${indexName} sector rebalancing for optimal entry points`);
-  recommendations.push("Combine with other sector indices for broader crypto exposure");
-  return {
-    summary: `${indexName} sector index contains ${holdings.length} holdings with ${concentrationLevel.toLowerCase()} concentration and ${riskLevel.toLowerCase()}`,
-    diversification: {
-      total_holdings: holdings.length,
-      concentration_level: concentrationLevel,
-      risk_level: riskLevel,
-      top_holding_weight: `${topHoldingWeight.toFixed(1)}%`,
-      top_3_weight: `${top3Weight.toFixed(1)}%`,
-      top_5_weight: `${top5Weight.toFixed(1)}%`,
-      total_allocated: `${totalWeight.toFixed(1)}%`,
-      diversification_score: calculateDiversificationScore(holdings)
-    },
-    top_holdings: sortedHoldings.map((holding, index) => ({
-      rank: index + 1,
-      symbol: holding.SYMBOL,
-      name: holding.TOKEN_NAME || holding.NAME || "Unknown",
-      weight: `${(holding.WEIGHT || holding.ALLOCATION_PERCENT).toFixed(2)}%`,
-      market_cap: holding.MARKET_CAP ? formatTokenMetricsNumber(holding.MARKET_CAP, "currency") : "N/A"
-    })),
-    insights,
-    recommendations,
-    investment_suitability: {
-      conservative_investors: riskLevel === "Lower Risk" ? "Suitable" : "Not Recommended",
-      moderate_investors: riskLevel.includes("Moderate") ? "Suitable" : riskLevel === "Lower Risk" ? "Suitable" : "Use Caution",
-      aggressive_investors: "Suitable with appropriate position sizing",
-      suggested_allocation: getSuggestedAllocation(riskLevel)
-    },
-    risk_factors: [
-      `Concentration risk: ${concentrationLevel.toLowerCase()} due to ${topHoldingWeight.toFixed(1)}% top holding`,
-      "Sector-specific risk: performance tied to specific cryptocurrency sector trends",
-      "Crypto market risk: all holdings subject to cryptocurrency market volatility",
-      "Rebalancing risk: holdings and weights may change during index rebalancing"
-    ]
-  };
-}
-function calculateDiversificationScore(holdings) {
-  if (holdings.length === 0) return 0;
-  const weights = holdings.map((h) => (h.WEIGHT || h.ALLOCATION_PERCENT || 0) / 100);
-  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-  if (totalWeight === 0) return 0;
-  const normalizedWeights = weights.map((w) => w / totalWeight);
-  const hhi = normalizedWeights.reduce((sum, w) => sum + w * w, 0);
-  return Math.round((1 - hhi) * 100);
-}
-function getSuggestedAllocation(riskLevel) {
-  switch (riskLevel) {
-    case "Very High Risk":
-      return "1-2% of total portfolio";
-    case "High Risk":
-      return "2-3% of total portfolio";
-    case "Moderate-High Risk":
-      return "3-5% of total portfolio";
-    case "Moderate Risk":
-      return "5-8% of total portfolio";
-    case "Lower Risk":
-      return "8-12% of total portfolio";
-    default:
-      return "3-5% of total portfolio";
-  }
-}
-
-// src/actions/getIndexPerformanceAction.ts
-var getIndexPerformanceAction = {
-  name: "getIndexPerformance",
-  description: "Get historical performance data for a specific sector index including ROI trends, volatility analysis, and investment insights",
-  similes: [
-    "get index performance",
-    "sector index returns",
-    "index ROI data",
-    "sector performance history",
-    "index trend analysis",
-    "sector investment returns",
-    "performance tracking",
-    "historical sector data"
-  ],
-  async handler(_runtime, message, _state) {
-    try {
-      const messageContent = message.content;
-      const requestParams = {
-        // Required parameter: which sector index to analyze
-        indexName: typeof messageContent.indexName === "string" ? messageContent.indexName : typeof messageContent.index_name === "string" ? messageContent.index_name : typeof messageContent.sector === "string" ? messageContent.sector : void 0,
-        // Optional date range parameters for historical analysis
-        // Using camelCase format as required by the actual TokenMetrics API
-        startDate: typeof messageContent.startDate === "string" ? messageContent.startDate : typeof messageContent.start_date === "string" ? messageContent.start_date : void 0,
-        endDate: typeof messageContent.endDate === "string" ? messageContent.endDate : typeof messageContent.end_date === "string" ? messageContent.end_date : void 0
-      };
-      if (!requestParams.indexName) {
-        throw new Error("indexName is required for index performance analysis. Example values: 'meme', 'defi', 'gaming', 'layer1', 'layer2', etc.");
-      }
-      validateTokenMetricsParams(requestParams);
-      const apiParams = buildTokenMetricsParams(requestParams);
-      console.log(`Fetching performance data for ${requestParams.indexName} index from TokenMetrics API`);
-      const response = await callTokenMetricsApi(
-        TOKENMETRICS_ENDPOINTS.indexPerformance,
-        // Maps to /v2/indices-index-specific-performance
-        apiParams,
-        "GET"
-      );
-      const formattedData = formatTokenMetricsResponse(response, "getIndexPerformance");
-      const performanceData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-      const performanceAnalysis = analyzePerformanceData(performanceData, requestParams.indexName);
-      return {
-        success: true,
-        message: `Successfully retrieved performance data for ${requestParams.indexName} index over ${performanceData.length} periods`,
-        performance_data: performanceData,
-        analysis: performanceAnalysis,
-        metadata: {
-          endpoint: TOKENMETRICS_ENDPOINTS.indexPerformance,
-          index_name: requestParams.indexName,
-          date_range: {
-            start: requestParams.startDate,
-            end: requestParams.endDate
-          },
-          data_points: performanceData.length,
-          api_version: "v2",
-          data_source: "TokenMetrics Official API"
-        },
-        performance_explanation: {
-          purpose: "Shows historical returns and risk metrics for the sector index",
-          metrics_included: [
-            "Total returns over the analyzed period",
-            "Volatility measurements and risk assessment",
-            "Risk-adjusted performance analysis",
-            "Comparative performance insights",
-            "Investment suitability recommendations"
-          ],
-          usage_context: "Use this data to evaluate sector timing, risk assessment, and portfolio allocation decisions"
-        }
-      };
-    } catch (error) {
-      console.error("Error in getIndexPerformanceAction:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve index performance from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/indices-index-specific-performance is accessible",
-          parameter_validation: [
-            "indexName is REQUIRED for performance data - try 'meme', 'defi', 'gaming', etc.",
-            "Use startDate/endDate in YYYY-MM-DD format if filtering by date range",
-            "Verify the index name exists in TokenMetrics system",
-            "Check that your API key has access to performance endpoints"
-          ],
-          common_solutions: [
-            "Try with a well-known index like 'defi' or 'meme' first",
-            "Remove date filters to get full historical data",
-            "Verify your TokenMetrics subscription includes performance access",
-            "Check index name spelling (usually lowercase, no spaces)"
-          ],
-          data_availability: "Performance data availability varies by index - newer indices may have limited history"
-        }
-      };
-    }
-  },
-  // Validate that the runtime environment has proper configuration
-  validate: async (runtime, _message) => {
-    const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-    if (!apiKey) {
-      console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-      return false;
-    }
-    return true;
-  },
-  // Examples showing different ways users might interact with this action
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me the performance of the DeFi index",
-          indexName: "defi"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get the historical performance and ROI data for the DeFi sector index from TokenMetrics.",
-          action: "GET_INDEX_PERFORMANCE"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "How has the gaming sector performed over the past 6 months?",
-          indexName: "gaming",
-          startDate: "2024-06-01",
-          endDate: "2024-12-01"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll analyze the gaming sector's 6-month performance including returns, volatility, and risk metrics.",
-          action: "GET_INDEX_PERFORMANCE"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Compare the Layer 1 sector performance and tell me if it's a good investment",
-          sector: "layer1"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get the Layer 1 performance data and provide investment analysis with risk assessment.",
-          action: "GET_INDEX_PERFORMANCE"
-        }
-      }
-    ]
-  ]
-};
-function analyzePerformanceData(performanceData, indexName) {
-  if (!performanceData || performanceData.length === 0) {
-    return {
-      summary: `No performance data available for ${indexName} index`,
-      returns: "Unknown - insufficient data",
-      insights: ["Performance data not available - the index may be new or data collection may be in progress"],
-      recommendation: "Check back later when more performance history is available"
-    };
-  }
-  const sortedData = performanceData.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
-  const startValue = sortedData[0].INDEX_VALUE || sortedData[0].CUMULATIVE_RETURN || 100;
-  const endValue = sortedData[sortedData.length - 1].INDEX_VALUE || sortedData[sortedData.length - 1].CUMULATIVE_RETURN || 100;
-  const totalReturn = startValue !== 0 ? (endValue - startValue) / startValue * 100 : 0;
-  const dailyReturns = sortedData.map((d) => d.DAILY_RETURN).filter((r) => r !== null && r !== void 0 && !isNaN(r));
-  const avgDailyReturn = dailyReturns.length > 0 ? dailyReturns.reduce((sum, r) => sum + r, 0) / dailyReturns.length : 0;
-  const volatility = calculateVolatility(dailyReturns);
-  const maxDrawdown = calculateMaxDrawdown(sortedData);
-  const sharpeRatio = calculateSharpeRatio(avgDailyReturn, volatility);
-  let performanceRating;
-  let riskRating;
-  if (totalReturn > 50) performanceRating = "Excellent";
-  else if (totalReturn > 20) performanceRating = "Good";
-  else if (totalReturn > 0) performanceRating = "Fair";
-  else if (totalReturn > -20) performanceRating = "Poor";
-  else performanceRating = "Very Poor";
-  if (volatility > 80) riskRating = "Very High Risk";
-  else if (volatility > 60) riskRating = "High Risk";
-  else if (volatility > 40) riskRating = "Moderate Risk";
-  else if (volatility > 25) riskRating = "Low-Moderate Risk";
-  else riskRating = "Low Risk";
-  const analysisTimeframe = calculateTimeframe(sortedData[0].DATE, sortedData[sortedData.length - 1].DATE);
-  const annualizedReturn = calculateAnnualizedReturn(totalReturn, analysisTimeframe.days);
-  const insights = [];
-  if (performanceRating === "Excellent") {
-    insights.push(`Outstanding performance with ${totalReturn.toFixed(1)}% returns - significantly outperforming most crypto investments`);
-  } else if (performanceRating === "Good") {
-    insights.push(`Strong performance with ${totalReturn.toFixed(1)}% returns - above average for crypto sector investments`);
-  } else if (performanceRating === "Fair") {
-    insights.push(`Modest positive returns of ${totalReturn.toFixed(1)}% - performing adequately but not exceptionally`);
-  } else if (performanceRating === "Poor") {
-    insights.push(`Negative returns of ${totalReturn.toFixed(1)}% - underperforming in the current market environment`);
-  } else {
-    insights.push(`Significant losses of ${totalReturn.toFixed(1)}% - this sector has faced major challenges`);
-  }
-  if (riskRating === "Very High Risk") {
-    insights.push(`Extremely high volatility (${volatility.toFixed(1)}%) indicates severe price swings - only for very risk-tolerant investors`);
-  } else if (riskRating === "High Risk") {
-    insights.push(`High volatility (${volatility.toFixed(1)}%) shows significant price movements - requires careful risk management`);
-  } else if (riskRating === "Moderate Risk") {
-    insights.push(`Moderate volatility (${volatility.toFixed(1)}%) typical for crypto sectors - manageable for experienced investors`);
-  } else {
-    insights.push(`Relatively low volatility (${volatility.toFixed(1)}%) for crypto markets - more stable than most crypto investments`);
-  }
-  if (sharpeRatio > 1.5) {
-    insights.push(`Excellent risk-adjusted returns (Sharpe: ${sharpeRatio.toFixed(2)}) - strong compensation for risk taken`);
-  } else if (sharpeRatio > 1) {
-    insights.push(`Good risk-adjusted returns (Sharpe: ${sharpeRatio.toFixed(2)}) - adequate compensation for risk`);
-  } else if (sharpeRatio > 0.5) {
-    insights.push(`Fair risk-adjusted returns (Sharpe: ${sharpeRatio.toFixed(2)}) - modest compensation for risk`);
-  } else if (sharpeRatio > 0) {
-    insights.push(`Poor risk-adjusted returns (Sharpe: ${sharpeRatio.toFixed(2)}) - insufficient compensation for risk`);
-  } else {
-    insights.push(`Negative risk-adjusted returns (Sharpe: ${sharpeRatio.toFixed(2)}) - losses exceeded risk-free alternatives`);
-  }
-  if (maxDrawdown < -30) {
-    insights.push(`Significant maximum drawdown of ${maxDrawdown.toFixed(1)}% indicates potential for substantial temporary losses`);
-  } else if (maxDrawdown < -15) {
-    insights.push(`Moderate maximum drawdown of ${maxDrawdown.toFixed(1)}% shows manageable worst-case scenarios`);
-  } else {
-    insights.push(`Limited maximum drawdown of ${maxDrawdown.toFixed(1)}% suggests relatively stable performance`);
-  }
-  const recommendations = [];
-  if (riskRating === "Very High Risk") {
-    recommendations.push("Suitable only for high-risk tolerance investors with strong conviction in the sector");
-    recommendations.push("Use very small position sizes (1-3% of total portfolio)");
-    recommendations.push("Consider dollar-cost averaging to reduce timing risk");
-  } else if (riskRating === "High Risk") {
-    recommendations.push("Appropriate for moderate to high risk tolerance investors");
-    recommendations.push("Consider 3-7% portfolio allocation depending on conviction level");
-    recommendations.push("Monitor sector trends closely for exit signals");
-  } else if (riskRating === "Moderate Risk") {
-    recommendations.push("Suitable for most experienced crypto investors");
-    recommendations.push("Can consider 5-12% allocation within crypto portfolio");
-    recommendations.push("Good candidate for core sector allocation");
-  } else {
-    recommendations.push("Suitable for conservative crypto investors seeking sector exposure");
-    recommendations.push("Can consider larger allocations (10-20% of crypto portfolio)");
-    recommendations.push("Excellent for risk-averse investors entering crypto markets");
-  }
-  if (totalReturn > 0 && sharpeRatio > 1) {
-    recommendations.push("Strong risk-adjusted performance supports continued or increased allocation");
-  } else if (totalReturn < -10) {
-    recommendations.push("Recent poor performance suggests waiting for better entry points or avoiding this sector");
-  }
-  recommendations.push(`Monitor ${indexName} sector developments and rebalancing activity for optimal timing`);
-  recommendations.push("Combine with other sector indices for broader crypto diversification");
-  recommendations.push("Set clear profit-taking and stop-loss levels based on risk tolerance");
-  return {
-    summary: `${indexName} index shows ${performanceRating.toLowerCase()} performance (${totalReturn.toFixed(1)}% return) with ${riskRating.toLowerCase()} over ${analysisTimeframe.description}`,
-    returns: {
-      total_return: `${totalReturn.toFixed(2)}%`,
-      annualized_return: annualizedReturn ? `${annualizedReturn.toFixed(2)}%` : "Insufficient data",
-      average_daily_return: `${avgDailyReturn.toFixed(4)}%`,
-      start_value: startValue.toFixed(2),
-      end_value: endValue.toFixed(2),
-      periods_analyzed: sortedData.length,
-      timeframe: analysisTimeframe.description
-    },
-    risk_metrics: {
-      volatility: `${volatility.toFixed(2)}%`,
-      volatility_assessment: riskRating,
-      max_drawdown: `${maxDrawdown.toFixed(2)}%`,
-      sharpe_ratio: sharpeRatio.toFixed(3),
-      risk_adjusted_assessment: getRiskAdjustedAssessment(sharpeRatio)
-    },
-    performance_rating: {
-      overall_rating: performanceRating,
-      risk_rating: riskRating,
-      investment_grade: getInvestmentGrade(performanceRating, riskRating),
-      sector_comparison: generateSectorComparison(totalReturn, volatility)
-    },
-    insights,
-    recommendations,
-    investment_suitability: {
-      conservative_investors: riskRating.includes("Low") ? "Suitable" : "Not Recommended",
-      moderate_investors: riskRating.includes("Moderate") || riskRating.includes("Low") ? "Suitable" : "Use Caution",
-      aggressive_investors: "Suitable with proper position sizing",
-      institutional_investors: sharpeRatio > 1 && maxDrawdown > -25 ? "Consider" : "Requires Further Analysis"
-    },
-    timing_analysis: {
-      entry_recommendation: generateEntryRecommendation(totalReturn, volatility, maxDrawdown),
-      market_cycle_position: assessMarketCyclePosition(sortedData),
-      momentum_indicator: calculateMomentumIndicator(dailyReturns)
-    }
-  };
-}
-function calculateVolatility(returns) {
-  if (returns.length < 2) return 0;
-  const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-  const squaredDiffs = returns.map((r) => Math.pow(r - mean, 2));
-  const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / (returns.length - 1);
-  return Math.sqrt(variance) * Math.sqrt(365);
-}
-function calculateMaxDrawdown(data) {
-  if (data.length < 2) return 0;
-  let maxDrawdown = 0;
-  let peak = data[0].INDEX_VALUE || data[0].CUMULATIVE_RETURN || 100;
-  for (const point of data) {
-    const value = point.INDEX_VALUE || point.CUMULATIVE_RETURN || 100;
-    if (value > peak) {
-      peak = value;
-    } else {
-      const drawdown = (value - peak) / peak * 100;
-      if (drawdown < maxDrawdown) {
-        maxDrawdown = drawdown;
-      }
-    }
-  }
-  return maxDrawdown;
-}
-function calculateSharpeRatio(avgReturn, volatility) {
-  if (volatility === 0) return 0;
-  const riskFreeRate = 55e-6;
-  const excessReturn = avgReturn - riskFreeRate;
-  const dailyVolatility = volatility / Math.sqrt(365);
-  return excessReturn / dailyVolatility;
-}
-function calculateTimeframe(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const days = Math.ceil((end.getTime() - start.getTime()) / (1e3 * 60 * 60 * 24));
-  let description;
-  if (days < 30) description = `${days} days`;
-  else if (days < 365) description = `${Math.round(days / 30)} months`;
-  else description = `${(days / 365).toFixed(1)} years`;
-  return { days, description };
-}
-function calculateAnnualizedReturn(totalReturn, days) {
-  if (days < 30) return null;
-  const years = days / 365;
-  return Math.pow(1 + totalReturn / 100, 1 / years) * 100 - 100;
-}
-function getRiskAdjustedAssessment(sharpeRatio) {
-  if (sharpeRatio > 2) return "Exceptional risk-adjusted performance";
-  if (sharpeRatio > 1.5) return "Excellent risk-adjusted performance";
-  if (sharpeRatio > 1) return "Good risk-adjusted performance";
-  if (sharpeRatio > 0.5) return "Fair risk-adjusted performance";
-  if (sharpeRatio > 0) return "Poor risk-adjusted performance";
-  return "Negative risk-adjusted performance";
-}
-function getInvestmentGrade(performanceRating, riskRating) {
-  if (performanceRating === "Excellent" && !riskRating.includes("Very High")) return "A";
-  if (performanceRating === "Good" && riskRating.includes("Low")) return "A-";
-  if (performanceRating === "Good" && riskRating.includes("Moderate")) return "B+";
-  if (performanceRating === "Fair" && !riskRating.includes("Very High")) return "B";
-  if (performanceRating === "Poor") return "C";
-  return "D";
-}
-function generateSectorComparison(totalReturn, volatility) {
-  if (totalReturn > 30 && volatility < 60) return "Outperforming most crypto sectors with manageable risk";
-  if (totalReturn > 15) return "Above average performance for crypto sectors";
-  if (totalReturn > 0) return "Modest performance relative to crypto market";
-  if (totalReturn > -20) return "Underperforming but within normal crypto volatility range";
-  return "Significantly underperforming crypto market";
-}
-function generateEntryRecommendation(totalReturn, volatility, maxDrawdown) {
-  if (totalReturn < -15 && maxDrawdown < -20) return "Potential value opportunity - consider gradual entry";
-  if (totalReturn > 30 && volatility > 70) return "Proceed with caution - high returns may not be sustainable";
-  if (totalReturn > 0 && volatility < 50) return "Favorable risk-reward profile for entry";
-  return "Monitor for better entry conditions";
-}
-function assessMarketCyclePosition(data) {
-  if (data.length < 10) return "Insufficient data for cycle analysis";
-  const recentData = data.slice(-10);
-  const earlierData = data.slice(-20, -10);
-  const recentAvg = recentData.reduce((sum, d) => sum + (d.INDEX_VALUE || d.CUMULATIVE_RETURN || 100), 0) / recentData.length;
-  const earlierAvg = earlierData.reduce((sum, d) => sum + (d.INDEX_VALUE || d.CUMULATIVE_RETURN || 100), 0) / earlierData.length;
-  if (recentAvg > earlierAvg * 1.1) return "Uptrend - potentially late cycle";
-  if (recentAvg < earlierAvg * 0.9) return "Downtrend - potentially early cycle";
-  return "Sideways trend - mid-cycle consolidation";
-}
-function calculateMomentumIndicator(returns) {
-  if (returns.length < 5) return "Insufficient data";
-  const recentReturns = returns.slice(-5);
-  const avgRecentReturn = recentReturns.reduce((sum, r) => sum + r, 0) / recentReturns.length;
-  if (avgRecentReturn > 0.5) return "Strong Positive Momentum";
-  if (avgRecentReturn > 0.1) return "Moderate Positive Momentum";
-  if (avgRecentReturn > -0.1) return "Neutral Momentum";
-  if (avgRecentReturn > -0.5) return "Moderate Negative Momentum";
-  return "Strong Negative Momentum";
-}
-
-// src/actions/getSectorIndexTransactionAction.ts
-var getSectorIndexTransactionAction = {
-  name: "getSectorIndexTransaction",
-  description: "Get detailed transaction data for sector index rebalancing including buy/sell actions, reasoning, and trading insights",
-  similes: [
-    "get index transactions",
-    "sector rebalancing data",
-    "index trading activity",
-    "sector buy sell actions",
-    "index transaction history",
-    "rebalancing analysis",
-    "sector trading patterns",
-    "index management decisions"
-  ],
-  async handler(_runtime, message, _state) {
-    try {
-      const messageContent = message.content;
-      const requestParams = {
-        // Required parameter: which sector index to analyze
-        indexName: typeof messageContent.indexName === "string" ? messageContent.indexName : typeof messageContent.index_name === "string" ? messageContent.index_name : typeof messageContent.sector === "string" ? messageContent.sector : void 0,
-        // Pagination parameters for managing large transaction datasets
-        limit: typeof messageContent.limit === "number" ? messageContent.limit : 50,
-        page: typeof messageContent.page === "number" ? messageContent.page : 1
-      };
-      if (!requestParams.indexName) {
-        throw new Error("indexName is required for sector index transactions. Example values: 'meme', 'defi', 'gaming', 'layer1', 'layer2', etc.");
-      }
-      validateTokenMetricsParams(requestParams);
-      const apiParams = buildTokenMetricsParams(requestParams);
-      console.log(`Fetching transaction data for ${requestParams.indexName} sector index from TokenMetrics API`);
-      const response = await callTokenMetricsApi(
-        TOKENMETRICS_ENDPOINTS.sectorIndexTransaction,
-        // Maps to /v2/indices-index-specific-index-transaction
-        apiParams,
-        "GET"
-      );
-      const formattedData = formatTokenMetricsResponse(response, "getSectorIndexTransaction");
-      const transactions = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-      const transactionAnalysis = analyzeTransactionData(transactions, requestParams.indexName);
-      return {
-        success: true,
-        message: `Successfully retrieved ${transactions.length} transactions for ${requestParams.indexName} sector index`,
-        transactions,
-        analysis: transactionAnalysis,
-        metadata: {
-          endpoint: TOKENMETRICS_ENDPOINTS.sectorIndexTransaction,
-          index_name: requestParams.indexName,
-          total_transactions: transactions.length,
-          pagination: {
-            page: requestParams.page,
-            limit: requestParams.limit
-          },
-          api_version: "v2",
-          data_source: "TokenMetrics Official API"
-        },
-        transaction_explanation: {
-          purpose: "Shows active management decisions and rebalancing activity within the sector index",
-          transaction_types: {
-            BUY: "Index is adding or increasing allocation to a token",
-            SELL: "Index is reducing or removing allocation to a token"
-          },
-          usage_context: "Use this data to understand sector trends, timing opportunities, and management strategy",
-          investment_implications: "Transaction patterns often signal important changes in sector dynamics"
-        }
-      };
-    } catch (error) {
-      console.error("Error in getSectorIndexTransactionAction:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve sector index transactions from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/indices-index-specific-index-transaction is accessible",
-          parameter_validation: [
-            "indexName is REQUIRED for transaction data - try 'meme', 'defi', 'gaming', etc.",
-            "Verify the index name corresponds to an existing sector index",
-            "Check pagination parameters (page, limit) are positive integers",
-            "Ensure your API key has access to transaction endpoints"
-          ],
-          common_solutions: [
-            "Try with a well-known and active index like 'defi' or 'meme'",
-            "Check if your TokenMetrics subscription includes transaction data access",
-            "Verify index name spelling (usually lowercase, no spaces)",
-            "Some newer indices may have limited transaction history"
-          ],
-          data_availability: "Transaction data varies by index activity - more active indices have more transaction records"
-        }
-      };
-    }
-  },
-  // Validate that the runtime environment has proper configuration
-  validate: async (runtime, _message) => {
-    const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-    if (!apiKey) {
-      console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-      return false;
-    }
-    return true;
-  },
-  // Examples showing different ways users might interact with this action
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me recent transactions for the gaming sector index",
-          indexName: "gaming"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get the recent transaction and rebalancing data for the gaming sector index.",
-          action: "GET_SECTOR_INDEX_TRANSACTION"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What tokens are being bought and sold in the DeFi index lately?",
-          indexName: "defi",
-          limit: 20
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll analyze the recent DeFi sector trading activity and identify which tokens are being accumulated or distributed.",
-          action: "GET_SECTOR_INDEX_TRANSACTION"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Analyze the meme coin sector management decisions",
-          sector: "meme"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll examine the meme sector transaction patterns to understand current management strategy and token selection.",
-          action: "GET_SECTOR_INDEX_TRANSACTION"
-        }
-      }
-    ]
-  ]
-};
-function analyzeTransactionData(transactions, indexName) {
-  if (!transactions || transactions.length === 0) {
-    return {
-      summary: `No transaction data available for ${indexName} index`,
-      activity: "Unknown - no transaction records found",
-      insights: [
-        "No transaction data available - the index may be new, inactive, or data collection may be in progress",
-        "Some indices have infrequent rebalancing, so limited transaction history is normal"
-      ],
-      recommendation: "Check back later or try a more actively managed sector index"
-    };
-  }
-  const buyTransactions = transactions.filter((t) => t.TRANSACTION_TYPE === "BUY");
-  const sellTransactions = transactions.filter((t) => t.TRANSACTION_TYPE === "SELL");
-  const totalBuyVolume = buyTransactions.reduce((sum, t) => sum + (t.QUANTITY || 0) * (t.PRICE || 0), 0);
-  const totalSellVolume = sellTransactions.reduce((sum, t) => sum + (t.QUANTITY || 0) * (t.PRICE || 0), 0);
-  const netVolume = totalBuyVolume - totalSellVolume;
-  const transactionDates = transactions.map((t) => t.TRANSACTION_DATE || t.DATE).filter((date) => date).sort();
-  const dateRange = transactionDates.length > 0 ? {
-    earliest: transactionDates[0],
-    latest: transactionDates[transactionDates.length - 1],
-    span_days: calculateDaysBetween(transactionDates[0], transactionDates[transactionDates.length - 1])
-  } : null;
-  const tokenActivity = analyzeTokenActivity(transactions);
-  const mostActiveTokens = tokenActivity.slice(0, 5);
-  const managementStrategy = determineManagementStrategy(buyTransactions.length, sellTransactions.length, netVolume);
-  const activityLevel = classifyActivityLevel(transactions.length, dateRange?.span_days || 1);
-  const insights = [];
-  if (netVolume > 0) {
-    insights.push(`Net buying activity of ${formatTokenMetricsNumber(netVolume, "currency")} suggests sector expansion or bullish positioning`);
-  } else if (netVolume < 0) {
-    insights.push(`Net selling activity of ${formatTokenMetricsNumber(Math.abs(netVolume), "currency")} indicates sector contraction or profit-taking`);
-  } else {
-    insights.push("Balanced buy/sell activity suggests routine rebalancing and maintenance operations");
-  }
-  if (activityLevel === "High") {
-    insights.push("High transaction frequency indicates active management and responsive rebalancing strategy");
-  } else if (activityLevel === "Low") {
-    insights.push("Low transaction frequency suggests passive management approach or stable sector conditions");
-  }
-  if (mostActiveTokens.length > 0) {
-    const topToken = mostActiveTokens[0];
-    if (topToken.net_activity === "Net Buying") {
-      insights.push(`${topToken.symbol} shows strongest accumulation with ${topToken.total_transactions} transactions - potential sector leader`);
-    } else if (topToken.net_activity === "Net Selling") {
-      insights.push(`${topToken.symbol} shows distribution pattern with ${topToken.total_transactions} transactions - may be losing favor`);
-    }
-  }
-  if (dateRange && dateRange.span_days < 30 && transactions.length > 10) {
-    insights.push("High recent activity suggests significant sector developments or market opportunities");
-  }
-  const recommendations = [];
-  if (managementStrategy.direction === "Bullish") {
-    recommendations.push("Net buying activity suggests favorable sector outlook - consider increasing allocation");
-    recommendations.push("Follow the tokens being accumulated for potential individual investment opportunities");
-  } else if (managementStrategy.direction === "Bearish") {
-    recommendations.push("Net selling activity suggests caution - consider reducing exposure or waiting for better entry");
-    recommendations.push("Monitor for completion of distribution before considering re-entry");
-  } else {
-    recommendations.push("Balanced activity suggests stable conditions - maintain current allocation strategy");
-  }
-  if (activityLevel === "High") {
-    recommendations.push("High activity periods often present better entry/exit opportunities");
-    recommendations.push("Monitor transaction patterns closely during active rebalancing periods");
-  }
-  if (mostActiveTokens.length > 0) {
-    const buyTargets = mostActiveTokens.filter((t) => t.net_activity === "Net Buying").slice(0, 2);
-    const sellTargets = mostActiveTokens.filter((t) => t.net_activity === "Net Selling").slice(0, 2);
-    if (buyTargets.length > 0) {
-      recommendations.push(`Consider ${buyTargets.map((t) => t.symbol).join(", ")} - showing accumulation patterns`);
-    }
-    if (sellTargets.length > 0) {
-      recommendations.push(`Exercise caution with ${sellTargets.map((t) => t.symbol).join(", ")} - showing distribution patterns`);
-    }
-  }
-  recommendations.push(`Monitor ${indexName} sector transaction patterns for optimal entry and exit timing`);
-  recommendations.push("Use transaction data to validate or challenge existing sector allocation decisions");
-  return {
-    summary: `${indexName} index shows ${managementStrategy.description} with ${transactions.length} total transactions over ${dateRange?.span_days || 0} days`,
-    activity_overview: {
-      total_transactions: transactions.length,
-      buy_transactions: buyTransactions.length,
-      sell_transactions: sellTransactions.length,
-      activity_level: activityLevel,
-      buy_sell_ratio: sellTransactions.length > 0 ? (buyTransactions.length / sellTransactions.length).toFixed(2) : "Infinite (only buys)",
-      net_direction: managementStrategy.direction,
-      strategy_assessment: managementStrategy.assessment
-    },
-    volume_analysis: {
-      total_buy_volume: formatTokenMetricsNumber(totalBuyVolume, "currency"),
-      total_sell_volume: formatTokenMetricsNumber(totalSellVolume, "currency"),
-      net_volume: formatTokenMetricsNumber(netVolume, "currency"),
-      net_flow_direction: netVolume > 0 ? "Inflow (Net Buying)" : netVolume < 0 ? "Outflow (Net Selling)" : "Balanced",
-      volume_significance: classifyVolumeSignificance(Math.abs(netVolume))
-    },
-    timing_analysis: dateRange ? {
-      transaction_period: `${dateRange.earliest} to ${dateRange.latest}`,
-      time_span: `${dateRange.span_days} days`,
-      transaction_frequency: `${(transactions.length / Math.max(dateRange.span_days, 1)).toFixed(2)} transactions/day`,
-      recent_activity: analyzeRecentActivity(transactions),
-      seasonal_patterns: identifySeasonalPatterns(transactions)
-    } : {
-      transaction_period: "Unknown",
-      note: "Insufficient date information for timing analysis"
-    },
-    token_activity_breakdown: {
-      most_active_tokens: mostActiveTokens,
-      total_unique_tokens: tokenActivity.length,
-      accumulation_targets: mostActiveTokens.filter((t) => t.net_activity === "Net Buying").length,
-      distribution_targets: mostActiveTokens.filter((t) => t.net_activity === "Net Selling").length,
-      balanced_tokens: mostActiveTokens.filter((t) => t.net_activity === "Balanced").length
-    },
-    management_insights: {
-      strategy_type: managementStrategy.strategy_type,
-      management_style: managementStrategy.management_style,
-      rebalancing_frequency: determineRebalancingFrequency(transactions.length, dateRange?.span_days || 1),
-      decision_drivers: identifyDecisionDrivers(transactions)
-    },
-    insights,
-    recommendations,
-    market_implications: {
-      sector_outlook: generateSectorOutlook(managementStrategy.direction, activityLevel),
-      timing_opportunities: generateTimingOpportunities(transactions, mostActiveTokens),
-      risk_considerations: generateRiskConsiderations(managementStrategy, activityLevel)
-    }
-  };
-}
-function analyzeTokenActivity(transactions) {
-  const tokenMap = /* @__PURE__ */ new Map();
-  transactions.forEach((transaction) => {
-    const symbol = transaction.SYMBOL;
-    if (!symbol) return;
-    if (!tokenMap.has(symbol)) {
-      tokenMap.set(symbol, {
-        symbol,
-        name: transaction.TOKEN_NAME || transaction.NAME || "Unknown",
-        buys: 0,
-        sells: 0,
-        buy_volume: 0,
-        sell_volume: 0,
-        total_transactions: 0,
-        latest_transaction: transaction.TRANSACTION_DATE || transaction.DATE,
-        reasoning: []
-      });
-    }
-    const tokenData = tokenMap.get(symbol);
-    tokenData.total_transactions++;
-    if (transaction.TRANSACTION_TYPE === "BUY") {
-      tokenData.buys++;
-      tokenData.buy_volume += (transaction.QUANTITY || 0) * (transaction.PRICE || 0);
-    } else if (transaction.TRANSACTION_TYPE === "SELL") {
-      tokenData.sells++;
-      tokenData.sell_volume += (transaction.QUANTITY || 0) * (transaction.PRICE || 0);
-    }
-    if (transaction.REASONING && !tokenData.reasoning.includes(transaction.REASONING)) {
-      tokenData.reasoning.push(transaction.REASONING);
-    }
-  });
-  return Array.from(tokenMap.values()).map((token) => {
-    const net_volume = token.buy_volume - token.sell_volume;
-    let net_activity;
-    if (token.buys > token.sells * 1.5) net_activity = "Net Buying";
-    else if (token.sells > token.buys * 1.5) net_activity = "Net Selling";
-    else net_activity = "Balanced";
-    return {
-      ...token,
-      net_volume: formatTokenMetricsNumber(net_volume, "currency"),
-      net_activity,
-      buy_sell_ratio: token.sells > 0 ? (token.buys / token.sells).toFixed(2) : "Infinite",
-      activity_score: token.total_transactions * (Math.abs(net_volume) / 1e6)
-      // Weight by volume and frequency
-    };
-  }).sort((a, b) => b.activity_score - a.activity_score);
-}
-function determineManagementStrategy(buyCount, sellCount, netVolume) {
-  let direction;
-  let description;
-  let strategy_type;
-  let management_style;
-  let assessment;
-  const buyRatio = buyCount / (buyCount + sellCount);
-  if (buyRatio > 0.7) {
-    direction = "Bullish";
-    description = "aggressive accumulation strategy";
-    strategy_type = "Growth-Oriented";
-    assessment = "Highly optimistic sector outlook";
-  } else if (buyRatio > 0.6) {
-    direction = "Moderately Bullish";
-    description = "selective accumulation strategy";
-    strategy_type = "Opportunistic Growth";
-    assessment = "Cautiously optimistic sector outlook";
-  } else if (buyRatio > 0.4) {
-    direction = "Neutral";
-    description = "balanced rebalancing strategy";
-    strategy_type = "Maintenance-Focused";
-    assessment = "Stable sector management";
-  } else if (buyRatio > 0.3) {
-    direction = "Moderately Bearish";
-    description = "selective distribution strategy";
-    strategy_type = "Risk Management";
-    assessment = "Cautious sector positioning";
-  } else {
-    direction = "Bearish";
-    description = "active distribution strategy";
-    strategy_type = "Defensive";
-    assessment = "Pessimistic sector outlook";
-  }
-  const totalTransactions = buyCount + sellCount;
-  if (totalTransactions > 50) {
-    management_style = "Highly Active";
-  } else if (totalTransactions > 20) {
-    management_style = "Moderately Active";
-  } else if (totalTransactions > 5) {
-    management_style = "Conservative";
-  } else {
-    management_style = "Passive";
-  }
-  return {
-    direction,
-    description,
-    strategy_type,
-    management_style,
-    assessment,
-    confidence: buyRatio > 0.7 || buyRatio < 0.3 ? "High" : "Moderate"
-  };
-}
-function classifyActivityLevel(transactionCount, timeSpanDays) {
-  const transactionsPerDay = transactionCount / Math.max(timeSpanDays, 1);
-  if (transactionsPerDay > 2) return "Very High";
-  if (transactionsPerDay > 1) return "High";
-  if (transactionsPerDay > 0.5) return "Moderate";
-  if (transactionsPerDay > 0.1) return "Low";
-  return "Very Low";
-}
-function calculateDaysBetween(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  return Math.ceil((end.getTime() - start.getTime()) / (1e3 * 60 * 60 * 24));
-}
-function classifyVolumeSignificance(volume) {
-  if (volume > 1e7) return "Very High Significance";
-  if (volume > 1e6) return "High Significance";
-  if (volume > 1e5) return "Moderate Significance";
-  if (volume > 1e4) return "Low Significance";
-  return "Minimal Significance";
-}
-function analyzeRecentActivity(transactions) {
-  const sortedTransactions = transactions.filter((t) => t.TRANSACTION_DATE || t.DATE).sort((a, b) => new Date(b.TRANSACTION_DATE || b.DATE).getTime() - new Date(a.TRANSACTION_DATE || a.DATE).getTime());
-  if (sortedTransactions.length === 0) return "No dated transactions available";
-  const recentTransactions = sortedTransactions.slice(0, 10);
-  const recentBuys = recentTransactions.filter((t) => t.TRANSACTION_TYPE === "BUY").length;
-  const recentSells = recentTransactions.filter((t) => t.TRANSACTION_TYPE === "SELL").length;
-  if (recentBuys > recentSells * 2) return "Recent Buying Surge";
-  if (recentSells > recentBuys * 2) return "Recent Selling Pressure";
-  return "Recent Balanced Activity";
-}
-function identifySeasonalPatterns(transactions) {
-  const datedTransactions = transactions.filter((t) => t.TRANSACTION_DATE || t.DATE);
-  if (datedTransactions.length < 10) return "Insufficient data for pattern analysis";
-  const monthlyActivity = /* @__PURE__ */ new Map();
-  datedTransactions.forEach((t) => {
-    const date = new Date(t.TRANSACTION_DATE || t.DATE);
-    const month = date.getMonth();
-    monthlyActivity.set(month, (monthlyActivity.get(month) || 0) + 1);
-  });
-  const months = Array.from(monthlyActivity.entries()).sort((a, b) => b[1] - a[1]);
-  if (months.length > 0) {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `Most active in ${monthNames[months[0][0]]} (${months[0][1]} transactions)`;
-  }
-  return "No clear seasonal patterns identified";
-}
-function determineRebalancingFrequency(transactionCount, timeSpanDays) {
-  const avgDaysBetweenTransactions = timeSpanDays / Math.max(transactionCount, 1);
-  if (avgDaysBetweenTransactions < 1) return "Daily Rebalancing";
-  if (avgDaysBetweenTransactions < 7) return "Weekly Rebalancing";
-  if (avgDaysBetweenTransactions < 30) return "Monthly Rebalancing";
-  if (avgDaysBetweenTransactions < 90) return "Quarterly Rebalancing";
-  return "Infrequent Rebalancing";
-}
-function identifyDecisionDrivers(transactions) {
-  const reasoningSet = /* @__PURE__ */ new Set();
-  transactions.forEach((t) => {
-    if (t.REASONING && typeof t.REASONING === "string") {
-      reasoningSet.add(t.REASONING);
-    }
-  });
-  const drivers = Array.from(reasoningSet);
-  if (drivers.length === 0) {
-    return ["Decision reasoning not available in transaction data"];
-  }
-  return drivers.slice(0, 5);
-}
-function generateSectorOutlook(direction, activityLevel) {
-  if (direction === "Bullish" && activityLevel === "High") {
-    return "Very Positive - Strong accumulation with high activity suggests significant growth expectations";
-  }
-  if (direction === "Bullish") {
-    return "Positive - Net accumulation indicates optimistic sector outlook";
-  }
-  if (direction === "Bearish" && activityLevel === "High") {
-    return "Concerning - Active distribution suggests deteriorating sector fundamentals";
-  }
-  if (direction === "Bearish") {
-    return "Negative - Net distribution indicates pessimistic sector outlook";
-  }
-  return "Neutral - Balanced activity suggests stable but unremarkable sector conditions";
-}
-function generateTimingOpportunities(transactions, mostActiveTokens) {
-  const opportunities = [];
-  const recentTransactions = transactions.slice(-10);
-  const recentBuyTargets = new Set(
-    recentTransactions.filter((t) => t.TRANSACTION_TYPE === "BUY").map((t) => t.SYMBOL)
-  );
-  if (recentBuyTargets.size > 0) {
-    opportunities.push(`Recent buying activity in ${Array.from(recentBuyTargets).slice(0, 3).join(", ")} suggests near-term opportunities`);
-  }
-  const highActivityTokens = mostActiveTokens.filter((t) => t.total_transactions > 5);
-  if (highActivityTokens.length > 0) {
-    opportunities.push(`High transaction volume in ${highActivityTokens[0].symbol} indicates significant position changes - monitor for completion`);
-  }
-  const buyingTokens = mostActiveTokens.filter((t) => t.net_activity === "Net Buying");
-  if (buyingTokens.length > 2) {
-    opportunities.push("Multiple tokens showing accumulation patterns suggest broad sector optimism");
-  }
-  if (opportunities.length === 0) {
-    opportunities.push("Monitor for changes in transaction patterns to identify emerging opportunities");
-  }
-  return opportunities;
-}
-function generateRiskConsiderations(managementStrategy, activityLevel) {
-  const risks = [];
-  if (managementStrategy.direction === "Bearish") {
-    risks.push("Net selling activity suggests sector headwinds - exercise caution with new positions");
-  }
-  if (activityLevel === "Very High") {
-    risks.push("Extremely high transaction activity may indicate volatile sector conditions");
-  }
-  if (managementStrategy.management_style === "Highly Active") {
-    risks.push("Active management style increases tracking error and transaction costs");
-  }
-  if (managementStrategy.confidence === "Moderate") {
-    risks.push("Mixed signals suggest uncertain sector outlook - maintain flexibility");
-  }
-  risks.push("Transaction patterns are historical - future rebalancing may differ significantly");
-  risks.push("Sector index changes can impact individual token weightings and performance");
-  return risks;
-}
-
 // src/actions/getHourlyOhlcvAction.ts
 var getHourlyOhlcvAction = {
   name: "getHourlyOhlcv",
@@ -3480,7 +2350,6 @@ var getHourlyOhlcvAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching hourly OHLCV data from TokenMetrics v2/hourly-ohlcv endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.hourlyOhlcv,
         apiParams,
@@ -3821,7 +2690,6 @@ var getDailyOhlcvAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching daily OHLCV data from TokenMetrics v2/daily-ohlcv endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.dailyOhlcv,
         apiParams,
@@ -4406,7 +3274,6 @@ var getInvestorGradesAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching investor grades from TokenMetrics v2/investor-grades endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.investorGrades,
         apiParams,
@@ -4895,7 +3762,6 @@ var getAiReportsAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching AI reports from TokenMetrics v2/ai-reports endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.aiReports,
         apiParams,
@@ -5465,7 +4331,6 @@ var getCryptoInvestorsAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching crypto investors from TokenMetrics v2/crypto-investors endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.cryptoInvestors,
         apiParams,
@@ -5954,7 +4819,6 @@ var getCorrelationAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching correlation data from TokenMetrics v2/correlation endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.correlation,
         apiParams,
@@ -6620,7 +5484,6 @@ var getResistanceSupportAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching resistance and support levels from TokenMetrics v2/resistance-support endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.resistanceSupport,
         apiParams,
@@ -7481,7 +6344,6 @@ var getSentimentAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching sentiment data from TokenMetrics v2/sentiments endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.sentiment,
         apiParams,
@@ -7980,7 +6842,6 @@ var getScenarioAnalysisAction = {
       };
       validateTokenMetricsParams(requestParams);
       const apiParams = buildTokenMetricsParams(requestParams);
-      console.log("Fetching scenario analysis from TokenMetrics v2/scenario-analysis endpoint");
       const response = await callTokenMetricsApi(
         TOKENMETRICS_ENDPOINTS.scenarioAnalysis,
         apiParams,
@@ -8620,6 +7481,605 @@ function assessModelSophistication(scenarioData) {
   return "Simple";
 }
 
+// src/actions/getIndicesAction.ts
+var getIndicesAction = {
+  name: "getIndices",
+  description: "Get active and passive crypto indices with performance and market data from TokenMetrics for index-based investment analysis",
+  similes: [
+    "get indices",
+    "crypto indices",
+    "index funds",
+    "passive indices",
+    "active indices",
+    "index performance",
+    "crypto index analysis",
+    "index investment opportunities"
+  ],
+  examples: [
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Show me available crypto indices"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "I'll get the available crypto indices for you, including both active and passive investment options.",
+          action: "GET_INDICES"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "What are the best performing crypto index funds?"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "Let me analyze the crypto indices performance data to show you the top performers.",
+          action: "GET_INDICES"
+        }
+      }
+    ]
+  ],
+  async handler(_runtime, message, _state) {
+    try {
+      const messageContent = message.content;
+      const requestParams = {
+        indicesType: typeof messageContent.indicesType === "string" ? messageContent.indicesType : void 0,
+        limit: typeof messageContent.limit === "number" ? messageContent.limit : 50,
+        page: typeof messageContent.page === "number" ? messageContent.page : 1
+      };
+      validateTokenMetricsParams(requestParams);
+      const apiParams = buildTokenMetricsParams(requestParams);
+      const response = await callTokenMetricsApi(
+        TOKENMETRICS_ENDPOINTS.indices,
+        apiParams,
+        "GET"
+      );
+      const formattedData = formatTokenMetricsResponse(response, "getIndices");
+      const indices = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+      const indicesAnalysis = analyzeIndicesData(indices);
+      return {
+        success: true,
+        message: `Successfully retrieved ${indices.length} crypto indices`,
+        indices_data: indices,
+        analysis: indicesAnalysis,
+        metadata: {
+          endpoint: TOKENMETRICS_ENDPOINTS.indices,
+          filters_applied: {
+            indices_type: requestParams.indicesType
+          },
+          pagination: {
+            page: requestParams.page,
+            limit: requestParams.limit
+          },
+          data_points: indices.length,
+          api_version: "v2",
+          data_source: "TokenMetrics Indices Engine"
+        },
+        indices_explanation: {
+          purpose: "Crypto indices provide diversified exposure to cryptocurrency markets through professionally managed baskets",
+          index_types: [
+            "Active Indices - Professionally managed with dynamic allocation strategies",
+            "Passive Indices - Market-cap weighted or rule-based allocation strategies",
+            "Sector Indices - Focused on specific crypto sectors (DeFi, Layer 1, etc.)",
+            "Thematic Indices - Based on investment themes and market trends"
+          ],
+          key_metrics: [
+            "Total Return - Overall performance since inception",
+            "Annual Return - Annualized performance metrics",
+            "Volatility - Risk measurement for the index",
+            "Sharpe Ratio - Risk-adjusted return measurement",
+            "Max Drawdown - Worst-case scenario loss measurement",
+            "Assets Count - Number of tokens in the index"
+          ],
+          usage_guidelines: [
+            "Use for diversified crypto exposure without picking individual tokens",
+            "Compare active vs passive strategies for your investment goals",
+            "Consider volatility and Sharpe ratio for risk assessment",
+            "Review assets count for diversification level",
+            "Monitor total return and max drawdown for performance evaluation"
+          ]
+        }
+      };
+    } catch (error) {
+      console.error("Error in getIndices action:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        message: "Failed to retrieve indices data from TokenMetrics"
+      };
+    }
+  },
+  async validate(_runtime, _message) {
+    try {
+      const apiKey = process.env.TOKENMETRICS_API_KEY;
+      return !!apiKey;
+    } catch {
+      return false;
+    }
+  }
+};
+function analyzeIndicesData(indices) {
+  if (!indices || indices.length === 0) {
+    return {
+      summary: "No indices data available for analysis",
+      insights: [],
+      recommendations: []
+    };
+  }
+  const activeIndices = indices.filter((index) => index.INDEX_TYPE === "active");
+  const passiveIndices = indices.filter((index) => index.INDEX_TYPE === "passive");
+  const avgTotalReturn = indices.filter((index) => index.TOTAL_RETURN !== void 0).reduce((sum, index) => sum + index.TOTAL_RETURN, 0) / indices.length;
+  const avgAnnualReturn = indices.filter((index) => index.ANNUAL_RETURN !== void 0).reduce((sum, index) => sum + index.ANNUAL_RETURN, 0) / indices.length;
+  const avgVolatility = indices.filter((index) => index.VOLATILITY !== void 0).reduce((sum, index) => sum + index.VOLATILITY, 0) / indices.length;
+  const avgSharpeRatio = indices.filter((index) => index.SHARPE_RATIO !== void 0).reduce((sum, index) => sum + index.SHARPE_RATIO, 0) / indices.length;
+  const topPerformers = indices.filter((index) => index.TOTAL_RETURN !== void 0).sort((a, b) => b.TOTAL_RETURN - a.TOTAL_RETURN).slice(0, 3);
+  const bestRiskAdjusted = indices.filter((index) => index.SHARPE_RATIO !== void 0).sort((a, b) => b.SHARPE_RATIO - a.SHARPE_RATIO).slice(0, 3);
+  const insights = [
+    `\u{1F4CA} Total Indices Available: ${indices.length} (${activeIndices.length} active, ${passiveIndices.length} passive)`,
+    `\u{1F4C8} Average Total Return: ${formatTokenMetricsNumber(avgTotalReturn, "percentage")}`,
+    `\u{1F4C5} Average Annual Return: ${formatTokenMetricsNumber(avgAnnualReturn, "percentage")}`,
+    `\u26A1 Average Volatility: ${formatTokenMetricsNumber(avgVolatility, "percentage")}`,
+    `\u{1F3AF} Average Sharpe Ratio: ${avgSharpeRatio.toFixed(3)}`,
+    `\u{1F3C6} Top Performer: ${topPerformers[0]?.INDEX_NAME} (${formatTokenMetricsNumber(topPerformers[0]?.TOTAL_RETURN, "percentage")})`
+  ];
+  const recommendations = [
+    activeIndices.length > 0 ? `\u{1F3AF} Active Management: ${activeIndices.length} actively managed indices available for dynamic allocation strategies` : "\u26A0\uFE0F No active indices currently available",
+    passiveIndices.length > 0 ? `\u{1F4CA} Passive Investment: ${passiveIndices.length} passive indices available for low-cost market exposure` : "\u26A0\uFE0F No passive indices currently available",
+    avgSharpeRatio > 1 ? "\u2705 Strong Risk-Adjusted Returns: Average Sharpe ratio indicates good risk-adjusted performance" : "\u26A0\uFE0F Consider Risk: Lower Sharpe ratios suggest higher risk relative to returns",
+    avgVolatility > 50 ? "\u26A0\uFE0F High Volatility: Indices show significant price swings - consider position sizing" : "\u2705 Moderate Volatility: Reasonable risk levels for crypto investments"
+  ];
+  return {
+    summary: `Analysis of ${indices.length} crypto indices showing ${formatTokenMetricsNumber(avgTotalReturn, "percentage")} average total return with ${formatTokenMetricsNumber(avgVolatility, "percentage")} volatility`,
+    performance_metrics: {
+      total_indices: indices.length,
+      active_indices: activeIndices.length,
+      passive_indices: passiveIndices.length,
+      avg_total_return: avgTotalReturn,
+      avg_annual_return: avgAnnualReturn,
+      avg_volatility: avgVolatility,
+      avg_sharpe_ratio: avgSharpeRatio
+    },
+    top_performers: topPerformers.map((index) => ({
+      name: index.INDEX_NAME,
+      symbol: index.INDEX_SYMBOL,
+      total_return: index.TOTAL_RETURN,
+      annual_return: index.ANNUAL_RETURN,
+      type: index.INDEX_TYPE
+    })),
+    best_risk_adjusted: bestRiskAdjusted.map((index) => ({
+      name: index.INDEX_NAME,
+      symbol: index.INDEX_SYMBOL,
+      sharpe_ratio: index.SHARPE_RATIO,
+      total_return: index.TOTAL_RETURN,
+      volatility: index.VOLATILITY
+    })),
+    insights,
+    recommendations,
+    investment_considerations: [
+      "\u{1F4C8} Compare total returns vs benchmark (Bitcoin/Ethereum)",
+      "\u2696\uFE0F Evaluate risk tolerance using volatility and max drawdown",
+      "\u{1F3AF} Consider Sharpe ratio for risk-adjusted performance",
+      "\u{1F504} Review rebalancing frequency for active indices",
+      "\u{1F4B0} Factor in management fees and expense ratios",
+      "\u{1F4CA} Analyze correlation with existing portfolio holdings"
+    ]
+  };
+}
+
+// src/actions/getIndicesHoldingsAction.ts
+var getIndicesHoldingsAction = {
+  name: "getIndicesHoldings",
+  description: "Get the current holdings of a crypto index with weight percentages and allocation details from TokenMetrics",
+  similes: [
+    "get index holdings",
+    "index composition",
+    "index allocations",
+    "index weights",
+    "index portfolio",
+    "index assets",
+    "index breakdown",
+    "index constituents"
+  ],
+  examples: [
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Show me the holdings of crypto index 1"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "I'll get the current holdings and allocation weights for that crypto index.",
+          action: "GET_INDICES_HOLDINGS"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "What tokens are in the DeFi index and their weights?"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "Let me show you the token composition and weight allocation for the DeFi index.",
+          action: "GET_INDICES_HOLDINGS"
+        }
+      }
+    ]
+  ],
+  async handler(_runtime, message, _state) {
+    try {
+      const messageContent = message.content;
+      const indexId = messageContent.id || messageContent.index_id || messageContent.indexId;
+      if (!indexId) {
+        throw new Error("Index ID is required. Please specify which index holdings you want to view (e.g., id: 1)");
+      }
+      const requestParams = {
+        id: Number(indexId)
+      };
+      validateTokenMetricsParams(requestParams);
+      const apiParams = buildTokenMetricsParams(requestParams);
+      const response = await callTokenMetricsApi(
+        TOKENMETRICS_ENDPOINTS.indicesHoldings,
+        apiParams,
+        "GET"
+      );
+      const formattedData = formatTokenMetricsResponse(response, "getIndicesHoldings");
+      const holdings = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+      const holdingsAnalysis = analyzeHoldingsData(holdings);
+      return {
+        success: true,
+        message: `Successfully retrieved holdings for index ${indexId} with ${holdings.length} assets`,
+        indices_holdings: holdings,
+        analysis: holdingsAnalysis,
+        metadata: {
+          endpoint: TOKENMETRICS_ENDPOINTS.indicesHoldings,
+          index_id: indexId,
+          total_holdings: holdings.length,
+          api_version: "v2",
+          data_source: "TokenMetrics Indices Engine"
+        },
+        holdings_explanation: {
+          purpose: "Index holdings show the exact composition and allocation strategy of crypto indices",
+          key_metrics: [
+            "Weight Percentage - Allocation percentage of each token in the index",
+            "Allocation Value - Dollar value allocated to each token",
+            "Price - Current market price of each holding",
+            "Market Cap - Market capitalization of each token",
+            "24h Change - Recent price performance of holdings"
+          ],
+          allocation_insights: [
+            "Higher weight percentages indicate core positions in the index strategy",
+            "Diversification can be measured by the distribution of weights",
+            "Recent price changes affect the current allocation balance",
+            "Market cap correlation shows if the index follows market-cap weighting"
+          ],
+          usage_guidelines: [
+            "Review weight distribution for diversification assessment",
+            "Monitor large allocations for concentration risk",
+            "Compare holdings to your existing portfolio for overlap analysis",
+            "Track price changes to understand index performance drivers",
+            "Use allocation values to understand absolute exposure levels"
+          ]
+        }
+      };
+    } catch (error) {
+      console.error("Error in getIndicesHoldings action:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        message: "Failed to retrieve indices holdings data from TokenMetrics"
+      };
+    }
+  },
+  async validate(_runtime, _message) {
+    try {
+      const apiKey = process.env.TOKENMETRICS_API_KEY;
+      return !!apiKey;
+    } catch {
+      return false;
+    }
+  }
+};
+function analyzeHoldingsData(holdings) {
+  if (!holdings || holdings.length === 0) {
+    return {
+      summary: "No holdings data available for this index",
+      insights: [],
+      recommendations: []
+    };
+  }
+  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT_PERCENTAGE || 0), 0);
+  const totalValue = holdings.reduce((sum, holding) => sum + (holding.ALLOCATION_VALUE || 0), 0);
+  const topHoldings = holdings.filter((holding) => holding.WEIGHT_PERCENTAGE !== void 0).sort((a, b) => b.WEIGHT_PERCENTAGE - a.WEIGHT_PERCENTAGE).slice(0, 5);
+  const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + holding.WEIGHT_PERCENTAGE, 0);
+  const top5Weight = topHoldings.reduce((sum, holding) => sum + holding.WEIGHT_PERCENTAGE, 0);
+  const holdingsWithPriceChange = holdings.filter((holding) => holding.PRICE_CHANGE_PERCENTAGE_24H !== void 0);
+  const avgPriceChange = holdingsWithPriceChange.length > 0 ? holdingsWithPriceChange.reduce((sum, holding) => sum + holding.PRICE_CHANGE_PERCENTAGE_24H, 0) / holdingsWithPriceChange.length : 0;
+  const largeCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e10);
+  const midCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e9 && (holding.MARKET_CAP || 0) <= 1e10);
+  const smallCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) <= 1e9);
+  const insights = [
+    `\u{1F4CA} Total Holdings: ${holdings.length} tokens`,
+    `\u2696\uFE0F Total Weight: ${formatTokenMetricsNumber(totalWeight, "percentage")}`,
+    `\u{1F4B0} Total Allocation Value: ${formatTokenMetricsNumber(totalValue, "currency")}`,
+    `\u{1F3C6} Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatTokenMetricsNumber(topHoldings[0]?.WEIGHT_PERCENTAGE, "percentage")})`,
+    `\u{1F4C8} Top 3 Concentration: ${formatTokenMetricsNumber(top3Weight, "percentage")}`,
+    `\u{1F4CA} Top 5 Concentration: ${formatTokenMetricsNumber(top5Weight, "percentage")}`,
+    `\u{1F4C9} Average 24h Change: ${formatTokenMetricsNumber(avgPriceChange, "percentage")}`
+  ];
+  const recommendations = [
+    top3Weight > 60 ? "\u26A0\uFE0F High Concentration: Top 3 holdings represent significant portion - consider concentration risk" : "\u2705 Balanced Allocation: Good diversification across top holdings",
+    holdings.length > 20 ? "\u2705 Well Diversified: Large number of holdings provides good diversification" : holdings.length < 10 ? "\u26A0\uFE0F Limited Diversification: Consider if concentration aligns with your risk tolerance" : "\u{1F4CA} Moderate Diversification: Reasonable number of holdings for focused strategy",
+    largeCapHoldings.length > holdings.length * 0.7 ? "\u{1F3DB}\uFE0F Large Cap Focus: Index heavily weighted toward established cryptocurrencies" : smallCapHoldings.length > holdings.length * 0.5 ? "\u{1F680} Small Cap Exposure: Higher risk/reward profile with smaller market cap tokens" : "\u2696\uFE0F Balanced Market Cap: Mix of large and smaller market cap exposures",
+    Math.abs(avgPriceChange) > 10 ? "\u26A1 High Volatility: Recent price movements show significant volatility in holdings" : "\u{1F4CA} Stable Performance: Holdings showing moderate price movements"
+  ];
+  return {
+    summary: `Index contains ${holdings.length} holdings with ${formatTokenMetricsNumber(top3Weight, "percentage")} concentration in top 3 positions`,
+    portfolio_metrics: {
+      total_holdings: holdings.length,
+      total_weight: totalWeight,
+      total_value: totalValue,
+      top_3_concentration: top3Weight,
+      top_5_concentration: top5Weight,
+      avg_24h_change: avgPriceChange
+    },
+    market_cap_distribution: {
+      large_cap: largeCapHoldings.length,
+      mid_cap: midCapHoldings.length,
+      small_cap: smallCapHoldings.length
+    },
+    top_holdings: topHoldings.map((holding) => ({
+      token_name: holding.TOKEN_NAME,
+      symbol: holding.TOKEN_SYMBOL,
+      weight_percentage: holding.WEIGHT_PERCENTAGE,
+      allocation_value: holding.ALLOCATION_VALUE,
+      price: holding.PRICE,
+      price_change_24h: holding.PRICE_CHANGE_PERCENTAGE_24H
+    })),
+    insights,
+    recommendations,
+    risk_considerations: [
+      "\u{1F4CA} Monitor concentration risk in top holdings",
+      "\u{1F504} Track rebalancing frequency and methodology",
+      "\u{1F4B0} Consider correlation with your existing portfolio",
+      "\u{1F4C8} Evaluate performance attribution by holding",
+      "\u26A0\uFE0F Assess liquidity risk in smaller holdings",
+      "\u{1F3AF} Review alignment with investment objectives"
+    ]
+  };
+}
+
+// src/actions/getIndicesPerformanceAction.ts
+var getIndicesPerformanceAction = {
+  name: "getIndicesPerformance",
+  description: "Get historical performance data of a crypto index including returns, volatility, and benchmark comparisons from TokenMetrics",
+  similes: [
+    "get index performance",
+    "index returns",
+    "index history",
+    "index performance data",
+    "index analytics",
+    "index tracking",
+    "index performance analysis",
+    "index time series"
+  ],
+  examples: [
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Show me the performance of crypto index 1"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "I'll get the historical performance data for that crypto index including returns and volatility metrics.",
+          action: "GET_INDICES_PERFORMANCE"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "How has the DeFi index performed over the last 3 months?"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "Let me analyze the DeFi index performance data over the specified time period.",
+          action: "GET_INDICES_PERFORMANCE"
+        }
+      }
+    ]
+  ],
+  async handler(_runtime, message, _state) {
+    try {
+      const messageContent = message.content;
+      const indexId = messageContent.id || messageContent.index_id || messageContent.indexId;
+      if (!indexId) {
+        throw new Error("Index ID is required. Please specify which index performance you want to view (e.g., id: 1)");
+      }
+      const requestParams = {
+        id: Number(indexId),
+        startDate: typeof messageContent.startDate === "string" ? messageContent.startDate : void 0,
+        endDate: typeof messageContent.endDate === "string" ? messageContent.endDate : void 0,
+        limit: typeof messageContent.limit === "number" ? messageContent.limit : 50,
+        page: typeof messageContent.page === "number" ? messageContent.page : 1
+      };
+      validateTokenMetricsParams(requestParams);
+      const apiParams = buildTokenMetricsParams(requestParams);
+      const response = await callTokenMetricsApi(
+        TOKENMETRICS_ENDPOINTS.indicesPerformance,
+        apiParams,
+        "GET"
+      );
+      const formattedData = formatTokenMetricsResponse(response, "getIndicesPerformance");
+      const performance = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+      const performanceAnalysis = analyzePerformanceData(performance);
+      return {
+        success: true,
+        message: `Successfully retrieved performance data for index ${indexId} with ${performance.length} data points`,
+        indices_performance: performance,
+        analysis: performanceAnalysis,
+        metadata: {
+          endpoint: TOKENMETRICS_ENDPOINTS.indicesPerformance,
+          index_id: indexId,
+          date_range: {
+            start_date: requestParams.startDate,
+            end_date: requestParams.endDate
+          },
+          pagination: {
+            page: requestParams.page,
+            limit: requestParams.limit
+          },
+          data_points: performance.length,
+          api_version: "v2",
+          data_source: "TokenMetrics Indices Engine"
+        },
+        performance_explanation: {
+          purpose: "Index performance data tracks historical returns and risk metrics over time",
+          key_metrics: [
+            "Index Value - The calculated value of the index at each point in time",
+            "Daily Return - Day-over-day return in absolute and percentage terms",
+            "Cumulative Return - Total return from inception or start date",
+            "Volatility - Risk measurement showing price variability",
+            "Benchmark Comparison - Performance relative to market benchmarks"
+          ],
+          performance_insights: [
+            "Consistent positive returns indicate strong index strategy",
+            "Lower volatility suggests more stable investment experience",
+            "Cumulative returns show long-term wealth creation potential",
+            "Benchmark outperformance demonstrates active management value"
+          ],
+          usage_guidelines: [
+            "Compare cumulative returns across different time periods",
+            "Evaluate volatility for risk assessment and position sizing",
+            "Monitor daily returns for recent performance trends",
+            "Use benchmark comparison to assess relative performance",
+            "Consider drawdown periods for worst-case scenario planning"
+          ]
+        }
+      };
+    } catch (error) {
+      console.error("Error in getIndicesPerformance action:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        message: "Failed to retrieve indices performance data from TokenMetrics"
+      };
+    }
+  },
+  async validate(_runtime, _message) {
+    try {
+      const apiKey = process.env.TOKENMETRICS_API_KEY;
+      return !!apiKey;
+    } catch {
+      return false;
+    }
+  }
+};
+function analyzePerformanceData(performance) {
+  if (!performance || performance.length === 0) {
+    return {
+      summary: "No performance data available for this index",
+      insights: [],
+      recommendations: []
+    };
+  }
+  const sortedPerformance = performance.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
+  const latestData = sortedPerformance[sortedPerformance.length - 1];
+  const earliestData = sortedPerformance[0];
+  const latestROI = latestData.INDEX_CUMULATIVE_ROI || 0;
+  const earliestROI = earliestData.INDEX_CUMULATIVE_ROI || 0;
+  const totalReturn = latestROI - earliestROI;
+  const dailyReturns = [];
+  for (let i = 1; i < sortedPerformance.length; i++) {
+    const currentROI = sortedPerformance[i].INDEX_CUMULATIVE_ROI || 0;
+    const previousROI = sortedPerformance[i - 1].INDEX_CUMULATIVE_ROI || 0;
+    const dailyReturn = currentROI - previousROI;
+    dailyReturns.push(dailyReturn);
+  }
+  const avgDailyReturn = dailyReturns.length > 0 ? dailyReturns.reduce((sum, ret) => sum + ret, 0) / dailyReturns.length : 0;
+  const avgReturn = avgDailyReturn;
+  const variance = dailyReturns.length > 0 ? dailyReturns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / dailyReturns.length : 0;
+  const volatility = Math.sqrt(variance);
+  const bestDay = dailyReturns.length > 0 ? Math.max(...dailyReturns) : 0;
+  const worstDay = dailyReturns.length > 0 ? Math.min(...dailyReturns) : 0;
+  const positiveDays = dailyReturns.filter((ret) => ret > 0).length;
+  const winRate = dailyReturns.length > 0 ? positiveDays / dailyReturns.length * 100 : 0;
+  const recentData = sortedPerformance.slice(-7);
+  const recentReturn = recentData.length > 1 ? recentData[recentData.length - 1].INDEX_CUMULATIVE_ROI - recentData[0].INDEX_CUMULATIVE_ROI : 0;
+  const insights = [
+    `\u{1F4CA} Performance Period: ${new Date(earliestData.DATE).toLocaleDateString()} to ${new Date(latestData.DATE).toLocaleDateString()}`,
+    `\u{1F4C8} Total Return: ${formatTokenMetricsNumber(totalReturn, "percentage")}`,
+    `\u{1F4C5} Average Daily Return: ${formatTokenMetricsNumber(avgDailyReturn, "percentage")}`,
+    `\u26A1 Volatility: ${formatTokenMetricsNumber(volatility, "percentage")}`,
+    `\u{1F3C6} Best Day: ${formatTokenMetricsNumber(bestDay, "percentage")}`,
+    `\u{1F4C9} Worst Day: ${formatTokenMetricsNumber(worstDay, "percentage")}`,
+    `\u{1F3AF} Win Rate: ${formatTokenMetricsNumber(winRate, "percentage")} of days positive`
+  ];
+  const recommendations = [
+    totalReturn > 0 ? "\u2705 Positive Performance: Index has generated positive returns over the period" : "\u26A0\uFE0F Negative Performance: Index has declined - review strategy and market conditions",
+    winRate > 55 ? "\u2705 Strong Consistency: High percentage of positive days indicates consistent performance" : "\u26A0\uFE0F Inconsistent Performance: Lower win rate suggests higher volatility in daily returns",
+    volatility > 0.3 ? "\u26A0\uFE0F High Volatility: Significant price swings - consider position sizing and risk management" : "\u2705 Moderate Volatility: Reasonable risk levels for crypto investments",
+    Math.abs(recentReturn) > 0.1 ? "\u26A1 Recent Volatility: Significant recent price movements - monitor closely" : "\u{1F4CA} Stable Recent Performance: Index showing stable recent performance"
+  ];
+  const riskAdjustedReturn = volatility > 0 ? avgDailyReturn * Math.sqrt(365) / volatility : 0;
+  return {
+    summary: `Index performance over ${performance.length} data points showing ${formatTokenMetricsNumber(totalReturn, "percentage")} total return with ${formatTokenMetricsNumber(volatility, "percentage")} volatility`,
+    performance_metrics: {
+      total_return: totalReturn,
+      avg_daily_return: avgDailyReturn,
+      avg_volatility: volatility,
+      best_day: bestDay,
+      worst_day: worstDay,
+      win_rate: winRate,
+      recent_7day_return: recentReturn,
+      risk_adjusted_return: riskAdjustedReturn
+    },
+    time_period: {
+      start_date: earliestData.DATE,
+      end_date: latestData.DATE,
+      data_points: performance.length,
+      trading_days: dailyReturns.length
+    },
+    latest_values: {
+      index_cumulative_roi: latestData.INDEX_CUMULATIVE_ROI,
+      market_cap: latestData.MARKET_CAP,
+      volume: latestData.VOLUME,
+      fdv: latestData.FDV
+    },
+    insights,
+    recommendations,
+    investment_considerations: [
+      "\u{1F4C8} Evaluate total return vs investment timeline",
+      "\u2696\uFE0F Consider volatility relative to risk tolerance",
+      "\u{1F3AF} Compare performance to relevant benchmarks",
+      "\u{1F4CA} Analyze consistency through win rate metrics",
+      "\u{1F504} Review drawdown periods for risk assessment",
+      "\u{1F4B0} Factor in fees and expenses for net returns",
+      "\u{1F4C5} Consider market cycle timing for context"
+    ]
+  };
+}
+
 // src/index.ts
 console.log("\n=======================================");
 console.log("   TokenMetrics Plugin FULLY LOADED   ");
@@ -8640,7 +8100,7 @@ console.log("\u2705 Response Handling: Proper structure");
 console.log("");
 console.log("\u{1F4CB} ALL 20 ENDPOINTS IMPLEMENTED:");
 console.log("");
-console.log("\u{1F3C6} CORE MARKET DATA (10 endpoints):");
+console.log("\u{1F3C6} CORE MARKET DATA (7 endpoints):");
 console.log("  1. getTokensAction           (/v2/tokens)");
 console.log("  2. getTopMarketCapAction     (/v2/top-market-cap-tokens)");
 console.log("  3. getPriceAction            (/v2/price)");
@@ -8648,21 +8108,23 @@ console.log("  4. getTraderGradesAction     (/v2/trader-grades)");
 console.log("  5. getQuantmetricsAction     (/v2/quantmetrics)");
 console.log("  6. getTradingSignalsAction   (/v2/trading-signals)");
 console.log("  7. getMarketMetricsAction    (/v2/market-metrics)");
-console.log("  8. getSectorIndicesHoldings  (/v2/indices-index-specific-tree-map)");
-console.log("  9. getIndexPerformance       (/v2/indices-index-specific-performance)");
-console.log(" 10. getSectorIndexTransaction (/v2/indices-index-specific-index-transaction)");
 console.log("");
 console.log("\u{1F4CA} ADVANCED ANALYSIS (10 endpoints):");
-console.log(" 11. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
-console.log(" 12. getDailyOhlcvAction       (/v2/daily-ohlcv)");
-console.log(" 13. getInvestorGradesAction   (/v2/investor-grades)");
-console.log(" 14. getAiReportsAction        (/v2/ai-reports)");
-console.log(" 15. getCryptoInvestorsAction  (/v2/crypto-investors)");
-console.log(" 16. getCorrelationAction      (/v2/correlation)");
-console.log(" 17. getResistanceSupportAction (/v2/resistance-support)");
-console.log(" 18. getTMAIAction            (/v2/tmai) [POST]");
-console.log(" 19. getSentimentAction       (/v2/sentiments)");
-console.log(" 20. getScenarioAnalysisAction (/v2/scenario-analysis)");
+console.log("  8. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
+console.log("  9. getDailyOhlcvAction       (/v2/daily-ohlcv)");
+console.log(" 10. getInvestorGradesAction   (/v2/investor-grades)");
+console.log(" 11. getAiReportsAction        (/v2/ai-reports)");
+console.log(" 12. getCryptoInvestorsAction  (/v2/crypto-investors)");
+console.log(" 13. getCorrelationAction      (/v2/correlation)");
+console.log(" 14. getResistanceSupportAction (/v2/resistance-support)");
+console.log(" 15. getTMAIAction            (/v2/tmai) [POST]");
+console.log(" 16. getSentimentAction       (/v2/sentiments)");
+console.log(" 17. getScenarioAnalysisAction (/v2/scenario-analysis)");
+console.log("");
+console.log("\u{1F4CB} ADDITIONAL ACTIONS (3 endpoints):");
+console.log(" 18. getIndicesAction          (/v2/indices)");
+console.log(" 19. getIndicesHoldingsAction  (/v2/indices-holdings)");
+console.log(" 20. getIndicesPerformanceAction (/v2/indices-performance)");
 console.log("");
 console.log("\u{1F3AF} COMPLETE TOKENMETRICS INTEGRATION");
 console.log("\u2705 All major endpoints from API documentation");
@@ -8690,13 +8152,6 @@ var tokenmetricsPlugin = {
     // ✅ AI-generated trading signals
     getMarketMetricsAction,
     // ✅ Overall market sentiment and metrics
-    // ===== SECTOR INDICES ACTIONS =====
-    getSectorIndicesHoldingsAction,
-    // ✅ Sector composition and holdings
-    getIndexPerformanceAction,
-    // ✅ Historical sector performance
-    getSectorIndexTransactionAction,
-    // ✅ Sector rebalancing transactions
     // ===== OHLCV DATA ACTIONS =====
     getHourlyOhlcvAction,
     // ✅ Hourly price/volume data for technical analysis
@@ -8720,8 +8175,15 @@ var tokenmetricsPlugin = {
     getSentimentAction,
     // ✅ Social sentiment from Twitter, Reddit, News
     // ===== PREDICTIVE ANALYSIS ACTIONS =====
-    getScenarioAnalysisAction
+    getScenarioAnalysisAction,
     // ✅ Price predictions under different market scenarios
+    // ===== ADDITIONAL ACTIONS =====
+    getIndicesAction,
+    // ✅ Token indices data
+    getIndicesHoldingsAction,
+    // ✅ Token indices holdings data
+    getIndicesPerformanceAction
+    // ✅ Token indices performance data
   ],
   evaluators: [],
   providers: []
@@ -8735,7 +8197,7 @@ var tokenmetricsTests = [
         fn: async (runtime) => {
           console.log("\u{1F9EA} Testing COMPLETE endpoint integration");
           const totalEndpoints = 20;
-          const coreEndpoints = 10;
+          const coreEndpoints = 7;
           const advancedEndpoints = 10;
           console.log(`\u2705 Core Market Data: ${coreEndpoints} endpoints implemented`);
           console.log(`\u2705 Advanced Analysis: ${advancedEndpoints} endpoints implemented`);
@@ -8762,11 +8224,6 @@ var tokenmetricsTests = [
               "Quantmetrics",
               "Trading Signals",
               "Market Metrics"
-            ],
-            "Sector Analysis": [
-              "Sector Holdings",
-              "Index Performance",
-              "Index Transactions"
             ],
             "OHLCV Data": [
               "Hourly OHLCV",
@@ -8861,11 +8318,10 @@ var tokenmetricsTests = [
             "\u{1F4CA} Swing Trading: Daily OHLCV + Trader Grades + Technical Analysis",
             "\u{1F4BC} Portfolio Management: Investor Grades + Correlation + Market Metrics",
             "\u{1F3AF} Market Timing: Sentiment + Scenario Analysis + AI Insights",
-            "\u{1F50D} Research: AI Reports + Crypto Investors + Sector Analysis",
+            "\u{1F50D} Research: AI Reports + Crypto Investors + Market Analysis",
             "\u2696\uFE0F Risk Management: Quantmetrics + Correlation + Scenario Analysis",
             "\u{1F680} Discovery: Top Market Cap + Tokens + AI Assistant",
             "\u{1F4F0} Market Intelligence: Sentiment + News + Market Metrics",
-            "\u{1F3D7}\uFE0F Sector Allocation: Sector Holdings + Performance + Transactions",
             "\u{1F916} AI-Driven Insights: TMAI + AI Reports + Predictive Analysis"
           ];
           useCases.forEach((useCase) => console.log(useCase));

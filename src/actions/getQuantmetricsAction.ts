@@ -63,7 +63,6 @@ export const getQuantmetricsAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching quantitative metrics from TokenMetrics v2/quantmetrics endpoint");
             
             // Make API call with corrected authentication
             const response = await callTokenMetricsApi<QuantmetricsResponse>(

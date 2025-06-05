@@ -46,7 +46,6 @@ export const getSentimentAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching sentiment data from TokenMetrics v2/sentiments endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<SentimentResponse>(

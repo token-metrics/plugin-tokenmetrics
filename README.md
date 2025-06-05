@@ -35,6 +35,8 @@ npm install @elizaos-plugins/plugin-tokenmetrics
 
 # 4️⃣ Start asking questions!
 "What's Bitcoin's price and trading signals?"
+"Show me crypto indices data"
+"What are the holdings of index 1?"
 ```
 
 ---
@@ -70,11 +72,15 @@ npm install @elizaos-plugins/plugin-tokenmetrics
 - 😊 **Sentiment Analysis**: Social media and news sentiment from Twitter, Reddit, News
 - 🔗 **Correlation Analysis**: Portfolio diversification insights and correlation matrices
 
+### 🆕 **NEW: Crypto Indices Features**
+- 📊 **Crypto Indices**: Access to active and passive crypto index funds
+- 🏦 **Index Holdings**: Detailed composition and allocation weights for each index
+- 📈 **Index Performance**: Historical performance data, returns, and volatility metrics
+
 ### 🤖 AI-Powered Features
 - 🧠 **TokenMetrics AI**: Direct access to TokenMetrics AI assistant (TMAI)
 - 📝 **AI Reports**: Comprehensive AI-generated market analysis and recommendations
 - 🔮 **Scenario Analysis**: Price predictions under bullish/bearish/base scenarios
-- 🏢 **Sector Analysis**: DeFi, Layer 1, Gaming, NFT sector performance tracking
 
 ### 💬 Intelligent Conversation
 - 🗣️ **Natural Language Processing**: Understands complex crypto queries in plain English
@@ -105,7 +111,7 @@ npm install @elizaos-plugins/plugin-tokenmetrics
 ### ⏱️ Response Times (Typical)
 - **Simple Queries** (price, basic data): 1-3 seconds
 - **Complex Analysis** (AI reports, correlations): 3-8 seconds
-- **Bulk Data** (top market cap, sector analysis): 5-10 seconds
+- **Bulk Data** (top market cap, comprehensive analysis): 5-10 seconds
 
 ### 🚦 Rate Limits
 - **TokenMetrics API**: Varies by subscription tier
@@ -145,7 +151,7 @@ Or add to package.json:
   ],
   "settings": {
     "secrets": {
-      "TOKENMETRICS_API_KEY": "your_tokenmetrics_api_key_here"
+      "TOKENMETRICS_API_KEY": "your_tokenmetrics_api_key"
     },
     "tokenmetrics": {
       "defaultAnalysisDepth": "detailed",
@@ -178,12 +184,15 @@ Your ElizaOS agent can now understand and respond to queries like:
 😊 "What's the overall crypto market sentiment today?"
 🔗 "Compare Bitcoin and Ethereum correlation"
 📈 "Show me resistance and support levels for BTC"
-📝 "Generate an AI report for the DeFi sector"
+📝 "Generate an AI report for Bitcoin analysis"
 👑 "What are the top 10 cryptocurrencies by market cap?"
 📉 "Analyze the hourly OHLCV data for Bitcoin"
 🔮 "Show me scenario analysis for Ethereum price predictions"
 💼 "Which crypto investors are buying Bitcoin?"
 😊 "What's the sentiment around Dogecoin on social media?"
+📊 "Show me available crypto indices"
+🏦 "What are the holdings of crypto index 1?"
+📈 "Show me the performance history of index 2"
 ```
 
 ### 🎯 Advanced Query Examples
@@ -194,6 +203,9 @@ Your ElizaOS agent can now understand and respond to queries like:
 🎯 "What are the trading signals for tokens with A+ investor grades?"
 📉 "Analyze the hourly OHLCV data for Bitcoin over the last 7 days"
 🔮 "Show me scenario analysis for Ethereum under different market conditions"
+📊 "Compare active vs passive crypto indices performance"
+🏦 "Show me the top holdings in the best performing crypto index"
+📈 "Analyze the risk-adjusted returns of crypto index funds"
 ```
 
 ### 💻 Programmatic Usage
@@ -232,9 +244,9 @@ import { tokenmetricsPlugin } from "@elizaos-plugins/plugin-tokenmetrics";
 | 15 | **getSentiment** | AI | Social sentiment | Sentiment analysis | 😊 |
 | 16 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
 | 17 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
-| 18 | **getSectorIndicesHoldings** | Sector | Sector composition | Sector analysis | 🏢 |
-| 19 | **getIndexPerformance** | Sector | Sector performance | Sector tracking | 📊 |
-| 20 | **getSectorIndexTransaction** | Sector | Sector transactions | Sector rebalancing | 🔄 |
+| 18 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
+| 19 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
+| 20 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
 
 **🎯 Total: 20 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
 
@@ -336,7 +348,7 @@ Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify a
 ### 💼 Portfolio Managers
 - 🎯 **Investment grades** for long-term holdings assessment
 - 🔗 **Correlation analysis** for diversification strategies
-- 🏢 **Sector performance analysis** for allocation decisions
+- 🏢 **Market performance analysis** for allocation decisions
 - ⚠️ **Risk assessment metrics** for portfolio optimization
 
 ### 🔬 Research Analysts
