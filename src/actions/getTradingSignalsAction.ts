@@ -334,9 +334,10 @@ function analyzeTradingSignals(signalsData: any[]): any {
  */
 function analyzeSignalDistribution(signalsData: any[]): any {
     // Count different signal types (1 = bullish, -1 = bearish, 0 = neutral)
-    const bullishSignals = signalsData.filter(s => s.SIGNAL === 1).length;
-    const bearishSignals = signalsData.filter(s => s.SIGNAL === -1).length;
-    const neutralSignals = signalsData.filter(s => s.SIGNAL === 0).length;
+    // Use TRADING_SIGNAL field (correct API field name)
+    const bullishSignals = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+    const bearishSignals = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === -1).length;
+    const neutralSignals = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 0).length;
     const totalSignals = signalsData.length;
     
     // Calculate percentages for better understanding
@@ -370,10 +371,11 @@ function analyzeSignalDistribution(signalsData: any[]): any {
  */
 function identifyBestOpportunities(signalsData: any[]): any {
     // Filter for actionable signals (non-neutral with some supporting data)
-    const actionableSignals = signalsData.filter(s => 
-        s.SIGNAL !== 0 && // Not neutral
-        (s.ENTRY_PRICE || s.TARGET_PRICE || s.AI_CONFIDENCE) // Has some actionable data
-    );
+    const actionableSignals = signalsData.filter(s => {
+        const signalValue = s.TRADING_SIGNAL || s.SIGNAL; // Use correct field name
+        return signalValue !== 0 && // Not neutral
+               (s.ENTRY_PRICE || s.TARGET_PRICE || s.AI_CONFIDENCE); // Has some actionable data
+    });
     
     // Sort by various quality indicators
     const sortedSignals = actionableSignals.sort((a, b) => {
@@ -384,15 +386,18 @@ function identifyBestOpportunities(signalsData: any[]): any {
     });
     
     // Take top opportunities
-    const topOpportunities = sortedSignals.slice(0, 5).map(signal => ({
-        token: `${signal.NAME || 'Unknown'} (${signal.SYMBOL || 'N/A'})`,
-        signal_type: signal.SIGNAL === 1 ? "BULLISH" : "BEARISH",
-        entry_price: signal.ENTRY_PRICE ? formatTokenMetricsNumber(signal.ENTRY_PRICE, 'currency') : 'N/A',
-        target_price: signal.TARGET_PRICE ? formatTokenMetricsNumber(signal.TARGET_PRICE, 'currency') : 'N/A',
-        ai_confidence: signal.AI_CONFIDENCE ? `${signal.AI_CONFIDENCE}%` : 'N/A',
-        potential_return: calculatePotentialReturn(signal),
-        market_cap: signal.MARKET_CAP ? formatTokenMetricsNumber(signal.MARKET_CAP, 'currency') : 'N/A'
-    }));
+    const topOpportunities = sortedSignals.slice(0, 5).map(signal => {
+        const signalValue = signal.TRADING_SIGNAL || signal.SIGNAL; // Use correct field name
+        return {
+            token: `${signal.NAME || 'Unknown'} (${signal.SYMBOL || 'N/A'})`,
+            signal_type: signalValue === 1 ? "BULLISH" : "BEARISH",
+            entry_price: signal.ENTRY_PRICE ? formatTokenMetricsNumber(signal.ENTRY_PRICE, 'currency') : 'N/A',
+            target_price: signal.TARGET_PRICE ? formatTokenMetricsNumber(signal.TARGET_PRICE, 'currency') : 'N/A',
+            ai_confidence: signal.AI_CONFIDENCE ? `${signal.AI_CONFIDENCE}%` : 'N/A',
+            potential_return: calculatePotentialReturn(signal),
+            market_cap: signal.MARKET_CAP ? formatTokenMetricsNumber(signal.MARKET_CAP, 'currency') : 'N/A'
+        };
+    });
     
     return {
         total_opportunities: actionableSignals.length,
@@ -474,8 +479,8 @@ function generateSignalInsights(signalsData: any[], distribution: any, opportuni
     }
     
     // Signal quality insights
-    const bullishCount = signalsData.filter(s => s.SIGNAL === 1).length;
-    const bearishCount = signalsData.filter(s => s.SIGNAL === -1).length;
+    const bullishCount = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+    const bearishCount = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === -1).length;
     
     if (bullishCount > bearishCount * 2) {
         insights.push("Overwhelming bullish bias suggests considering increased crypto exposure");

@@ -191,6 +191,44 @@ export interface TradingSignalsResponse extends TokenMetricsBaseResponse {
   data: TradingSignalsData[];
 }
 
+// HourlyTradingSignalsRequest/Response - NEW
+export interface HourlyTradingSignalsRequest {
+  token_id?: number;
+  symbol?: string;
+  signal?: number;
+  startDate?: string;
+  endDate?: string;
+  category?: string;
+  exchange?: string;
+  marketcap?: number;
+  volume?: number;
+  fdv?: number;
+  limit?: number;
+  page?: number;
+}
+
+export interface HourlyTradingSignalsData {
+  TOKEN_ID: number;
+  SYMBOL: string;
+  NAME: string;
+  TIMESTAMP: string; // Hourly signals use TIMESTAMP instead of DATE
+  SIGNAL: number;
+  SIGNAL_STRENGTH?: number;
+  ENTRY_PRICE?: number;
+  TARGET_PRICE?: number;
+  STOP_LOSS?: number;
+  AI_CONFIDENCE?: number;
+  MARKET_CAP?: number;
+  VOLUME?: number;
+  CATEGORY?: string;
+  REASONING?: string;
+  HOUR?: number; // Hour of the day (0-23)
+}
+
+export interface HourlyTradingSignalsResponse extends TokenMetricsBaseResponse {
+  data: HourlyTradingSignalsData[];
+}
+
 // MarketMetricsRequest/Response
 export interface MarketMetricsRequest {
   startDate?: string;
