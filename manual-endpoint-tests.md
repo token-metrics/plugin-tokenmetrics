@@ -124,6 +124,12 @@ echo "Show me performance data for crypto index 1" | npm run chat
 ```
 **Expected**: Historical ROI data with performance trends and analysis
 
+### ✅ **21. Hourly Trading Signals**
+```bash
+echo "Show me hourly trading signals for cryptocurrencies" | npm run chat
+```
+**Expected**: Trading signals with trend analysis
+
 ---
 
 ## 📊 Testing Results Template
@@ -150,6 +156,7 @@ echo "Show me performance data for crypto index 1" | npm run chat
 | 18 | Indices | ⏳ | - | - |
 | 19 | Indices Holdings | ⏳ | - | - |
 | 20 | Indices Performance | ⏳ | - | - |
+| 21 | Hourly Trading Signals | ⏳ | - | - |
 
 ## 🎯 Success Criteria
 - ✅ Endpoint responds without errors

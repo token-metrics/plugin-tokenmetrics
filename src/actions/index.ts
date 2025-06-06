@@ -4,6 +4,7 @@ export { getQuantmetricsAction } from "./getQuantmetricsAction";
 export { getTraderGradesAction } from "./getTraderGradesAction";
 export { getMarketMetricsAction } from "./getMarketMetricsAction";
 export { getTradingSignalsAction } from "./getTradingSignalsAction";
+export { getHourlyTradingSignalsAction } from "./getHourlyTradingSignalsAction";
 export { getPriceAction } from "./getPriceAction";
 export { getTopMarketCapAction } from "./getTopMarketCapAction";
 

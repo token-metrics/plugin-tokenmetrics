@@ -16,6 +16,7 @@ export const TOKENMETRICS_ENDPOINTS = {
     traderGrades: "/v2/trader-grades",
     marketMetrics: "/v2/market-metrics",
     tradingSignals: "/v2/trading-signals",
+    hourlyTradingSignals: "/v2/hourly-trading-signals",
     price: "/v2/price",
     topMarketCap: "/v2/top-market-cap-tokens",
     

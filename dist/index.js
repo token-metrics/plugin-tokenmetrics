@@ -11,6 +11,7 @@ var TOKENMETRICS_ENDPOINTS = {
   traderGrades: "/v2/trader-grades",
   marketMetrics: "/v2/market-metrics",
   tradingSignals: "/v2/trading-signals",
+  hourlyTradingSignals: "/v2/hourly-trading-signals",
   price: "/v2/price",
   topMarketCap: "/v2/top-market-cap-tokens",
   // OHLCV endpoints
@@ -1731,9 +1732,9 @@ function analyzeTradingSignals(signalsData) {
   };
 }
 function analyzeSignalDistribution(signalsData) {
-  const bullishSignals = signalsData.filter((s) => s.SIGNAL === 1).length;
-  const bearishSignals = signalsData.filter((s) => s.SIGNAL === -1).length;
-  const neutralSignals = signalsData.filter((s) => s.SIGNAL === 0).length;
+  const bullishSignals = signalsData.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+  const bearishSignals = signalsData.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === -1).length;
+  const neutralSignals = signalsData.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 0).length;
   const totalSignals = signalsData.length;
   const bullishPercentage = bullishSignals / totalSignals * 100;
   const bearishPercentage = bearishSignals / totalSignals * 100;
@@ -1756,25 +1757,28 @@ function analyzeSignalDistribution(signalsData) {
   };
 }
 function identifyBestOpportunities(signalsData) {
-  const actionableSignals = signalsData.filter(
-    (s) => s.SIGNAL !== 0 && // Not neutral
-    (s.ENTRY_PRICE || s.TARGET_PRICE || s.AI_CONFIDENCE)
-    // Has some actionable data
-  );
+  const actionableSignals = signalsData.filter((s) => {
+    const signalValue = s.TRADING_SIGNAL || s.SIGNAL;
+    return signalValue !== 0 && // Not neutral
+    (s.ENTRY_PRICE || s.TARGET_PRICE || s.AI_CONFIDENCE);
+  });
   const sortedSignals = actionableSignals.sort((a, b) => {
     const aScore = (a.AI_CONFIDENCE || 50) + (a.ENTRY_PRICE ? 10 : 0) + (a.TARGET_PRICE ? 10 : 0);
     const bScore = (b.AI_CONFIDENCE || 50) + (b.ENTRY_PRICE ? 10 : 0) + (b.TARGET_PRICE ? 10 : 0);
     return bScore - aScore;
   });
-  const topOpportunities = sortedSignals.slice(0, 5).map((signal) => ({
-    token: `${signal.NAME || "Unknown"} (${signal.SYMBOL || "N/A"})`,
-    signal_type: signal.SIGNAL === 1 ? "BULLISH" : "BEARISH",
-    entry_price: signal.ENTRY_PRICE ? formatTokenMetricsNumber(signal.ENTRY_PRICE, "currency") : "N/A",
-    target_price: signal.TARGET_PRICE ? formatTokenMetricsNumber(signal.TARGET_PRICE, "currency") : "N/A",
-    ai_confidence: signal.AI_CONFIDENCE ? `${signal.AI_CONFIDENCE}%` : "N/A",
-    potential_return: calculatePotentialReturn(signal),
-    market_cap: signal.MARKET_CAP ? formatTokenMetricsNumber(signal.MARKET_CAP, "currency") : "N/A"
-  }));
+  const topOpportunities = sortedSignals.slice(0, 5).map((signal) => {
+    const signalValue = signal.TRADING_SIGNAL || signal.SIGNAL;
+    return {
+      token: `${signal.NAME || "Unknown"} (${signal.SYMBOL || "N/A"})`,
+      signal_type: signalValue === 1 ? "BULLISH" : "BEARISH",
+      entry_price: signal.ENTRY_PRICE ? formatTokenMetricsNumber(signal.ENTRY_PRICE, "currency") : "N/A",
+      target_price: signal.TARGET_PRICE ? formatTokenMetricsNumber(signal.TARGET_PRICE, "currency") : "N/A",
+      ai_confidence: signal.AI_CONFIDENCE ? `${signal.AI_CONFIDENCE}%` : "N/A",
+      potential_return: calculatePotentialReturn(signal),
+      market_cap: signal.MARKET_CAP ? formatTokenMetricsNumber(signal.MARKET_CAP, "currency") : "N/A"
+    };
+  });
   return {
     total_opportunities: actionableSignals.length,
     top_opportunities: topOpportunities,
@@ -1829,8 +1833,8 @@ function generateSignalInsights(signalsData, distribution, opportunities) {
   } else if (opportunities.opportunity_quality === "Limited") {
     insights.push("Limited trading opportunities available - patience and selectivity recommended");
   }
-  const bullishCount = signalsData.filter((s) => s.SIGNAL === 1).length;
-  const bearishCount = signalsData.filter((s) => s.SIGNAL === -1).length;
+  const bullishCount = signalsData.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+  const bearishCount = signalsData.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === -1).length;
   if (bullishCount > bearishCount * 2) {
     insights.push("Overwhelming bullish bias suggests considering increased crypto exposure");
   } else if (bearishCount > bullishCount * 2) {
@@ -1900,6 +1904,461 @@ function getAvailableSignalTypes(signalsData) {
     else if (signal.SIGNAL === 0) types.add("NEUTRAL");
   });
   return Array.from(types);
+}
+
+// src/actions/getHourlyTradingSignalsAction.ts
+var getHourlyTradingSignalsAction = {
+  name: "getHourlyTradingSignals",
+  description: "Get AI-generated hourly trading signals for cryptocurrencies with frequent updates for active trading",
+  similes: [
+    "get hourly trading signals",
+    "get hourly AI signals",
+    "check hourly buy sell signals",
+    "get hourly trading recommendations",
+    "hourly AI trading signals",
+    "frequent trading signals",
+    "get hourly entry exit points",
+    "active trading signals"
+  ],
+  examples: [
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Get hourly trading signals for Bitcoin"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "I'll get the latest hourly trading signals for Bitcoin from TokenMetrics AI.",
+          action: "GET_HOURLY_TRADING_SIGNALS"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Show me hourly buy signals for cryptocurrencies"
+        }
+      },
+      {
+        user: "{{agent}}",
+        content: {
+          text: "I'll retrieve hourly bullish trading signals for active trading opportunities.",
+          action: "GET_HOURLY_TRADING_SIGNALS"
+        }
+      }
+    ]
+  ],
+  validate: async (_runtime, _message) => {
+    return true;
+  },
+  async handler(_runtime, message, _state) {
+    const content = message.content;
+    let {
+      token_id,
+      symbol,
+      signal,
+      startDate,
+      endDate,
+      category,
+      exchange,
+      marketcap,
+      volume,
+      fdv,
+      limit = 20,
+      page = 1
+    } = content;
+    let finalTokenId = typeof token_id === "number" ? token_id : void 0;
+    let finalSymbol = typeof symbol === "string" ? symbol : void 0;
+    if (!finalTokenId && finalSymbol) {
+      const symbolToTokenId = {
+        "BTC": 3375,
+        "ETH": 1027,
+        "SOL": 5426,
+        "ADA": 2010,
+        "DOT": 6636,
+        "MATIC": 3890,
+        "AVAX": 5805,
+        "LINK": 1975,
+        "UNI": 7083,
+        "ATOM": 3794
+      };
+      const upperSymbol = finalSymbol.toUpperCase();
+      if (symbolToTokenId[upperSymbol]) {
+        finalTokenId = symbolToTokenId[upperSymbol];
+        console.log(`Converted symbol ${upperSymbol} to token_id ${finalTokenId} for hourly trading signals`);
+      } else {
+        throw new Error(`Hourly trading signals require token_id. Please provide token_id directly or use a supported symbol (BTC, ETH, SOL, ADA, DOT, MATIC, AVAX, LINK, UNI, ATOM)`);
+      }
+    }
+    if (!finalTokenId) {
+      throw new Error("Hourly trading signals endpoint requires token_id parameter. Please provide either token_id or a supported symbol (BTC, ETH, SOL, etc.)");
+    }
+    try {
+      const requestParams = {
+        token_id: finalTokenId,
+        // Required parameter
+        symbol: finalSymbol,
+        // Optional, for reference
+        signal: typeof signal === "number" ? signal : void 0,
+        startDate: typeof startDate === "string" ? startDate : void 0,
+        endDate: typeof endDate === "string" ? endDate : void 0,
+        category: typeof category === "string" ? category : void 0,
+        exchange: typeof exchange === "string" ? exchange : void 0,
+        marketcap: typeof marketcap === "number" ? marketcap : void 0,
+        volume: typeof volume === "number" ? volume : void 0,
+        fdv: typeof fdv === "number" ? fdv : void 0,
+        // Pagination
+        limit: typeof limit === "number" ? limit : 20,
+        page: typeof page === "number" ? page : 1
+      };
+      validateTokenMetricsParams(requestParams);
+      const apiParams = buildTokenMetricsParams(requestParams);
+      console.log("Hourly trading signals request params:", JSON.stringify(apiParams, null, 2));
+      const response = await callTokenMetricsApi(
+        TOKENMETRICS_ENDPOINTS.hourlyTradingSignals,
+        apiParams,
+        "GET"
+      );
+      const formattedData = formatTokenMetricsResponse(response, "getHourlyTradingSignals");
+      const hourlySignals = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+      const signalsAnalysis = analyzeHourlyTradingSignals(hourlySignals);
+      return {
+        success: true,
+        message: `Successfully retrieved ${hourlySignals.length} hourly trading signals from TokenMetrics AI`,
+        hourly_trading_signals: hourlySignals,
+        analysis: signalsAnalysis,
+        metadata: {
+          endpoint: TOKENMETRICS_ENDPOINTS.hourlyTradingSignals,
+          requested_token: finalSymbol || finalTokenId,
+          signal_filter: requestParams.signal,
+          date_range: {
+            start: requestParams.startDate,
+            end: requestParams.endDate
+          },
+          filters_applied: {
+            category: requestParams.category,
+            exchange: requestParams.exchange,
+            min_marketcap: requestParams.marketcap,
+            min_volume: requestParams.volume,
+            min_fdv: requestParams.fdv
+          },
+          pagination: {
+            page: requestParams.page,
+            limit: requestParams.limit
+          },
+          data_points: hourlySignals.length,
+          api_version: "v2",
+          data_source: "TokenMetrics AI Hourly Signals",
+          update_frequency: "Hourly"
+        },
+        signals_explanation: {
+          signal_values: {
+            "1": "Bullish/Long signal - AI recommends buying or holding position",
+            "-1": "Bearish/Short signal - AI recommends short position or selling",
+            "0": "No signal - AI sees neutral conditions"
+          },
+          field_name: "TRADING_SIGNAL",
+          hourly_advantages: [
+            "More frequent signal updates for active trading",
+            "Better timing for short-term positions",
+            "Captures intraday market movements",
+            "Ideal for scalping and day trading strategies"
+          ],
+          usage_guidelines: [
+            "Monitor signals throughout the trading day",
+            "Use for short-term position adjustments",
+            "Combine with daily signals for confirmation",
+            "Consider market volatility and volume"
+          ]
+        }
+      };
+    } catch (error) {
+      console.error("Error in getHourlyTradingSignalsAction:", error);
+      let errorMessage = "Failed to retrieve hourly trading signals from TokenMetrics API";
+      let troubleshootingInfo = {};
+      if (error instanceof Error) {
+        if (error.message.includes("404")) {
+          errorMessage = "Hourly trading signals endpoint not found - this may indicate an API version issue";
+          troubleshootingInfo = {
+            endpoint_issue: "The /v2/hourly-trading-signals endpoint returned 404",
+            possible_causes: [
+              "API endpoint URL may have changed",
+              "Your API subscription may not include hourly trading signals",
+              "Token parameters may be invalid"
+            ],
+            suggested_solutions: [
+              "Verify your TokenMetrics subscription includes hourly signals",
+              "Check if the token_id or symbol exists in TokenMetrics database",
+              "Try with a major token like BTC (token_id: 3375) or ETH (symbol: ETH)"
+            ]
+          };
+        } else if (error.message.includes("Data not found")) {
+          errorMessage = "No hourly trading signals found for the specified token";
+          troubleshootingInfo = {
+            data_issue: "No hourly signals available",
+            possible_reasons: [
+              "Token may not have hourly signal coverage",
+              "Date range may be outside available data",
+              "Signal filters may be too restrictive"
+            ],
+            suggestions: [
+              "Try a broader date range",
+              "Remove signal type filters",
+              "Check with popular tokens like BTC or ETH"
+            ]
+          };
+        } else if (error.message.includes("401") || error.message.includes("403")) {
+          errorMessage = "Authentication failed for TokenMetrics API";
+          troubleshootingInfo = {
+            auth_issue: "API key authentication failed",
+            solutions: [
+              "Verify TOKENMETRICS_API_KEY environment variable is set",
+              "Check if your API key has access to hourly trading signals",
+              "Ensure your subscription is active"
+            ]
+          };
+        }
+      }
+      return {
+        success: false,
+        error: errorMessage,
+        troubleshooting: troubleshootingInfo,
+        metadata: {
+          endpoint: TOKENMETRICS_ENDPOINTS.hourlyTradingSignals,
+          attempted_params: {
+            token: finalSymbol || finalTokenId,
+            signal_filter: signal
+          }
+        }
+      };
+    }
+  }
+};
+function analyzeHourlyTradingSignals(signalsData) {
+  if (!Array.isArray(signalsData) || signalsData.length === 0) {
+    return {
+      summary: "No hourly trading signals data available for analysis",
+      signal_distribution: {},
+      hourly_trends: {},
+      recommendations: []
+    };
+  }
+  const distribution = analyzeHourlySignalDistribution(signalsData);
+  const trends = analyzeHourlyTrends(signalsData);
+  const opportunities = identifyHourlyOpportunities(signalsData);
+  const quality = assessHourlySignalQuality(signalsData);
+  return {
+    summary: `Analyzed ${signalsData.length} hourly trading signals`,
+    signal_distribution: distribution,
+    hourly_trends: trends,
+    best_opportunities: opportunities,
+    signal_quality: quality,
+    insights: generateHourlySignalInsights(signalsData, distribution, trends, opportunities),
+    recommendations: generateHourlyTradingRecommendations(distribution, trends, opportunities, quality),
+    risk_factors: identifyHourlyRiskFactors(signalsData),
+    active_trading_tips: [
+      "Monitor signals every hour during active trading sessions",
+      "Use stop-losses for all positions based on hourly signals",
+      "Consider market volatility when acting on hourly signals",
+      "Combine with volume analysis for better timing"
+    ]
+  };
+}
+function analyzeHourlySignalDistribution(signalsData) {
+  const distribution = { bullish: 0, bearish: 0, neutral: 0 };
+  const byHour = {};
+  const byToken = {};
+  signalsData.forEach((signal) => {
+    if (signal.TRADING_SIGNAL === 1) distribution.bullish++;
+    else if (signal.TRADING_SIGNAL === -1) distribution.bearish++;
+    else distribution.neutral++;
+    if (signal.TIMESTAMP || signal.DATE) {
+      const timestamp = signal.TIMESTAMP || signal.DATE;
+      const hour = new Date(timestamp).getHours();
+      if (!byHour[hour]) byHour[hour] = { bullish: 0, bearish: 0, neutral: 0 };
+      if (signal.TRADING_SIGNAL === 1) byHour[hour].bullish++;
+      else if (signal.TRADING_SIGNAL === -1) byHour[hour].bearish++;
+      else byHour[hour].neutral++;
+    }
+    const token = signal.SYMBOL || signal.TOKEN_ID;
+    if (token) {
+      if (!byToken[token]) byToken[token] = { bullish: 0, bearish: 0, neutral: 0 };
+      if (signal.TRADING_SIGNAL === 1) byToken[token].bullish++;
+      else if (signal.TRADING_SIGNAL === -1) byToken[token].bearish++;
+      else byToken[token].neutral++;
+    }
+  });
+  const total = signalsData.length;
+  return {
+    total_signals: total,
+    bullish_percentage: (distribution.bullish / total * 100).toFixed(1),
+    bearish_percentage: (distribution.bearish / total * 100).toFixed(1),
+    neutral_percentage: (distribution.neutral / total * 100).toFixed(1),
+    by_hour: byHour,
+    by_token: byToken,
+    market_sentiment: distribution.bullish > distribution.bearish ? "Bullish" : distribution.bearish > distribution.bullish ? "Bearish" : "Neutral"
+  };
+}
+function analyzeHourlyTrends(signalsData) {
+  const sortedData = signalsData.filter((signal) => signal.TIMESTAMP || signal.DATE).sort((a, b) => new Date(a.TIMESTAMP || a.DATE).getTime() - new Date(b.TIMESTAMP || b.DATE).getTime());
+  if (sortedData.length < 2) {
+    return { trend: "Insufficient data for trend analysis" };
+  }
+  const recentSignals = sortedData.slice(-10);
+  const olderSignals = sortedData.slice(0, 10);
+  const recentBullish = recentSignals.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+  const olderBullish = olderSignals.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+  const trendDirection = recentBullish > olderBullish ? "Increasingly Bullish" : recentBullish < olderBullish ? "Increasingly Bearish" : "Stable";
+  return {
+    trend_direction: trendDirection,
+    recent_bullish_ratio: (recentBullish / recentSignals.length * 100).toFixed(1) + "%",
+    historical_bullish_ratio: (olderBullish / olderSignals.length * 100).toFixed(1) + "%",
+    signal_momentum: recentBullish - olderBullish,
+    data_points_analyzed: sortedData.length
+  };
+}
+function identifyHourlyOpportunities(signalsData) {
+  const opportunities = [];
+  const strongSignals = signalsData.filter(
+    (signal) => signal.AI_CONFIDENCE && signal.AI_CONFIDENCE > 0.7 || signal.SIGNAL_STRENGTH && signal.SIGNAL_STRENGTH > 0.7
+  );
+  strongSignals.forEach((signal) => {
+    const signalValue = signal.TRADING_SIGNAL || signal.SIGNAL;
+    if (signalValue === 1) {
+      opportunities.push({
+        type: "BUY_OPPORTUNITY",
+        token: signal.SYMBOL || signal.TOKEN_ID,
+        confidence: signal.AI_CONFIDENCE || signal.SIGNAL_STRENGTH || "High",
+        entry_price: signal.ENTRY_PRICE,
+        target_price: signal.TARGET_PRICE,
+        timestamp: signal.TIMESTAMP || signal.DATE,
+        reasoning: signal.REASONING || "Strong bullish signal detected"
+      });
+    } else if (signalValue === -1) {
+      opportunities.push({
+        type: "SELL_OPPORTUNITY",
+        token: signal.SYMBOL || signal.TOKEN_ID,
+        confidence: signal.AI_CONFIDENCE || signal.SIGNAL_STRENGTH || "High",
+        entry_price: signal.ENTRY_PRICE,
+        stop_loss: signal.STOP_LOSS,
+        timestamp: signal.TIMESTAMP || signal.DATE,
+        reasoning: signal.REASONING || "Strong bearish signal detected"
+      });
+    }
+  });
+  return {
+    total_opportunities: opportunities.length,
+    buy_opportunities: opportunities.filter((o) => o.type === "BUY_OPPORTUNITY").length,
+    sell_opportunities: opportunities.filter((o) => o.type === "SELL_OPPORTUNITY").length,
+    opportunities: opportunities.slice(0, 5),
+    // Top 5 opportunities
+    high_confidence_signals: strongSignals.length
+  };
+}
+function assessHourlySignalQuality(signalsData) {
+  const withConfidence = signalsData.filter((s) => s.AI_CONFIDENCE || s.SIGNAL_STRENGTH);
+  const avgConfidence = withConfidence.length > 0 ? withConfidence.reduce((sum, s) => sum + (s.AI_CONFIDENCE || s.SIGNAL_STRENGTH || 0), 0) / withConfidence.length : 0;
+  const withPriceTargets = signalsData.filter((s) => s.TARGET_PRICE || s.ENTRY_PRICE);
+  const withStopLoss = signalsData.filter((s) => s.STOP_LOSS);
+  return {
+    average_confidence: (avgConfidence * 100).toFixed(1) + "%",
+    signals_with_confidence: withConfidence.length,
+    signals_with_price_targets: withPriceTargets.length,
+    signals_with_stop_loss: withStopLoss.length,
+    quality_score: calculateHourlyQualityScore(signalsData),
+    completeness_ratio: (withPriceTargets.length / signalsData.length * 100).toFixed(1) + "%"
+  };
+}
+function calculateHourlyQualityScore(signalsData) {
+  if (signalsData.length === 0) return "No data";
+  let score = 0;
+  const total = signalsData.length;
+  const withConfidence = signalsData.filter((s) => s.AI_CONFIDENCE || s.SIGNAL_STRENGTH).length;
+  score += withConfidence / total * 30;
+  const withTargets = signalsData.filter((s) => s.TARGET_PRICE || s.ENTRY_PRICE).length;
+  score += withTargets / total * 25;
+  const withStopLoss = signalsData.filter((s) => s.STOP_LOSS).length;
+  score += withStopLoss / total * 25;
+  const withReasoning = signalsData.filter((s) => s.REASONING).length;
+  score += withReasoning / total * 20;
+  if (score >= 80) return "Excellent";
+  if (score >= 60) return "Good";
+  if (score >= 40) return "Fair";
+  return "Basic";
+}
+function generateHourlySignalInsights(signalsData, distribution, trends, opportunities) {
+  const insights = [];
+  if (distribution.market_sentiment === "Bullish") {
+    insights.push(`\u{1F7E2} Market shows ${distribution.bullish_percentage}% bullish hourly signals`);
+  } else if (distribution.market_sentiment === "Bearish") {
+    insights.push(`\u{1F534} Market shows ${distribution.bearish_percentage}% bearish hourly signals`);
+  } else {
+    insights.push(`\u{1F7E1} Market sentiment is neutral with mixed hourly signals`);
+  }
+  if (trends.trend_direction !== "Stable") {
+    insights.push(`\u{1F4C8} Trend analysis shows ${trends.trend_direction.toLowerCase()} momentum`);
+  }
+  if (opportunities.total_opportunities > 0) {
+    insights.push(`\u{1F3AF} Found ${opportunities.total_opportunities} high-confidence trading opportunities`);
+  }
+  if (distribution.by_hour && Object.keys(distribution.by_hour).length > 0) {
+    const bestHours = Object.entries(distribution.by_hour).sort(([, a], [, b]) => {
+      const aValue = a;
+      const bValue = b;
+      return bValue.bullish - bValue.bearish - (aValue.bullish - aValue.bearish);
+    }).slice(0, 2);
+    if (bestHours.length > 0) {
+      insights.push(`\u23F0 Most bullish hours: ${bestHours.map(([hour]) => `${hour}:00`).join(", ")}`);
+    }
+  }
+  return insights;
+}
+function generateHourlyTradingRecommendations(distribution, trends, opportunities, quality) {
+  const recommendations = [];
+  if (distribution.market_sentiment === "Bullish" && trends.trend_direction.includes("Bullish")) {
+    recommendations.push("Consider long positions on tokens with strong hourly bullish signals");
+  } else if (distribution.market_sentiment === "Bearish" && trends.trend_direction.includes("Bearish")) {
+    recommendations.push("Consider short positions or profit-taking on existing longs");
+  }
+  if (opportunities.high_confidence_signals > 0) {
+    recommendations.push("Focus on high-confidence signals for better risk-adjusted returns");
+  }
+  if (quality.quality_score === "Excellent" || quality.quality_score === "Good") {
+    recommendations.push("Signal quality is high - suitable for active trading strategies");
+  } else {
+    recommendations.push("Use additional confirmation before acting on signals");
+  }
+  recommendations.push("Monitor signals every hour during active trading sessions");
+  recommendations.push("Use proper position sizing for hourly signal-based trades");
+  return recommendations;
+}
+function identifyHourlyRiskFactors(signalsData) {
+  const risks = [];
+  const signalChanges = signalsData.filter((signal, index) => {
+    if (index === 0) return false;
+    return signal.TRADING_SIGNAL !== signalsData[index - 1].TRADING_SIGNAL;
+  });
+  if (signalChanges.length > signalsData.length * 0.5) {
+    risks.push("High signal volatility - frequent changes may indicate market uncertainty");
+  }
+  const lowConfidenceSignals = signalsData.filter(
+    (s) => s.AI_CONFIDENCE && s.AI_CONFIDENCE < 0.5 || s.SIGNAL_STRENGTH && s.SIGNAL_STRENGTH < 0.5
+  );
+  if (lowConfidenceSignals.length > signalsData.length * 0.3) {
+    risks.push("Many low-confidence signals - exercise additional caution");
+  }
+  const missingStopLoss = signalsData.filter((s) => !s.STOP_LOSS);
+  if (missingStopLoss.length > signalsData.length * 0.7) {
+    risks.push("Limited stop-loss data - implement your own risk management");
+  }
+  if (risks.length === 0) {
+    risks.push("Standard market risks apply - use proper position sizing");
+  }
+  return risks;
 }
 
 // src/actions/getMarketMetricsAction.ts
@@ -8098,33 +8557,34 @@ console.log("\u2705 Endpoints: Corrected URLs");
 console.log("\u2705 Required Params: All included");
 console.log("\u2705 Response Handling: Proper structure");
 console.log("");
-console.log("\u{1F4CB} ALL 20 ENDPOINTS IMPLEMENTED:");
+console.log("\u{1F4CB} ALL 21 ENDPOINTS IMPLEMENTED:");
 console.log("");
-console.log("\u{1F3C6} CORE MARKET DATA (7 endpoints):");
+console.log("\u{1F3C6} CORE MARKET DATA (8 endpoints):");
 console.log("  1. getTokensAction           (/v2/tokens)");
 console.log("  2. getTopMarketCapAction     (/v2/top-market-cap-tokens)");
 console.log("  3. getPriceAction            (/v2/price)");
 console.log("  4. getTraderGradesAction     (/v2/trader-grades)");
 console.log("  5. getQuantmetricsAction     (/v2/quantmetrics)");
 console.log("  6. getTradingSignalsAction   (/v2/trading-signals)");
-console.log("  7. getMarketMetricsAction    (/v2/market-metrics)");
+console.log("  7. getHourlyTradingSignalsAction (/v2/hourly-trading-signals)");
+console.log("  8. getMarketMetricsAction    (/v2/market-metrics)");
 console.log("");
 console.log("\u{1F4CA} ADVANCED ANALYSIS (10 endpoints):");
-console.log("  8. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
-console.log("  9. getDailyOhlcvAction       (/v2/daily-ohlcv)");
-console.log(" 10. getInvestorGradesAction   (/v2/investor-grades)");
-console.log(" 11. getAiReportsAction        (/v2/ai-reports)");
-console.log(" 12. getCryptoInvestorsAction  (/v2/crypto-investors)");
-console.log(" 13. getCorrelationAction      (/v2/correlation)");
-console.log(" 14. getResistanceSupportAction (/v2/resistance-support)");
-console.log(" 15. getTMAIAction            (/v2/tmai) [POST]");
-console.log(" 16. getSentimentAction       (/v2/sentiments)");
-console.log(" 17. getScenarioAnalysisAction (/v2/scenario-analysis)");
+console.log("  9. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
+console.log(" 10. getDailyOhlcvAction       (/v2/daily-ohlcv)");
+console.log(" 11. getInvestorGradesAction   (/v2/investor-grades)");
+console.log(" 12. getAiReportsAction        (/v2/ai-reports)");
+console.log(" 13. getCryptoInvestorsAction  (/v2/crypto-investors)");
+console.log(" 14. getCorrelationAction      (/v2/correlation)");
+console.log(" 15. getResistanceSupportAction (/v2/resistance-support)");
+console.log(" 16. getTMAIAction            (/v2/tmai) [POST]");
+console.log(" 17. getSentimentAction       (/v2/sentiments)");
+console.log(" 18. getScenarioAnalysisAction (/v2/scenario-analysis)");
 console.log("");
 console.log("\u{1F4CB} ADDITIONAL ACTIONS (3 endpoints):");
-console.log(" 18. getIndicesAction          (/v2/indices)");
-console.log(" 19. getIndicesHoldingsAction  (/v2/indices-holdings)");
-console.log(" 20. getIndicesPerformanceAction (/v2/indices-performance)");
+console.log(" 19. getIndicesAction          (/v2/indices)");
+console.log(" 20. getIndicesHoldingsAction  (/v2/indices-holdings)");
+console.log(" 21. getIndicesPerformanceAction (/v2/indices-performance)");
 console.log("");
 console.log("\u{1F3AF} COMPLETE TOKENMETRICS INTEGRATION");
 console.log("\u2705 All major endpoints from API documentation");
@@ -8150,6 +8610,8 @@ var tokenmetricsPlugin = {
     // ✅ Quantitative risk metrics
     getTradingSignalsAction,
     // ✅ AI-generated trading signals
+    getHourlyTradingSignalsAction,
+    // ✅ Hourly trading signals
     getMarketMetricsAction,
     // ✅ Overall market sentiment and metrics
     // ===== OHLCV DATA ACTIONS =====
@@ -8196,8 +8658,8 @@ var tokenmetricsTests = [
         name: "verify-all-endpoints-available",
         fn: async (runtime) => {
           console.log("\u{1F9EA} Testing COMPLETE endpoint integration");
-          const totalEndpoints = 20;
-          const coreEndpoints = 7;
+          const totalEndpoints = 21;
+          const coreEndpoints = 8;
           const advancedEndpoints = 10;
           console.log(`\u2705 Core Market Data: ${coreEndpoints} endpoints implemented`);
           console.log(`\u2705 Advanced Analysis: ${advancedEndpoints} endpoints implemented`);
