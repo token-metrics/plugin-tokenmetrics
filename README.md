@@ -513,7 +513,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- 🎯 **[TokenMetrics](https://tokenmetrics.com)** for providing comprehensive crypto data and AI insights
+- 🎯 **[TokenMetrics](https://tokenmetrics.com/api)** for providing comprehensive crypto data and AI insights
 - 🤖 **[ElizaOS Team](https://github.com/elizaos/eliza)** for the excellent plugin architecture
 - 💎 **The crypto community** for feedback, testing, and feature requests
 - 🤝 **Contributors** who help improve and maintain this plugin
@@ -539,7 +539,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 <div align="center">
   <p>Built with ❤️ for the ElizaOS and crypto community</p>
   <p>
-    <a href="https://tokenmetrics.com">TokenMetrics</a> •
+    <a href="https://tokenmetrics.com/api">TokenMetrics</a> •
     <a href="https://github.com/elizaos/eliza">ElizaOS</a> •
     <a href="https://elizaos.github.io/registry/">Plugin Registry</a>
   </p>
