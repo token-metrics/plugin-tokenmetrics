@@ -7,6 +7,7 @@ import { getPriceAction } from "./actions/getPriceAction";
 import { getTraderGradesAction } from "./actions/getTraderGradesAction";
 import { getQuantmetricsAction } from "./actions/getQuantmetricsAction";
 import { getTradingSignalsAction } from "./actions/getTradingSignalsAction";
+import { getHourlyTradingSignalsAction } from "./actions/getHourlyTradingSignalsAction";
 import { getMarketMetricsAction } from "./actions/getMarketMetricsAction";
 
 // Import all NEW actions from your implementation
@@ -46,33 +47,34 @@ console.log("✅ Endpoints: Corrected URLs");
 console.log("✅ Required Params: All included");
 console.log("✅ Response Handling: Proper structure");
 console.log("");
-console.log("📋 ALL 20 ENDPOINTS IMPLEMENTED:");
+console.log("📋 ALL 21 ENDPOINTS IMPLEMENTED:");
 console.log("");
-console.log("🏆 CORE MARKET DATA (7 endpoints):");
+console.log("🏆 CORE MARKET DATA (8 endpoints):");
 console.log("  1. getTokensAction           (/v2/tokens)");
 console.log("  2. getTopMarketCapAction     (/v2/top-market-cap-tokens)");
 console.log("  3. getPriceAction            (/v2/price)");
 console.log("  4. getTraderGradesAction     (/v2/trader-grades)");
 console.log("  5. getQuantmetricsAction     (/v2/quantmetrics)");
 console.log("  6. getTradingSignalsAction   (/v2/trading-signals)");
-console.log("  7. getMarketMetricsAction    (/v2/market-metrics)");
+console.log("  7. getHourlyTradingSignalsAction (/v2/hourly-trading-signals)");
+console.log("  8. getMarketMetricsAction    (/v2/market-metrics)");
 console.log("");
 console.log("📊 ADVANCED ANALYSIS (10 endpoints):");
-console.log("  8. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
-console.log("  9. getDailyOhlcvAction       (/v2/daily-ohlcv)");
-console.log(" 10. getInvestorGradesAction   (/v2/investor-grades)");
-console.log(" 11. getAiReportsAction        (/v2/ai-reports)");
-console.log(" 12. getCryptoInvestorsAction  (/v2/crypto-investors)");
-console.log(" 13. getCorrelationAction      (/v2/correlation)");
-console.log(" 14. getResistanceSupportAction (/v2/resistance-support)");
-console.log(" 15. getTMAIAction            (/v2/tmai) [POST]");
-console.log(" 16. getSentimentAction       (/v2/sentiments)");
-console.log(" 17. getScenarioAnalysisAction (/v2/scenario-analysis)");
+console.log("  9. getHourlyOhlcvAction      (/v2/hourly-ohlcv)");
+console.log(" 10. getDailyOhlcvAction       (/v2/daily-ohlcv)");
+console.log(" 11. getInvestorGradesAction   (/v2/investor-grades)");
+console.log(" 12. getAiReportsAction        (/v2/ai-reports)");
+console.log(" 13. getCryptoInvestorsAction  (/v2/crypto-investors)");
+console.log(" 14. getCorrelationAction      (/v2/correlation)");
+console.log(" 15. getResistanceSupportAction (/v2/resistance-support)");
+console.log(" 16. getTMAIAction            (/v2/tmai) [POST]");
+console.log(" 17. getSentimentAction       (/v2/sentiments)");
+console.log(" 18. getScenarioAnalysisAction (/v2/scenario-analysis)");
 console.log("");
 console.log("📋 ADDITIONAL ACTIONS (3 endpoints):");
-console.log(" 18. getIndicesAction          (/v2/indices)");
-console.log(" 19. getIndicesHoldingsAction  (/v2/indices-holdings)");
-console.log(" 20. getIndicesPerformanceAction (/v2/indices-performance)");
+console.log(" 19. getIndicesAction          (/v2/indices)");
+console.log(" 20. getIndicesHoldingsAction  (/v2/indices-holdings)");
+console.log(" 21. getIndicesPerformanceAction (/v2/indices-performance)");
 console.log("");
 console.log("🎯 COMPLETE TOKENMETRICS INTEGRATION");
 console.log("✅ All major endpoints from API documentation");
@@ -93,6 +95,7 @@ export const tokenmetricsPlugin: Plugin = {
         getTraderGradesAction,             // ✅ Short-term trading grades
         getQuantmetricsAction,             // ✅ Quantitative risk metrics
         getTradingSignalsAction,           // ✅ AI-generated trading signals
+        getHourlyTradingSignalsAction,      // ✅ Hourly trading signals
         getMarketMetricsAction,            // ✅ Overall market sentiment and metrics
         
         // ===== OHLCV DATA ACTIONS =====
@@ -133,8 +136,8 @@ export const tokenmetricsTests = [
                 name: "verify-all-endpoints-available",
                 fn: async (runtime: any) => {
                     console.log("🧪 Testing COMPLETE endpoint integration");
-                    const totalEndpoints = 20;
-                    const coreEndpoints = 7;
+                    const totalEndpoints = 21;
+                    const coreEndpoints = 8;
                     const advancedEndpoints = 10;
                     
                     console.log(`✅ Core Market Data: ${coreEndpoints} endpoints implemented`);

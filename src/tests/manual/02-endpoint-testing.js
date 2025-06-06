@@ -3,15 +3,16 @@
 /**
  * COMPREHENSIVE ENDPOINT TESTING
  * 
- * This test systematically verifies ALL 20 TokenMetrics endpoints:
+ * This test systematically verifies ALL 21 TokenMetrics endpoints:
  * 
- * EXISTING ENDPOINTS (10):
+ * EXISTING ENDPOINTS (8):
  * - Tokens, Price, Top Market Cap, Trader Grades, Quantmetrics
- * - Trading Signals, Market Metrics, Sector Holdings, Index Performance, Sector Transactions
+ * - Trading Signals, Hourly Trading Signals, Market Metrics
  * 
- * NEW ENDPOINTS (10):
+ * NEW ENDPOINTS (13):
  * - Hourly OHLCV, Daily OHLCV, Investor Grades, AI Reports, Crypto Investors
  * - Resistance & Support, Token Metrics AI, Sentiment, Scenario Analysis, Correlation
+ * - Indices, Indices Holdings, Indices Performance
  */
 
 import {
@@ -21,6 +22,7 @@ import {
     getTraderGradesAction,
     getQuantmetricsAction,
     getTradingSignalsAction,
+    getHourlyTradingSignalsAction,
     getMarketMetricsAction,
     getHourlyOhlcvAction,
     getDailyOhlcvAction,
@@ -166,6 +168,24 @@ const endpointTests = [
         successCriteria: (result) => {
             return result.success && 
                    result.trading_signals;
+        }
+    },
+    
+    {
+        name: "Hourly Trading Signals",
+        description: "Get AI-generated hourly trading signals for active trading",
+        action: getHourlyTradingSignalsAction,
+        category: "EXISTING",
+        testMessage: {
+            content: { 
+                token_id: 3375,  // Bitcoin's token_id (required parameter)
+                limit: 5
+            }
+        },
+        expectedKeys: ['success', 'hourly_trading_signals', 'analysis'],
+        successCriteria: (result) => {
+            return result.success && 
+                   result.hourly_trading_signals;
         }
     },
     
@@ -456,7 +476,7 @@ const endpointTests = [
 async function runEndpointTests() {
     console.log("🧪 TOKENMETRICS PLUGIN - COMPREHENSIVE ENDPOINT TESTING");
     console.log("=" .repeat(60));
-    console.log("📋 Testing ALL 20 TokenMetrics API endpoints");
+    console.log("📋 Testing ALL 21 TokenMetrics API endpoints");
     console.log("🎯 Validating complete plugin functionality");
     console.log("");
     
@@ -693,7 +713,7 @@ async function runEndpointTests() {
     }
     
     // Final comprehensive summary
-    console.log("🏁 COMPREHENSIVE TESTING SUMMARY - ALL 20 ENDPOINTS");
+    console.log("🏁 COMPREHENSIVE TESTING SUMMARY - ALL 21 ENDPOINTS");
     console.log("=".repeat(60));
     console.log(`📊 OVERALL RESULTS:`);
     console.log(`   ✅ Total Passed: ${results.passed}/${endpointTests.length}`);
@@ -720,7 +740,7 @@ async function runEndpointTests() {
     }
     
     if (results.passed === endpointTests.length) {
-        console.log("\n🎉 ALL 20 ENDPOINTS PASSED!");
+        console.log("\n🎉 ALL 21 ENDPOINTS PASSED!");
         console.log("   🚀 Your complete TokenMetrics integration is working perfectly.");
         console.log("   ✨ Ready for production use with full analysis capabilities.");
         console.log("   📈 Both existing and new endpoints are fully functional.");
@@ -756,7 +776,7 @@ async function runEndpointTests() {
 }
 
 // Run the comprehensive test for ALL endpoints
-console.log("Starting comprehensive testing of ALL 20 TokenMetrics endpoints...");
+console.log("Starting comprehensive testing of ALL 21 TokenMetrics endpoints...");
 runEndpointTests().catch(error => {
     console.log("💥 Comprehensive test runner failed:", error.message);
 });

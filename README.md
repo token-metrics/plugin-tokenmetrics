@@ -64,6 +64,14 @@ npm install @elizaos-plugins/plugin-tokenmetrics
 - 👑 **Market Cap Rankings**: Top cryptocurrencies by market capitalization
 - 📡 **Trading Signals**: AI-generated BUY/SELL/HOLD recommendations with confidence scores
 - 📊 **Market Metrics**: Overall market sentiment, volume, and trend analysis
+- 📉 **Technical Analysis**: Resistance/support levels, OHLCV data (hourly/daily)
+- 🎯 **Investment Grades**: Long-term investment recommendations (A+ to F scale)
+- ⚠️ **Risk Assessment**: Quantitative risk metrics, volatility analysis, and risk scores
+- 😊 **Sentiment Analysis**: Social media and news sentiment from Twitter, Reddit, News
+- 🔗 **Correlation Analysis**: Portfolio diversification insights and correlation matrices
+- 📉 **Hourly Trading Signals**: Frequent AI signals for active trading and scalping
+- 🔢 **Quantmetrics**: Risk metrics (Sharpe ratio, volatility, max drawdown)
+- 🌍 **Market Metrics**: Overall market sentiment and dominance data
 
 ### 📈 Advanced Analysis
 - 📉 **Technical Analysis**: Resistance/support levels, OHLCV data (hourly/daily)
@@ -180,6 +188,7 @@ Your ElizaOS agent can now understand and respond to queries like:
 ```
 💰 "What's the current price of Bitcoin?"
 📊 "Should I buy Ethereum? Show me the trading signals"
+⏰ "Get hourly trading signals for Bitcoin"
 ⚠️ "How risky is Solana? Show me the volatility metrics"
 😊 "What's the overall crypto market sentiment today?"
 🔗 "Compare Bitcoin and Ethereum correlation"
@@ -201,6 +210,7 @@ Your ElizaOS agent can now understand and respond to queries like:
 📈 "Show me the resistance and support levels for the top 5 cryptocurrencies"
 📝 "Generate a comprehensive AI report for Layer 1 blockchain tokens"
 🎯 "What are the trading signals for tokens with A+ investor grades?"
+⏰ "Show me hourly buy signals for cryptocurrencies with high volume"
 📉 "Analyze the hourly OHLCV data for Bitcoin over the last 7 days"
 🔮 "Show me scenario analysis for Ethereum under different market conditions"
 📊 "Compare active vs passive crypto indices performance"
@@ -233,22 +243,23 @@ import { tokenmetricsPlugin } from "@elizaos-plugins/plugin-tokenmetrics";
 | 4 | **getTraderGrades** | Core | Short-term grades | Day trading | 🏆 |
 | 5 | **getInvestorGrades** | Investment | Long-term grades | Portfolio building | 🎯 |
 | 6 | **getTradingSignals** | Core | BUY/SELL/HOLD signals | Trading decisions | 📡 |
-| 7 | **getMarketMetrics** | Core | Market sentiment | Market timing | 📊 |
-| 8 | **getQuantmetrics** | Risk | Risk assessment | Risk management | ⚠️ |
-| 9 | **getHourlyOhlcv** | Technical | Hourly price data | Technical analysis | ⏰ |
-| 10 | **getDailyOhlcv** | Technical | Daily price data | Swing trading | 📅 |
-| 11 | **getAiReports** | AI | AI-generated reports | Research | 📝 |
-| 12 | **getCryptoInvestors** | Investment | Investor insights | Market intelligence | 💼 |
-| 13 | **getResistanceSupport** | Technical | Key price levels | Technical trading | 📈 |
-| 14 | **getTMAI** | AI | TokenMetrics AI chat | AI assistance | 🧠 |
-| 15 | **getSentiment** | AI | Social sentiment | Sentiment analysis | 😊 |
-| 16 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
-| 17 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
-| 18 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
-| 19 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
-| 20 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
+| 7 | **getHourlyTradingSignals** | Core | Hourly AI signals | Active trading | ⏰ |
+| 8 | **getMarketMetrics** | Core | Market sentiment | Market timing | 📊 |
+| 9 | **getQuantmetrics** | Risk | Risk assessment | Risk management | ⚠️ |
+| 10 | **getHourlyOhlcv** | Technical | Hourly price data | Technical analysis | ⏰ |
+| 11 | **getDailyOhlcv** | Technical | Daily price data | Swing trading | 📅 |
+| 12 | **getAiReports** | AI | AI-generated reports | Research | 📝 |
+| 13 | **getCryptoInvestors** | Investment | Investor insights | Market intelligence | 💼 |
+| 14 | **getResistanceSupport** | Technical | Key price levels | Technical trading | 📈 |
+| 15 | **getTMAI** | AI | TokenMetrics AI chat | AI assistance | 🧠 |
+| 16 | **getSentiment** | AI | Social sentiment | Sentiment analysis | 😊 |
+| 17 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
+| 18 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
+| 19 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
+| 20 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
+| 21 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
 
-**🎯 Total: 20 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
+**🎯 Total: 21 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
 
 ---
 
@@ -317,7 +328,7 @@ npm run test:all
 
 # Test individual components
 npm run test:connection      # API connectivity
-npm run test:endpoints       # All 20 endpoints
+npm run test:endpoints       # All 21 endpoints
 npm run test:elizaos        # ElizaOS integration
 npm run test:nlp            # Natural language processing
 npm run test:memory         # Context and memory management
@@ -327,7 +338,7 @@ npm run chat                # Live chat interface
 ```
 
 ### 🔍 Manual Testing
-Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 20 endpoints with real queries.
+Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 21 endpoints with real queries.
 
 ### 📊 Quality Metrics
 - ✅ **Test Coverage**: 95%+ code coverage
@@ -342,6 +353,7 @@ Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify a
 ### 📈 Day Traders
 - ⏰ **Hourly OHLCV data** for technical analysis and chart patterns
 - 📡 **Real-time trading signals** with confidence scores
+- ⏰ **Hourly trading signals** for active trading and scalping strategies
 - 📊 **Resistance and support levels** for entry/exit points
 - 😊 **Market sentiment tracking** for timing decisions
 
