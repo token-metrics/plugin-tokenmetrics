@@ -53,7 +53,7 @@ class TokenMetricsAIAgent {
         console.log(chalk.white('• 📊 Market sentiment & correlation analysis'));
         console.log(chalk.white('• 🔍 Risk analysis, investor grades & scenario planning'));
         console.log(chalk.white('• 🏆 Top performing tokens & crypto investors'));
-        console.log(chalk.white('• 🏭 Sector analysis & technical levels'));
+        console.log(chalk.white('• 📈 Technical levels & resistance/support analysis'));
         console.log(chalk.white('• 🤖 Direct access to TokenMetrics AI assistant'));
         console.log(chalk.white('• 📋 AI reports & comprehensive market insights'));
         console.log('');
@@ -278,11 +278,11 @@ class TokenMetricsAIAgent {
                 'Show me top market cap coins',
                 'Get crypto investors data'
             ]},
-            { category: '🏭 Sector & Technical Analysis', queries: [
+            { category: '📈 Technical & AI Analysis', queries: [
                 'How is DeFi performing?',
-                'Gaming sector analysis',
                 'Show resistance and support levels for Bitcoin',
-                'Get AI reports for Ethereum'
+                'Get AI reports for Ethereum',
+                'Technical analysis for Solana'
             ]},
             { category: '🤖 AI Assistant & Advanced', queries: [
                 'Ask TokenMetrics AI about the next 100x coin',

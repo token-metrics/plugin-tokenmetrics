@@ -36,7 +36,7 @@
     "dev": "tsup src/index.ts --format esm --dts --watch --tsconfig ./tsconfig.json",
     "test": "npx elizaos test",
     "test:connection": "npx tsx -r dotenv/config src/tests/manual/01-basic-connection.js",
-    "test:endpoints": "npx tsx -r dotenv/config src/tests/manual/02-endpoint-testing.js", 
+    "test:endpoints": "npx tsx -r dotenv/config src/tests/manual/02-endpoint-testing.js",
     "test:elizaos": "npx tsx -r dotenv/config src/tests/manual/03-elizaos-integration-testing.js",
     "test:ui": "node -r dotenv/config src/tests/ui/start-server.js",
     "test:all": "npm run test:connection && npm run test:endpoints && npm run test:elizaos",

@@ -1,6 +1,6 @@
 # 🚀 TokenMetrics Endpoint Testing Guide
 
-## Manual Testing Checklist - All 17 Endpoints
+## Manual Testing Checklist - All 20 Endpoints
 
 Test each endpoint by running: `echo "[PROMPT]" | npm run chat`
 
@@ -106,6 +106,30 @@ echo "Show me correlation analysis between cryptocurrencies" | npm run chat
 ```
 **Expected**: Correlation coefficients and portfolio insights
 
+### ✅ **18. Indices**
+```bash
+echo "Show me crypto indices data" | npm run chat
+```
+**Expected**: Active and passive indices with performance data, ID, name, type, status
+
+### ✅ **19. Indices Holdings**
+```bash
+echo "What are the holdings of crypto index 1?" | npm run chat
+```
+**Expected**: Index composition with symbols, weights, prices, and values
+
+### ✅ **20. Indices Performance**
+```bash
+echo "Show me performance data for crypto index 1" | npm run chat
+```
+**Expected**: Historical ROI data with performance trends and analysis
+
+### ✅ **21. Hourly Trading Signals**
+```bash
+echo "Show me hourly trading signals for cryptocurrencies" | npm run chat
+```
+**Expected**: Trading signals with trend analysis
+
 ---
 
 ## 📊 Testing Results Template
@@ -129,6 +153,10 @@ echo "Show me correlation analysis between cryptocurrencies" | npm run chat
 | 15 | Sentiments | ⏳ | - | - |
 | 16 | Scenario Analysis | ⏳ | - | - |
 | 17 | Correlation | ⏳ | - | - |
+| 18 | Indices | ⏳ | - | - |
+| 19 | Indices Holdings | ⏳ | - | - |
+| 20 | Indices Performance | ⏳ | - | - |
+| 21 | Hourly Trading Signals | ⏳ | - | - |
 
 ## 🎯 Success Criteria
 - ✅ Endpoint responds without errors

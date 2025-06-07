@@ -56,7 +56,6 @@ export const getScenarioAnalysisAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching scenario analysis from TokenMetrics v2/scenario-analysis endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<ScenarioAnalysisResponse>(

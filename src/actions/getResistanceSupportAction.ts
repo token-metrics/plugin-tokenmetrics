@@ -56,7 +56,6 @@ export const getResistanceSupportAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching resistance and support levels from TokenMetrics v2/resistance-support endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<ResistanceSupportResponse>(

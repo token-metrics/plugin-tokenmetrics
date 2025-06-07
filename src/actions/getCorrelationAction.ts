@@ -60,7 +60,6 @@ export const getCorrelationAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching correlation data from TokenMetrics v2/correlation endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<CorrelationResponse>(

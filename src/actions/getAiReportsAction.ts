@@ -55,7 +55,6 @@ export const getAiReportsAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching AI reports from TokenMetrics v2/ai-reports endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<AiReportsResponse>(

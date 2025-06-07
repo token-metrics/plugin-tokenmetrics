@@ -54,7 +54,6 @@ export const getMarketMetricsAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching market metrics from TokenMetrics v2/market-metrics endpoint");
             
             // Make API call with corrected authentication (x-api-key header)
             const response = await callTokenMetricsApi<MarketMetricsResponse>(

@@ -63,7 +63,6 @@ export const getDailyOhlcvAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching daily OHLCV data from TokenMetrics v2/daily-ohlcv endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<DailyOhlcvResponse>(

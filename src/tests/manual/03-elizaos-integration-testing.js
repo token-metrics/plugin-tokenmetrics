@@ -50,9 +50,9 @@ const naturalLanguageQueries = [
     {
         name: "Market Overview Query",
         query: "What's the overall crypto market sentiment today?",
-        expectedIntent: "market-overview",
+        expectedIntent: "sentiment",
         expectedTokens: [],
-        description: "Should detect market overview intent without specific tokens"
+        description: "Should detect sentiment intent for sentiment-specific queries"
     },
     {
         name: "Sector Analysis Query",

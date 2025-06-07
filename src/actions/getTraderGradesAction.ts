@@ -72,7 +72,6 @@ export const getTraderGradesAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching trader grades from TokenMetrics v2/trader-grades endpoint");
             
             // Make API call with corrected authentication
             const response = await callTokenMetricsApi<TraderGradesResponse>(

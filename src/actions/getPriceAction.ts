@@ -74,7 +74,6 @@ export const getPriceAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching price data from TokenMetrics v2/price endpoint");
             
             // Make API call with corrected authentication
             const response = await callTokenMetricsApi<PriceResponse>(

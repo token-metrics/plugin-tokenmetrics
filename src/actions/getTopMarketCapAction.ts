@@ -45,7 +45,6 @@ export const getTopMarketCapAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching top market cap tokens from TokenMetrics v2/top-market-cap-tokens endpoint");
             
             // Make API call with corrected authentication
             const response = await callTokenMetricsApi<TopMarketCapResponse>(

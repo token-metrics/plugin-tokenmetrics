@@ -70,7 +70,6 @@ export const getInvestorGradesAction: Action = {
             // Build clean parameters
             const apiParams = buildTokenMetricsParams(requestParams);
             
-            console.log("Fetching investor grades from TokenMetrics v2/investor-grades endpoint");
             
             // Make API call
             const response = await callTokenMetricsApi<InvestorGradesResponse>(
