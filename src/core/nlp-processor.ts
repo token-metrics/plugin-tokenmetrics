@@ -6,9 +6,21 @@ import { memoryManager, type ConversationContext, type UserPreferences } from '.
  */
 export class TokenMetricsNLPProcessor {
     private intentPatterns: IntentPattern[] = [
-        // Price-related intents
+        // Scenario Analysis intents - MOVED TO TOP for priority
         {
-            patterns: [/price|cost|value|worth|current.*price|how much/i],
+            patterns: [/scenario.*analysis|scenario.*prediction|price.*prediction|future.*price.*prediction|market.*scenario|scenario.*modeling|what.*if.*analysis|price.*forecast|forecast.*price/i],
+            intent: 'scenario-analysis',
+            confidence: 0.95, // Higher confidence for specific scenario queries
+            followUpQuestions: [
+                "What timeframe are you considering?",
+                "Are you planning investments?",
+                "Would you like multiple scenarios?"
+            ]
+        },
+        
+        // Price-related intents - MADE MORE SPECIFIC
+        {
+            patterns: [/\bcurrent.*price\b|\bprice\b(?!.*prediction)(?!.*forecast)(?!.*scenario)|cost|value|worth|how much.*cost|what.*price/i],
             intent: 'price',
             confidence: 0.9,
             followUpQuestions: [
@@ -126,18 +138,6 @@ export class TokenMetricsNLPProcessor {
             ]
         },
         
-        // Scenario Analysis intents - NEW
-        {
-            patterns: [/scenario.*analysis|scenario|prediction|forecast|future.*price|price.*prediction/i],
-            intent: 'scenario-analysis',
-            confidence: 0.9,
-            followUpQuestions: [
-                "What timeframe are you considering?",
-                "Are you planning investments?",
-                "Would you like multiple scenarios?"
-            ]
-        },
-        
         // Correlation intents - NEW
         {
             patterns: [/correlation|correlate|relationship.*between|compare.*movement|correlated/i],
@@ -147,6 +147,42 @@ export class TokenMetricsNLPProcessor {
                 "Which tokens would you like to compare?",
                 "Are you diversifying your portfolio?",
                 "Would you like historical correlation?"
+            ]
+        },
+        
+        // INDICES intents - NEW
+        {
+            patterns: [/\bindices\b|\bindex\b|crypto.*indices|crypto.*index|index.*funds|passive.*index|active.*index|fund.*index/i],
+            intent: 'indices',
+            confidence: 0.9,
+            followUpQuestions: [
+                "Are you looking for active or passive indices?",
+                "Would you like to see performance data?",
+                "Are you considering index investing?"
+            ]
+        },
+        
+        // Indices Holdings intents - NEW
+        {
+            patterns: [/indices.*holdings|index.*holdings|index.*composition|index.*allocations|holdings.*index|composition.*index|what.*in.*index/i],
+            intent: 'indices-holdings',
+            confidence: 0.95,
+            followUpQuestions: [
+                "Which index are you interested in?",
+                "Would you like to see allocation percentages?",
+                "Are you analyzing diversification?"
+            ]
+        },
+        
+        // Indices Performance intents - NEW
+        {
+            patterns: [/indices.*performance|index.*performance|index.*returns|index.*history|performance.*index|returns.*index|how.*index.*performing/i],
+            intent: 'indices-performance',
+            confidence: 0.95,
+            followUpQuestions: [
+                "Which index would you like to analyze?",
+                "What timeframe are you interested in?",
+                "Would you like to compare with other indices?"
             ]
         },
         
