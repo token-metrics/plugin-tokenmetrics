@@ -9,6 +9,13 @@ import {
     generateRequestId
 } from "./aiActionHelper";
 import type { TopMarketCapResponse } from "../types";
+import { 
+    elizaLogger, 
+    type HandlerCallback,
+    type IAgentRuntime, 
+    type Memory, 
+    type State 
+} from "@elizaos/core";
 
 // Zod schema for top market cap request validation
 const TopMarketCapRequestSchema = z.object({
@@ -114,7 +121,13 @@ export const getTopMarketCapAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing top market cap request...`);
@@ -123,7 +136,7 @@ export const getTopMarketCapAction: Action = {
             const marketCapRequest = await extractTokenMetricsRequest<TopMarketCapRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 TOP_MARKET_CAP_EXTRACTION_TEMPLATE,
                 TopMarketCapRequestSchema,
                 requestId
@@ -159,6 +172,9 @@ export const getTopMarketCapAction: Action = {
             // Analyze the top tokens data based on requested analysis type
             const marketAnalysis = analyzeTopTokensRanking(topTokens, processedRequest.top_k, processedRequest.analysisType);
             
+            // Format response text for user
+            const responseText = formatTopMarketCapResponse(topTokens, marketAnalysis, processedRequest);
+            
             const result = {
                 success: true,
                 message: `Successfully retrieved top ${topTokens.length} tokens by market capitalization ranking`,
@@ -188,12 +204,20 @@ export const getTopMarketCapAction: Action = {
             };
             
             console.log(`[${requestId}] Top market cap analysis completed successfully`);
-            return result;
+            
+            // Use callback to send response to user
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: result
+                });
+            }
+            return true;
             
         } catch (error) {
             console.error("Error in getTopMarketCapAction:", error);
             
-            return {
+            const errorResult = {
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve top market cap tokens from TokenMetrics API",
@@ -212,6 +236,15 @@ export const getTopMarketCapAction: Action = {
                     api_note: "This endpoint returns token rankings by market cap, not actual market cap values"
                 }
             };
+            
+            // Use callback for error response too
+            if (callback) {
+                callback({
+                    text: "❌ Failed to retrieve top market cap data. Please try again later.",
+                    content: errorResult
+                });
+            }
+            return false;
         }
     },
     
@@ -409,4 +442,53 @@ function generateRankingPortfolioImplications(tokensReturned: number, requested:
     implications.push("⚖️ Use market cap weighting for passive investment strategies");
     
     return implications;
+}
+
+/**
+ * Format top market cap response for user display
+ */
+function formatTopMarketCapResponse(topTokens: any[], analysis: any, request: any): string {
+    if (!topTokens || topTokens.length === 0) {
+        return "❌ No top market cap data available at the moment.";
+    }
+
+    const { top_k, analysisType } = request;
+    
+    let response = `🏆 **Top ${topTokens.length} Cryptocurrencies by Market Cap**\n\n`;
+    
+    // Show top tokens
+    const displayCount = Math.min(topTokens.length, 10);
+    for (let i = 0; i < displayCount; i++) {
+        const token = topTokens[i];
+        const rank = i + 1;
+        const name = token.NAME || token.TOKEN_NAME || 'Unknown';
+        const symbol = token.SYMBOL || token.TOKEN_SYMBOL || 'N/A';
+        
+        response += `${rank}. **${name}** (${symbol})\n`;
+    }
+    
+    if (topTokens.length > displayCount) {
+        response += `\n... and ${topTokens.length - displayCount} more tokens\n`;
+    }
+    
+    // Add analysis insights
+    if (analysis?.insights && analysis.insights.length > 0) {
+        response += `\n📊 **Key Insights:**\n`;
+        analysis.insights.slice(0, 4).forEach((insight: string) => {
+            response += `• ${insight}\n`;
+        });
+    }
+    
+    // Add recommendations
+    if (analysis?.recommendations && analysis.recommendations.length > 0) {
+        response += `\n💡 **Recommendations:**\n`;
+        analysis.recommendations.slice(0, 3).forEach((rec: string) => {
+            response += `• ${rec}\n`;
+        });
+    }
+    
+    // Add market cap education note
+    response += `\n📚 **Note:** Market cap = Current Price × Circulating Supply. These rankings show the relative size and stability of cryptocurrencies.`;
+    
+    return response;
 }

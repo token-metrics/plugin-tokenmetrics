@@ -119,7 +119,13 @@ export const getIndicesHoldingsAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing indices holdings request...`);
@@ -128,7 +134,7 @@ export const getIndicesHoldingsAction: Action = {
             const holdingsRequest = await extractTokenMetricsRequest<IndicesHoldingsRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 INDICES_HOLDINGS_EXTRACTION_TEMPLATE,
                 IndicesHoldingsRequestSchema,
                 requestId
@@ -202,6 +208,10 @@ export const getIndicesHoldingsAction: Action = {
             };
             
             console.log(`[${requestId}] Holdings analysis completed successfully`);
+            
+            // Format response text for user
+            const responseText = formatIndicesHoldingsResponse(result);
+            
             console.log(`[${requestId}] Analysis completed successfully`);
             
             // Use callback to send response to user (like working actions)
@@ -224,11 +234,18 @@ export const getIndicesHoldingsAction: Action = {
             return true;
         } catch (error) {
             console.error("Error in getIndicesHoldings action:", error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve indices holdings data from TokenMetrics"
-            };
+            
+            if (callback) {
+                callback({
+                    text: `❌ Failed to retrieve indices holdings data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                    }
+                });
+            }
+            
+            return false;
         }
     },
 
@@ -243,30 +260,40 @@ export const getIndicesHoldingsAction: Action = {
 function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any {
     if (!holdings || holdings.length === 0) {
         return {
-            summary: "No holdings data available for this index",
+            summary: "No holdings data available for analysis",
             insights: [],
             recommendations: []
         };
     }
 
-    // Calculate portfolio metrics
-    const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT_PERCENTAGE || 0), 0);
-    const totalValue = holdings.reduce((sum, holding) => sum + (holding.ALLOCATION_VALUE || 0), 0);
-    
-    // Find largest holdings
+    // Calculate total weight and value using actual API field names
+    const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
+    const totalValue = holdings.reduce((sum, holding) => {
+        const weight = holding.WEIGHT || 0;
+        const price = holding.PRICE || 0;
+        const marketCap = holding.MARKET_CAP || 0;
+        // Estimate allocation value based on weight and market cap
+        return sum + (weight * marketCap);
+    }, 0);
+
+    // Sort holdings by weight for analysis
     const topHoldings = holdings
-        .filter(holding => holding.WEIGHT_PERCENTAGE !== undefined)
-        .sort((a, b) => b.WEIGHT_PERCENTAGE - a.WEIGHT_PERCENTAGE)
-        .slice(0, 5);
+        .filter(holding => holding.WEIGHT !== undefined)
+        .sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0))
+        .map(holding => ({
+            ...holding,
+            WEIGHT_PERCENTAGE: (holding.WEIGHT || 0) * 100, // Convert to percentage for display
+            ALLOCATION_VALUE: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0)
+        }));
 
     // Calculate concentration metrics
-    const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + holding.WEIGHT_PERCENTAGE, 0);
-    const top5Weight = topHoldings.reduce((sum, holding) => sum + holding.WEIGHT_PERCENTAGE, 0);
+    const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
+    const top5Weight = topHoldings.slice(0, 5).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
     
-    // Analyze price performance
-    const holdingsWithPriceChange = holdings.filter(holding => holding.PRICE_CHANGE_PERCENTAGE_24H !== undefined);
-    const avgPriceChange = holdingsWithPriceChange.length > 0 
-        ? holdingsWithPriceChange.reduce((sum, holding) => sum + holding.PRICE_CHANGE_PERCENTAGE_24H, 0) / holdingsWithPriceChange.length
+    // Analyze ROI performance (using CURRENT_ROI field)
+    const holdingsWithROI = holdings.filter(holding => holding.CURRENT_ROI !== undefined);
+    const avgROI = holdingsWithROI.length > 0 
+        ? holdingsWithROI.reduce((sum, holding) => sum + (holding.CURRENT_ROI || 0), 0) / holdingsWithROI.length
         : 0;
 
     // Categorize holdings by market cap
@@ -279,10 +306,10 @@ function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any
         `📊 Total Holdings: ${holdings.length} tokens`,
         `⚖️ Total Weight: ${formatPercentage(totalWeight)}`,
         `💰 Total Allocation Value: ${formatCurrency(totalValue)}`,
-        `🏆 Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatPercentage(topHoldings[0]?.WEIGHT_PERCENTAGE)})`,
+        `🏆 Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatPercentage((topHoldings[0]?.WEIGHT || 0) * 100)})`,
         `📈 Top 3 Concentration: ${formatPercentage(top3Weight)}`,
         `📊 Top 5 Concentration: ${formatPercentage(top5Weight)}`,
-        `📉 Average 24h Change: ${formatPercentage(avgPriceChange)}`
+        `📈 Average ROI: ${formatPercentage(avgROI * 100)}`
     ];
 
     // Base recommendations
@@ -299,10 +326,7 @@ function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any
             "🏛️ Large Cap Focus: Index heavily weighted toward established cryptocurrencies" :
             smallCapHoldings.length > holdings.length * 0.5 ? 
                 "🚀 Small Cap Exposure: Higher risk/reward profile with smaller market cap tokens" :
-                "⚖️ Balanced Market Cap: Mix of large and smaller market cap exposures",
-        Math.abs(avgPriceChange) > 10 ? 
-            "⚡ High Volatility: Recent price movements show significant volatility in holdings" :
-            "📊 Stable Performance: Holdings showing moderate price movements"
+                "⚖️ Balanced Market Cap: Mix of large and smaller market cap exposures"
     ];
 
     // Analysis type specific insights
@@ -313,15 +337,15 @@ function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any
             focusedAnalysis = {
                 composition_focus: {
                     weight_distribution: {
-                        top_10_percent: holdings.filter(h => h.WEIGHT_PERCENTAGE > 10).length,
-                        mid_range: holdings.filter(h => h.WEIGHT_PERCENTAGE >= 1 && h.WEIGHT_PERCENTAGE <= 10).length,
-                        small_positions: holdings.filter(h => h.WEIGHT_PERCENTAGE < 1).length
+                        top_10_percent: holdings.filter(h => (h.WEIGHT || 0) * 100 > 10).length,
+                        mid_range: holdings.filter(h => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length,
+                        small_positions: holdings.filter(h => (h.WEIGHT || 0) * 100 < 1).length
                     },
                     sector_analysis: analyzeSectorDistribution(holdings),
                     composition_insights: [
-                        `🎯 ${holdings.filter(h => h.WEIGHT_PERCENTAGE > 10).length} major positions (>10% weight)`,
-                        `📊 ${holdings.filter(h => h.WEIGHT_PERCENTAGE >= 1 && h.WEIGHT_PERCENTAGE <= 10).length} medium positions (1-10% weight)`,
-                        `🔍 ${holdings.filter(h => h.WEIGHT_PERCENTAGE < 1).length} small positions (<1% weight)`
+                        `🎯 ${holdings.filter(h => (h.WEIGHT || 0) * 100 > 10).length} major positions (>10% weight)`,
+                        `📊 ${holdings.filter(h => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length} medium positions (1-10% weight)`,
+                        `🔍 ${holdings.filter(h => (h.WEIGHT || 0) * 100 < 1).length} small positions (<1% weight)`
                     ]
                 }
             };
@@ -335,33 +359,36 @@ function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any
                         concentration_level: top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"
                     },
                     volatility_analysis: {
-                        high_volatility_holdings: holdings.filter(h => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) > 15).length,
-                        stable_holdings: holdings.filter(h => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) < 5).length
+                        high_roi_holdings: holdings.filter(h => Math.abs(h.CURRENT_ROI || 0) > 0.5).length,
+                        stable_holdings: holdings.filter(h => Math.abs(h.CURRENT_ROI || 0) < 0.1).length
                     },
                     risk_insights: [
                         `⚠️ Concentration Risk: ${top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"} (top 3: ${formatPercentage(top3Weight)})`,
-                        `📊 Volatility Risk: ${holdings.filter(h => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) > 15).length} high-volatility holdings`,
-                        `🛡️ Stability: ${holdings.filter(h => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) < 5).length} stable holdings`
+                        `📊 High ROI Holdings: ${holdings.filter(h => Math.abs(h.CURRENT_ROI || 0) > 0.5).length} holdings with significant ROI`,
+                        `🛡️ Stable Holdings: ${holdings.filter(h => Math.abs(h.CURRENT_ROI || 0) < 0.1).length} holdings with stable performance`
                     ]
                 }
             };
             break;
             
         case "performance":
+            const topPerformers = holdings
+                .filter(h => h.CURRENT_ROI !== undefined)
+                .sort((a, b) => (b.CURRENT_ROI || 0) - (a.CURRENT_ROI || 0))
+                .slice(0, 5);
+            const worstPerformers = holdings
+                .filter(h => h.CURRENT_ROI !== undefined)
+                .sort((a, b) => (a.CURRENT_ROI || 0) - (b.CURRENT_ROI || 0))
+                .slice(0, 5);
+                
             focusedAnalysis = {
                 performance_focus: {
-                    top_performers: holdings
-                        .filter(h => h.PRICE_CHANGE_PERCENTAGE_24H !== undefined)
-                        .sort((a, b) => b.PRICE_CHANGE_PERCENTAGE_24H - a.PRICE_CHANGE_PERCENTAGE_24H)
-                        .slice(0, 5),
-                    worst_performers: holdings
-                        .filter(h => h.PRICE_CHANGE_PERCENTAGE_24H !== undefined)
-                        .sort((a, b) => a.PRICE_CHANGE_PERCENTAGE_24H - b.PRICE_CHANGE_PERCENTAGE_24H)
-                        .slice(0, 5),
+                    top_performers: topPerformers,
+                    worst_performers: worstPerformers,
                     performance_insights: [
-                        `🚀 Best performer: ${holdings.sort((a, b) => (b.PRICE_CHANGE_PERCENTAGE_24H || 0) - (a.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.TOKEN_NAME} (${formatPercentage(holdings.sort((a, b) => (b.PRICE_CHANGE_PERCENTAGE_24H || 0) - (a.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.PRICE_CHANGE_PERCENTAGE_24H || 0)})`,
-                        `📉 Worst performer: ${holdings.sort((a, b) => (a.PRICE_CHANGE_PERCENTAGE_24H || 0) - (b.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.TOKEN_NAME} (${formatPercentage(holdings.sort((a, b) => (a.PRICE_CHANGE_PERCENTAGE_24H || 0) - (b.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.PRICE_CHANGE_PERCENTAGE_24H || 0)})`,
-                        `📊 ${holdings.filter(h => (h.PRICE_CHANGE_PERCENTAGE_24H || 0) > 0).length}/${holdings.length} holdings showing positive performance`
+                        `🚀 Best performer: ${topPerformers[0]?.TOKEN_NAME} (${formatPercentage((topPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
+                        `📉 Worst performer: ${worstPerformers[0]?.TOKEN_NAME} (${formatPercentage((worstPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
+                        `📊 ${holdings.filter(h => (h.CURRENT_ROI || 0) > 0).length}/${holdings.length} holdings showing positive ROI`
                     ]
                 }
             };
@@ -377,7 +404,7 @@ function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any
             total_value: totalValue,
             top_3_concentration: top3Weight,
             top_5_concentration: top5Weight,
-            avg_24h_change: avgPriceChange
+            avg_roi: avgROI
         },
         market_cap_distribution: {
             large_cap: largeCapHoldings.length,
@@ -387,10 +414,10 @@ function analyzeHoldingsData(holdings: any[], analysisType: string = "all"): any
         top_holdings: topHoldings.map(holding => ({
             token_name: holding.TOKEN_NAME,
             symbol: holding.TOKEN_SYMBOL,
-            weight_percentage: holding.WEIGHT_PERCENTAGE,
-            allocation_value: holding.ALLOCATION_VALUE,
+            weight_percentage: (holding.WEIGHT || 0) * 100,
+            allocation_value: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0),
             price: holding.PRICE,
-            price_change_24h: holding.PRICE_CHANGE_PERCENTAGE_24H
+            current_roi: holding.CURRENT_ROI
         })),
         insights,
         recommendations,
@@ -422,14 +449,95 @@ function analyzeSectorDistribution(holdings: any[]): any {
  * Calculate Herfindahl Index for concentration measurement
  */
 function calculateHerfindahlIndex(holdings: any[]): number {
-    const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT_PERCENTAGE || 0), 0);
+    const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
     
     if (totalWeight === 0) return 0;
     
     const herfindahl = holdings.reduce((sum, holding) => {
-        const normalizedWeight = (holding.WEIGHT_PERCENTAGE || 0) / totalWeight;
+        const normalizedWeight = (holding.WEIGHT || 0) / totalWeight;
         return sum + (normalizedWeight * normalizedWeight);
     }, 0);
     
     return Math.round(herfindahl * 10000); // Scale to 0-10000 range
+}
+
+/**
+ * Format indices holdings response for user display
+ */
+function formatIndicesHoldingsResponse(result: any): string {
+    const { indices_holdings, analysis, metadata } = result;
+    
+    let response = `📊 **Index Holdings Analysis**\n\n`;
+    
+    if (indices_holdings && indices_holdings.length > 0) {
+        response += `🎯 **Index ${metadata.index_id} Holdings (${indices_holdings.length} assets)**\n\n`;
+        
+        // Show top holdings using actual API field names
+        const topHoldings = indices_holdings
+            .filter((holding: any) => holding.WEIGHT !== undefined)
+            .sort((a: any, b: any) => (b.WEIGHT || 0) - (a.WEIGHT || 0))
+            .slice(0, 10);
+            
+        if (topHoldings.length > 0) {
+            response += `🏆 **Top Holdings:**\n`;
+            topHoldings.forEach((holding: any, i: number) => {
+                const name = holding.TOKEN_NAME || holding.TOKEN_SYMBOL || `Token ${i + 1}`;
+                const symbol = holding.TOKEN_SYMBOL || '';
+                const weight = holding.WEIGHT ? formatPercentage(holding.WEIGHT * 100) : 'N/A';
+                const price = holding.PRICE ? formatCurrency(holding.PRICE) : 'N/A';
+                const currentROI = holding.CURRENT_ROI ? formatPercentage(holding.CURRENT_ROI * 100) : 'N/A';
+                
+                response += `${i + 1}. **${name}** ${symbol ? `(${symbol})` : ''}\n`;
+                response += `   • Weight: ${weight}\n`;
+                response += `   • Price: ${price}\n`;
+                response += `   • Current ROI: ${currentROI}\n`;
+                response += `\n`;
+            });
+        }
+        
+        // Add analysis insights
+        if (analysis && analysis.insights) {
+            response += `💡 **Key Insights:**\n`;
+            analysis.insights.slice(0, 5).forEach((insight: string) => {
+                response += `• ${insight}\n`;
+            });
+            response += `\n`;
+        }
+        
+        // Add portfolio metrics
+        if (analysis && analysis.portfolio_metrics) {
+            const metrics = analysis.portfolio_metrics;
+            response += `📈 **Portfolio Metrics:**\n`;
+            response += `• Total Holdings: ${metrics.total_holdings || 0}\n`;
+            if (metrics.top_3_concentration !== undefined) {
+                response += `• Top 3 Concentration: ${formatPercentage(metrics.top_3_concentration)}\n`;
+            }
+            if (metrics.top_5_concentration !== undefined) {
+                response += `• Top 5 Concentration: ${formatPercentage(metrics.top_5_concentration)}\n`;
+            }
+            if (metrics.avg_roi !== undefined) {
+                response += `• Average ROI: ${formatPercentage(metrics.avg_roi * 100)}\n`;
+            }
+            response += `\n`;
+        }
+        
+        // Add recommendations
+        if (analysis && analysis.recommendations) {
+            response += `🎯 **Recommendations:**\n`;
+            analysis.recommendations.slice(0, 3).forEach((rec: string) => {
+                response += `• ${rec}\n`;
+            });
+        }
+    } else {
+        response += `❌ No holdings data found for index ${metadata.index_id}.\n\n`;
+        response += `This could be due to:\n`;
+        response += `• Invalid index ID\n`;
+        response += `• Index has no current holdings\n`;
+        response += `• API connectivity issues\n`;
+    }
+    
+    response += `\n📊 **Data Source**: TokenMetrics Indices Engine\n`;
+    response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
 } 

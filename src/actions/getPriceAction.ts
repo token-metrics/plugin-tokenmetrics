@@ -102,21 +102,38 @@ const PriceRequestSchema = z.object({
 
 // Standardized AI extraction template
 const PRICE_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting cryptocurrency price requests from natural language.
+You are an AI assistant specialized in extracting cryptocurrency PRICE requests from natural language.
 
-CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+CRITICAL INSTRUCTION: This is ONLY for PRICE requests, NOT token search/database requests.
 
-The user wants to get price information for a cryptocurrency. Extract the following information:
+ONLY MATCH PRICE REQUESTS:
+- "What's the price of Bitcoin?" ✅
+- "How much is ETH worth?" ✅  
+- "Get Bitcoin price" ✅
+- "Show me DOGE price" ✅
+- "Bitcoin current price" ✅
+- "Check ETH price" ✅
+- "Price of Solana" ✅
+
+DO NOT MATCH TOKEN SEARCH/DATABASE REQUESTS:
+- "Find token details for Ethereum" ❌ (this is TOKEN SEARCH)
+- "Search for Bitcoin token information" ❌ (this is TOKEN SEARCH)
+- "Lookup token information for Dogecoin" ❌ (this is TOKEN SEARCH)
+- "Get token details" ❌ (this is TOKEN SEARCH)
+- "Search token database" ❌ (this is TOKEN SEARCH)
+- "Find token info" ❌ (this is TOKEN SEARCH)
+- "Token information" ❌ (this is TOKEN SEARCH)
+
+ONLY extract if the user is asking for PRICE/VALUE information, not token details or database searches.
+
+Extract the following information for PRICE requests only:
 
 1. **cryptocurrency** (required): The EXACT cryptocurrency name or symbol they mentioned
-   - Extract whatever cryptocurrency name the user said (Bitcoin, Ethereum, Dogecoin, Avalanche, Cardano, Polygon, Solana, etc.)
-   - Extract whatever symbol the user said (BTC, ETH, DOGE, AVAX, ADA, MATIC, SOL, etc.)
-   - If they use a symbol, you can also include the full name if you know it
+   - Extract whatever cryptocurrency name the user said (Bitcoin, Ethereum, Dogecoin, Avalanche, etc.)
+   - Extract whatever symbol the user said (BTC, ETH, DOGE, AVAX, etc.)
    - DO NOT change or substitute the cryptocurrency name
-   - DO NOT guess or assume a different cryptocurrency
 
-2. **symbol** (optional): The cryptocurrency symbol if mentioned or if you can confidently map the name to a symbol
-   - Only include if explicitly mentioned or if you're certain of the mapping
+2. **symbol** (optional): The cryptocurrency symbol if mentioned or mappable
    - Common mappings: Bitcoin→BTC, Ethereum→ETH, Dogecoin→DOGE, Avalanche→AVAX, Solana→SOL
 
 3. **analysisType** (optional, default: "current"): What type of price analysis they want
@@ -125,21 +142,7 @@ The user wants to get price information for a cryptocurrency. Extract the follow
    - "technical" - technical analysis
    - "all" - comprehensive analysis
 
-PATTERN RECOGNITION:
-- "What's the price of [TOKEN]?" → Extract [TOKEN] exactly
-- "How much is [SYMBOL] worth?" → Extract [SYMBOL] exactly
-- "Get me [TOKEN] price" → Extract [TOKEN] exactly
-- "[TOKEN] current price" → Extract [TOKEN] exactly
-
-EXAMPLES:
-- "What's the price of Bitcoin?" → {"cryptocurrency": "Bitcoin", "symbol": "BTC", "analysisType": "current"}
-- "What's the price of Dogecoin?" → {"cryptocurrency": "Dogecoin", "symbol": "DOGE", "analysisType": "current"}
-- "What's the price of Avalanche?" → {"cryptocurrency": "Avalanche", "symbol": "AVAX", "analysisType": "current"}
-- "How much is SHIB worth?" → {"cryptocurrency": "SHIB", "analysisType": "current"}
-- "Get me PEPE price" → {"cryptocurrency": "PEPE", "analysisType": "current"}
-- "Chainlink technical analysis" → {"cryptocurrency": "Chainlink", "symbol": "LINK", "analysisType": "technical"}
-
-CRITICAL: Always extract the EXACT cryptocurrency the user mentioned. If you don't recognize it, still extract it exactly as they said it.
+CRITICAL: Only extract if this is clearly a PRICE request, not a token search/database request.
 
 Extract the price request details from the user's message.
 `;
@@ -266,11 +269,19 @@ export const getPriceAction: Action = {
         "get price",
         "price check",
         "crypto price",
-        "token price",
         "current price",
         "price data",
         "market price",
-        "price analysis"
+        "price analysis",
+        "what's the price",
+        "how much is",
+        "price of",
+        "check price",
+        "show price",
+        "get current price",
+        "market value",
+        "token value",
+        "crypto value"
     ],
     examples: [
         [

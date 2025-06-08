@@ -22,35 +22,45 @@ import {
 } from "./aiActionHelper";
 
 // Template for extracting tokens information from conversations
-const tokensTemplate = `# Task: Extract Tokens Request Information
+const tokensTemplate = `# Task: Extract Token Search Request Information
 
-Based on the conversation context, identify what tokens information the user is requesting.
+IMPORTANT: This is for TOKEN SEARCH/DATABASE QUERIES, NOT price requests.
+
+Based on the conversation context, identify what token information the user is requesting.
 
 # Conversation Context:
 {{recentMessages}}
 
 # Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
-- Token search requests ("list tokens", "available tokens", "supported cryptocurrencies", "find token")
-- Token categories (DeFi, Layer-1, meme tokens, gaming, NFT, etc.)
-- Exchange filters (Binance, Coinbase, Uniswap, etc.)
-- Market filters (market cap, volume, price range)
+Look for TOKEN SEARCH/DATABASE requests, such as:
+- Token listing requests ("list tokens", "available tokens", "supported cryptocurrencies")
+- Token database searches ("search for [token] information", "find token details", "lookup token")
+- Category filtering ("show me DeFi tokens", "gaming tokens", "meme tokens")
+- Exchange filtering ("tokens on Binance", "Coinbase supported tokens")
+- Market filtering ("high market cap tokens", "tokens by volume")
 
-The user might say things like:
+EXAMPLES OF TOKEN SEARCH REQUESTS:
 - "List all available tokens"
 - "Show me DeFi tokens"
-- "Find tokens on Binance"
-- "Get supported cryptocurrencies"
+- "Find token information for Bitcoin"
+- "Search token database for Ethereum"
+- "Get supported cryptocurrencies list"
+- "Find token details for Solana"
 - "Show me tokens with high market cap"
 - "List tokens in gaming category"
-- "Find token by symbol BTC"
+- "Search for Avalanche token information"
+- "Find SOL token details"
 
-Extract the relevant information for the tokens request.
+DO NOT MATCH PRICE REQUESTS:
+- "What's the price of Bitcoin?" (this is a PRICE request)
+- "How much is ETH worth?" (this is a PRICE request)
+- "Get Bitcoin price" (this is a PRICE request)
+- "Show me DOGE price" (this is a PRICE request)
+
+Extract the relevant information for the TOKEN SEARCH request.
 
 # Response Format:
-Return a structured object with the tokens request information.`;
+Return a structured object with the token search request information.`;
 
 // Schema for the extracted data
 const TokensRequestSchema = z.object({
@@ -63,6 +73,44 @@ const TokensRequestSchema = z.object({
 });
 
 type TokensRequest = z.infer<typeof TokensRequestSchema>;
+
+/**
+ * Normalize cryptocurrency names to their official names for better API matching
+ */
+function normalizeCryptocurrencyName(name: string): string {
+    const nameMap: Record<string, string> = {
+        // Common variations to official names
+        'btc': 'Bitcoin',
+        'bitcoin': 'Bitcoin',
+        'eth': 'Ethereum', 
+        'ethereum': 'Ethereum',
+        'sol': 'Solana',
+        'solana': 'Solana',
+        'doge': 'Dogecoin',
+        'dogecoin': 'Dogecoin',
+        'avax': 'Avalanche',
+        'avalanche': 'Avalanche',
+        'ada': 'Cardano',
+        'cardano': 'Cardano',
+        'matic': 'Polygon',
+        'polygon': 'Polygon',
+        'dot': 'Polkadot',
+        'polkadot': 'Polkadot',
+        'link': 'Chainlink',
+        'chainlink': 'Chainlink',
+        'uni': 'Uniswap',
+        'uniswap': 'Uniswap',
+        'ltc': 'Litecoin',
+        'litecoin': 'Litecoin',
+        'xrp': 'XRP',
+        'ripple': 'XRP',
+        'bnb': 'BNB',
+        'binance coin': 'BNB'
+    };
+    
+    const normalized = nameMap[name.toLowerCase()];
+    return normalized || name; // Return original if no mapping found
+}
 
 /**
  * Fetch tokens data from TokenMetrics API
@@ -228,9 +276,28 @@ export const getTokensAction: Action = {
         "FIND_TOKENS",
         "AVAILABLE_TOKENS",
         "SUPPORTED_CRYPTOCURRENCIES",
-        "TOKEN_LIST"
+        "TOKEN_LIST",
+        "SEARCH_TOKENS",
+        "TOKEN_SEARCH",
+        "FIND_TOKEN_INFO",
+        "TOKEN_DETAILS",
+        "TOKEN_DATABASE",
+        "LOOKUP_TOKEN",
+        "search for token",
+        "find token",
+        "token information",
+        "token details",
+        "search token",
+        "lookup token",
+        "find token info",
+        "search for",
+        "find information",
+        "token database",
+        "supported tokens",
+        "available tokens",
+        "list tokens"
     ],
-    description: "Get list of supported cryptocurrencies and tokens from TokenMetrics",
+    description: "Get list of supported cryptocurrencies and tokens from TokenMetrics database - for searching token information, not prices",
     
     validate: async (runtime: IAgentRuntime, message: Memory) => {
         elizaLogger.log("🔍 Validating getTokensAction");
@@ -314,9 +381,17 @@ Try asking something like:
 
             // Handle specific token search
             if (tokensRequest.cryptocurrency) {
-                // Try to search by symbol first, then by name
-                apiParams.symbol = tokensRequest.cryptocurrency.toUpperCase();
-                elizaLogger.log(`🔍 Searching for specific token: ${tokensRequest.cryptocurrency}`);
+                // Use token_name parameter for more precise searches
+                // This should return the actual token (e.g., Solana, Dogecoin) instead of multiple unrelated tokens
+                apiParams.token_name = normalizeCryptocurrencyName(tokensRequest.cryptocurrency);
+                elizaLogger.log(`🔍 Searching for specific token by name: ${apiParams.token_name}`);
+                
+                // Also try symbol search as fallback
+                if (apiParams.token_name.length <= 5) {
+                    // If it looks like a symbol (short), also search by symbol
+                    apiParams.symbol = apiParams.token_name.toUpperCase();
+                    elizaLogger.log(`🔍 Also searching by symbol: ${apiParams.symbol}`);
+                }
             }
 
             // Handle category filtering
@@ -448,7 +523,7 @@ Please check your TokenMetrics API key configuration and try again.`,
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll fetch all available cryptocurrencies from TokenMetrics.",
+                    text: "I'll fetch all available cryptocurrencies from TokenMetrics database.",
                     action: "GET_TOKENS_TOKENMETRICS"
                 }
             }
@@ -463,7 +538,7 @@ Please check your TokenMetrics API key configuration and try again.`,
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll get all DeFi category tokens from TokenMetrics.",
+                    text: "I'll get all DeFi category tokens from TokenMetrics database.",
                     action: "GET_TOKENS_TOKENMETRICS"
                 }
             }
@@ -472,13 +547,58 @@ Please check your TokenMetrics API key configuration and try again.`,
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Find Bitcoin token details"
+                    text: "Search for Bitcoin token information"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll search for Bitcoin token information in TokenMetrics database.",
+                    text: "I'll search for Bitcoin token details in TokenMetrics database.",
+                    action: "GET_TOKENS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Find token details for Ethereum"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll look up Ethereum token information from TokenMetrics database.",
+                    action: "GET_TOKENS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get supported cryptocurrencies list"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve the complete list of supported cryptocurrencies from TokenMetrics.",
+                    action: "GET_TOKENS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Search token database for Solana"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll search the TokenMetrics database for Solana token information.",
                     action: "GET_TOKENS_TOKENMETRICS"
                 }
             }
