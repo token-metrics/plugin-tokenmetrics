@@ -1,4 +1,14 @@
 import type { Action } from "@elizaos/core";
+import {
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    elizaLogger,
+    composeContext,
+    generateObject,
+    ModelClass
+} from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -7,7 +17,8 @@ import {
     formatCurrency,
     formatPercentage,
     generateRequestId,
-    resolveTokenSmart
+    resolveTokenSmart,
+    mapSymbolToName
 } from "./aiActionHelper";
 import type { ScenarioAnalysisResponse } from "../types";
 
@@ -23,40 +34,98 @@ const ScenarioAnalysisRequestSchema = z.object({
 
 type ScenarioAnalysisRequest = z.infer<typeof ScenarioAnalysisRequestSchema>;
 
-// AI extraction template for natural language processing
-const SCENARIO_ANALYSIS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting scenario analysis requests from natural language.
+// Enhanced template for extracting scenario analysis information from conversations
+const scenarioAnalysisTemplate = `# Task: Extract Scenario Analysis Request Information
 
-The user wants to get price predictions based on different cryptocurrency market scenarios. Extract the following information:
+**CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.**
 
-1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
-   - Can be a specific token or general request
+Based on the conversation context, identify the scenario analysis request details:
 
-2. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
+## Required Information:
+1. **cryptocurrency** (optional): The EXACT name or symbol mentioned
+   - Examples: "Bitcoin", "Ethereum", "Dogecoin", "Avalanche", "Solana"
+   - Symbols: "BTC", "ETH", "DOGE", "AVAX", "SOL", "ADA", "DOT"
+   - CRITICAL: Use the EXACT text the user provided
 
-3. **symbol** (optional): Token symbol
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
+2. **symbol** (optional): Extract if user mentions a symbol
+   - Common patterns: BTC, ETH, AVAX, SOL, ADA, DOT, MATIC, LINK
+   - If user says "BTC" → symbol: "BTC"
+   - If user says "Bitcoin" → cryptocurrency: "Bitcoin"
 
-4. **limit** (optional, default: 20): Number of scenarios to return
-
-5. **page** (optional, default: 1): Page number for pagination
-
-6. **analysisType** (optional, default: "all"): What type of analysis they want
+3. **analysisType** (optional, default: "all"): Type of scenario analysis
    - "risk_assessment" - focus on downside risks and worst-case scenarios
-   - "portfolio_planning" - focus on scenarios for portfolio allocation
+   - "portfolio_planning" - focus on scenarios for portfolio allocation  
    - "stress_testing" - focus on extreme market conditions
    - "all" - comprehensive scenario analysis
 
-Examples:
-- "Get scenario analysis for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me risk scenarios for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "risk_assessment"}
-- "Portfolio planning scenarios for crypto" → {analysisType: "portfolio_planning"}
+4. **limit** (optional, default: 20): Number of scenarios to return
+5. **page** (optional, default: 1): Page number for pagination
+
+## Examples:
+- "Get scenario analysis for Bitcoin" → {cryptocurrency: "Bitcoin", analysisType: "all"}
+- "Show me price scenarios for ETH" → {symbol: "ETH", analysisType: "all"}
+- "AVAX scenario analysis" → {symbol: "AVAX", analysisType: "all"}
+- "Risk scenarios for Avalanche" → {cryptocurrency: "Avalanche", analysisType: "risk_assessment"}
 - "Stress test scenarios for market crash" → {analysisType: "stress_testing"}
 
-Extract the request details from the user's message.
-`;
+**IMPORTANT**: 
+- Extract EXACTLY what the user typed
+- Do not convert between names and symbols
+- Do not assume or substitute different cryptocurrencies
+- If unclear, extract the exact text mentioned
+
+Extract the scenario analysis request from the user's message:`;
+
+// Simple regex-based extraction as fallback
+function extractCryptocurrencySimple(text: string): { cryptocurrency?: string; symbol?: string } {
+    const upperText = text.toUpperCase();
+    
+    // Common cryptocurrency symbols
+    const symbolMap: Record<string, { cryptocurrency: string; symbol: string }> = {
+        'BTC': { cryptocurrency: 'Bitcoin', symbol: 'BTC' },
+        'ETH': { cryptocurrency: 'Ethereum', symbol: 'ETH' },
+        'AVAX': { cryptocurrency: 'Avalanche', symbol: 'AVAX' },
+        'SOL': { cryptocurrency: 'Solana', symbol: 'SOL' },
+        'ADA': { cryptocurrency: 'Cardano', symbol: 'ADA' },
+        'DOT': { cryptocurrency: 'Polkadot', symbol: 'DOT' },
+        'MATIC': { cryptocurrency: 'Polygon', symbol: 'MATIC' },
+        'LINK': { cryptocurrency: 'Chainlink', symbol: 'LINK' },
+        'DOGE': { cryptocurrency: 'Dogecoin', symbol: 'DOGE' },
+        'XRP': { cryptocurrency: 'Ripple', symbol: 'XRP' }
+    };
+    
+    // Check for symbols first
+    for (const [symbol, data] of Object.entries(symbolMap)) {
+        if (upperText.includes(symbol)) {
+            return { cryptocurrency: data.cryptocurrency, symbol: data.symbol };
+        }
+    }
+    
+    // Check for full names
+    const nameMap: Record<string, { cryptocurrency: string; symbol: string }> = {
+        'BITCOIN': { cryptocurrency: 'Bitcoin', symbol: 'BTC' },
+        'ETHEREUM': { cryptocurrency: 'Ethereum', symbol: 'ETH' },
+        'AVALANCHE': { cryptocurrency: 'Avalanche', symbol: 'AVAX' },
+        'SOLANA': { cryptocurrency: 'Solana', symbol: 'SOL' },
+        'CARDANO': { cryptocurrency: 'Cardano', symbol: 'ADA' },
+        'POLKADOT': { cryptocurrency: 'Polkadot', symbol: 'DOT' },
+        'POLYGON': { cryptocurrency: 'Polygon', symbol: 'MATIC' },
+        'CHAINLINK': { cryptocurrency: 'Chainlink', symbol: 'LINK' },
+        'DOGECOIN': { cryptocurrency: 'Dogecoin', symbol: 'DOGE' },
+        'RIPPLE': { cryptocurrency: 'Ripple', symbol: 'XRP' }
+    };
+    
+    for (const [name, data] of Object.entries(nameMap)) {
+        if (upperText.includes(name)) {
+            return { cryptocurrency: data.cryptocurrency, symbol: data.symbol };
+        }
+    }
+    
+    return {};
+}
+
+// AI extraction template for natural language processing
+const SCENARIO_ANALYSIS_EXTRACTION_TEMPLATE = scenarioAnalysisTemplate;
 
 /**
  * SCENARIO ANALYSIS ACTION - Based on actual TokenMetrics API documentation
@@ -127,22 +196,84 @@ export const getScenarioAnalysisAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing scenario analysis request...`);
             
-            // Extract structured request using AI
-            const scenarioRequest = await extractTokenMetricsRequest<ScenarioAnalysisRequest>(
-                runtime,
-                message,
-                _state || await runtime.composeState(message),
-                SCENARIO_ANALYSIS_EXTRACTION_TEMPLATE,
-                ScenarioAnalysisRequestSchema,
-                requestId
-            );
+            // STEP 2: Extract scenario analysis request using AI with enhanced template
+            const userMessage = message.content?.text || "";
             
-            console.log(`[${requestId}] Extracted request:`, scenarioRequest);
+            console.log(`🔍 AI EXTRACTION CONTEXT [${requestId}]:`);
+            console.log(`📝 User message: "${userMessage}"`);
+            console.log(`📋 Template being used:`);
+            console.log(scenarioAnalysisTemplate);
+            console.log(`🔚 END CONTEXT [${requestId}]`);
+
+            // Enhanced template with cache busting
+            const enhancedTemplate = scenarioAnalysisTemplate
+                .replace('{{requestId}}', requestId)
+                .replace('{{timestamp}}', new Date().toISOString()) + `
+
+# Cache Busting ID: ${requestId}
+# Timestamp: ${new Date().toISOString()}
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
+            const scenarioRequestResult = await generateObject({
+                runtime,
+                context: composeContext({
+                    state: state || await runtime.composeState(message),
+                    template: enhancedTemplate
+                }),
+                modelClass: ModelClass.LARGE, // Use GPT-4o for better instruction following
+                schema: ScenarioAnalysisRequestSchema,
+                mode: "json"
+            });
+
+            let scenarioRequest = scenarioRequestResult.object as ScenarioAnalysisRequest;
+
+            console.log(`[${requestId}] AI Extracted:`, scenarioRequest);
+
+            // STEP 3: Apply regex fallback if AI extraction failed or is inconsistent
+            if (!scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+                console.log(`[${requestId}] AI extraction incomplete, applying regex fallback...`);
+                const regexResult = extractCryptocurrencySimple(userMessage);
+                if (regexResult.cryptocurrency || regexResult.symbol) {
+                    scenarioRequest = {
+                        ...scenarioRequest,
+                        cryptocurrency: regexResult.cryptocurrency,
+                        symbol: regexResult.symbol
+                    };
+                    console.log(`[${requestId}] Regex fallback result:`, regexResult);
+                }
+            }
+
+            // STEP 3.5: Fix misclassified AI extractions (symbols classified as cryptocurrency names)
+            if (scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+                const crypto = scenarioRequest.cryptocurrency.toUpperCase();
+                // Check if the "cryptocurrency" is actually a symbol
+                const commonSymbols = ['BTC', 'ETH', 'DOGE', 'AVAX', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI', 'LTC', 'XRP', 'BNB', 'USDT', 'USDC', 'ATOM', 'NEAR', 'FTM', 'ALGO', 'VET', 'ICP', 'FLOW', 'SAND', 'MANA', 'CRO', 'APE', 'SHIB', 'PEPE', 'WIF', 'BONK'];
+                
+                if (commonSymbols.includes(crypto)) {
+                    console.log(`[${requestId}] 🔧 Fixing misclassified extraction: "${scenarioRequest.cryptocurrency}" is a symbol, not a cryptocurrency name`);
+                    scenarioRequest = {
+                        ...scenarioRequest,
+                        cryptocurrency: undefined,
+                        symbol: crypto
+                    };
+                    console.log(`[${requestId}] 🔧 Corrected to:`, { symbol: crypto });
+                }
+            }
+
+            // STEP 4: Validate extraction results
+            if (scenarioRequest.cryptocurrency || scenarioRequest.symbol) {
+                console.log(`[${requestId}] ✅ Successfully extracted cryptocurrency: ${scenarioRequest.cryptocurrency || scenarioRequest.symbol}`);
+            } else {
+                console.log(`[${requestId}] ⚠️ No specific cryptocurrency extracted, proceeding with general analysis`);
+            }
             
             // Apply defaults for optional fields
             const processedRequest = {
@@ -154,18 +285,39 @@ export const getScenarioAnalysisAction: Action = {
                 analysisType: scenarioRequest.analysisType || "all"
             };
             
-            // Resolve token if cryptocurrency name is provided
+            // STEP 5: Smart symbol-to-name mapping (same approach as working actions)
+            let cryptoToResolve = processedRequest.cryptocurrency;
+            
+            // If we have a symbol but no cryptocurrency name, try to map it
+            if (!cryptoToResolve && processedRequest.symbol) {
+                const mappedName = mapSymbolToName(processedRequest.symbol);
+                if (mappedName !== processedRequest.symbol) {
+                    // Symbol was successfully mapped to a name
+                    cryptoToResolve = mappedName;
+                    processedRequest.cryptocurrency = mappedName;
+                    console.log(`[${requestId}] 🔄 Mapped symbol "${processedRequest.symbol}" to "${mappedName}"`);
+                } else {
+                    // Symbol wasn't in our mapping, try to resolve it directly
+                    cryptoToResolve = processedRequest.symbol;
+                    console.log(`[${requestId}] 🔍 Symbol "${processedRequest.symbol}" not in mapping, will try direct resolution`);
+                }
+            }
+            
+            // Resolve token if we have a cryptocurrency name to resolve
             let resolvedToken = null;
-            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+            if (cryptoToResolve && !processedRequest.token_id) {
                 try {
-                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+                    resolvedToken = await resolveTokenSmart(cryptoToResolve, runtime);
                     if (resolvedToken) {
-                        processedRequest.token_id = resolvedToken.token_id;
-                        processedRequest.symbol = resolvedToken.symbol;
-                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                        processedRequest.token_id = resolvedToken.TOKEN_ID;
+                        processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+                        processedRequest.cryptocurrency = resolvedToken.TOKEN_NAME;
+                        console.log(`[${requestId}] ✅ Resolved "${cryptoToResolve}" to ${resolvedToken.TOKEN_NAME} (${resolvedToken.TOKEN_SYMBOL}) - ID: ${resolvedToken.TOKEN_ID}`);
+                    } else {
+                        console.log(`[${requestId}] ❌ Failed to resolve "${cryptoToResolve}"`);
                     }
                 } catch (error) {
-                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                    console.log(`[${requestId}] ❌ Error resolving token "${cryptoToResolve}":`, error);
                 }
             }
             
@@ -188,80 +340,193 @@ export const getScenarioAnalysisAction: Action = {
             
             console.log(`[${requestId}] API response received, processing data...`);
             
-            // Process response data
-            const scenarioData = Array.isArray(response) ? response : response.data || [];
+            // CRITICAL FIX: Check for API errors before processing data
+            if (response && response.success === false) {
+                console.log(`[${requestId}] ❌ API returned error: ${response.message || 'Unknown error'}`);
+                
+                if (callback) {
+                    callback({
+                        text: `❌ No scenario analysis data available for ${processedRequest.cryptocurrency || processedRequest.symbol || 'this token'}.\n\nThis could mean:\n• Token is not covered by TokenMetrics scenario modeling\n• Insufficient historical data for scenario generation\n• Token may be too new or have limited market activity\n\nTry using the full cryptocurrency name instead of the symbol.`,
+                        content: {
+                            success: false,
+                            error: response.message || 'Data not found',
+                            request_id: requestId
+                        }
+                    });
+                }
+                
+                return false;
+            }
+            
+            // Process response data - FIXED: Handle nested SCENARIO_PREDICTION structure
+            let scenarioData = [];
+            
+            if (Array.isArray(response)) {
+                // Direct array response
+                scenarioData = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                // Response with data wrapper
+                const rawData = response.data;
+                
+                // Transform the nested SCENARIO_PREDICTION structure
+                scenarioData = rawData.flatMap((item: any) => {
+                    if (item.SCENARIO_PREDICTION && item.SCENARIO_PREDICTION.scenario_prediction) {
+                        // Extract the nested scenario predictions and transform them
+                        return item.SCENARIO_PREDICTION.scenario_prediction.map((scenario: any) => ({
+                            // Transform to expected format
+                            TOKEN_ID: item.TOKEN_ID,
+                            TOKEN_NAME: item.TOKEN_NAME,
+                            TOKEN_SYMBOL: item.TOKEN_SYMBOL,
+                            CURRENT_PRICE: item.SCENARIO_PREDICTION.current_price,
+                            PREDICTED_DATE: item.SCENARIO_PREDICTION.predicted_date,
+                            CATEGORY: item.SCENARIO_PREDICTION.category_name,
+                            
+                            // Scenario-specific data
+                            SCENARIO_ID: scenario.scenario,
+                            SCENARIO_TYPE: `Scenario ${scenario.scenario}`,
+                            
+                            // Price predictions (use base as primary)
+                            PREDICTED_PRICE: scenario.predicted_price_base,
+                            PRICE_TARGET: scenario.predicted_price_base,
+                            PREDICTED_PRICE_BEAR: scenario.predicted_price_bear,
+                            PREDICTED_PRICE_MOON: scenario.predicted_price_moon,
+                            
+                            // ROI predictions
+                            PREDICTED_ROI: scenario.predicted_roi_base,
+                            PREDICTED_ROI_BEAR: scenario.predicted_roi_bear,
+                            PREDICTED_ROI_MOON: scenario.predicted_roi_moon,
+                            
+                            // Market cap predictions
+                            PREDICTED_MCAP_BASE: scenario.predicted_mcap_base,
+                            PREDICTED_MCAP_BEAR: scenario.predicted_mcap_bear,
+                            PREDICTED_MCAP_MOON: scenario.predicted_mcap_moon,
+                            
+                            // Additional metadata
+                            TOTAL_MCAP_SCENARIO: scenario.total_mcap_scenario,
+                            
+                            // Assign probability based on scenario type (higher scenarios = lower probability)
+                            PROBABILITY: scenario.scenario <= 1 ? 40 : 
+                                       scenario.scenario <= 2 ? 30 :
+                                       scenario.scenario <= 4 ? 20 :
+                                       scenario.scenario <= 6 ? 15 : 10,
+                            
+                            // Scenario description
+                            SCENARIO_DESCRIPTION: `${scenario.scenario <= 1 ? 'Conservative' : 
+                                                  scenario.scenario <= 2 ? 'Moderate' :
+                                                  scenario.scenario <= 4 ? 'Optimistic' :
+                                                  scenario.scenario <= 6 ? 'Bullish' : 'Extreme Bullish'} scenario with ${(scenario.predicted_roi_base * 100).toFixed(0)}% base ROI`,
+                            
+                            // Raw scenario data for reference
+                            RAW_SCENARIO: scenario
+                        }));
+                    }
+                    return [item]; // Fallback to original item if no nested structure
+                });
+            } else {
+                scenarioData = [];
+            }
+            
+            console.log(`[${requestId}] Processed ${scenarioData.length} scenarios from API response`);
             
             // Analyze the scenario data based on requested analysis type
             const scenarioAnalysis = analyzeScenarioData(scenarioData, processedRequest.analysisType);
             
-            const result = {
-                success: true,
-                message: `Successfully retrieved ${scenarioData.length} scenario analysis data points from TokenMetrics`,
-                request_id: requestId,
-                scenario_data: scenarioData,
-                analysis: scenarioAnalysis,
-                metadata: {
-                    endpoint: "scenario-analysis",
-                    requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-                    resolved_token: resolvedToken,
-                    analysis_focus: processedRequest.analysisType,
-                    pagination: {
-                        page: processedRequest.page,
-                        limit: processedRequest.limit
-                    },
-                    data_points: scenarioData.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics Scenario Modeling Engine"
-                },
-                scenario_explanation: {
-                    purpose: "Evaluate potential price outcomes under different market conditions for informed decision making",
-                    scenario_types: [
-                        "Bull Market - Optimistic market conditions with strong growth",
-                        "Bear Market - Pessimistic conditions with significant declines",
-                        "Base Case - Most likely scenario based on current trends",
-                        "Extreme Scenarios - Low probability but high impact events"
-                    ],
-                    usage_guidelines: [
-                        "Use for risk assessment and portfolio stress testing",
-                        "Plan position sizing based on downside scenarios",
-                        "Set profit targets based on upside scenarios",
-                        "Develop contingency plans for extreme scenarios"
-                    ],
-                    interpretation: [
-                        "Higher probability scenarios should drive primary strategy",
-                        "Low probability scenarios help with risk management",
-                        "Price ranges provide better insight than point estimates",
-                        "Scenario analysis is probabilistic, not predictive"
-                    ]
+            // Generate formatted response text
+            const tokenName = processedRequest.cryptocurrency || processedRequest.symbol || 'Cryptocurrency';
+            let responseText = `📊 **Scenario Analysis for ${tokenName}**\n\n`;
+            
+            if (scenarioData.length === 0) {
+                responseText += "❌ No scenario analysis data available for this token.\n";
+                responseText += "This could mean:\n";
+                responseText += "• Token is not covered by TokenMetrics scenario modeling\n";
+                responseText += "• Insufficient historical data for scenario generation\n";
+                responseText += "• Token may be too new or have limited market activity\n";
+            } else {
+                responseText += `🎯 **Analysis Summary**\n`;
+                responseText += `• Total Scenarios: ${scenarioData.length}\n`;
+                responseText += `• Analysis Type: ${processedRequest.analysisType}\n`;
+                responseText += `• Data Source: TokenMetrics Scenario Modeling Engine\n\n`;
+                
+                // Add scenario breakdown
+                if (scenarioAnalysis.scenario_breakdown) {
+                    responseText += `📈 **Scenario Breakdown**\n`;
+                    responseText += `• Total Scenario Types: ${scenarioAnalysis.scenario_breakdown.scenario_types || 0}\n`;
+                    responseText += `• Most Likely Scenario: ${scenarioAnalysis.scenario_breakdown.most_likely_scenario || 'Unknown'}\n\n`;
                 }
-            };
+                
+                // Add risk assessment
+                if (scenarioAnalysis.risk_assessment) {
+                    responseText += `⚠️ **Risk Assessment**\n`;
+                    responseText += `• Risk Level: ${scenarioAnalysis.risk_assessment.overall_risk_level || 'Unknown'}\n`;
+                    responseText += `• Max Potential Drawdown: ${scenarioAnalysis.risk_assessment.max_potential_drawdown || 'Unknown'}\n`;
+                    responseText += `• Downside Scenarios: ${scenarioAnalysis.risk_assessment.downside_scenarios || 0}\n\n`;
+                }
+                
+                // Add opportunity analysis
+                if (scenarioAnalysis.opportunity_analysis) {
+                    responseText += `🚀 **Opportunity Analysis**\n`;
+                    responseText += `• Upside Potential: ${scenarioAnalysis.opportunity_analysis.upside_potential || 'Unknown'}\n`;
+                    responseText += `• Max Potential Upside: ${scenarioAnalysis.opportunity_analysis.max_potential_upside || 'Unknown'}\n`;
+                    responseText += `• Upside Scenarios: ${scenarioAnalysis.opportunity_analysis.upside_scenarios || 0}\n\n`;
+                }
+                
+                // Add strategic insights
+                if (scenarioAnalysis.insights && scenarioAnalysis.insights.length > 0) {
+                    responseText += `💡 **Key Insights**\n`;
+                    scenarioAnalysis.insights.slice(0, 3).forEach((insight: string) => {
+                        responseText += `• ${insight}\n`;
+                    });
+                    responseText += `\n`;
+                }
+                
+                responseText += `📋 **Usage Guidelines**\n`;
+                responseText += `• Use for risk assessment and portfolio stress testing\n`;
+                responseText += `• Plan position sizing based on downside scenarios\n`;
+                responseText += `• Set profit targets based on upside scenarios\n`;
+                responseText += `• Develop contingency plans for extreme scenarios\n\n`;
+                
+                responseText += `⚡ *Scenario analysis is probabilistic, not predictive. Use for strategic planning and risk management.*`;
+            }
             
             console.log(`[${requestId}] Scenario analysis completed successfully`);
-            return result;
             
+            // Use callback to send response to user (like working actions)
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        request_id: requestId,
+                        scenario_data: scenarioData,
+                        analysis: scenarioAnalysis,
+                        metadata: {
+                            endpoint: "scenario-analysis",
+                            data_source: "TokenMetrics Official API",
+                            api_version: "v2",
+                            requested_token: tokenName,
+                            resolved_token: resolvedToken,
+                            analysis_focus: processedRequest.analysisType,
+                            data_points: scenarioData.length
+                        }
+                    }
+                });
+            }
+            
+            return true;
         } catch (error) {
             console.error("Error in getScenarioAnalysisAction:", error);
             
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve scenario analysis from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/scenario-analysis is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that pagination parameters are positive integers",
-                        "Ensure your API key has access to scenario analysis endpoint",
-                        "Confirm the token has sufficient data for scenario modeling"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Check if your subscription includes scenario analysis access",
-                        "Verify the token has been analyzed by TokenMetrics modeling engine",
-                        "Ensure sufficient market data exists for scenario generation"
-                    ]
-                }
-            };
+            if (callback) {
+                callback({
+                    text: `❌ Failed to retrieve scenario analysis: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                    }
+                });
+            }
+            
+            return false;
         }
     },
     

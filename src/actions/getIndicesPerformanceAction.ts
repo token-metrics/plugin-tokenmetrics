@@ -1,4 +1,11 @@
 import type { Action } from "@elizaos/core";
+import {
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    elizaLogger
+} from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -236,8 +243,26 @@ export const getIndicesPerformanceAction: Action = {
             };
             
             console.log(`[${requestId}] Indices performance analysis completed successfully`);
-            return result;
+            console.log(`[${requestId}] Analysis completed successfully`);
             
+            // Use callback to send response to user (like working actions)
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        request_id: requestId,
+                        data: result,
+                        metadata: {
+                            endpoint: "indicesperformance",
+                            data_source: "TokenMetrics Official API",
+                            api_version: "v2"
+                        }
+                    }
+                });
+            }
+            
+            return true;
         } catch (error) {
             console.error("Error in getIndicesPerformance action:", error);
             return {

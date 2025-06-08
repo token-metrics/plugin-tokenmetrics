@@ -88,6 +88,17 @@ async function fetchTraderGrades(params: Record<string, any>, runtime: IAgentRun
 }
 
 /**
+ * Convert numeric grade (0-100) to letter grade (A-F)
+ */
+function convertToLetterGrade(numericGrade: number): string {
+    if (numericGrade >= 90) return 'A';
+    if (numericGrade >= 80) return 'B';
+    if (numericGrade >= 70) return 'C';
+    if (numericGrade >= 60) return 'D';
+    return 'F';
+}
+
+/**
  * Format trader grades response for user
  */
 function formatTraderGradesResponse(data: any[], tokenInfo?: any): string {
@@ -98,14 +109,23 @@ function formatTraderGradesResponse(data: any[], tokenInfo?: any): string {
     const grades = Array.isArray(data) ? data : [data];
     const gradeCount = grades.length;
     
-    // Analyze grade distribution
+    // Convert numeric grades to letter grades and analyze distribution
     const gradeDistribution = {
-        A: grades.filter(g => g.TRADER_GRADE === 'A' || g.GRADE === 'A').length,
-        B: grades.filter(g => g.TRADER_GRADE === 'B' || g.GRADE === 'B').length,
-        C: grades.filter(g => g.TRADER_GRADE === 'C' || g.GRADE === 'C').length,
-        D: grades.filter(g => g.TRADER_GRADE === 'D' || g.GRADE === 'D').length,
-        F: grades.filter(g => g.TRADER_GRADE === 'F' || g.GRADE === 'F').length
+        A: 0, B: 0, C: 0, D: 0, F: 0
     };
+    
+    const processedGrades = grades.map(item => {
+        // Use TM_TRADER_GRADE as the primary grade, fallback to others
+        const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+        const letterGrade = convertToLetterGrade(numericGrade);
+        gradeDistribution[letterGrade as keyof typeof gradeDistribution]++;
+        
+        return {
+            ...item,
+            LETTER_GRADE: letterGrade,
+            NUMERIC_GRADE: numericGrade
+        };
+    });
 
     let response = `📊 **TokenMetrics Trader Grades Analysis**\n\n`;
     
@@ -121,27 +141,42 @@ function formatTraderGradesResponse(data: any[], tokenInfo?: any): string {
     response += `🔴 **F Grade**: ${gradeDistribution.F} tokens (${((gradeDistribution.F/gradeCount)*100).toFixed(1)}%)\n\n`;
 
     // Show top graded tokens
-    const topGrades = grades
-        .filter(g => g.TRADER_GRADE === 'A' || g.GRADE === 'A')
+    const topGrades = processedGrades
+        .filter(g => g.LETTER_GRADE === 'A')
+        .sort((a, b) => b.NUMERIC_GRADE - a.NUMERIC_GRADE)
         .slice(0, 5);
     
     if (topGrades.length > 0) {
         response += `🏆 **Top A-Grade Tokens**:\n`;
         topGrades.forEach((grade, index) => {
-            const gradeValue = grade.TRADER_GRADE || grade.GRADE;
-            response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${gradeValue}`;
-            if (grade.SCORE) {
-                response += ` - Score: ${grade.SCORE}`;
-            }
-            if (grade.DATE) {
-                response += ` (${grade.DATE})`;
+            response += `${index + 1}. **${grade.TOKEN_SYMBOL}** (${grade.TOKEN_NAME}): Grade ${grade.LETTER_GRADE} (${grade.NUMERIC_GRADE.toFixed(1)})`;
+            if (grade.TM_TRADER_GRADE_24H_PCT_CHANGE) {
+                const change = grade.TM_TRADER_GRADE_24H_PCT_CHANGE;
+                const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
+                response += ` ${changeIcon} ${change > 0 ? '+' : ''}${change.toFixed(2)}%`;
             }
             response += `\n`;
         });
+        response += `\n`;
+    }
+
+    // Show specific token details if single token requested
+    if (gradeCount === 1 && tokenInfo) {
+        const token = processedGrades[0];
+        response += `📋 **Detailed Analysis for ${token.TOKEN_SYMBOL}**:\n`;
+        response += `• **Overall Grade**: ${token.LETTER_GRADE} (${token.NUMERIC_GRADE.toFixed(1)}/100)\n`;
+        if (token.TA_GRADE) response += `• **Technical Analysis**: ${convertToLetterGrade(token.TA_GRADE)} (${token.TA_GRADE.toFixed(1)}/100)\n`;
+        if (token.QUANT_GRADE) response += `• **Quantitative Analysis**: ${convertToLetterGrade(token.QUANT_GRADE)} (${token.QUANT_GRADE.toFixed(1)}/100)\n`;
+        if (token.TM_TRADER_GRADE_24H_PCT_CHANGE) {
+            const change = token.TM_TRADER_GRADE_24H_PCT_CHANGE;
+            const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
+            response += `• **24h Change**: ${changeIcon} ${change > 0 ? '+' : ''}${change.toFixed(2)}%\n`;
+        }
+        response += `• **Last Updated**: ${new Date(token.DATE).toLocaleDateString()}\n\n`;
     }
 
     // Trading recommendations based on grades
-    response += `\n💡 **AI Trading Recommendations**:\n`;
+    response += `💡 **AI Trading Recommendations**:\n`;
     const aGradePercentage = (gradeDistribution.A / gradeCount) * 100;
     const fGradePercentage = (gradeDistribution.F / gradeCount) * 100;
     
@@ -176,26 +211,35 @@ function analyzeTraderGrades(data: any[]): any {
     const grades = Array.isArray(data) ? data : [data];
     
     const gradeDistribution = {
-        A: grades.filter(g => g.TRADER_GRADE === 'A' || g.GRADE === 'A').length,
-        B: grades.filter(g => g.TRADER_GRADE === 'B' || g.GRADE === 'B').length,
-        C: grades.filter(g => g.TRADER_GRADE === 'C' || g.GRADE === 'C').length,
-        D: grades.filter(g => g.TRADER_GRADE === 'D' || g.GRADE === 'D').length,
-        F: grades.filter(g => g.TRADER_GRADE === 'F' || g.GRADE === 'F').length
+        A: 0, B: 0, C: 0, D: 0, F: 0
     };
+    
+    // Convert numeric grades to letter grades
+    const processedGrades = grades.map(item => {
+        const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+        const letterGrade = convertToLetterGrade(numericGrade);
+        gradeDistribution[letterGrade as keyof typeof gradeDistribution]++;
+        
+        return {
+            symbol: item.TOKEN_SYMBOL,
+            name: item.TOKEN_NAME,
+            grade: letterGrade,
+            score: numericGrade,
+            date: item.DATE,
+            ta_grade: item.TA_GRADE,
+            quant_grade: item.QUANT_GRADE,
+            trader_grade: item.TM_TRADER_GRADE,
+            change_24h: item.TM_TRADER_GRADE_24H_PCT_CHANGE
+        };
+    });
 
     const analysis = {
         total_tokens: grades.length,
         grade_distribution: gradeDistribution,
-        top_tokens: grades
-            .filter(g => g.TRADER_GRADE === 'A' || g.GRADE === 'A')
-            .slice(0, 10)
-            .map(g => ({
-                symbol: g.TOKEN_SYMBOL || g.SYMBOL,
-                name: g.TOKEN_NAME || g.NAME,
-                grade: g.TRADER_GRADE || g.GRADE,
-                score: g.SCORE,
-                date: g.DATE
-            })),
+        top_tokens: processedGrades
+            .filter(g => g.grade === 'A')
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10),
         market_quality: "neutral"
     };
 
