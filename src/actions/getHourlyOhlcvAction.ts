@@ -300,8 +300,112 @@ export const getHourlyOhlcvAction: Action = {
             // Process response data
             const ohlcvData = Array.isArray(response) ? response : response.data || [];
             
+            // CRITICAL FIX: Handle mixed data issue where multiple tokens share same symbol
+            // Example: BTC returns Bitcoin ($105K), batcat ($0.00003), and Osmosis allBTC ($105K)
+            let filteredByToken = ohlcvData;
+            
+            if (ohlcvData.length > 0 && processedRequest.symbol) {
+                // Group data by TOKEN_ID to identify multiple tokens with same symbol
+                const tokenGroups = ohlcvData.reduce((groups: any, item: any) => {
+                    const tokenId = item.TOKEN_ID;
+                    if (!groups[tokenId]) {
+                        groups[tokenId] = [];
+                    }
+                    groups[tokenId].push(item);
+                    return groups;
+                }, {});
+                
+                const tokenIds = Object.keys(tokenGroups);
+                console.log(`[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`, 
+                    tokenIds.map(id => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`));
+                
+                if (tokenIds.length > 1) {
+                    // Multiple tokens found - select the main one based on criteria
+                    let selectedTokenId = null;
+                    let maxScore = -1;
+                    
+                    for (const tokenId of tokenIds) {
+                        const tokenData = tokenGroups[tokenId];
+                        const firstItem = tokenData[0];
+                        
+                        // Scoring criteria to identify the main token
+                        let score = 0;
+                        
+                        // 1. Higher average price (main tokens usually have higher prices)
+                        const avgPrice = tokenData.reduce((sum: number, item: any) => sum + (item.CLOSE || 0), 0) / tokenData.length;
+                        if (avgPrice > 1000) score += 100;      // Very high price (like Bitcoin)
+                        else if (avgPrice > 100) score += 50;   // High price
+                        else if (avgPrice > 10) score += 20;    // Medium price
+                        else if (avgPrice > 1) score += 10;     // Low price
+                        // Very low prices (< $1) get no bonus
+                        
+                        // 2. Higher volume (main tokens have more trading activity)
+                        const avgVolume = tokenData.reduce((sum: number, item: any) => sum + (item.VOLUME || 0), 0) / tokenData.length;
+                        if (avgVolume > 1000000000) score += 50;    // Billions in volume
+                        else if (avgVolume > 100000000) score += 30; // Hundreds of millions
+                        else if (avgVolume > 10000000) score += 20;  // Tens of millions
+                        else if (avgVolume > 1000000) score += 10;   // Millions
+                        
+                        // 3. Token name matching (exact matches get priority)
+                        const tokenName = firstItem.TOKEN_NAME?.toLowerCase() || '';
+                        const symbol = processedRequest.symbol?.toLowerCase() || '';
+                        
+                        if (tokenName === symbol) score += 30;                    // Exact match (e.g., "btc" === "btc")
+                        else if (tokenName.includes(symbol)) score += 20;         // Contains symbol
+                        else if (symbol === 'btc' && tokenName === 'bitcoin') score += 40;  // Special case: BTC -> Bitcoin
+                        else if (symbol === 'eth' && tokenName === 'ethereum') score += 40; // Special case: ETH -> Ethereum
+                        else if (symbol === 'doge' && tokenName === 'dogecoin') score += 40; // Special case: DOGE -> Dogecoin
+                        
+                        // 4. Avoid derivative/wrapped tokens
+                        if (tokenName.includes('wrapped') || tokenName.includes('osmosis') || 
+                            tokenName.includes('synthetic') || tokenName.includes('bridged')) {
+                            score -= 20;
+                        }
+                        
+                        console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
+                        
+                        if (score > maxScore) {
+                            maxScore = score;
+                            selectedTokenId = tokenId;
+                        }
+                    }
+                    
+                    if (selectedTokenId) {
+                        filteredByToken = tokenGroups[selectedTokenId];
+                        const selectedToken = filteredByToken[0];
+                        console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
+                    } else {
+                        console.log(`[${requestId}] No clear main token identified, using all data`);
+                    }
+                } else {
+                    console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
+                }
+            }
+            
+            // Filter out invalid data points
+            const validData = filteredByToken.filter((item: any) => {
+                // Remove data points with zero or null values
+                if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || 
+                    item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
+                    console.log(`[${requestId}] Filtering out invalid data point:`, item);
+                    return false;
+                }
+                
+                // Remove extreme outliers (price changes > 1000% in an hour)
+                const priceRange = (item.HIGH - item.LOW) / item.LOW;
+                if (priceRange > 10) { // 1000% hourly range is unrealistic
+                    console.log(`[${requestId}] Filtering out extreme outlier:`, item);
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            console.log(`[${requestId}] Token filtering: ${ohlcvData.length} → ${filteredByToken.length} data points`);
+            console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} → ${validData.length} valid points remaining`);
+            
             // Sort data chronologically (oldest first for proper analysis)
-            const sortedData = ohlcvData.sort((a: any, b: any) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+            const sortedData = validData.sort((a: any, b: any) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
             
             // Analyze the OHLCV data based on requested analysis type
             const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
@@ -321,6 +425,20 @@ export const getHourlyOhlcvAction: Action = {
                 responseText += `• Try using a different token name or symbol\n\n`;
                 responseText += `💡 **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
             } else {
+                // Show data quality info if filtering occurred
+                if (ohlcvData.length > sortedData.length) {
+                    const tokenFiltered = ohlcvData.length - filteredByToken.length;
+                    const qualityFiltered = filteredByToken.length - sortedData.length;
+                    
+                    if (tokenFiltered > 0 && qualityFiltered > 0) {
+                        responseText += `🔍 **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.\n\n`;
+                    } else if (tokenFiltered > 0) {
+                        responseText += `🔍 **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.\n\n`;
+                    } else if (qualityFiltered > 0) {
+                        responseText += `🔍 **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.\n\n`;
+                    }
+                }
+                
                 // Show recent OHLCV data points (most recent first for display)
                 const recentData = sortedData.slice(-5).reverse(); // Get last 5 hours and reverse for display
                 responseText += `📈 **Recent Hourly Data (Last ${recentData.length} hours):**\n`;
@@ -542,7 +660,7 @@ function analyzeHourlyOhlcvData(ohlcvData: any[], analysisType: string = "all"):
                     session_analysis: analyzeSessionBreakdowns(sortedData),
                     intraday_signals: generateIntradaySignals(priceAnalysis, trendAnalysis),
                     intraday_insights: [
-                        `📈 Intraday trend: ${trendAnalysis.intraday_trend || 'Neutral'}`,
+                        `📈 Intraday trend: ${trendAnalysis.direction}`,
                         `🕐 Best trading hours: ${identifyBestTradingHours(sortedData)}`,
                         `💹 Day trading setups: ${technicalAnalysis.day_trading_setups || 0}`
                     ]
@@ -665,18 +783,36 @@ function analyzeVolatility(data: any[]): any {
 }
 
 function analyzeTrend(data: any[]): any {
-    if (data.length < 3) return { direction: "Unknown" };
+    if (data.length < 2) return { direction: "Insufficient Data" };
     
     const closes = data.map(d => d.CLOSE);
     const periods = [5, 10, 20]; // Moving averages
     const trends = [];
     
+    // Adapt analysis to available data
     for (const period of periods) {
         if (closes.length >= period) {
             const recentMA = closes.slice(-period).reduce((sum, price) => sum + price, 0) / period;
-            const earlierMA = closes.slice(-period * 2, -period).reduce((sum, price) => sum + price, 0) / period;
-            trends.push(recentMA > earlierMA ? 1 : -1);
+            if (closes.length >= period * 2) {
+                const earlierMA = closes.slice(-period * 2, -period).reduce((sum, price) => sum + price, 0) / period;
+                trends.push(recentMA > earlierMA ? 1 : -1);
+            } else {
+                // For limited data, compare recent MA to first price
+                const firstPrice = closes[0];
+                trends.push(recentMA > firstPrice ? 1 : -1);
+            }
         }
+    }
+    
+    // If no moving averages possible, use simple price comparison
+    if (trends.length === 0) {
+        const firstPrice = closes[0];
+        const lastPrice = closes[closes.length - 1];
+        const change = (lastPrice - firstPrice) / firstPrice;
+        
+        if (change > 0.01) trends.push(1);      // >1% up
+        else if (change < -0.01) trends.push(-1); // >1% down
+        else trends.push(0);                     // sideways
     }
     
     const overallTrend = trends.reduce((sum, trend) => sum + trend, 0);
@@ -685,10 +821,35 @@ function analyzeTrend(data: any[]): any {
     else if (overallTrend < 0) direction = "Downtrend";
     else direction = "Sideways";
     
+    // Determine strength based on available data
+    let strength;
+    if (data.length >= 10) {
+        strength = Math.abs(overallTrend) > 2 ? "Strong" : "Weak";
+    } else {
+        // For limited data, use price change magnitude
+        const firstPrice = closes[0];
+        const lastPrice = closes[closes.length - 1];
+        const change = Math.abs((lastPrice - firstPrice) / firstPrice);
+        strength = change > 0.05 ? "Strong" : "Weak"; // 5% threshold for limited data
+    }
+    
+    // Short-term bias calculation
+    let shortTermBias;
+    if (closes.length >= 6) {
+        shortTermBias = closes[closes.length - 1] > closes[closes.length - 6] ? "Bullish" : "Bearish";
+    } else {
+        // Use available data for bias
+        const midPoint = Math.floor(closes.length / 2);
+        const recentAvg = closes.slice(midPoint).reduce((sum, price) => sum + price, 0) / (closes.length - midPoint);
+        const earlierAvg = closes.slice(0, midPoint).reduce((sum, price) => sum + price, 0) / midPoint;
+        shortTermBias = recentAvg > earlierAvg ? "Bullish" : "Bearish";
+    }
+    
     return {
         direction: direction,
-        strength: Math.abs(overallTrend) > 2 ? "Strong" : "Weak",
-        short_term_bias: closes[closes.length - 1] > closes[closes.length - 6] ? "Bullish" : "Bearish"
+        strength: strength,
+        short_term_bias: shortTermBias,
+        trend_confidence: trends.length > 1 ? "High" : "Moderate"
     };
 }
 

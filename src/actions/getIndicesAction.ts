@@ -19,7 +19,7 @@ import type { IndicesResponse } from "../types";
 
 // Zod schema for indices request validation
 const IndicesRequestSchema = z.object({
-    indicesType: z.string().optional().describe("Type of indices to filter (active, passive, etc.)"),
+    indicesType: z.string().nullable().optional().describe("Type of indices to filter (active, passive, etc.)"),
     limit: z.number().min(1).max(100).optional().describe("Number of indices to return"),
     page: z.number().min(1).optional().describe("Page number for pagination"),
     analysisType: z.enum(["performance", "risk", "diversification", "all"]).optional().describe("Type of analysis to focus on")
@@ -36,7 +36,7 @@ The user wants to get information about crypto indices. Extract the following in
 1. **indicesType** (optional): Type of indices they're interested in
    - "active" for actively managed indices
    - "passive" for passive/index tracking
-   - Leave undefined for all types
+   - Leave null for all types
 
 2. **limit** (default: 50): How many indices to return (1-100)
 
@@ -49,10 +49,10 @@ The user wants to get information about crypto indices. Extract the following in
    - "all" - comprehensive analysis
 
 Examples:
-- "Show me crypto indices" → {indicesType: undefined, limit: 50, page: 1, analysisType: "all"}
+- "Show me crypto indices" → {indicesType: null, limit: 50, page: 1, analysisType: "all"}
 - "Get active crypto index funds" → {indicesType: "active", limit: 50, page: 1, analysisType: "all"}
 - "What are the best performing passive indices?" → {indicesType: "passive", limit: 50, page: 1, analysisType: "performance"}
-- "Show me 20 indices focused on risk analysis" → {indicesType: undefined, limit: 20, page: 1, analysisType: "risk"}
+- "Show me 20 indices focused on risk analysis" → {indicesType: null, limit: 20, page: 1, analysisType: "risk"}
 
 Extract the request details from the user's message.
 `;
@@ -125,7 +125,13 @@ export const getIndicesAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing indices request...`);
@@ -134,7 +140,7 @@ export const getIndicesAction: Action = {
             const indicesRequest = await extractTokenMetricsRequest<IndicesRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 INDICES_EXTRACTION_TEMPLATE,
                 IndicesRequestSchema,
                 requestId
@@ -156,7 +162,8 @@ export const getIndicesAction: Action = {
                 page: processedRequest.page
             };
             
-            if (processedRequest.indicesType) {
+            // Only add indicesType if it's not null/undefined
+            if (processedRequest.indicesType && processedRequest.indicesType !== null) {
                 apiParams.indicesType = processedRequest.indicesType;
             }
             
@@ -171,6 +178,10 @@ export const getIndicesAction: Action = {
             
             // Process response data
             const indices = Array.isArray(response) ? response : response.data || [];
+            
+            // DEBUG: Log the actual API response structure
+            console.log(`[${requestId}] Raw API response:`, JSON.stringify(response, null, 2));
+            console.log(`[${requestId}] Processed indices array:`, JSON.stringify(indices.slice(0, 2), null, 2));
             
             // Analyze the indices data based on requested analysis type
             const indicesAnalysis = analyzeIndicesData(indices, processedRequest.analysisType);
@@ -222,6 +233,10 @@ export const getIndicesAction: Action = {
             };
             
             console.log(`[${requestId}] Indices analysis completed successfully`);
+            
+            // Format response text for user
+            const responseText = formatIndicesResponse(result, processedRequest.limit);
+            
             console.log(`[${requestId}] Analysis completed successfully`);
             
             // Use callback to send response to user (like working actions)
@@ -244,11 +259,18 @@ export const getIndicesAction: Action = {
             return true;
         } catch (error) {
             console.error("Error in getIndices action:", error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve indices data from TokenMetrics"
-            };
+            
+            if (callback) {
+                callback({
+                    text: `❌ Failed to retrieve indices data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                    }
+                });
+            }
+            
+            return false;
         }
     },
 
@@ -269,62 +291,61 @@ function analyzeIndicesData(indices: any[], analysisType: string = "all"): any {
         };
     }
 
-    const activeIndices = indices.filter(index => index.INDEX_TYPE === 'active');
-    const passiveIndices = indices.filter(index => index.INDEX_TYPE === 'passive');
+    // Note: API doesn't provide INDEX_TYPE, so we can't filter by active/passive
+    const activeIndices: any[] = []; // Not available in API response
+    const passiveIndices: any[] = []; // Not available in API response
     
-    // Calculate performance metrics
-    const avgTotalReturn = indices
-        .filter(index => index.TOTAL_RETURN !== undefined)
-        .reduce((sum, index) => sum + index.TOTAL_RETURN, 0) / indices.length;
+    // Calculate performance metrics using actual API field names
+    const validAllTimeReturns = indices.filter(index => index.ALL_TIME !== undefined && index.ALL_TIME !== null);
+    const avgAllTimeReturn = validAllTimeReturns.length > 0 
+        ? validAllTimeReturns.reduce((sum, index) => sum + index.ALL_TIME, 0) / validAllTimeReturns.length 
+        : 0;
     
-    const avgAnnualReturn = indices
-        .filter(index => index.ANNUAL_RETURN !== undefined)
-        .reduce((sum, index) => sum + index.ANNUAL_RETURN, 0) / indices.length;
+    const valid1MReturns = indices.filter(index => index["1M"] !== undefined && index["1M"] !== null);
+    const avg1MReturn = valid1MReturns.length > 0 
+        ? valid1MReturns.reduce((sum, index) => sum + index["1M"], 0) / valid1MReturns.length 
+        : 0;
     
-    const avgVolatility = indices
-        .filter(index => index.VOLATILITY !== undefined)
-        .reduce((sum, index) => sum + index.VOLATILITY, 0) / indices.length;
-    
-    const avgSharpeRatio = indices
-        .filter(index => index.SHARPE_RATIO !== undefined)
-        .reduce((sum, index) => sum + index.SHARPE_RATIO, 0) / indices.length;
+    const validGrades = indices.filter(index => index.INDEX_GRADE !== undefined && index.INDEX_GRADE !== null);
+    const avgIndexGrade = validGrades.length > 0 
+        ? validGrades.reduce((sum, index) => sum + index.INDEX_GRADE, 0) / validGrades.length 
+        : 0;
 
-    // Find top performers
+    // Find top performers based on ALL_TIME returns
     const topPerformers = indices
-        .filter(index => index.TOTAL_RETURN !== undefined)
-        .sort((a, b) => b.TOTAL_RETURN - a.TOTAL_RETURN)
+        .filter(index => index.ALL_TIME !== undefined && index.ALL_TIME !== null)
+        .sort((a, b) => b.ALL_TIME - a.ALL_TIME)
         .slice(0, 3);
 
-    // Find best risk-adjusted returns
-    const bestRiskAdjusted = indices
-        .filter(index => index.SHARPE_RATIO !== undefined)
-        .sort((a, b) => b.SHARPE_RATIO - a.SHARPE_RATIO)
+    // Find best recent performers based on 1M returns
+    const bestRecentPerformers = indices
+        .filter(index => index["1M"] !== undefined && index["1M"] !== null)
+        .sort((a, b) => b["1M"] - a["1M"])
         .slice(0, 3);
 
-    // Base insights
+    // Base insights using actual data
     const insights = [
-        `📊 Total Indices Available: ${indices.length} (${activeIndices.length} active, ${passiveIndices.length} passive)`,
-        `📈 Average Total Return: ${formatPercentage(avgTotalReturn)}`,
-        `📅 Average Annual Return: ${formatPercentage(avgAnnualReturn)}`,
-        `⚡ Average Volatility: ${formatPercentage(avgVolatility)}`,
-        `🎯 Average Sharpe Ratio: ${avgSharpeRatio.toFixed(3)}`,
-        `🏆 Top Performer: ${topPerformers[0]?.INDEX_NAME} (${formatPercentage(topPerformers[0]?.TOTAL_RETURN)})`
+        `📊 Total Indices Available: ${indices.length}`,
+        `📈 Average All-Time Return: ${formatPercentage(avgAllTimeReturn)}`,
+        `📅 Average 1-Month Return: ${formatPercentage(avg1MReturn)}`,
+        `🎯 Average Index Grade: ${avgIndexGrade.toFixed(1)}/100`,
+        `🏆 Top All-Time Performer: ${topPerformers[0]?.NAME} (${formatPercentage(topPerformers[0]?.ALL_TIME)})`
     ];
 
     // Base recommendations
     const recommendations = [
-        activeIndices.length > 0 ? 
-            `🎯 Active Management: ${activeIndices.length} actively managed indices available for dynamic allocation strategies` :
-            "⚠️ No active indices currently available",
-        passiveIndices.length > 0 ? 
-            `📊 Passive Investment: ${passiveIndices.length} passive indices available for low-cost market exposure` :
-            "⚠️ No passive indices currently available",
-        avgSharpeRatio > 1 ? 
-            "✅ Strong Risk-Adjusted Returns: Average Sharpe ratio indicates good risk-adjusted performance" :
-            "⚠️ Consider Risk: Lower Sharpe ratios suggest higher risk relative to returns",
-        avgVolatility > 50 ? 
-            "⚠️ High Volatility: Indices show significant price swings - consider position sizing" :
-            "✅ Moderate Volatility: Reasonable risk levels for crypto investments"
+        indices.length > 10 ? 
+            `🎯 Good Selection: ${indices.length} indices available for diversified crypto exposure` :
+            `⚠️ Limited Selection: Only ${indices.length} indices currently available`,
+        avgIndexGrade > 50 ? 
+            `✅ Strong Quality: Average index grade of ${avgIndexGrade.toFixed(1)}/100 indicates good quality indices` :
+            `⚠️ Consider Quality: Lower average grade suggests careful selection needed`,
+        avg1MReturn > 0 ? 
+            `📈 Positive Momentum: Average 1-month return of ${formatPercentage(avg1MReturn)} shows recent strength` :
+            `📉 Recent Weakness: Negative 1-month returns suggest market challenges`,
+        topPerformers.length > 0 ? 
+            `🚀 Strong Leaders: Top performer ${topPerformers[0]?.NAME} shows ${formatPercentage(topPerformers[0]?.ALL_TIME)} all-time returns` :
+            `⚠️ No clear leaders identified`
     ];
 
     // Analysis type specific insights
@@ -334,35 +355,41 @@ function analyzeIndicesData(indices: any[], analysisType: string = "all"): any {
         case "performance":
             focusedAnalysis = {
                 performance_focus: {
-                    top_performers: topPerformers.slice(0, 5),
+                    top_all_time_performers: topPerformers.slice(0, 5),
+                    recent_performers: bestRecentPerformers.slice(0, 5),
                     performance_distribution: {
-                        positive_returns: indices.filter(i => i.TOTAL_RETURN > 0).length,
-                        negative_returns: indices.filter(i => i.TOTAL_RETURN < 0).length,
-                        neutral_returns: indices.filter(i => i.TOTAL_RETURN === 0).length
+                        positive_all_time: indices.filter(i => (i.ALL_TIME || 0) > 0).length,
+                        negative_all_time: indices.filter(i => (i.ALL_TIME || 0) < 0).length,
+                        positive_1m: indices.filter(i => (i["1M"] || 0) > 0).length,
+                        negative_1m: indices.filter(i => (i["1M"] || 0) < 0).length
                     },
                     performance_insights: [
-                        `🚀 ${indices.filter(i => i.TOTAL_RETURN > 100).length} indices with >100% returns`,
-                        `📈 ${indices.filter(i => i.TOTAL_RETURN > 0).length}/${indices.length} indices showing positive returns`,
-                        `⭐ Best performer: ${topPerformers[0]?.INDEX_NAME} at ${formatPercentage(topPerformers[0]?.TOTAL_RETURN)}`
+                        `🚀 ${indices.filter(i => (i.ALL_TIME || 0) > 100).length} indices with >100% all-time returns`,
+                        `📈 ${indices.filter(i => (i["1M"] || 0) > 0).length}/${indices.length} indices showing positive 1-month returns`,
+                        `⭐ Best all-time: ${topPerformers[0]?.NAME} at ${formatPercentage(topPerformers[0]?.ALL_TIME)}`
                     ]
                 }
             };
             break;
             
         case "risk":
+            // Since volatility data isn't available, use grade and recent performance as risk proxies
+            const lowRiskIndices = indices.filter(i => (i.INDEX_GRADE || 0) > 70).slice(0, 5);
+            const highRiskIndices = indices.filter(i => (i.INDEX_GRADE || 0) < 30).slice(0, 5);
+            
             focusedAnalysis = {
                 risk_focus: {
-                    low_risk_indices: indices.filter(i => i.VOLATILITY < 30).slice(0, 5),
-                    high_risk_indices: indices.filter(i => i.VOLATILITY > 70).slice(0, 5),
+                    high_grade_indices: lowRiskIndices,
+                    low_grade_indices: highRiskIndices,
                     risk_distribution: {
-                        low_risk: indices.filter(i => i.VOLATILITY < 30).length,
-                        medium_risk: indices.filter(i => i.VOLATILITY >= 30 && i.VOLATILITY <= 70).length,
-                        high_risk: indices.filter(i => i.VOLATILITY > 70).length
+                        high_grade: indices.filter(i => (i.INDEX_GRADE || 0) > 70).length,
+                        medium_grade: indices.filter(i => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length,
+                        low_grade: indices.filter(i => (i.INDEX_GRADE || 0) < 30).length
                     },
                     risk_insights: [
-                        `🛡️ ${indices.filter(i => i.VOLATILITY < 30).length} low-risk indices (volatility <30%)`,
-                        `⚖️ ${indices.filter(i => i.VOLATILITY >= 30 && i.VOLATILITY <= 70).length} medium-risk indices`,
-                        `⚠️ ${indices.filter(i => i.VOLATILITY > 70).length} high-risk indices (volatility >70%)`
+                        `🛡️ ${indices.filter(i => (i.INDEX_GRADE || 0) > 70).length} high-grade indices (grade >70)`,
+                        `⚖️ ${indices.filter(i => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length} medium-grade indices`,
+                        `⚠️ ${indices.filter(i => (i.INDEX_GRADE || 0) < 30).length} low-grade indices (grade <30)`
                     ]
                 }
             };
@@ -371,16 +398,16 @@ function analyzeIndicesData(indices: any[], analysisType: string = "all"): any {
         case "diversification":
             focusedAnalysis = {
                 diversification_focus: {
-                    by_asset_count: indices.sort((a, b) => (b.ASSETS_COUNT || 0) - (a.ASSETS_COUNT || 0)).slice(0, 5),
+                    by_coin_count: indices.sort((a, b) => (b.COINS || 0) - (a.COINS || 0)).slice(0, 5),
                     diversification_levels: {
-                        highly_diversified: indices.filter(i => (i.ASSETS_COUNT || 0) > 20).length,
-                        moderately_diversified: indices.filter(i => (i.ASSETS_COUNT || 0) >= 10 && (i.ASSETS_COUNT || 0) <= 20).length,
-                        focused: indices.filter(i => (i.ASSETS_COUNT || 0) < 10).length
+                        highly_diversified: indices.filter(i => (i.COINS || 0) > 20).length,
+                        moderately_diversified: indices.filter(i => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length,
+                        focused: indices.filter(i => (i.COINS || 0) < 10).length
                     },
                     diversification_insights: [
-                        `🌐 ${indices.filter(i => (i.ASSETS_COUNT || 0) > 20).length} highly diversified indices (>20 assets)`,
-                        `📊 ${indices.filter(i => (i.ASSETS_COUNT || 0) >= 10 && (i.ASSETS_COUNT || 0) <= 20).length} moderately diversified indices`,
-                        `🎯 ${indices.filter(i => (i.ASSETS_COUNT || 0) < 10).length} focused indices (<10 assets)`
+                        `🌐 ${indices.filter(i => (i.COINS || 0) > 20).length} highly diversified indices (>20 coins)`,
+                        `📊 ${indices.filter(i => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length} moderately diversified indices`,
+                        `🎯 ${indices.filter(i => (i.COINS || 0) < 10).length} focused indices (<10 coins)`
                     ]
                 }
             };
@@ -388,41 +415,123 @@ function analyzeIndicesData(indices: any[], analysisType: string = "all"): any {
     }
 
     return {
-        summary: `Analysis of ${indices.length} crypto indices showing ${formatPercentage(avgTotalReturn)} average total return with ${formatPercentage(avgVolatility)} volatility`,
+        summary: `Analysis of ${indices.length} crypto indices showing ${formatPercentage(avgAllTimeReturn)} average all-time return with ${avgIndexGrade.toFixed(1)}/100 average grade`,
         analysis_type: analysisType,
         performance_metrics: {
             total_indices: indices.length,
-            active_indices: activeIndices.length,
-            passive_indices: passiveIndices.length,
-            avg_total_return: avgTotalReturn,
-            avg_annual_return: avgAnnualReturn,
-            avg_volatility: avgVolatility,
-            avg_sharpe_ratio: avgSharpeRatio
+            active_indices: 0, // Not available in API
+            passive_indices: 0, // Not available in API
+            avg_all_time_return: avgAllTimeReturn,
+            avg_1m_return: avg1MReturn,
+            avg_index_grade: avgIndexGrade,
+            avg_sharpe_ratio: 0 // Not available in API
         },
         top_performers: topPerformers.map(index => ({
-            name: index.INDEX_NAME,
-            symbol: index.INDEX_SYMBOL,
-            total_return: index.TOTAL_RETURN,
-            annual_return: index.ANNUAL_RETURN,
-            type: index.INDEX_TYPE
+            name: index.NAME,
+            ticker: index.TICKER,
+            all_time_return: index.ALL_TIME,
+            one_month_return: index["1M"],
+            index_grade: index.INDEX_GRADE,
+            coins: index.COINS
         })),
-        best_risk_adjusted: bestRiskAdjusted.map(index => ({
-            name: index.INDEX_NAME,
-            symbol: index.INDEX_SYMBOL,
-            sharpe_ratio: index.SHARPE_RATIO,
-            total_return: index.TOTAL_RETURN,
-            volatility: index.VOLATILITY
+        best_recent_performers: bestRecentPerformers.map(index => ({
+            name: index.NAME,
+            ticker: index.TICKER,
+            one_month_return: index["1M"],
+            all_time_return: index.ALL_TIME,
+            index_grade: index.INDEX_GRADE
         })),
         insights,
         recommendations,
         ...focusedAnalysis,
         investment_considerations: [
-            "📈 Compare total returns vs benchmark (Bitcoin/Ethereum)",
-            "⚖️ Evaluate risk tolerance using volatility and max drawdown",
-            "🎯 Consider Sharpe ratio for risk-adjusted performance",
-            "🔄 Review rebalancing frequency for active indices",
-            "💰 Factor in management fees and expense ratios",
-            "📊 Analyze correlation with existing portfolio holdings"
+            "📈 Compare all-time returns vs recent performance trends",
+            "🎯 Consider index grade as quality indicator (higher is better)",
+            "🔄 Review coin count for diversification level",
+            "💰 Factor in 24H volume for liquidity assessment",
+            "📊 Analyze market cap for index size and stability",
+            "⚖️ Balance between focused and diversified strategies"
         ]
     };
+}
+
+/**
+ * Format indices response for user display
+ */
+function formatIndicesResponse(result: any, requestedLimit?: number): string {
+    const { indices_data, analysis } = result;
+    
+    let response = `📊 **Crypto Indices Analysis**\n\n`;
+    
+    if (indices_data && indices_data.length > 0) {
+        response += `🎯 **Found ${indices_data.length} Indices**\n\n`;
+        
+        // Show indices based on requested limit or all available
+        const displayLimit = requestedLimit || indices_data.length;
+        const topIndices = indices_data
+            .filter((index: any) => index.ALL_TIME !== undefined)
+            .sort((a: any, b: any) => (b.ALL_TIME || 0) - (a.ALL_TIME || 0))
+            .slice(0, Math.min(displayLimit, indices_data.length));
+            
+        if (topIndices.length > 0) {
+            response += `🏆 **Top Performing Indices:**\n`;
+            topIndices.forEach((index: any, i: number) => {
+                const name = index.NAME || `Index ${i + 1}`;
+                const ticker = index.TICKER || '';
+                const allTimeReturn = index.ALL_TIME ? formatPercentage(index.ALL_TIME) : 'N/A';
+                const oneMonthReturn = index["1M"] ? formatPercentage(index["1M"]) : 'N/A';
+                const indexGrade = index.INDEX_GRADE ? formatPercentage(index.INDEX_GRADE) : 'N/A';
+                
+                response += `${i + 1}. **${name}** ${ticker ? `(${ticker})` : ''}\n`;
+                response += `   • All-Time Return: ${allTimeReturn}\n`;
+                response += `   • 1-Month Return: ${oneMonthReturn}\n`;
+                response += `   • Index Grade: ${indexGrade}\n`;
+                response += `\n`;
+            });
+        }
+        
+        // Add analysis insights
+        if (analysis && analysis.insights) {
+            response += `💡 **Key Insights:**\n`;
+            analysis.insights.slice(0, 5).forEach((insight: string) => {
+                response += `• ${insight}\n`;
+            });
+            response += `\n`;
+        }
+        
+        // Add performance metrics
+        if (analysis && analysis.performance_metrics) {
+            const metrics = analysis.performance_metrics;
+            response += `📈 **Market Overview:**\n`;
+            response += `• Total Indices: ${metrics.total_indices || 0}\n`;
+            response += `• Active Indices: ${metrics.active_indices || 0}\n`;
+            response += `• Passive Indices: ${metrics.passive_indices || 0}\n`;
+            if (metrics.avg_all_time_return !== undefined) {
+                response += `• Average All-Time Return: ${formatPercentage(metrics.avg_all_time_return)}\n`;
+            }
+            if (metrics.avg_1m_return !== undefined) {
+                response += `• Average 1-Month Return: ${formatPercentage(metrics.avg_1m_return)}\n`;
+            }
+            response += `\n`;
+        }
+        
+        // Add recommendations
+        if (analysis && analysis.recommendations) {
+            response += `🎯 **Recommendations:**\n`;
+            analysis.recommendations.slice(0, 3).forEach((rec: string) => {
+                response += `• ${rec}\n`;
+            });
+        }
+    } else {
+        response += `❌ No indices data found.\n\n`;
+        response += `This could be due to:\n`;
+        response += `• API connectivity issues\n`;
+        response += `• Invalid filter parameters\n`;
+        response += `• Temporary service unavailability\n`;
+    }
+    
+    response += `\n📊 **Data Source**: TokenMetrics Indices Engine\n`;
+    response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
 } 
