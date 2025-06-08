@@ -1,13 +1,67 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { IndicesPerformanceResponse, IndicesPerformanceRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { IndicesPerformanceResponse } from "../types";
+
+// Zod schema for indices performance request validation
+const IndicesPerformanceRequestSchema = z.object({
+    indexId: z.number().min(1).describe("The ID of the index to get performance data for"),
+    startDate: z.string().optional().describe("Start date for performance data (YYYY-MM-DD format)"),
+    endDate: z.string().optional().describe("End date for performance data (YYYY-MM-DD format)"),
+    limit: z.number().min(1).max(1000).optional().describe("Number of data points to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["returns", "risk", "comparison", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type IndicesPerformanceRequest = z.infer<typeof IndicesPerformanceRequestSchema>;
+
+// AI extraction template for natural language processing
+const INDICES_PERFORMANCE_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting crypto index performance requests from natural language.
+
+The user wants to get historical performance data for a specific crypto index. Extract the following information:
+
+1. **indexId** (required): The ID number of the index they want performance data for
+   - Look for phrases like "index 1", "index ID 5", "index number 3"
+   - Extract the numeric ID from the request
+   - This is required - if no ID is found, ask for clarification
+
+2. **startDate** (optional): Start date for the performance period
+   - Look for phrases like "since January 2024", "from 2024-01-01", "last 3 months"
+   - Convert relative dates to YYYY-MM-DD format if possible
+   - If not specified, will use default range
+
+3. **endDate** (optional): End date for the performance period
+   - Look for phrases like "until today", "to 2024-12-31", "through December"
+   - Convert to YYYY-MM-DD format if possible
+   - If not specified, will use current date
+
+4. **limit** (optional, default: 50): Number of data points to return
+   - Look for phrases like "50 data points", "100 records", "daily data"
+
+5. **page** (optional, default: 1): Page number for pagination
+
+6. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "returns" - focus on return metrics and performance
+   - "risk" - focus on volatility and risk metrics
+   - "comparison" - focus on benchmark comparisons
+   - "all" - comprehensive analysis
+
+Examples:
+- "Show me performance of index 1" → {indexId: 1, analysisType: "all"}
+- "Get index 3 returns since January 2024" → {indexId: 3, startDate: "2024-01-01", analysisType: "returns"}
+- "Risk analysis for index 2 last 6 months" → {indexId: 2, analysisType: "risk"}
+- "Compare index 1 performance to benchmarks" → {indexId: 1, analysisType: "comparison"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * INDICES PERFORMANCE ACTION - Based on actual TokenMetrics API documentation
@@ -17,7 +71,7 @@ import type { IndicesPerformanceResponse, IndicesPerformanceRequest } from "../t
  * Essential for analyzing index performance trends and making investment decisions.
  */
 export const getIndicesPerformanceAction: Action = {
-    name: "getIndicesPerformance",
+    name: "GET_INDICES_PERFORMANCE_TOKENMETRICS",
     description: "Get historical performance data of a crypto index including returns, volatility, and benchmark comparisons from TokenMetrics",
     similes: [
         "get index performance",
@@ -41,7 +95,7 @@ export const getIndicesPerformanceAction: Action = {
                 user: "{{agent}}",
                 content: {
                     text: "I'll get the historical performance data for that crypto index including returns and volatility metrics.",
-                    action: "GET_INDICES_PERFORMANCE"
+                    action: "GET_INDICES_PERFORMANCE_TOKENMETRICS"
                 }
             }
         ],
@@ -56,69 +110,102 @@ export const getIndicesPerformanceAction: Action = {
                 user: "{{agent}}",
                 content: {
                     text: "Let me analyze the DeFi index performance data over the specified time period.",
-                    action: "GET_INDICES_PERFORMANCE"
+                    action: "GET_INDICES_PERFORMANCE_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get risk analysis for index 2 performance"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll analyze the risk metrics and volatility for index 2's historical performance.",
+                    action: "GET_INDICES_PERFORMANCE_TOKENMETRICS"
                 }
             }
         ]
     ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing indices performance request...`);
             
-            // Extract index ID from message content
-            const indexId = messageContent.id || messageContent.index_id || messageContent.indexId;
-            
-            if (!indexId) {
-                throw new Error("Index ID is required. Please specify which index performance you want to view (e.g., id: 1)");
-            }
-            
-            // Build parameters based on actual API documentation
-            const requestParams: IndicesPerformanceRequest = {
-                id: Number(indexId),
-                startDate: typeof messageContent.startDate === 'string' ? messageContent.startDate : undefined,
-                endDate: typeof messageContent.endDate === 'string' ? messageContent.endDate : undefined,
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters according to actual API requirements
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call with corrected authentication
-            const response = await callTokenMetricsApi<IndicesPerformanceResponse>(
-                TOKENMETRICS_ENDPOINTS.indicesPerformance,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const performanceRequest = await extractTokenMetricsRequest<IndicesPerformanceRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                INDICES_PERFORMANCE_EXTRACTION_TEMPLATE,
+                IndicesPerformanceRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<IndicesPerformanceResponse>(response, "getIndicesPerformance");
-            const performance = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, performanceRequest);
             
-            // Analyze the performance data
-            const performanceAnalysis = analyzePerformanceData(performance);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                indexId: performanceRequest.indexId,
+                startDate: performanceRequest.startDate,
+                endDate: performanceRequest.endDate,
+                limit: performanceRequest.limit || 50,
+                page: performanceRequest.page || 1,
+                analysisType: performanceRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                id: processedRequest.indexId,
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add optional date parameters if provided
+            if (processedRequest.startDate) {
+                apiParams.startDate = processedRequest.startDate;
+            }
+            if (processedRequest.endDate) {
+                apiParams.endDate = processedRequest.endDate;
+            }
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/indices-performance",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const performance = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the performance data based on requested analysis type
+            const performanceAnalysis = analyzePerformanceData(performance, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
-                message: `Successfully retrieved performance data for index ${indexId} with ${performance.length} data points`,
+                message: `Successfully retrieved performance data for index ${processedRequest.indexId} with ${performance.length} data points`,
+                request_id: requestId,
                 indices_performance: performance,
                 analysis: performanceAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.indicesPerformance,
-                    index_id: indexId,
+                    endpoint: "indices-performance",
+                    index_id: processedRequest.indexId,
                     date_range: {
-                        start_date: requestParams.startDate,
-                        end_date: requestParams.endDate
+                        start_date: processedRequest.startDate,
+                        end_date: processedRequest.endDate
                     },
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
+                    analysis_focus: processedRequest.analysisType,
                     data_points: performance.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Indices Engine"
@@ -148,6 +235,9 @@ export const getIndicesPerformanceAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] Indices performance analysis completed successfully`);
+            return result;
+            
         } catch (error) {
             console.error("Error in getIndicesPerformance action:", error);
             return {
@@ -158,20 +248,15 @@ export const getIndicesPerformanceAction: Action = {
         }
     },
 
-    async validate(_runtime, _message) {
-        try {
-            const apiKey = process.env.TOKENMETRICS_API_KEY;
-            return !!apiKey;
-        } catch {
-            return false;
-        }
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
     }
 };
 
 /**
- * Analyze performance data to provide strategic insights
+ * Analyze performance data to provide strategic insights based on analysis type
  */
-function analyzePerformanceData(performance: any[]): any {
+function analyzePerformanceData(performance: any[], analysisType: string = "all"): any {
     if (!performance || performance.length === 0) {
         return {
             summary: "No performance data available for this index",
@@ -226,16 +311,18 @@ function analyzePerformanceData(performance: any[]): any {
         ? (recentData[recentData.length - 1].INDEX_CUMULATIVE_ROI - recentData[0].INDEX_CUMULATIVE_ROI)
         : 0;
 
+    // Base insights
     const insights = [
         `📊 Performance Period: ${new Date(earliestData.DATE).toLocaleDateString()} to ${new Date(latestData.DATE).toLocaleDateString()}`,
-        `📈 Total Return: ${formatTokenMetricsNumber(totalReturn, 'percentage')}`,
-        `📅 Average Daily Return: ${formatTokenMetricsNumber(avgDailyReturn, 'percentage')}`,
-        `⚡ Volatility: ${formatTokenMetricsNumber(volatility, 'percentage')}`,
-        `🏆 Best Day: ${formatTokenMetricsNumber(bestDay, 'percentage')}`,
-        `📉 Worst Day: ${formatTokenMetricsNumber(worstDay, 'percentage')}`,
-        `🎯 Win Rate: ${formatTokenMetricsNumber(winRate, 'percentage')} of days positive`
+        `📈 Total Return: ${formatPercentage(totalReturn)}`,
+        `📅 Average Daily Return: ${formatPercentage(avgDailyReturn)}`,
+        `⚡ Volatility: ${formatPercentage(volatility)}`,
+        `🏆 Best Day: ${formatPercentage(bestDay)}`,
+        `📉 Worst Day: ${formatPercentage(worstDay)}`,
+        `🎯 Win Rate: ${formatPercentage(winRate)} of days positive`
     ];
 
+    // Base recommendations
     const recommendations = [
         totalReturn > 0 ? 
             "✅ Positive Performance: Index has generated positive returns over the period" :
@@ -254,8 +341,66 @@ function analyzePerformanceData(performance: any[]): any {
     // Calculate Sharpe-like ratio (return/volatility)
     const riskAdjustedReturn = volatility > 0 ? (avgDailyReturn * Math.sqrt(365)) / volatility : 0;
 
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "returns":
+            focusedAnalysis = {
+                returns_focus: {
+                    return_metrics: {
+                        total_return: totalReturn,
+                        annualized_return: avgDailyReturn * 365,
+                        best_period: bestDay,
+                        worst_period: worstDay
+                    },
+                    returns_insights: [
+                        `📈 Annualized return: ${formatPercentage(avgDailyReturn * 365)}`,
+                        `🎯 Return consistency: ${formatPercentage(winRate)} win rate`,
+                        `📊 Return range: ${formatPercentage(worstDay)} to ${formatPercentage(bestDay)}`
+                    ]
+                }
+            };
+            break;
+            
+        case "risk":
+            focusedAnalysis = {
+                risk_focus: {
+                    risk_metrics: {
+                        volatility: volatility,
+                        risk_adjusted_return: riskAdjustedReturn,
+                        max_drawdown: worstDay,
+                        value_at_risk: calculateVaR(dailyReturns)
+                    },
+                    risk_insights: [
+                        `⚡ Daily volatility: ${formatPercentage(volatility)}`,
+                        `📊 Risk-adjusted return: ${riskAdjustedReturn.toFixed(2)}`,
+                        `📉 Maximum single-day loss: ${formatPercentage(worstDay)}`
+                    ]
+                }
+            };
+            break;
+            
+        case "comparison":
+            focusedAnalysis = {
+                comparison_focus: {
+                    benchmark_analysis: {
+                        relative_performance: "Benchmark comparison requires additional data",
+                        market_correlation: "Correlation analysis requires market data"
+                    },
+                    comparison_insights: [
+                        `📊 Performance vs market: Requires benchmark data for comparison`,
+                        `🎯 Relative strength: ${totalReturn > 0 ? "Positive absolute returns" : "Negative absolute returns"}`,
+                        `📈 Risk profile: ${volatility > 0.2 ? "Higher risk" : "Moderate risk"} compared to traditional assets`
+                    ]
+                }
+            };
+            break;
+    }
+
     return {
-        summary: `Index performance over ${performance.length} data points showing ${formatTokenMetricsNumber(totalReturn, 'percentage')} total return with ${formatTokenMetricsNumber(volatility, 'percentage')} volatility`,
+        summary: `Index performance over ${performance.length} data points showing ${formatPercentage(totalReturn)} total return with ${formatPercentage(volatility)} volatility`,
+        analysis_type: analysisType,
         performance_metrics: {
             total_return: totalReturn,
             avg_daily_return: avgDailyReturn,
@@ -280,6 +425,7 @@ function analyzePerformanceData(performance: any[]): any {
         },
         insights,
         recommendations,
+        ...focusedAnalysis,
         investment_considerations: [
             "📈 Evaluate total return vs investment timeline",
             "⚖️ Consider volatility relative to risk tolerance",
@@ -290,4 +436,15 @@ function analyzePerformanceData(performance: any[]): any {
             "📅 Consider market cycle timing for context"
         ]
     };
+}
+
+/**
+ * Calculate Value at Risk (VaR) at 95% confidence level
+ */
+function calculateVaR(returns: number[], confidence: number = 0.05): number {
+    if (returns.length === 0) return 0;
+    
+    const sortedReturns = [...returns].sort((a, b) => a - b);
+    const index = Math.floor(returns.length * confidence);
+    return sortedReturns[index] || 0;
 } 

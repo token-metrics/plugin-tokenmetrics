@@ -26,7 +26,7 @@ import { initializeDatabase } from "./database/index.ts";
 
 // CORRECTED: Import your TokenMetrics plugin
 // This path should match where you placed your compiled plugin
-import { tokenmetricsPlugin } from "./plugins/tokenmetrics/tokenmetrics-core.js";
+import { tokenmetricsPlugin } from "../../dist/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
