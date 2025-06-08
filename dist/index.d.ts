@@ -16,11 +16,11 @@ declare function callTokenMetricsAPI(endpoint: string, params: Record<string, an
 /**
  * Format currency values
  */
-declare function formatCurrency(value: number): string;
+declare function formatCurrency(value: number | undefined | null): string;
 /**
  * Format percentage values
  */
-declare function formatPercentage(value: number): string;
+declare function formatPercentage(value: number | undefined | null): string;
 /**
  * Generate unique request ID for cache busting
  */

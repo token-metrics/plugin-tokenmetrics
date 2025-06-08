@@ -1,4 +1,11 @@
 import type { Action } from "@elizaos/core";
+import {
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    elizaLogger
+} from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -23,21 +30,68 @@ const ResistanceSupportRequestSchema = z.object({
 
 type ResistanceSupportRequest = z.infer<typeof ResistanceSupportRequestSchema>;
 
+// Simple regex-based extraction as fallback
+function extractCryptocurrencySimple(text: string): { cryptocurrency?: string; symbol?: string } | null {
+    const normalizedText = text.toLowerCase();
+    
+    // Common cryptocurrency patterns
+    const patterns = [
+        // Bitcoin patterns
+        { regex: /\b(bitcoin|btc)\b/i, cryptocurrency: "Bitcoin", symbol: "BTC" },
+        // Ethereum patterns  
+        { regex: /\b(ethereum|eth)\b/i, cryptocurrency: "Ethereum", symbol: "ETH" },
+        // Dogecoin patterns
+        { regex: /\b(dogecoin|doge)\b/i, cryptocurrency: "Dogecoin", symbol: "DOGE" },
+        // Solana patterns
+        { regex: /\b(solana|sol)\b/i, cryptocurrency: "Solana", symbol: "SOL" },
+        // Avalanche patterns
+        { regex: /\b(avalanche|avax)\b/i, cryptocurrency: "Avalanche", symbol: "AVAX" },
+        // Cardano patterns
+        { regex: /\b(cardano|ada)\b/i, cryptocurrency: "Cardano", symbol: "ADA" },
+        // Polkadot patterns
+        { regex: /\b(polkadot|dot)\b/i, cryptocurrency: "Polkadot", symbol: "DOT" },
+        // Chainlink patterns
+        { regex: /\b(chainlink|link)\b/i, cryptocurrency: "Chainlink", symbol: "LINK" },
+        // Polygon patterns
+        { regex: /\b(polygon|matic)\b/i, cryptocurrency: "Polygon", symbol: "MATIC" },
+        // Binance Coin patterns
+        { regex: /\b(binance coin|bnb)\b/i, cryptocurrency: "BNB", symbol: "BNB" }
+    ];
+    
+    for (const pattern of patterns) {
+        if (pattern.regex.test(normalizedText)) {
+            return {
+                cryptocurrency: pattern.cryptocurrency,
+                symbol: pattern.symbol
+            };
+        }
+    }
+    
+    return null;
+}
+
 // AI extraction template for natural language processing
 const RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting resistance and support level requests from natural language.
 
+CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+
 The user wants to get historical levels of resistance and support for cryptocurrency technical analysis. Extract the following information:
 
 1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
-   - Can be a specific token or general request
+   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH", "Solana", "SOL", "Avalanche", "AVAX"
+   - MUST extract the EXACT name/symbol mentioned by the user
+   - Examples: "Bitcoin" → "Bitcoin", "BTC" → "Bitcoin", "ETH" → "Ethereum", "SOL" → "Solana", "AVAX" → "Avalanche"
 
-2. **token_id** (optional): Specific token ID if mentioned
+2. **symbol** (optional): Token symbol
+   - Extract symbols like "BTC", "ETH", "ADA", "SOL", "AVAX", "DOGE", etc.
+   - If user says "Bitcoin" → symbol: "BTC"
+   - If user says "Ethereum" → symbol: "ETH" 
+   - If user says "Solana" → symbol: "SOL"
+   - If user says "Avalanche" → symbol: "AVAX"
+
+3. **token_id** (optional): Specific token ID if mentioned
    - Usually a number like "3375" for Bitcoin
-
-3. **symbol** (optional): Token symbol
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
 
 4. **limit** (optional, default: 50): Number of levels to return
 
@@ -54,6 +108,8 @@ Examples:
 - "Show me key trading levels for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "trading_levels"}
 - "Support and resistance for breakout analysis" → {analysisType: "breakout_analysis"}
 - "Risk management levels for Solana" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "risk_management"}
+- "Resistance analysis for SOL" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "all"}
+- "Support levels for AVAX" → {cryptocurrency: "Avalanche", symbol: "AVAX", analysisType: "all"}
 
 Extract the request details from the user's message.
 `;
@@ -127,7 +183,7 @@ export const getResistanceSupportAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing resistance and support levels request...`);
@@ -136,7 +192,7 @@ export const getResistanceSupportAction: Action = {
             const levelsRequest = await extractTokenMetricsRequest<ResistanceSupportRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE,
                 ResistanceSupportRequestSchema,
                 requestId
@@ -144,8 +200,8 @@ export const getResistanceSupportAction: Action = {
             
             console.log(`[${requestId}] Extracted request:`, levelsRequest);
             
-            // Apply defaults for optional fields
-            const processedRequest = {
+            // Enhanced extraction with regex fallback for better symbol support
+            let processedRequest = {
                 cryptocurrency: levelsRequest.cryptocurrency,
                 token_id: levelsRequest.token_id,
                 symbol: levelsRequest.symbol,
@@ -154,18 +210,80 @@ export const getResistanceSupportAction: Action = {
                 analysisType: levelsRequest.analysisType || "all"
             };
             
-            // Resolve token if cryptocurrency name is provided
+            // Apply regex fallback if AI extraction seems incorrect or incomplete
+            const userText = message.content.text || "";
+            const regexResult = extractCryptocurrencySimple(userText);
+            
+            if (regexResult) {
+                // Check if AI extraction missed something or extracted wrong token
+                const aiExtracted = processedRequest.cryptocurrency?.toLowerCase() || "";
+                const regexExtracted = regexResult.cryptocurrency?.toLowerCase() || "";
+                
+                // Use regex result if:
+                // 1. AI didn't extract anything
+                // 2. AI extracted something completely different from what regex found
+                // 3. User used a symbol but AI extracted a different token name
+                if (!processedRequest.cryptocurrency || 
+                    (regexExtracted && aiExtracted && !aiExtracted.includes(regexExtracted.split(' ')[0]) && !regexExtracted.includes(aiExtracted))) {
+                    
+                    console.log(`[${requestId}] Using regex fallback: AI extracted "${processedRequest.cryptocurrency}" but regex found "${regexResult.cryptocurrency}"`);
+                    processedRequest.cryptocurrency = regexResult.cryptocurrency;
+                    processedRequest.symbol = regexResult.symbol;
+                }
+                
+                // Always ensure symbol is set if regex found one
+                if (regexResult.symbol && !processedRequest.symbol) {
+                    processedRequest.symbol = regexResult.symbol;
+                }
+            }
+            
+            // Fix symbol-as-cryptocurrency issue: if cryptocurrency looks like a symbol, convert it
+            if (processedRequest.cryptocurrency && !processedRequest.symbol) {
+                const symbolMapping: Record<string, { name: string; symbol: string }> = {
+                    'btc': { name: 'Bitcoin', symbol: 'BTC' },
+                    'eth': { name: 'Ethereum', symbol: 'ETH' },
+                    'doge': { name: 'Dogecoin', symbol: 'DOGE' },
+                    'sol': { name: 'Solana', symbol: 'SOL' },
+                    'avax': { name: 'Avalanche', symbol: 'AVAX' },
+                    'ada': { name: 'Cardano', symbol: 'ADA' },
+                    'dot': { name: 'Polkadot', symbol: 'DOT' },
+                    'link': { name: 'Chainlink', symbol: 'LINK' },
+                    'matic': { name: 'Polygon', symbol: 'MATIC' },
+                    'bnb': { name: 'BNB', symbol: 'BNB' }
+                };
+                
+                const cryptoLower = processedRequest.cryptocurrency.toLowerCase();
+                if (symbolMapping[cryptoLower]) {
+                    console.log(`[${requestId}] Converting symbol "${processedRequest.cryptocurrency}" to full name "${symbolMapping[cryptoLower].name}"`);
+                    processedRequest.cryptocurrency = symbolMapping[cryptoLower].name;
+                    processedRequest.symbol = symbolMapping[cryptoLower].symbol;
+                }
+            }
+            
+            console.log(`[${requestId}] Final processed request:`, processedRequest);
+            
+            // Resolve token if cryptocurrency name is provided (but not if it's just a symbol)
             let resolvedToken = null;
-            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-                try {
-                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-                    if (resolvedToken) {
-                        processedRequest.token_id = resolvedToken.token_id;
-                        processedRequest.symbol = resolvedToken.symbol;
-                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+            if (processedRequest.cryptocurrency && !processedRequest.token_id) {
+                // Only try to resolve if it looks like a full cryptocurrency name (not a symbol)
+                const isLikelySymbol = processedRequest.cryptocurrency.length <= 5 && 
+                                     processedRequest.cryptocurrency === processedRequest.cryptocurrency.toUpperCase();
+                
+                if (!isLikelySymbol) {
+                    try {
+                        resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+                        if (resolvedToken) {
+                            processedRequest.token_id = resolvedToken.token_id;
+                            processedRequest.symbol = resolvedToken.symbol;
+                            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                        } else {
+                            console.log(`[${requestId}] Token resolution returned null for "${processedRequest.cryptocurrency}"`);
+                        }
+                    } catch (error) {
+                        console.log(`[${requestId}] Token resolution failed for "${processedRequest.cryptocurrency}": ${error instanceof Error ? error.message : 'Unknown error'}`);
                     }
-                } catch (error) {
-                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                } else {
+                    console.log(`[${requestId}] Skipping token resolution for "${processedRequest.cryptocurrency}" (appears to be a symbol)`);
                 }
             }
             
@@ -175,9 +293,39 @@ export const getResistanceSupportAction: Action = {
                 page: processedRequest.page
             };
             
-            // Add token identification parameters
-            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
-            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
+            // Add token identification parameters - prioritize token_id, then symbol
+            if (processedRequest.token_id) {
+                apiParams.token_id = processedRequest.token_id;
+                console.log(`[${requestId}] Using token_id parameter: ${processedRequest.token_id}`);
+            } else if (processedRequest.symbol) {
+                apiParams.symbol = processedRequest.symbol;
+                console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
+            } else if (processedRequest.cryptocurrency) {
+                // Fallback: try to map cryptocurrency name to symbol
+                const symbolMapping: Record<string, string> = {
+                    'bitcoin': 'BTC',
+                    'ethereum': 'ETH', 
+                    'dogecoin': 'DOGE',
+                    'solana': 'SOL',
+                    'avalanche': 'AVAX',
+                    'cardano': 'ADA',
+                    'polkadot': 'DOT',
+                    'chainlink': 'LINK',
+                    'polygon': 'MATIC',
+                    'binance coin': 'BNB',
+                    'bnb': 'BNB'
+                };
+                
+                const mappedSymbol = symbolMapping[processedRequest.cryptocurrency.toLowerCase()];
+                if (mappedSymbol) {
+                    apiParams.symbol = mappedSymbol;
+                    console.log(`[${requestId}] Mapped ${processedRequest.cryptocurrency} to symbol: ${mappedSymbol}`);
+                } else {
+                    console.log(`[${requestId}] No symbol mapping found for: ${processedRequest.cryptocurrency}`);
+                }
+            }
+            
+            console.log(`[${requestId}] Final API parameters:`, apiParams);
             
             // Make API call
             const response = await callTokenMetricsAPI(
@@ -188,8 +336,144 @@ export const getResistanceSupportAction: Action = {
             
             console.log(`[${requestId}] API response received, processing data...`);
             
-            // Process response data
-            const levelsData = Array.isArray(response) ? response : response.data || [];
+            // Process response data - handle actual API structure
+            let levelsData: any[] = [];
+            
+            if (Array.isArray(response)) {
+                // Direct array response
+                levelsData = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                // Response with data wrapper - select the correct token when multiple tokens have same symbol
+                let selectedTokenData = null;
+                
+                if (response.data.length === 1) {
+                    // Only one token, use it
+                    selectedTokenData = response.data[0];
+                } else if (response.data.length > 1) {
+                    // Multiple tokens with same symbol - select the main/correct one
+                    console.log(`[${requestId}] Multiple tokens found with same symbol, selecting main token...`);
+                    
+                    // Priority selection logic for main tokens
+                    const mainTokenSelectors = [
+                        // For Bitcoin - select the main Bitcoin, not wrapped versions
+                        (token: any) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+                        // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+                        (token: any) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+                        // For Ethereum - select the main Ethereum
+                        (token: any) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+                        // For other tokens - prefer exact name matches or shortest/simplest names
+                        (token: any) => {
+                            const name = token.TOKEN_NAME.toLowerCase();
+                            const symbol = token.TOKEN_SYMBOL.toLowerCase();
+                            
+                            // Avoid wrapped, bridged, or derivative tokens
+                            const avoidKeywords = ['wrapped', 'bridged', 'peg', 'department', 'binance', 'osmosis'];
+                            const hasAvoidKeywords = avoidKeywords.some(keyword => name.includes(keyword));
+                            
+                            if (hasAvoidKeywords) return false;
+                            
+                            // Prefer tokens where name matches the expected name for the symbol
+                            if (symbol === 'btc' && name.includes('bitcoin')) return true;
+                            if (symbol === 'eth' && name.includes('ethereum')) return true;
+                            if (symbol === 'doge' && name.includes('dogecoin')) return true;
+                            if (symbol === 'sol' && name.includes('solana')) return true;
+                            if (symbol === 'avax' && name.includes('avalanche')) return true;
+                            
+                            return false;
+                        }
+                    ];
+                    
+                    // Try each selector until we find a match
+                    for (const selector of mainTokenSelectors) {
+                        const match = response.data.find(selector);
+                        if (match) {
+                            selectedTokenData = match;
+                            console.log(`[${requestId}] Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+                            break;
+                        }
+                    }
+                    
+                    // Fallback: if no main token found, use the first one
+                    if (!selectedTokenData) {
+                        selectedTokenData = response.data[0];
+                        console.log(`[${requestId}] No main token identified, using first token: ${selectedTokenData.TOKEN_NAME} (${selectedTokenData.TOKEN_SYMBOL})`);
+                    }
+                } else {
+                    console.log(`[${requestId}] No token data found in response`);
+                }
+                
+                if (selectedTokenData && selectedTokenData.HISTORICAL_RESISTANCE_SUPPORT_LEVELS) {
+                    // Extract historical levels and transform to expected format
+                    const historicalLevels = selectedTokenData.HISTORICAL_RESISTANCE_SUPPORT_LEVELS;
+                    
+                    // Sort levels by price to classify as resistance/support
+                    const sortedLevels = historicalLevels
+                        .map((level: any) => ({
+                            ...level,
+                            price: parseFloat(level.level)
+                        }))
+                        .filter((level: any) => level.price > 0)
+                        .sort((a: any, b: any) => a.price - b.price);
+                    
+                    // Get current/recent price for classification (use most recent level as proxy)
+                    const recentLevels = sortedLevels
+                        .filter((level: any) => new Date(level.date) > new Date('2024-01-01'))
+                        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    
+                    // Use the most recent level as current price reference, or median if no recent levels
+                    let currentPrice = 0;
+                    if (recentLevels.length > 0) {
+                        currentPrice = recentLevels[0].price;
+                        console.log(`[${requestId}] Using most recent level as current price reference: ${currentPrice} (${recentLevels[0].date})`);
+                    } else if (sortedLevels.length > 0) {
+                        // Use median price as fallback
+                        const medianIndex = Math.floor(sortedLevels.length / 2);
+                        currentPrice = sortedLevels[medianIndex].price;
+                        console.log(`[${requestId}] Using median level as current price reference: ${currentPrice}`);
+                    }
+                    
+                    // Transform to expected format and classify as resistance/support
+                    levelsData = historicalLevels.map((level: any, index: number) => {
+                        const price = parseFloat(level.level);
+                        const isResistance = price > currentPrice;
+                        const isSupport = price <= currentPrice;
+                        
+                        // Calculate strength based on recency and price significance
+                        const levelDate = new Date(level.date);
+                        const now = new Date();
+                        const daysSinceLevel = (now.getTime() - levelDate.getTime()) / (1000 * 60 * 60 * 24);
+                        
+                        // More recent levels and extreme prices get higher strength
+                        let strength = Math.max(20, 100 - (daysSinceLevel / 10));
+                        if (price > currentPrice * 1.5 || price < currentPrice * 0.5) {
+                            strength = Math.min(95, strength + 20); // Extreme levels get bonus
+                        }
+                        
+                        return {
+                            LEVEL_TYPE: isResistance ? 'RESISTANCE' : 'SUPPORT',
+                            TYPE: isResistance ? 'RESISTANCE' : 'SUPPORT',
+                            PRICE_LEVEL: price,
+                            LEVEL_PRICE: price,
+                            STRENGTH: Math.round(strength),
+                            LEVEL_STRENGTH: Math.round(strength),
+                            DATE: level.date,
+                            TIMEFRAME: 'daily',
+                            TOKEN_ID: selectedTokenData.TOKEN_ID,
+                            TOKEN_NAME: selectedTokenData.TOKEN_NAME,
+                            TOKEN_SYMBOL: selectedTokenData.TOKEN_SYMBOL,
+                            DAYS_SINCE: Math.round(daysSinceLevel),
+                            CURRENT_PRICE_REFERENCE: currentPrice
+                        };
+                    });
+                    
+                    console.log(`[${requestId}] Processed ${levelsData.length} historical levels for ${selectedTokenData.TOKEN_NAME} (${selectedTokenData.TOKEN_SYMBOL})`);
+                    console.log(`[${requestId}] Current price reference: ${currentPrice}, Resistance levels: ${levelsData.filter(l => l.LEVEL_TYPE === 'RESISTANCE').length}, Support levels: ${levelsData.filter(l => l.LEVEL_TYPE === 'SUPPORT').length}`);
+                } else {
+                    console.log(`[${requestId}] No HISTORICAL_RESISTANCE_SUPPORT_LEVELS found in selected token data`);
+                }
+            } else {
+                console.log(`[${requestId}] Unexpected response format:`, response);
+            }
             
             // Analyze the resistance and support levels based on requested analysis type
             const levelsAnalysis = analyzeResistanceSupportLevels(levelsData, processedRequest.analysisType);
@@ -232,32 +516,115 @@ export const getResistanceSupportAction: Action = {
                 }
             };
             
-            console.log(`[${requestId}] Resistance and support analysis completed successfully`);
-            return result;
+            // Format response text for user
+            const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
+            const resistanceLevels = levelsData.filter((level: any) => 
+                level.LEVEL_TYPE === 'RESISTANCE' || level.TYPE === 'RESISTANCE'
+            );
+            const supportLevels = levelsData.filter((level: any) => 
+                level.LEVEL_TYPE === 'SUPPORT' || level.TYPE === 'SUPPORT'
+            );
             
+            let responseText = `📊 **Resistance & Support Analysis for ${tokenName}**\n\n`;
+            
+            if (levelsData.length === 0) {
+                responseText += `❌ No resistance and support levels found for ${tokenName}. This could mean:\n`;
+                responseText += `• The token may not have sufficient price history\n`;
+                responseText += `• TokenMetrics may not have performed technical analysis on this token yet\n`;
+                responseText += `• Try using a major cryptocurrency like Bitcoin or Ethereum\n\n`;
+            } else {
+                responseText += `✅ **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)\n\n`;
+                
+                // Analysis type specific summary
+                if (processedRequest.analysisType === "trading_levels") {
+                    responseText += `🎯 **Trading Levels Focus:**\n`;
+                    responseText += `• Key entry opportunities: ${supportLevels.length} support levels\n`;
+                    responseText += `• Key exit targets: ${resistanceLevels.length} resistance levels\n`;
+                } else if (processedRequest.analysisType === "breakout_analysis") {
+                    responseText += `🚀 **Breakout Analysis Focus:**\n`;
+                    const strongResistance = resistanceLevels.filter((r: any) => (r.STRENGTH || 0) > 0.7);
+                    const weakSupport = supportLevels.filter((s: any) => (s.STRENGTH || 0) < 0.5);
+                    responseText += `• Breakout candidates: ${strongResistance.length} strong resistance levels\n`;
+                    responseText += `• Breakdown risks: ${weakSupport.length} weak support levels\n`;
+                } else if (processedRequest.analysisType === "risk_management") {
+                    responseText += `🛡️ **Risk Management Focus:**\n`;
+                    responseText += `• Stop-loss levels: ${supportLevels.length} support zones\n`;
+                    responseText += `• Take-profit levels: ${resistanceLevels.length} resistance zones\n`;
+                } else {
+                    responseText += `📈 **Comprehensive Analysis:**\n`;
+                    responseText += `• ${levelsAnalysis.summary}\n`;
+                }
+                
+                // Key insights
+                if (levelsAnalysis.insights && levelsAnalysis.insights.length > 0) {
+                    responseText += `\n💡 **Key Insights:**\n`;
+                    levelsAnalysis.insights.slice(0, 3).forEach((insight: string) => {
+                        responseText += `• ${insight}\n`;
+                    });
+                }
+                
+                // Technical outlook
+                if (levelsAnalysis.technical_outlook) {
+                    responseText += `\n🔮 **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || 'Neutral'}\n`;
+                }
+                
+                responseText += `\n📋 **Usage Guidelines:**\n`;
+                responseText += `• Use support levels as potential entry points for long positions\n`;
+                responseText += `• Use resistance levels as potential exit points or profit-taking levels\n`;
+                responseText += `• Monitor level breaks for trend continuation or reversal signals\n`;
+                responseText += `• Combine with volume analysis for confirmation of level significance\n`;
+            }
+            
+            responseText += `\n🔗 **Data Source:** TokenMetrics Technical Analysis Engine (v2)`;
+            
+            console.log(`[${requestId}] Resistance and support analysis completed successfully`);
+            console.log(`[${requestId}] Analysis completed successfully`);
+            
+            // Use callback to send response to user (like working actions)
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        request_id: requestId,
+                        data: result,
+                        metadata: {
+                            endpoint: "resistancesupport",
+                            data_source: "TokenMetrics Official API",
+                            api_version: "v2"
+                        }
+                    }
+                });
+            }
+            
+            return true;
         } catch (error) {
             console.error("Error in getResistanceSupportAction:", error);
             
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve resistance and support levels from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/resistance-support is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that pagination parameters are positive integers",
-                        "Ensure your API key has access to resistance-support endpoint",
-                        "Confirm the token has sufficient price history for level analysis"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Check if your subscription includes technical analysis data",
-                        "Verify the token has been actively traded with sufficient volume",
-                        "Ensure TokenMetrics has performed technical analysis on the requested token"
-                    ]
-                }
-            };
+            const errorMessage = `❌ **Failed to get resistance and support levels**\n\n` +
+                `**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}\n\n` +
+                `**Troubleshooting:**\n` +
+                `• Ensure the token has sufficient price history for technical analysis\n` +
+                `• Try using a major cryptocurrency like Bitcoin or Ethereum\n` +
+                `• Check if your TokenMetrics subscription includes technical analysis data\n` +
+                `• Verify the token is actively traded with sufficient volume\n\n` +
+                `**Common Solutions:**\n` +
+                `• Use full token names instead of symbols (e.g., "Bitcoin" instead of "BTC")\n` +
+                `• Check if TokenMetrics has performed technical analysis on the requested token\n` +
+                `• Ensure your API key has access to the resistance-support endpoint`;
+            
+            if (callback) {
+                callback({
+                    text: errorMessage,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred",
+                        message: "Failed to retrieve resistance and support levels from TokenMetrics API"
+                    }
+                });
+            }
+            
+            return false;
         }
     },
     

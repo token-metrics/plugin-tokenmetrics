@@ -206,26 +206,50 @@ export async function callTokenMetricsAPI(
 /**
  * Format currency values
  */
-export function formatCurrency(value: number): string {
-    if (value >= 1e9) {
-        return `$${(value / 1e9).toFixed(2)}B`;
-    } else if (value >= 1e6) {
-        return `$${(value / 1e6).toFixed(2)}M`;
-    } else if (value >= 1e3) {
-        return `$${(value / 1e3).toFixed(2)}K`;
-    } else if (value >= 1) {
-        return `$${value.toFixed(2)}`;
+export function formatCurrency(value: number | undefined | null): string {
+    // Handle edge cases
+    if (value === undefined || value === null || isNaN(value) || !isFinite(value)) {
+        return "$0.00";
+    }
+    
+    // Ensure we have a valid number
+    const numValue = Number(value);
+    if (isNaN(numValue) || !isFinite(numValue)) {
+        return "$0.00";
+    }
+    
+    if (numValue >= 1e9) {
+        return `$${(numValue / 1e9).toFixed(2)}B`;
+    } else if (numValue >= 1e6) {
+        return `$${(numValue / 1e6).toFixed(2)}M`;
+    } else if (numValue >= 1e3) {
+        return `$${(numValue / 1e3).toFixed(2)}K`;
+    } else if (numValue >= 1) {
+        return `$${numValue.toFixed(2)}`;
+    } else if (numValue > 0) {
+        return `$${numValue.toFixed(6)}`;
     } else {
-        return `$${value.toFixed(6)}`;
+        return "$0.00";
     }
 }
 
 /**
  * Format percentage values
  */
-export function formatPercentage(value: number): string {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
+export function formatPercentage(value: number | undefined | null): string {
+    // Handle edge cases
+    if (value === undefined || value === null || isNaN(value) || !isFinite(value)) {
+        return "0.00%";
+    }
+    
+    // Ensure we have a valid number
+    const numValue = Number(value);
+    if (isNaN(numValue) || !isFinite(numValue)) {
+        return "0.00%";
+    }
+    
+    const sign = numValue >= 0 ? '+' : '';
+    return `${sign}${numValue.toFixed(2)}%`;
 }
 
 /**
