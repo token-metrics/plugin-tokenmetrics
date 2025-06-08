@@ -30,6 +30,9 @@ type SentimentRequest = z.infer<typeof SentimentRequestSchema>;
 const SENTIMENT_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting sentiment analysis requests from natural language.
 
+IMPORTANT: This API provides GENERAL CRYPTO MARKET sentiment and news, NOT token-specific data.
+When users ask for "Bitcoin news" or "Ethereum sentiment", they get overall crypto market sentiment that affects all tokens.
+
 The user wants to get hourly sentiment scores from Twitter, Reddit, and news sources. Extract the following information:
 
 1. **limit** (optional, default: 24): Number of sentiment data points to return
@@ -48,6 +51,8 @@ Examples:
 - "Get market sentiment" → {analysisType: "all"}
 - "Show me social media sentiment trends" → {analysisType: "social_trends"}
 - "Check news sentiment impact" → {analysisType: "news_impact"}
+- "Get news for Bitcoin" → {analysisType: "news_impact"} (returns general crypto news sentiment)
+- "Bitcoin news sentiment" → {analysisType: "news_impact"} (returns general crypto news sentiment)
 - "Market mood for the past 24 hours" → {limit: 24, analysisType: "market_mood"}
 - "Sentiment analysis for the past week" → {limit: 168, analysisType: "all"}
 
@@ -63,7 +68,7 @@ Extract the request details from the user's message.
  */
 export const getSentimentAction: Action = {
     name: "GET_SENTIMENT_TOKENMETRICS",
-    description: "Get hourly sentiment scores from Twitter, Reddit, and news sources with market mood analysis from TokenMetrics",
+    description: "Get hourly sentiment scores and news analysis from Twitter, Reddit, and crypto news sources with market mood analysis from TokenMetrics",
     similes: [
         "get sentiment",
         "market sentiment",
@@ -73,7 +78,12 @@ export const getSentimentAction: Action = {
         "news sentiment",
         "twitter sentiment",
         "reddit sentiment",
-        "social media sentiment"
+        "social media sentiment",
+        "get news",
+        "crypto news",
+        "market news",
+        "news analysis",
+        "news impact"
     ],
     examples: [
         [
@@ -120,10 +130,25 @@ export const getSentimentAction: Action = {
                     action: "GET_SENTIMENT_TOKENMETRICS"
                 }
             }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get news for Bitcoin"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve the latest crypto market news and sentiment analysis that affects Bitcoin and the broader market.",
+                    action: "GET_SENTIMENT_TOKENMETRICS"
+                }
+            }
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing sentiment analysis request...`);
@@ -132,7 +157,7 @@ export const getSentimentAction: Action = {
             const sentimentRequest = await extractTokenMetricsRequest<SentimentRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 SENTIMENT_EXTRACTION_TEMPLATE,
                 SentimentRequestSchema,
                 requestId
@@ -209,6 +234,68 @@ export const getSentimentAction: Action = {
                     ]
                 }
             };
+            
+            // Create formatted response text for user
+            let responseText = "";
+            
+            if (processedRequest.analysisType === "news_impact") {
+                responseText = `📰 **Crypto Market News & Sentiment Analysis**\n\n`;
+                responseText += `ℹ️ *Note: This provides general crypto market news sentiment that affects all cryptocurrencies, not token-specific news.*\n\n`;
+            } else {
+                responseText = `📊 **Crypto Market Sentiment Analysis**\n\n`;
+            }
+            
+            if (sentimentData.length === 0) {
+                responseText += `❌ No sentiment data available at the moment.\n\n`;
+            } else {
+                // Get latest sentiment data
+                const latest = sentimentData[0];
+                const marketGrade = latest.MARKET_SENTIMENT_GRADE || 0;
+                const marketLabel = latest.MARKET_SENTIMENT_LABEL || "Unknown";
+                
+                responseText += `🎯 **Current Market Sentiment**: ${marketLabel} (${marketGrade})\n\n`;
+                
+                // Platform breakdown
+                if (latest.TWITTER_SENTIMENT_GRADE !== undefined) {
+                    responseText += `🐦 **Twitter**: ${latest.TWITTER_SENTIMENT_LABEL || "Unknown"} (${latest.TWITTER_SENTIMENT_GRADE})\n`;
+                }
+                if (latest.REDDIT_SENTIMENT_GRADE !== undefined) {
+                    responseText += `📱 **Reddit**: ${latest.REDDIT_SENTIMENT_LABEL || "Unknown"} (${latest.REDDIT_SENTIMENT_GRADE})\n`;
+                }
+                if (latest.NEWS_SENTIMENT_GRADE !== undefined) {
+                    responseText += `📰 **News**: ${latest.NEWS_SENTIMENT_LABEL || "Unknown"} (${latest.NEWS_SENTIMENT_GRADE})\n\n`;
+                }
+                
+                // Summaries
+                if (latest.NEWS_SUMMARY) {
+                    responseText += `📰 **News Summary**: ${latest.NEWS_SUMMARY}\n\n`;
+                }
+                if (latest.TWITTER_SUMMARY) {
+                    responseText += `🐦 **Twitter Summary**: ${latest.TWITTER_SUMMARY}\n\n`;
+                }
+                if (latest.REDDIT_SUMMARY) {
+                    responseText += `📱 **Reddit Summary**: ${latest.REDDIT_SUMMARY}\n\n`;
+                }
+                
+                // Analysis insights
+                if (sentimentAnalysis.insights && sentimentAnalysis.insights.length > 0) {
+                    responseText += `💡 **Key Insights**:\n`;
+                    sentimentAnalysis.insights.slice(0, 3).forEach((insight: string, index: number) => {
+                        responseText += `${index + 1}. ${insight}\n`;
+                    });
+                    responseText += `\n`;
+                }
+                
+                // Trading implications
+                if (sentimentAnalysis.trading_implications) {
+                    responseText += `📈 **Trading Implications**: ${sentimentAnalysis.trading_implications.recommendation}\n`;
+                    responseText += `⚠️ **Risk Level**: ${sentimentAnalysis.trading_implications.risk_level}\n\n`;
+                }
+            }
+            
+            responseText += `📊 Retrieved ${sentimentData.length} sentiment data points from TokenMetrics\n`;
+            responseText += `🕐 Analysis focus: ${processedRequest.analysisType}\n`;
+            responseText += `📄 Page ${processedRequest.page} (limit: ${processedRequest.limit})`;
             
             console.log(`[${requestId}] Sentiment analysis completed successfully`);
             console.log(`[${requestId}] Analysis completed successfully`);

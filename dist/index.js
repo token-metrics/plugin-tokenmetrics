@@ -4514,21 +4514,38 @@ var PriceRequestSchema = z.object({
   analysisType: z.enum(["current", "trend", "technical", "all"]).optional().describe("Type of price analysis to focus on")
 });
 var PRICE_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting cryptocurrency price requests from natural language.
+You are an AI assistant specialized in extracting cryptocurrency PRICE requests from natural language.
 
-CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+CRITICAL INSTRUCTION: This is ONLY for PRICE requests, NOT token search/database requests.
 
-The user wants to get price information for a cryptocurrency. Extract the following information:
+ONLY MATCH PRICE REQUESTS:
+- "What's the price of Bitcoin?" \u2705
+- "How much is ETH worth?" \u2705  
+- "Get Bitcoin price" \u2705
+- "Show me DOGE price" \u2705
+- "Bitcoin current price" \u2705
+- "Check ETH price" \u2705
+- "Price of Solana" \u2705
+
+DO NOT MATCH TOKEN SEARCH/DATABASE REQUESTS:
+- "Find token details for Ethereum" \u274C (this is TOKEN SEARCH)
+- "Search for Bitcoin token information" \u274C (this is TOKEN SEARCH)
+- "Lookup token information for Dogecoin" \u274C (this is TOKEN SEARCH)
+- "Get token details" \u274C (this is TOKEN SEARCH)
+- "Search token database" \u274C (this is TOKEN SEARCH)
+- "Find token info" \u274C (this is TOKEN SEARCH)
+- "Token information" \u274C (this is TOKEN SEARCH)
+
+ONLY extract if the user is asking for PRICE/VALUE information, not token details or database searches.
+
+Extract the following information for PRICE requests only:
 
 1. **cryptocurrency** (required): The EXACT cryptocurrency name or symbol they mentioned
-   - Extract whatever cryptocurrency name the user said (Bitcoin, Ethereum, Dogecoin, Avalanche, Cardano, Polygon, Solana, etc.)
-   - Extract whatever symbol the user said (BTC, ETH, DOGE, AVAX, ADA, MATIC, SOL, etc.)
-   - If they use a symbol, you can also include the full name if you know it
+   - Extract whatever cryptocurrency name the user said (Bitcoin, Ethereum, Dogecoin, Avalanche, etc.)
+   - Extract whatever symbol the user said (BTC, ETH, DOGE, AVAX, etc.)
    - DO NOT change or substitute the cryptocurrency name
-   - DO NOT guess or assume a different cryptocurrency
 
-2. **symbol** (optional): The cryptocurrency symbol if mentioned or if you can confidently map the name to a symbol
-   - Only include if explicitly mentioned or if you're certain of the mapping
+2. **symbol** (optional): The cryptocurrency symbol if mentioned or mappable
    - Common mappings: Bitcoin\u2192BTC, Ethereum\u2192ETH, Dogecoin\u2192DOGE, Avalanche\u2192AVAX, Solana\u2192SOL
 
 3. **analysisType** (optional, default: "current"): What type of price analysis they want
@@ -4537,21 +4554,7 @@ The user wants to get price information for a cryptocurrency. Extract the follow
    - "technical" - technical analysis
    - "all" - comprehensive analysis
 
-PATTERN RECOGNITION:
-- "What's the price of [TOKEN]?" \u2192 Extract [TOKEN] exactly
-- "How much is [SYMBOL] worth?" \u2192 Extract [SYMBOL] exactly
-- "Get me [TOKEN] price" \u2192 Extract [TOKEN] exactly
-- "[TOKEN] current price" \u2192 Extract [TOKEN] exactly
-
-EXAMPLES:
-- "What's the price of Bitcoin?" \u2192 {"cryptocurrency": "Bitcoin", "symbol": "BTC", "analysisType": "current"}
-- "What's the price of Dogecoin?" \u2192 {"cryptocurrency": "Dogecoin", "symbol": "DOGE", "analysisType": "current"}
-- "What's the price of Avalanche?" \u2192 {"cryptocurrency": "Avalanche", "symbol": "AVAX", "analysisType": "current"}
-- "How much is SHIB worth?" \u2192 {"cryptocurrency": "SHIB", "analysisType": "current"}
-- "Get me PEPE price" \u2192 {"cryptocurrency": "PEPE", "analysisType": "current"}
-- "Chainlink technical analysis" \u2192 {"cryptocurrency": "Chainlink", "symbol": "LINK", "analysisType": "technical"}
-
-CRITICAL: Always extract the EXACT cryptocurrency the user mentioned. If you don't recognize it, still extract it exactly as they said it.
+CRITICAL: Only extract if this is clearly a PRICE request, not a token search/database request.
 
 Extract the price request details from the user's message.
 `;
@@ -4678,11 +4681,19 @@ var getPriceAction = {
     "get price",
     "price check",
     "crypto price",
-    "token price",
     "current price",
     "price data",
     "market price",
-    "price analysis"
+    "price analysis",
+    "what's the price",
+    "how much is",
+    "price of",
+    "check price",
+    "show price",
+    "get current price",
+    "market value",
+    "token value",
+    "crypto value"
   ],
   examples: [
     [
@@ -6831,7 +6842,7 @@ function generateMarketRecommendations(currentMetrics, trendAnalysis, strengthAs
 
 // src/actions/getIndicesAction.ts
 var IndicesRequestSchema = z.object({
-  indicesType: z.string().optional().describe("Type of indices to filter (active, passive, etc.)"),
+  indicesType: z.string().nullable().optional().describe("Type of indices to filter (active, passive, etc.)"),
   limit: z.number().min(1).max(100).optional().describe("Number of indices to return"),
   page: z.number().min(1).optional().describe("Page number for pagination"),
   analysisType: z.enum(["performance", "risk", "diversification", "all"]).optional().describe("Type of analysis to focus on")
@@ -6844,7 +6855,7 @@ The user wants to get information about crypto indices. Extract the following in
 1. **indicesType** (optional): Type of indices they're interested in
    - "active" for actively managed indices
    - "passive" for passive/index tracking
-   - Leave undefined for all types
+   - Leave null for all types
 
 2. **limit** (default: 50): How many indices to return (1-100)
 
@@ -6857,10 +6868,10 @@ The user wants to get information about crypto indices. Extract the following in
    - "all" - comprehensive analysis
 
 Examples:
-- "Show me crypto indices" \u2192 {indicesType: undefined, limit: 50, page: 1, analysisType: "all"}
+- "Show me crypto indices" \u2192 {indicesType: null, limit: 50, page: 1, analysisType: "all"}
 - "Get active crypto index funds" \u2192 {indicesType: "active", limit: 50, page: 1, analysisType: "all"}
 - "What are the best performing passive indices?" \u2192 {indicesType: "passive", limit: 50, page: 1, analysisType: "performance"}
-- "Show me 20 indices focused on risk analysis" \u2192 {indicesType: undefined, limit: 20, page: 1, analysisType: "risk"}
+- "Show me 20 indices focused on risk analysis" \u2192 {indicesType: null, limit: 20, page: 1, analysisType: "risk"}
 
 Extract the request details from the user's message.
 `;
@@ -6924,14 +6935,14 @@ var getIndicesAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _options, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices request...`);
       const indicesRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         INDICES_EXTRACTION_TEMPLATE,
         IndicesRequestSchema,
         requestId
@@ -6947,7 +6958,7 @@ var getIndicesAction = {
         limit: processedRequest.limit,
         page: processedRequest.page
       };
-      if (processedRequest.indicesType) {
+      if (processedRequest.indicesType && processedRequest.indicesType !== null) {
         apiParams.indicesType = processedRequest.indicesType;
       }
       const response = await callTokenMetricsAPI(
@@ -6957,6 +6968,8 @@ var getIndicesAction = {
       );
       console.log(`[${requestId}] API response received, processing data...`);
       const indices = Array.isArray(response) ? response : response.data || [];
+      console.log(`[${requestId}] Raw API response:`, JSON.stringify(response, null, 2));
+      console.log(`[${requestId}] Processed indices array:`, JSON.stringify(indices.slice(0, 2), null, 2));
       const indicesAnalysis = analyzeIndicesData(indices, processedRequest.analysisType);
       const result = {
         success: true,
@@ -7004,10 +7017,11 @@ var getIndicesAction = {
         }
       };
       console.log(`[${requestId}] Indices analysis completed successfully`);
+      const responseText2 = formatIndicesResponse(result, processedRequest.limit);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
+      if (callback2) {
+        callback2({
+          text: responseText2,
           content: {
             success: true,
             request_id: requestId,
@@ -7023,11 +7037,16 @@ var getIndicesAction = {
       return true;
     } catch (error) {
       console.error("Error in getIndices action:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve indices data from TokenMetrics"
-      };
+      if (callback2) {
+        callback2({
+          text: `\u274C Failed to retrieve indices data: ${error instanceof Error ? error.message : "Unknown error"}`,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred"
+          }
+        });
+      }
+      return false;
     }
   },
   async validate(runtime, _message) {
@@ -7042,61 +7061,66 @@ function analyzeIndicesData(indices, analysisType = "all") {
       recommendations: []
     };
   }
-  const activeIndices = indices.filter((index) => index.INDEX_TYPE === "active");
-  const passiveIndices = indices.filter((index) => index.INDEX_TYPE === "passive");
-  const avgTotalReturn = indices.filter((index) => index.TOTAL_RETURN !== void 0).reduce((sum, index) => sum + index.TOTAL_RETURN, 0) / indices.length;
-  const avgAnnualReturn = indices.filter((index) => index.ANNUAL_RETURN !== void 0).reduce((sum, index) => sum + index.ANNUAL_RETURN, 0) / indices.length;
-  const avgVolatility = indices.filter((index) => index.VOLATILITY !== void 0).reduce((sum, index) => sum + index.VOLATILITY, 0) / indices.length;
-  const avgSharpeRatio = indices.filter((index) => index.SHARPE_RATIO !== void 0).reduce((sum, index) => sum + index.SHARPE_RATIO, 0) / indices.length;
-  const topPerformers = indices.filter((index) => index.TOTAL_RETURN !== void 0).sort((a, b) => b.TOTAL_RETURN - a.TOTAL_RETURN).slice(0, 3);
-  const bestRiskAdjusted = indices.filter((index) => index.SHARPE_RATIO !== void 0).sort((a, b) => b.SHARPE_RATIO - a.SHARPE_RATIO).slice(0, 3);
+  const activeIndices = [];
+  const passiveIndices = [];
+  const validAllTimeReturns = indices.filter((index) => index.ALL_TIME !== void 0 && index.ALL_TIME !== null);
+  const avgAllTimeReturn = validAllTimeReturns.length > 0 ? validAllTimeReturns.reduce((sum, index) => sum + index.ALL_TIME, 0) / validAllTimeReturns.length : 0;
+  const valid1MReturns = indices.filter((index) => index["1M"] !== void 0 && index["1M"] !== null);
+  const avg1MReturn = valid1MReturns.length > 0 ? valid1MReturns.reduce((sum, index) => sum + index["1M"], 0) / valid1MReturns.length : 0;
+  const validGrades = indices.filter((index) => index.INDEX_GRADE !== void 0 && index.INDEX_GRADE !== null);
+  const avgIndexGrade = validGrades.length > 0 ? validGrades.reduce((sum, index) => sum + index.INDEX_GRADE, 0) / validGrades.length : 0;
+  const topPerformers = indices.filter((index) => index.ALL_TIME !== void 0 && index.ALL_TIME !== null).sort((a, b) => b.ALL_TIME - a.ALL_TIME).slice(0, 3);
+  const bestRecentPerformers = indices.filter((index) => index["1M"] !== void 0 && index["1M"] !== null).sort((a, b) => b["1M"] - a["1M"]).slice(0, 3);
   const insights = [
-    `\u{1F4CA} Total Indices Available: ${indices.length} (${activeIndices.length} active, ${passiveIndices.length} passive)`,
-    `\u{1F4C8} Average Total Return: ${formatPercentage(avgTotalReturn)}`,
-    `\u{1F4C5} Average Annual Return: ${formatPercentage(avgAnnualReturn)}`,
-    `\u26A1 Average Volatility: ${formatPercentage(avgVolatility)}`,
-    `\u{1F3AF} Average Sharpe Ratio: ${avgSharpeRatio.toFixed(3)}`,
-    `\u{1F3C6} Top Performer: ${topPerformers[0]?.INDEX_NAME} (${formatPercentage(topPerformers[0]?.TOTAL_RETURN)})`
+    `\u{1F4CA} Total Indices Available: ${indices.length}`,
+    `\u{1F4C8} Average All-Time Return: ${formatPercentage(avgAllTimeReturn)}`,
+    `\u{1F4C5} Average 1-Month Return: ${formatPercentage(avg1MReturn)}`,
+    `\u{1F3AF} Average Index Grade: ${avgIndexGrade.toFixed(1)}/100`,
+    `\u{1F3C6} Top All-Time Performer: ${topPerformers[0]?.NAME} (${formatPercentage(topPerformers[0]?.ALL_TIME)})`
   ];
   const recommendations = [
-    activeIndices.length > 0 ? `\u{1F3AF} Active Management: ${activeIndices.length} actively managed indices available for dynamic allocation strategies` : "\u26A0\uFE0F No active indices currently available",
-    passiveIndices.length > 0 ? `\u{1F4CA} Passive Investment: ${passiveIndices.length} passive indices available for low-cost market exposure` : "\u26A0\uFE0F No passive indices currently available",
-    avgSharpeRatio > 1 ? "\u2705 Strong Risk-Adjusted Returns: Average Sharpe ratio indicates good risk-adjusted performance" : "\u26A0\uFE0F Consider Risk: Lower Sharpe ratios suggest higher risk relative to returns",
-    avgVolatility > 50 ? "\u26A0\uFE0F High Volatility: Indices show significant price swings - consider position sizing" : "\u2705 Moderate Volatility: Reasonable risk levels for crypto investments"
+    indices.length > 10 ? `\u{1F3AF} Good Selection: ${indices.length} indices available for diversified crypto exposure` : `\u26A0\uFE0F Limited Selection: Only ${indices.length} indices currently available`,
+    avgIndexGrade > 50 ? `\u2705 Strong Quality: Average index grade of ${avgIndexGrade.toFixed(1)}/100 indicates good quality indices` : `\u26A0\uFE0F Consider Quality: Lower average grade suggests careful selection needed`,
+    avg1MReturn > 0 ? `\u{1F4C8} Positive Momentum: Average 1-month return of ${formatPercentage(avg1MReturn)} shows recent strength` : `\u{1F4C9} Recent Weakness: Negative 1-month returns suggest market challenges`,
+    topPerformers.length > 0 ? `\u{1F680} Strong Leaders: Top performer ${topPerformers[0]?.NAME} shows ${formatPercentage(topPerformers[0]?.ALL_TIME)} all-time returns` : `\u26A0\uFE0F No clear leaders identified`
   ];
   let focusedAnalysis = {};
   switch (analysisType) {
     case "performance":
       focusedAnalysis = {
         performance_focus: {
-          top_performers: topPerformers.slice(0, 5),
+          top_all_time_performers: topPerformers.slice(0, 5),
+          recent_performers: bestRecentPerformers.slice(0, 5),
           performance_distribution: {
-            positive_returns: indices.filter((i) => i.TOTAL_RETURN > 0).length,
-            negative_returns: indices.filter((i) => i.TOTAL_RETURN < 0).length,
-            neutral_returns: indices.filter((i) => i.TOTAL_RETURN === 0).length
+            positive_all_time: indices.filter((i) => (i.ALL_TIME || 0) > 0).length,
+            negative_all_time: indices.filter((i) => (i.ALL_TIME || 0) < 0).length,
+            positive_1m: indices.filter((i) => (i["1M"] || 0) > 0).length,
+            negative_1m: indices.filter((i) => (i["1M"] || 0) < 0).length
           },
           performance_insights: [
-            `\u{1F680} ${indices.filter((i) => i.TOTAL_RETURN > 100).length} indices with >100% returns`,
-            `\u{1F4C8} ${indices.filter((i) => i.TOTAL_RETURN > 0).length}/${indices.length} indices showing positive returns`,
-            `\u2B50 Best performer: ${topPerformers[0]?.INDEX_NAME} at ${formatPercentage(topPerformers[0]?.TOTAL_RETURN)}`
+            `\u{1F680} ${indices.filter((i) => (i.ALL_TIME || 0) > 100).length} indices with >100% all-time returns`,
+            `\u{1F4C8} ${indices.filter((i) => (i["1M"] || 0) > 0).length}/${indices.length} indices showing positive 1-month returns`,
+            `\u2B50 Best all-time: ${topPerformers[0]?.NAME} at ${formatPercentage(topPerformers[0]?.ALL_TIME)}`
           ]
         }
       };
       break;
     case "risk":
+      const lowRiskIndices = indices.filter((i) => (i.INDEX_GRADE || 0) > 70).slice(0, 5);
+      const highRiskIndices = indices.filter((i) => (i.INDEX_GRADE || 0) < 30).slice(0, 5);
       focusedAnalysis = {
         risk_focus: {
-          low_risk_indices: indices.filter((i) => i.VOLATILITY < 30).slice(0, 5),
-          high_risk_indices: indices.filter((i) => i.VOLATILITY > 70).slice(0, 5),
+          high_grade_indices: lowRiskIndices,
+          low_grade_indices: highRiskIndices,
           risk_distribution: {
-            low_risk: indices.filter((i) => i.VOLATILITY < 30).length,
-            medium_risk: indices.filter((i) => i.VOLATILITY >= 30 && i.VOLATILITY <= 70).length,
-            high_risk: indices.filter((i) => i.VOLATILITY > 70).length
+            high_grade: indices.filter((i) => (i.INDEX_GRADE || 0) > 70).length,
+            medium_grade: indices.filter((i) => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length,
+            low_grade: indices.filter((i) => (i.INDEX_GRADE || 0) < 30).length
           },
           risk_insights: [
-            `\u{1F6E1}\uFE0F ${indices.filter((i) => i.VOLATILITY < 30).length} low-risk indices (volatility <30%)`,
-            `\u2696\uFE0F ${indices.filter((i) => i.VOLATILITY >= 30 && i.VOLATILITY <= 70).length} medium-risk indices`,
-            `\u26A0\uFE0F ${indices.filter((i) => i.VOLATILITY > 70).length} high-risk indices (volatility >70%)`
+            `\u{1F6E1}\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) > 70).length} high-grade indices (grade >70)`,
+            `\u2696\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length} medium-grade indices`,
+            `\u26A0\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) < 30).length} low-grade indices (grade <30)`
           ]
         }
       };
@@ -7104,59 +7128,154 @@ function analyzeIndicesData(indices, analysisType = "all") {
     case "diversification":
       focusedAnalysis = {
         diversification_focus: {
-          by_asset_count: indices.sort((a, b) => (b.ASSETS_COUNT || 0) - (a.ASSETS_COUNT || 0)).slice(0, 5),
+          by_coin_count: indices.sort((a, b) => (b.COINS || 0) - (a.COINS || 0)).slice(0, 5),
           diversification_levels: {
-            highly_diversified: indices.filter((i) => (i.ASSETS_COUNT || 0) > 20).length,
-            moderately_diversified: indices.filter((i) => (i.ASSETS_COUNT || 0) >= 10 && (i.ASSETS_COUNT || 0) <= 20).length,
-            focused: indices.filter((i) => (i.ASSETS_COUNT || 0) < 10).length
+            highly_diversified: indices.filter((i) => (i.COINS || 0) > 20).length,
+            moderately_diversified: indices.filter((i) => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length,
+            focused: indices.filter((i) => (i.COINS || 0) < 10).length
           },
           diversification_insights: [
-            `\u{1F310} ${indices.filter((i) => (i.ASSETS_COUNT || 0) > 20).length} highly diversified indices (>20 assets)`,
-            `\u{1F4CA} ${indices.filter((i) => (i.ASSETS_COUNT || 0) >= 10 && (i.ASSETS_COUNT || 0) <= 20).length} moderately diversified indices`,
-            `\u{1F3AF} ${indices.filter((i) => (i.ASSETS_COUNT || 0) < 10).length} focused indices (<10 assets)`
+            `\u{1F310} ${indices.filter((i) => (i.COINS || 0) > 20).length} highly diversified indices (>20 coins)`,
+            `\u{1F4CA} ${indices.filter((i) => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length} moderately diversified indices`,
+            `\u{1F3AF} ${indices.filter((i) => (i.COINS || 0) < 10).length} focused indices (<10 coins)`
           ]
         }
       };
       break;
   }
   return {
-    summary: `Analysis of ${indices.length} crypto indices showing ${formatPercentage(avgTotalReturn)} average total return with ${formatPercentage(avgVolatility)} volatility`,
+    summary: `Analysis of ${indices.length} crypto indices showing ${formatPercentage(avgAllTimeReturn)} average all-time return with ${avgIndexGrade.toFixed(1)}/100 average grade`,
     analysis_type: analysisType,
     performance_metrics: {
       total_indices: indices.length,
-      active_indices: activeIndices.length,
-      passive_indices: passiveIndices.length,
-      avg_total_return: avgTotalReturn,
-      avg_annual_return: avgAnnualReturn,
-      avg_volatility: avgVolatility,
-      avg_sharpe_ratio: avgSharpeRatio
+      active_indices: 0,
+      // Not available in API
+      passive_indices: 0,
+      // Not available in API
+      avg_all_time_return: avgAllTimeReturn,
+      avg_1m_return: avg1MReturn,
+      avg_index_grade: avgIndexGrade,
+      avg_sharpe_ratio: 0
+      // Not available in API
     },
     top_performers: topPerformers.map((index) => ({
-      name: index.INDEX_NAME,
-      symbol: index.INDEX_SYMBOL,
-      total_return: index.TOTAL_RETURN,
-      annual_return: index.ANNUAL_RETURN,
-      type: index.INDEX_TYPE
+      name: index.NAME,
+      ticker: index.TICKER,
+      all_time_return: index.ALL_TIME,
+      one_month_return: index["1M"],
+      index_grade: index.INDEX_GRADE,
+      coins: index.COINS
     })),
-    best_risk_adjusted: bestRiskAdjusted.map((index) => ({
-      name: index.INDEX_NAME,
-      symbol: index.INDEX_SYMBOL,
-      sharpe_ratio: index.SHARPE_RATIO,
-      total_return: index.TOTAL_RETURN,
-      volatility: index.VOLATILITY
+    best_recent_performers: bestRecentPerformers.map((index) => ({
+      name: index.NAME,
+      ticker: index.TICKER,
+      one_month_return: index["1M"],
+      all_time_return: index.ALL_TIME,
+      index_grade: index.INDEX_GRADE
     })),
     insights,
     recommendations,
     ...focusedAnalysis,
     investment_considerations: [
-      "\u{1F4C8} Compare total returns vs benchmark (Bitcoin/Ethereum)",
-      "\u2696\uFE0F Evaluate risk tolerance using volatility and max drawdown",
-      "\u{1F3AF} Consider Sharpe ratio for risk-adjusted performance",
-      "\u{1F504} Review rebalancing frequency for active indices",
-      "\u{1F4B0} Factor in management fees and expense ratios",
-      "\u{1F4CA} Analyze correlation with existing portfolio holdings"
+      "\u{1F4C8} Compare all-time returns vs recent performance trends",
+      "\u{1F3AF} Consider index grade as quality indicator (higher is better)",
+      "\u{1F504} Review coin count for diversification level",
+      "\u{1F4B0} Factor in 24H volume for liquidity assessment",
+      "\u{1F4CA} Analyze market cap for index size and stability",
+      "\u2696\uFE0F Balance between focused and diversified strategies"
     ]
   };
+}
+function formatIndicesResponse(result, requestedLimit) {
+  const { indices_data, analysis } = result;
+  let response = `\u{1F4CA} **Crypto Indices Analysis**
+
+`;
+  if (indices_data && indices_data.length > 0) {
+    response += `\u{1F3AF} **Found ${indices_data.length} Indices**
+
+`;
+    const displayLimit = requestedLimit || indices_data.length;
+    const topIndices = indices_data.filter((index) => index.ALL_TIME !== void 0).sort((a, b) => (b.ALL_TIME || 0) - (a.ALL_TIME || 0)).slice(0, Math.min(displayLimit, indices_data.length));
+    if (topIndices.length > 0) {
+      response += `\u{1F3C6} **Top Performing Indices:**
+`;
+      topIndices.forEach((index, i) => {
+        const name = index.NAME || `Index ${i + 1}`;
+        const ticker = index.TICKER || "";
+        const allTimeReturn = index.ALL_TIME ? formatPercentage(index.ALL_TIME) : "N/A";
+        const oneMonthReturn = index["1M"] ? formatPercentage(index["1M"]) : "N/A";
+        const indexGrade = index.INDEX_GRADE ? formatPercentage(index.INDEX_GRADE) : "N/A";
+        response += `${i + 1}. **${name}** ${ticker ? `(${ticker})` : ""}
+`;
+        response += `   \u2022 All-Time Return: ${allTimeReturn}
+`;
+        response += `   \u2022 1-Month Return: ${oneMonthReturn}
+`;
+        response += `   \u2022 Index Grade: ${indexGrade}
+`;
+        response += `
+`;
+      });
+    }
+    if (analysis && analysis.insights) {
+      response += `\u{1F4A1} **Key Insights:**
+`;
+      analysis.insights.slice(0, 5).forEach((insight) => {
+        response += `\u2022 ${insight}
+`;
+      });
+      response += `
+`;
+    }
+    if (analysis && analysis.performance_metrics) {
+      const metrics = analysis.performance_metrics;
+      response += `\u{1F4C8} **Market Overview:**
+`;
+      response += `\u2022 Total Indices: ${metrics.total_indices || 0}
+`;
+      response += `\u2022 Active Indices: ${metrics.active_indices || 0}
+`;
+      response += `\u2022 Passive Indices: ${metrics.passive_indices || 0}
+`;
+      if (metrics.avg_all_time_return !== void 0) {
+        response += `\u2022 Average All-Time Return: ${formatPercentage(metrics.avg_all_time_return)}
+`;
+      }
+      if (metrics.avg_1m_return !== void 0) {
+        response += `\u2022 Average 1-Month Return: ${formatPercentage(metrics.avg_1m_return)}
+`;
+      }
+      response += `
+`;
+    }
+    if (analysis && analysis.recommendations) {
+      response += `\u{1F3AF} **Recommendations:**
+`;
+      analysis.recommendations.slice(0, 3).forEach((rec) => {
+        response += `\u2022 ${rec}
+`;
+      });
+    }
+  } else {
+    response += `\u274C No indices data found.
+
+`;
+    response += `This could be due to:
+`;
+    response += `\u2022 API connectivity issues
+`;
+    response += `\u2022 Invalid filter parameters
+`;
+    response += `\u2022 Temporary service unavailability
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
 }
 
 // src/actions/getAiReportsAction.ts
@@ -7257,7 +7376,7 @@ var getAiReportsAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, _state, _params, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing AI reports request...`);
@@ -7329,11 +7448,169 @@ var getAiReportsAction = {
           ]
         }
       };
+      const tokenName = processedRequest.symbol || processedRequest.token_id || "various tokens";
+      let responseText2 = `\u{1F916} **AI Reports Analysis${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}**
+
+`;
+      if (aiReports.length === 0) {
+        responseText2 += `\u274C No AI reports found${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}. This could mean:
+`;
+        responseText2 += `\u2022 TokenMetrics AI hasn't analyzed this token yet
+`;
+        responseText2 += `\u2022 The token may not meet criteria for AI analysis
+`;
+        responseText2 += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+
+`;
+      } else {
+        responseText2 += `\u2705 **Found ${aiReports.length} comprehensive AI-generated reports**
+
+`;
+        const reportTypes = reportsAnalysis.report_coverage.report_types;
+        if (reportTypes && reportTypes.length > 0) {
+          responseText2 += `\u{1F4CA} **Available Report Types:**
+`;
+          reportTypes.forEach((type) => {
+            responseText2 += `\u2022 ${type.type}: ${type.count} reports (${type.percentage}%)
+`;
+          });
+          responseText2 += `
+`;
+        }
+        if (processedRequest.analysisType === "investment" && reportsAnalysis.investment_focus) {
+          responseText2 += `\u{1F4B0} **Investment Analysis Focus:**
+`;
+          responseText2 += `\u2022 Investment analyses available: ${reportsAnalysis.investment_focus.investment_reports}
+`;
+          if (reportsAnalysis.investment_focus.key_investment_points && reportsAnalysis.investment_focus.key_investment_points.length > 0) {
+            responseText2 += `
+\u{1F4A1} **Key Investment Insights:**
+`;
+            reportsAnalysis.investment_focus.key_investment_points.slice(0, 3).forEach((point) => {
+              responseText2 += `\u2022 ${point}
+`;
+            });
+          }
+        } else if (processedRequest.analysisType === "technical" && reportsAnalysis.technical_focus) {
+          responseText2 += `\u{1F527} **Technical Analysis Focus:**
+`;
+          responseText2 += `\u2022 Code reviews available: ${reportsAnalysis.technical_focus.code_reviews}
+`;
+          if (reportsAnalysis.technical_focus.technical_highlights && reportsAnalysis.technical_focus.technical_highlights.length > 0) {
+            responseText2 += `
+\u{1F50D} **Technical Highlights:**
+`;
+            reportsAnalysis.technical_focus.technical_highlights.slice(0, 3).forEach((highlight) => {
+              responseText2 += `\u2022 ${highlight}
+`;
+            });
+          }
+        } else if (processedRequest.analysisType === "comprehensive" && reportsAnalysis.comprehensive_focus) {
+          responseText2 += `\u{1F4DA} **Comprehensive Analysis Focus:**
+`;
+          responseText2 += `\u2022 Deep dive reports: ${reportsAnalysis.comprehensive_focus.deep_dive_reports}
+`;
+          if (reportsAnalysis.comprehensive_focus.comprehensive_highlights && reportsAnalysis.comprehensive_focus.comprehensive_highlights.length > 0) {
+            responseText2 += `
+\u{1F4D6} **Comprehensive Highlights:**
+`;
+            reportsAnalysis.comprehensive_focus.comprehensive_highlights.slice(0, 3).forEach((highlight) => {
+              responseText2 += `\u2022 ${highlight}
+`;
+            });
+          }
+        } else {
+          responseText2 += `\u{1F4CA} **Comprehensive AI Analysis:**
+`;
+          responseText2 += `\u2022 ${reportsAnalysis.summary}
+`;
+          if (reportsAnalysis.report_content) {
+            const content = reportsAnalysis.report_content;
+            if (content.investment_analyses && content.investment_analyses.length > 0) {
+              responseText2 += `
+\u{1F4B0} **Investment Analysis Available** (${content.investment_analyses.length} reports)
+`;
+              const firstAnalysis = content.investment_analyses[0];
+              if (firstAnalysis.content && firstAnalysis.content.length > 100) {
+                const preview = firstAnalysis.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+            if (content.deep_dive_reports && content.deep_dive_reports.length > 0) {
+              responseText2 += `
+\u{1F4DA} **Deep Dive Reports Available** (${content.deep_dive_reports.length} reports)
+`;
+              const firstDeepDive = content.deep_dive_reports[0];
+              if (firstDeepDive.content && firstDeepDive.content.length > 100) {
+                const preview = firstDeepDive.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+            if (content.code_reviews && content.code_reviews.length > 0) {
+              responseText2 += `
+\u{1F527} **Code Reviews Available** (${content.code_reviews.length} reports)
+`;
+              const firstCodeReview = content.code_reviews[0];
+              if (firstCodeReview.content && firstCodeReview.content.length > 100) {
+                const preview = firstCodeReview.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+            if (content.executive_summaries && content.executive_summaries.length > 0) {
+              responseText2 += `
+\u{1F4CB} **Executive Summaries Available** (${content.executive_summaries.length} reports)
+`;
+              const firstSummary = content.executive_summaries[0];
+              if (firstSummary.content && firstSummary.content.length > 100) {
+                const preview = firstSummary.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+          }
+        }
+        if (reportsAnalysis.research_themes && reportsAnalysis.research_themes.length > 0) {
+          responseText2 += `
+\u{1F50D} **Key Research Themes:**
+`;
+          reportsAnalysis.research_themes.slice(0, 4).forEach((theme) => {
+            responseText2 += `\u2022 ${theme}
+`;
+          });
+        }
+        if (reportsAnalysis.data_quality) {
+          responseText2 += `
+\u{1F4C8} **Data Quality Assessment:**
+`;
+          responseText2 += `\u2022 Coverage: ${reportsAnalysis.data_quality.coverage_breadth}
+`;
+          responseText2 += `\u2022 Completeness: ${reportsAnalysis.data_quality.completeness}
+`;
+          responseText2 += `\u2022 Freshness: ${reportsAnalysis.data_quality.freshness}
+`;
+        }
+        responseText2 += `
+\u{1F4CB} **Usage Guidelines:**
+`;
+        responseText2 += `\u2022 Use for due diligence and investment research
+`;
+        responseText2 += `\u2022 Combine with quantitative metrics for complete picture
+`;
+        responseText2 += `\u2022 Review report generation date for relevance
+`;
+        responseText2 += `\u2022 Consider reports as one input in investment decision process
+`;
+      }
+      responseText2 += `
+\u{1F517} **Data Source:** TokenMetrics AI Engine (v2)`;
       console.log(`[${requestId}] AI reports analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
+      if (callback2) {
+        callback2({
+          text: responseText2,
           content: {
             success: true,
             request_id: requestId,
@@ -7349,24 +7626,31 @@ var getAiReportsAction = {
       return true;
     } catch (error) {
       console.error("Error in getAiReports action:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve AI reports from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/ai-reports is accessible",
-          parameter_validation: [
-            "Verify token_id is a valid number or symbol is a valid string",
-            "Ensure your API key has access to AI reports endpoint",
-            "Check that the token has been analyzed by TokenMetrics AI"
-          ],
-          common_solutions: [
-            "Try using a major token (BTC, ETH) to test functionality",
-            "Check if your subscription includes AI reports access",
-            "Verify TokenMetrics has generated reports for the requested token"
-          ]
-        }
-      };
+      const errorMessage = `\u274C **Failed to get AI reports**
+
+**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}
+
+**Troubleshooting:**
+\u2022 Ensure TokenMetrics AI has analyzed the requested token
+\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+\u2022 Check if your TokenMetrics subscription includes AI reports
+\u2022 Verify the token meets criteria for AI analysis
+
+**Common Solutions:**
+\u2022 Use full token names or symbols (e.g., "Bitcoin" or "BTC")
+\u2022 Check if TokenMetrics has generated reports for the requested token
+\u2022 Ensure your API key has access to the ai-reports endpoint`;
+      if (callback2) {
+        callback2({
+          text: errorMessage,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred",
+            message: "Failed to retrieve AI reports from TokenMetrics API"
+          }
+        });
+      }
+      return false;
     }
   },
   async validate(runtime, _message) {
@@ -7381,6 +7665,7 @@ function analyzeAiReports(reportsData, analysisType = "all") {
       insights: []
     };
   }
+  const reportContent = extractReportContent(reportsData);
   const reportCoverage = analyzeReportCoverage(reportsData);
   const contentAnalysis = analyzeReportContent(reportsData);
   const qualityAssessment = assessReportQuality(reportsData);
@@ -7390,12 +7675,12 @@ function analyzeAiReports(reportsData, analysisType = "all") {
     case "investment":
       focusedAnalysis = {
         investment_focus: {
-          investment_recommendations: extractInvestmentRecommendations(reportsData),
-          risk_assessments: extractRiskAssessments(reportsData),
+          investment_reports: reportsData.filter((r) => r.INVESTMENT_ANALYSIS || r.INVESTMENT_ANALYSIS_POINTER).length,
+          key_investment_points: extractInvestmentHighlights(reportsData),
           investment_insights: [
-            `\u{1F4C8} Investment reports analyzed: ${reportsData.filter((r) => r.REPORT_TYPE?.includes("Investment")).length}`,
-            `\u{1F3AF} Risk/reward assessments available: ${reportsData.filter((r) => r.RISK_SCORE).length}`,
-            `\u{1F4B0} Portfolio recommendations: ${reportsData.filter((r) => r.RECOMMENDATIONS?.some((rec) => rec.includes("portfolio"))).length}`
+            `\u{1F4C8} Investment analyses available: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS).length}`,
+            `\u{1F3AF} Executive summaries: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS_POINTER).length}`,
+            `\u{1F4B0} Market analysis included: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS?.includes("Market Analysis")).length}`
           ]
         }
       };
@@ -7403,12 +7688,12 @@ function analyzeAiReports(reportsData, analysisType = "all") {
     case "technical":
       focusedAnalysis = {
         technical_focus: {
-          code_reviews: extractCodeReviews(reportsData),
-          technical_analysis: extractTechnicalAnalysis(reportsData),
+          code_reviews: reportsData.filter((r) => r.CODE_REVIEW).length,
+          technical_highlights: extractTechnicalHighlights(reportsData),
           technical_insights: [
-            `\u{1F527} Technical reports analyzed: ${reportsData.filter((r) => r.REPORT_TYPE?.includes("Technical")).length}`,
-            `\u{1F4CA} Code quality assessments: ${reportsData.filter((r) => r.CODE_QUALITY_SCORE).length}`,
-            `\u{1F6E1}\uFE0F Security evaluations: ${reportsData.filter((r) => r.SECURITY_SCORE).length}`
+            `\u{1F527} Code reviews available: ${reportsData.filter((r) => r.CODE_REVIEW).length}`,
+            `\u{1F4CA} Architecture analysis: ${reportsData.filter((r) => r.CODE_REVIEW?.includes("Architecture")).length}`,
+            `\u{1F6E1}\uFE0F Security assessments: ${reportsData.filter((r) => r.CODE_REVIEW?.includes("security")).length}`
           ]
         }
       };
@@ -7416,20 +7701,21 @@ function analyzeAiReports(reportsData, analysisType = "all") {
     case "comprehensive":
       focusedAnalysis = {
         comprehensive_focus: {
-          deep_dive_reports: extractDeepDiveReports(reportsData),
-          comprehensive_analysis: extractComprehensiveAnalysis(reportsData),
+          deep_dive_reports: reportsData.filter((r) => r.DEEP_DIVE).length,
+          comprehensive_highlights: extractComprehensiveHighlights(reportsData),
           comprehensive_insights: [
-            `\u{1F4DA} Comprehensive reports: ${reportsData.filter((r) => r.REPORT_TYPE?.includes("Deep Dive")).length}`,
-            `\u{1F50D} Multi-faceted analysis: ${reportsData.filter((r) => r.ANALYSIS_CATEGORIES?.length > 3).length}`,
-            `\u{1F4D6} Detailed evaluations: ${reportsData.filter((r) => r.REPORT_CONTENT?.length > 1e3).length}`
+            `\u{1F4DA} Deep dive reports: ${reportsData.filter((r) => r.DEEP_DIVE).length}`,
+            `\u{1F50D} Multi-faceted analysis: ${reportsData.filter((r) => r.DEEP_DIVE && r.INVESTMENT_ANALYSIS && r.CODE_REVIEW).length}`,
+            `\u{1F4D6} Detailed evaluations: ${reportsData.filter((r) => r.DEEP_DIVE?.length > 1e3).length}`
           ]
         }
       };
       break;
   }
   return {
-    summary: `AI analysis covering ${reportsData.length} reports with ${reportCoverage.unique_tokens} unique tokens analyzed`,
+    summary: `AI analysis covering ${reportsData.length} comprehensive reports for ${reportCoverage.unique_tokens} tokens`,
     analysis_type: analysisType,
+    report_content: reportContent,
     report_coverage: reportCoverage,
     content_analysis: contentAnalysis,
     quality_assessment: qualityAssessment,
@@ -7441,7 +7727,8 @@ function analyzeAiReports(reportsData, analysisType = "all") {
       source: "TokenMetrics AI Engine",
       total_reports: reportsData.length,
       coverage_breadth: assessCoverageBreadth(reportsData),
-      freshness: assessReportFreshness(reportsData)
+      freshness: assessReportFreshness(reportsData),
+      completeness: assessActualReportCompleteness(reportsData)
     },
     investment_considerations: [
       "\u{1F4CA} Use AI reports as part of comprehensive due diligence",
@@ -7453,25 +7740,157 @@ function analyzeAiReports(reportsData, analysisType = "all") {
     ]
   };
 }
+function extractReportContent(reportsData) {
+  const content = {
+    investment_analyses: [],
+    deep_dive_reports: [],
+    code_reviews: [],
+    executive_summaries: []
+  };
+  reportsData.forEach((report) => {
+    if (report.INVESTMENT_ANALYSIS) {
+      content.investment_analyses.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.INVESTMENT_ANALYSIS,
+        length: report.INVESTMENT_ANALYSIS.length
+      });
+    }
+    if (report.DEEP_DIVE) {
+      content.deep_dive_reports.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.DEEP_DIVE,
+        length: report.DEEP_DIVE.length
+      });
+    }
+    if (report.CODE_REVIEW) {
+      content.code_reviews.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.CODE_REVIEW,
+        length: report.CODE_REVIEW.length
+      });
+    }
+    if (report.INVESTMENT_ANALYSIS_POINTER) {
+      content.executive_summaries.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.INVESTMENT_ANALYSIS_POINTER,
+        length: report.INVESTMENT_ANALYSIS_POINTER.length
+      });
+    }
+  });
+  return content;
+}
+function extractInvestmentHighlights(reportsData) {
+  const highlights = [];
+  reportsData.forEach((report) => {
+    if (report.INVESTMENT_ANALYSIS) {
+      const analysis = report.INVESTMENT_ANALYSIS;
+      if (analysis.includes("Executive Summary")) {
+        const summaryMatch = analysis.match(/## Executive Summary\n(.*?)(?=\n##|$)/s);
+        if (summaryMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL}: ${summaryMatch[1].substring(0, 200)}...`);
+        }
+      }
+      if (analysis.includes("Conclusion")) {
+        const conclusionMatch = analysis.match(/## Conclusion\n(.*?)(?=\n##|$)/s);
+        if (conclusionMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Outlook: ${conclusionMatch[1].substring(0, 150)}...`);
+        }
+      }
+    }
+    if (report.INVESTMENT_ANALYSIS_POINTER) {
+      const pointer = report.INVESTMENT_ANALYSIS_POINTER;
+      const bulletPoints = pointer.match(/- .+/g);
+      if (bulletPoints && bulletPoints.length > 0) {
+        highlights.push(`${report.TOKEN_SYMBOL}: ${bulletPoints[0].substring(2, 150)}...`);
+      }
+    }
+  });
+  return highlights.slice(0, 5);
+}
+function extractTechnicalHighlights(reportsData) {
+  const highlights = [];
+  reportsData.forEach((report) => {
+    if (report.CODE_REVIEW) {
+      const review = report.CODE_REVIEW;
+      if (review.includes("Innovation")) {
+        const innovationMatch = review.match(/## Innovation\n(.*?)(?=\n##|$)/s);
+        if (innovationMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Innovation: ${innovationMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (review.includes("Architecture")) {
+        const archMatch = review.match(/## Architecture\n(.*?)(?=\n##|$)/s);
+        if (archMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Architecture: ${archMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (review.includes("Code Quality")) {
+        const qualityMatch = review.match(/## Code Quality\n(.*?)(?=\n##|$)/s);
+        if (qualityMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Code Quality: ${qualityMatch[1].substring(0, 150)}...`);
+        }
+      }
+    }
+  });
+  return highlights.slice(0, 5);
+}
+function extractComprehensiveHighlights(reportsData) {
+  const highlights = [];
+  reportsData.forEach((report) => {
+    if (report.DEEP_DIVE) {
+      const deepDive = report.DEEP_DIVE;
+      if (deepDive.includes("Vision")) {
+        const visionMatch = deepDive.match(/### Vision\n(.*?)(?=\n###|$)/s);
+        if (visionMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Vision: ${visionMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (deepDive.includes("Problem")) {
+        const problemMatch = deepDive.match(/### Problem\n(.*?)(?=\n###|$)/s);
+        if (problemMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Problem Solved: ${problemMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (deepDive.includes("Market Analysis")) {
+        const marketMatch = deepDive.match(/## Market Analysis\n(.*?)(?=\n##|$)/s);
+        if (marketMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Market: ${marketMatch[1].substring(0, 150)}...`);
+        }
+      }
+    }
+  });
+  return highlights.slice(0, 5);
+}
 function analyzeReportCoverage(reportsData) {
-  const uniqueTokens = new Set(reportsData.map((r) => r.SYMBOL).filter((s) => s)).size;
+  const uniqueTokens = new Set(reportsData.map((r) => r.TOKEN_SYMBOL || r.TOKEN_NAME).filter((s) => s)).size;
   const tokenCoverage = /* @__PURE__ */ new Map();
   reportsData.forEach((report) => {
-    const symbol = report.SYMBOL || "Unknown";
+    const symbol = report.TOKEN_SYMBOL || report.TOKEN_NAME || "Unknown";
     if (!tokenCoverage.has(symbol)) {
-      tokenCoverage.set(symbol, []);
+      tokenCoverage.set(symbol, {
+        reports: [],
+        report_types: /* @__PURE__ */ new Set()
+      });
     }
-    tokenCoverage.get(symbol).push(report);
+    const tokenData = tokenCoverage.get(symbol);
+    tokenData.reports.push(report);
+    if (report.INVESTMENT_ANALYSIS) tokenData.report_types.add("Investment Analysis");
+    if (report.DEEP_DIVE) tokenData.report_types.add("Deep Dive");
+    if (report.CODE_REVIEW) tokenData.report_types.add("Code Review");
+    if (report.INVESTMENT_ANALYSIS_POINTER) tokenData.report_types.add("Executive Summary");
   });
-  const mostAnalyzed = Array.from(tokenCoverage.entries()).sort((a, b) => b[1].length - a[1].length).slice(0, 5).map(([symbol, reports]) => ({
+  const mostAnalyzed = Array.from(tokenCoverage.entries()).sort((a, b) => b[1].reports.length - a[1].reports.length).slice(0, 5).map(([symbol, data]) => ({
     symbol,
-    report_count: reports.length,
-    latest_report: reports[reports.length - 1]?.DATE || "Unknown"
+    report_count: data.reports.length,
+    report_types: Array.from(data.report_types),
+    token_id: data.reports[0]?.TOKEN_ID || "Unknown"
   }));
   const reportTypes = /* @__PURE__ */ new Map();
   reportsData.forEach((report) => {
-    const type = report.REPORT_TYPE || "General Analysis";
-    reportTypes.set(type, (reportTypes.get(type) || 0) + 1);
+    if (report.INVESTMENT_ANALYSIS) reportTypes.set("Investment Analysis", (reportTypes.get("Investment Analysis") || 0) + 1);
+    if (report.DEEP_DIVE) reportTypes.set("Deep Dive", (reportTypes.get("Deep Dive") || 0) + 1);
+    if (report.CODE_REVIEW) reportTypes.set("Code Review", (reportTypes.get("Code Review") || 0) + 1);
+    if (report.INVESTMENT_ANALYSIS_POINTER) reportTypes.set("Executive Summary", (reportTypes.get("Executive Summary") || 0) + 1);
   });
   return {
     unique_tokens: uniqueTokens,
@@ -7484,6 +7903,21 @@ function analyzeReportCoverage(reportsData) {
     })),
     coverage_depth: uniqueTokens > 0 ? (reportsData.length / uniqueTokens).toFixed(1) : "0"
   };
+}
+function assessActualReportCompleteness(reportsData) {
+  const requiredFields = ["INVESTMENT_ANALYSIS", "DEEP_DIVE", "CODE_REVIEW", "INVESTMENT_ANALYSIS_POINTER"];
+  let completeness = 0;
+  reportsData.forEach((report) => {
+    const presentFields = requiredFields.filter(
+      (field) => report[field] && report[field].length > 0
+    );
+    completeness += presentFields.length / requiredFields.length;
+  });
+  const avgCompleteness = completeness / reportsData.length * 100;
+  if (avgCompleteness > 80) return "Very Complete";
+  if (avgCompleteness > 60) return "Complete";
+  if (avgCompleteness > 40) return "Moderate";
+  return "Limited";
 }
 function analyzeReportContent(reportsData) {
   const sentimentAnalysis = analyzeSentiment(reportsData);
@@ -7870,62 +8304,6 @@ function generateIntelligenceSummary(intelligence) {
 `;
   }
   return summary;
-}
-function extractInvestmentRecommendations(reportsData) {
-  return reportsData.filter((report) => report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS)).flatMap((report) => report.RECOMMENDATIONS).filter((rec) => rec && (rec.includes("buy") || rec.includes("sell") || rec.includes("hold") || rec.includes("invest"))).slice(0, 10);
-}
-function extractRiskAssessments(reportsData) {
-  return reportsData.filter((report) => report.RISK_SCORE || report.RISK_ASSESSMENT).map((report) => ({
-    symbol: report.SYMBOL,
-    risk_score: report.RISK_SCORE,
-    risk_assessment: report.RISK_ASSESSMENT,
-    risk_factors: report.RISK_FACTORS
-  })).slice(0, 10);
-}
-function extractCodeReviews(reportsData) {
-  return reportsData.filter((report) => report.CODE_QUALITY_SCORE || report.SECURITY_SCORE || report.REPORT_TYPE?.includes("Code")).map((report) => ({
-    symbol: report.SYMBOL,
-    code_quality_score: report.CODE_QUALITY_SCORE,
-    security_score: report.SECURITY_SCORE,
-    audit_findings: report.AUDIT_FINDINGS
-  })).slice(0, 10);
-}
-function extractTechnicalAnalysis(reportsData) {
-  return reportsData.filter((report) => report.TECHNICAL_INDICATORS || report.REPORT_TYPE?.includes("Technical")).map((report) => ({
-    symbol: report.SYMBOL,
-    technical_indicators: report.TECHNICAL_INDICATORS,
-    price_targets: report.PRICE_TARGETS,
-    support_resistance: report.SUPPORT_RESISTANCE
-  })).slice(0, 10);
-}
-function extractDeepDiveReports(reportsData) {
-  return reportsData.filter((report) => report.REPORT_TYPE?.includes("Deep Dive") || report.REPORT_CONTENT && report.REPORT_CONTENT.length > 1e3).map((report) => ({
-    symbol: report.SYMBOL,
-    report_type: report.REPORT_TYPE,
-    content_length: report.REPORT_CONTENT?.length || 0,
-    analysis_categories: report.ANALYSIS_CATEGORIES,
-    generated_date: report.GENERATED_DATE
-  })).slice(0, 10);
-}
-function extractComprehensiveAnalysis(reportsData) {
-  return reportsData.filter((report) => report.ANALYSIS_CATEGORIES && Array.isArray(report.ANALYSIS_CATEGORIES) && report.ANALYSIS_CATEGORIES.length > 3).map((report) => ({
-    symbol: report.SYMBOL,
-    analysis_categories: report.ANALYSIS_CATEGORIES,
-    key_insights: report.KEY_INSIGHTS,
-    recommendations: report.RECOMMENDATIONS,
-    completeness_score: calculateCompletenessScore(report)
-  })).slice(0, 10);
-}
-function calculateCompletenessScore(report) {
-  let score = 0;
-  if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS)) score += 2;
-  if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS)) score += 2;
-  if (report.RISK_ASSESSMENT) score += 1;
-  if (report.PRICE_TARGETS) score += 1;
-  if (report.TECHNICAL_INDICATORS) score += 1;
-  if (report.FUNDAMENTAL_ANALYSIS) score += 1;
-  if (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 500) score += 2;
-  return score;
 }
 
 // src/actions/getTradingSignalsAction.ts
@@ -8398,14 +8776,14 @@ var getIndicesHoldingsAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _options, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices holdings request...`);
       const holdingsRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         INDICES_HOLDINGS_EXTRACTION_TEMPLATE,
         IndicesHoldingsRequestSchema,
         requestId
@@ -8465,10 +8843,11 @@ var getIndicesHoldingsAction = {
         }
       };
       console.log(`[${requestId}] Holdings analysis completed successfully`);
+      const responseText2 = formatIndicesHoldingsResponse(result);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
+      if (callback2) {
+        callback2({
+          text: responseText2,
           content: {
             success: true,
             request_id: requestId,
@@ -8484,11 +8863,16 @@ var getIndicesHoldingsAction = {
       return true;
     } catch (error) {
       console.error("Error in getIndicesHoldings action:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve indices holdings data from TokenMetrics"
-      };
+      if (callback2) {
+        callback2({
+          text: `\u274C Failed to retrieve indices holdings data: ${error instanceof Error ? error.message : "Unknown error"}`,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred"
+          }
+        });
+      }
+      return false;
     }
   },
   async validate(runtime, _message) {
@@ -8498,18 +8882,28 @@ var getIndicesHoldingsAction = {
 function analyzeHoldingsData(holdings, analysisType = "all") {
   if (!holdings || holdings.length === 0) {
     return {
-      summary: "No holdings data available for this index",
+      summary: "No holdings data available for analysis",
       insights: [],
       recommendations: []
     };
   }
-  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT_PERCENTAGE || 0), 0);
-  const totalValue = holdings.reduce((sum, holding) => sum + (holding.ALLOCATION_VALUE || 0), 0);
-  const topHoldings = holdings.filter((holding) => holding.WEIGHT_PERCENTAGE !== void 0).sort((a, b) => b.WEIGHT_PERCENTAGE - a.WEIGHT_PERCENTAGE).slice(0, 5);
-  const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + holding.WEIGHT_PERCENTAGE, 0);
-  const top5Weight = topHoldings.reduce((sum, holding) => sum + holding.WEIGHT_PERCENTAGE, 0);
-  const holdingsWithPriceChange = holdings.filter((holding) => holding.PRICE_CHANGE_PERCENTAGE_24H !== void 0);
-  const avgPriceChange = holdingsWithPriceChange.length > 0 ? holdingsWithPriceChange.reduce((sum, holding) => sum + holding.PRICE_CHANGE_PERCENTAGE_24H, 0) / holdingsWithPriceChange.length : 0;
+  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
+  const totalValue = holdings.reduce((sum, holding) => {
+    const weight = holding.WEIGHT || 0;
+    const price = holding.PRICE || 0;
+    const marketCap = holding.MARKET_CAP || 0;
+    return sum + weight * marketCap;
+  }, 0);
+  const topHoldings = holdings.filter((holding) => holding.WEIGHT !== void 0).sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0)).map((holding) => ({
+    ...holding,
+    WEIGHT_PERCENTAGE: (holding.WEIGHT || 0) * 100,
+    // Convert to percentage for display
+    ALLOCATION_VALUE: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0)
+  }));
+  const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
+  const top5Weight = topHoldings.slice(0, 5).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
+  const holdingsWithROI = holdings.filter((holding) => holding.CURRENT_ROI !== void 0);
+  const avgROI = holdingsWithROI.length > 0 ? holdingsWithROI.reduce((sum, holding) => sum + (holding.CURRENT_ROI || 0), 0) / holdingsWithROI.length : 0;
   const largeCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e10);
   const midCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e9 && (holding.MARKET_CAP || 0) <= 1e10);
   const smallCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) <= 1e9);
@@ -8517,16 +8911,15 @@ function analyzeHoldingsData(holdings, analysisType = "all") {
     `\u{1F4CA} Total Holdings: ${holdings.length} tokens`,
     `\u2696\uFE0F Total Weight: ${formatPercentage(totalWeight)}`,
     `\u{1F4B0} Total Allocation Value: ${formatCurrency(totalValue)}`,
-    `\u{1F3C6} Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatPercentage(topHoldings[0]?.WEIGHT_PERCENTAGE)})`,
+    `\u{1F3C6} Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatPercentage((topHoldings[0]?.WEIGHT || 0) * 100)})`,
     `\u{1F4C8} Top 3 Concentration: ${formatPercentage(top3Weight)}`,
     `\u{1F4CA} Top 5 Concentration: ${formatPercentage(top5Weight)}`,
-    `\u{1F4C9} Average 24h Change: ${formatPercentage(avgPriceChange)}`
+    `\u{1F4C8} Average ROI: ${formatPercentage(avgROI * 100)}`
   ];
   const recommendations = [
     top3Weight > 60 ? "\u26A0\uFE0F High Concentration: Top 3 holdings represent significant portion - consider concentration risk" : "\u2705 Balanced Allocation: Good diversification across top holdings",
     holdings.length > 20 ? "\u2705 Well Diversified: Large number of holdings provides good diversification" : holdings.length < 10 ? "\u26A0\uFE0F Limited Diversification: Consider if concentration aligns with your risk tolerance" : "\u{1F4CA} Moderate Diversification: Reasonable number of holdings for focused strategy",
-    largeCapHoldings.length > holdings.length * 0.7 ? "\u{1F3DB}\uFE0F Large Cap Focus: Index heavily weighted toward established cryptocurrencies" : smallCapHoldings.length > holdings.length * 0.5 ? "\u{1F680} Small Cap Exposure: Higher risk/reward profile with smaller market cap tokens" : "\u2696\uFE0F Balanced Market Cap: Mix of large and smaller market cap exposures",
-    Math.abs(avgPriceChange) > 10 ? "\u26A1 High Volatility: Recent price movements show significant volatility in holdings" : "\u{1F4CA} Stable Performance: Holdings showing moderate price movements"
+    largeCapHoldings.length > holdings.length * 0.7 ? "\u{1F3DB}\uFE0F Large Cap Focus: Index heavily weighted toward established cryptocurrencies" : smallCapHoldings.length > holdings.length * 0.5 ? "\u{1F680} Small Cap Exposure: Higher risk/reward profile with smaller market cap tokens" : "\u2696\uFE0F Balanced Market Cap: Mix of large and smaller market cap exposures"
   ];
   let focusedAnalysis = {};
   switch (analysisType) {
@@ -8534,15 +8927,15 @@ function analyzeHoldingsData(holdings, analysisType = "all") {
       focusedAnalysis = {
         composition_focus: {
           weight_distribution: {
-            top_10_percent: holdings.filter((h) => h.WEIGHT_PERCENTAGE > 10).length,
-            mid_range: holdings.filter((h) => h.WEIGHT_PERCENTAGE >= 1 && h.WEIGHT_PERCENTAGE <= 10).length,
-            small_positions: holdings.filter((h) => h.WEIGHT_PERCENTAGE < 1).length
+            top_10_percent: holdings.filter((h) => (h.WEIGHT || 0) * 100 > 10).length,
+            mid_range: holdings.filter((h) => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length,
+            small_positions: holdings.filter((h) => (h.WEIGHT || 0) * 100 < 1).length
           },
           sector_analysis: analyzeSectorDistribution(holdings),
           composition_insights: [
-            `\u{1F3AF} ${holdings.filter((h) => h.WEIGHT_PERCENTAGE > 10).length} major positions (>10% weight)`,
-            `\u{1F4CA} ${holdings.filter((h) => h.WEIGHT_PERCENTAGE >= 1 && h.WEIGHT_PERCENTAGE <= 10).length} medium positions (1-10% weight)`,
-            `\u{1F50D} ${holdings.filter((h) => h.WEIGHT_PERCENTAGE < 1).length} small positions (<1% weight)`
+            `\u{1F3AF} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 > 10).length} major positions (>10% weight)`,
+            `\u{1F4CA} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length} medium positions (1-10% weight)`,
+            `\u{1F50D} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 < 1).length} small positions (<1% weight)`
           ]
         }
       };
@@ -8555,26 +8948,28 @@ function analyzeHoldingsData(holdings, analysisType = "all") {
             concentration_level: top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"
           },
           volatility_analysis: {
-            high_volatility_holdings: holdings.filter((h) => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) > 15).length,
-            stable_holdings: holdings.filter((h) => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) < 5).length
+            high_roi_holdings: holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) > 0.5).length,
+            stable_holdings: holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) < 0.1).length
           },
           risk_insights: [
             `\u26A0\uFE0F Concentration Risk: ${top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"} (top 3: ${formatPercentage(top3Weight)})`,
-            `\u{1F4CA} Volatility Risk: ${holdings.filter((h) => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) > 15).length} high-volatility holdings`,
-            `\u{1F6E1}\uFE0F Stability: ${holdings.filter((h) => Math.abs(h.PRICE_CHANGE_PERCENTAGE_24H || 0) < 5).length} stable holdings`
+            `\u{1F4CA} High ROI Holdings: ${holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) > 0.5).length} holdings with significant ROI`,
+            `\u{1F6E1}\uFE0F Stable Holdings: ${holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) < 0.1).length} holdings with stable performance`
           ]
         }
       };
       break;
     case "performance":
+      const topPerformers = holdings.filter((h) => h.CURRENT_ROI !== void 0).sort((a, b) => (b.CURRENT_ROI || 0) - (a.CURRENT_ROI || 0)).slice(0, 5);
+      const worstPerformers = holdings.filter((h) => h.CURRENT_ROI !== void 0).sort((a, b) => (a.CURRENT_ROI || 0) - (b.CURRENT_ROI || 0)).slice(0, 5);
       focusedAnalysis = {
         performance_focus: {
-          top_performers: holdings.filter((h) => h.PRICE_CHANGE_PERCENTAGE_24H !== void 0).sort((a, b) => b.PRICE_CHANGE_PERCENTAGE_24H - a.PRICE_CHANGE_PERCENTAGE_24H).slice(0, 5),
-          worst_performers: holdings.filter((h) => h.PRICE_CHANGE_PERCENTAGE_24H !== void 0).sort((a, b) => a.PRICE_CHANGE_PERCENTAGE_24H - b.PRICE_CHANGE_PERCENTAGE_24H).slice(0, 5),
+          top_performers: topPerformers,
+          worst_performers: worstPerformers,
           performance_insights: [
-            `\u{1F680} Best performer: ${holdings.sort((a, b) => (b.PRICE_CHANGE_PERCENTAGE_24H || 0) - (a.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.TOKEN_NAME} (${formatPercentage(holdings.sort((a, b) => (b.PRICE_CHANGE_PERCENTAGE_24H || 0) - (a.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.PRICE_CHANGE_PERCENTAGE_24H || 0)})`,
-            `\u{1F4C9} Worst performer: ${holdings.sort((a, b) => (a.PRICE_CHANGE_PERCENTAGE_24H || 0) - (b.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.TOKEN_NAME} (${formatPercentage(holdings.sort((a, b) => (a.PRICE_CHANGE_PERCENTAGE_24H || 0) - (b.PRICE_CHANGE_PERCENTAGE_24H || 0))[0]?.PRICE_CHANGE_PERCENTAGE_24H || 0)})`,
-            `\u{1F4CA} ${holdings.filter((h) => (h.PRICE_CHANGE_PERCENTAGE_24H || 0) > 0).length}/${holdings.length} holdings showing positive performance`
+            `\u{1F680} Best performer: ${topPerformers[0]?.TOKEN_NAME} (${formatPercentage((topPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
+            `\u{1F4C9} Worst performer: ${worstPerformers[0]?.TOKEN_NAME} (${formatPercentage((worstPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
+            `\u{1F4CA} ${holdings.filter((h) => (h.CURRENT_ROI || 0) > 0).length}/${holdings.length} holdings showing positive ROI`
           ]
         }
       };
@@ -8589,7 +8984,7 @@ function analyzeHoldingsData(holdings, analysisType = "all") {
       total_value: totalValue,
       top_3_concentration: top3Weight,
       top_5_concentration: top5Weight,
-      avg_24h_change: avgPriceChange
+      avg_roi: avgROI
     },
     market_cap_distribution: {
       large_cap: largeCapHoldings.length,
@@ -8599,10 +8994,10 @@ function analyzeHoldingsData(holdings, analysisType = "all") {
     top_holdings: topHoldings.map((holding) => ({
       token_name: holding.TOKEN_NAME,
       symbol: holding.TOKEN_SYMBOL,
-      weight_percentage: holding.WEIGHT_PERCENTAGE,
-      allocation_value: holding.ALLOCATION_VALUE,
+      weight_percentage: (holding.WEIGHT || 0) * 100,
+      allocation_value: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0),
       price: holding.PRICE,
-      price_change_24h: holding.PRICE_CHANGE_PERCENTAGE_24H
+      current_roi: holding.CURRENT_ROI
     })),
     insights,
     recommendations,
@@ -8624,13 +9019,103 @@ function analyzeSectorDistribution(holdings) {
   };
 }
 function calculateHerfindahlIndex(holdings) {
-  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT_PERCENTAGE || 0), 0);
+  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
   if (totalWeight === 0) return 0;
   const herfindahl = holdings.reduce((sum, holding) => {
-    const normalizedWeight = (holding.WEIGHT_PERCENTAGE || 0) / totalWeight;
+    const normalizedWeight = (holding.WEIGHT || 0) / totalWeight;
     return sum + normalizedWeight * normalizedWeight;
   }, 0);
   return Math.round(herfindahl * 1e4);
+}
+function formatIndicesHoldingsResponse(result) {
+  const { indices_holdings, analysis, metadata } = result;
+  let response = `\u{1F4CA} **Index Holdings Analysis**
+
+`;
+  if (indices_holdings && indices_holdings.length > 0) {
+    response += `\u{1F3AF} **Index ${metadata.index_id} Holdings (${indices_holdings.length} assets)**
+
+`;
+    const topHoldings = indices_holdings.filter((holding) => holding.WEIGHT !== void 0).sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0)).slice(0, 10);
+    if (topHoldings.length > 0) {
+      response += `\u{1F3C6} **Top Holdings:**
+`;
+      topHoldings.forEach((holding, i) => {
+        const name = holding.TOKEN_NAME || holding.TOKEN_SYMBOL || `Token ${i + 1}`;
+        const symbol = holding.TOKEN_SYMBOL || "";
+        const weight = holding.WEIGHT ? formatPercentage(holding.WEIGHT * 100) : "N/A";
+        const price = holding.PRICE ? formatCurrency(holding.PRICE) : "N/A";
+        const currentROI = holding.CURRENT_ROI ? formatPercentage(holding.CURRENT_ROI * 100) : "N/A";
+        response += `${i + 1}. **${name}** ${symbol ? `(${symbol})` : ""}
+`;
+        response += `   \u2022 Weight: ${weight}
+`;
+        response += `   \u2022 Price: ${price}
+`;
+        response += `   \u2022 Current ROI: ${currentROI}
+`;
+        response += `
+`;
+      });
+    }
+    if (analysis && analysis.insights) {
+      response += `\u{1F4A1} **Key Insights:**
+`;
+      analysis.insights.slice(0, 5).forEach((insight) => {
+        response += `\u2022 ${insight}
+`;
+      });
+      response += `
+`;
+    }
+    if (analysis && analysis.portfolio_metrics) {
+      const metrics = analysis.portfolio_metrics;
+      response += `\u{1F4C8} **Portfolio Metrics:**
+`;
+      response += `\u2022 Total Holdings: ${metrics.total_holdings || 0}
+`;
+      if (metrics.top_3_concentration !== void 0) {
+        response += `\u2022 Top 3 Concentration: ${formatPercentage(metrics.top_3_concentration)}
+`;
+      }
+      if (metrics.top_5_concentration !== void 0) {
+        response += `\u2022 Top 5 Concentration: ${formatPercentage(metrics.top_5_concentration)}
+`;
+      }
+      if (metrics.avg_roi !== void 0) {
+        response += `\u2022 Average ROI: ${formatPercentage(metrics.avg_roi * 100)}
+`;
+      }
+      response += `
+`;
+    }
+    if (analysis && analysis.recommendations) {
+      response += `\u{1F3AF} **Recommendations:**
+`;
+      analysis.recommendations.slice(0, 3).forEach((rec) => {
+        response += `\u2022 ${rec}
+`;
+      });
+    }
+  } else {
+    response += `\u274C No holdings data found for index ${metadata.index_id}.
+
+`;
+    response += `This could be due to:
+`;
+    response += `\u2022 Invalid index ID
+`;
+    response += `\u2022 Index has no current holdings
+`;
+    response += `\u2022 API connectivity issues
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
 }
 
 // src/actions/getCorrelationAction.ts
@@ -9511,57 +9996,96 @@ function shouldUseDynamicHedging(avgCorrelation) {
 
 // src/actions/getDailyOhlcvAction.ts
 var DailyOhlcvRequestSchema = z.object({
-  token_id: z.number().min(1).optional().describe("The ID of the token to get daily OHLCV data for"),
-  symbol: z.string().optional().describe("The symbol of the token to get daily OHLCV data for"),
-  token_name: z.string().optional().describe("The name of the token"),
-  startDate: z.string().optional().describe("Start date in YYYY-MM-DD format"),
-  endDate: z.string().optional().describe("End date in YYYY-MM-DD format"),
+  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: z.number().optional().describe("Specific token ID if known"),
+  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  token_name: z.string().optional().describe("Full name of the token"),
+  startDate: z.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
+  endDate: z.string().optional().describe("End date for data range (YYYY-MM-DD)"),
   limit: z.number().min(1).max(1e3).optional().describe("Number of data points to return"),
   page: z.number().min(1).optional().describe("Page number for pagination"),
   analysisType: z.enum(["swing_trading", "trend_analysis", "technical_indicators", "all"]).optional().describe("Type of analysis to focus on")
 });
 var DAILY_OHLCV_EXTRACTION_TEMPLATE = `
+CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+
 You are an AI assistant specialized in extracting daily OHLCV data requests from natural language.
 
 The user wants to get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
 
-1. **token_id** (optional): Numeric ID of the token
-   - Only extract if explicitly mentioned as a number
+1. **cryptocurrency** (required): The EXACT name or symbol of the cryptocurrency mentioned by the user
+   - Bitcoin, BTC \u2192 "Bitcoin"
+   - Ethereum, ETH \u2192 "Ethereum" 
+   - Dogecoin, DOGE \u2192 "Dogecoin"
+   - Solana, SOL \u2192 "Solana"
+   - Avalanche, AVAX \u2192 "Avalanche"
+   - Cardano, ADA \u2192 "Cardano"
+   - Polkadot, DOT \u2192 "Polkadot"
+   - Chainlink, LINK \u2192 "Chainlink"
+   - CRITICAL: Use the EXACT name/symbol the user mentioned
 
-2. **symbol** (optional): Token symbol like BTC, ETH, etc.
-   - Look for cryptocurrency symbols or names
-   - Convert names to symbols if possible (Bitcoin \u2192 BTC, Ethereum \u2192 ETH)
+2. **symbol** (optional): Token symbol if mentioned
+   - Extract symbols like "BTC", "ETH", "ADA", etc.
 
-3. **token_name** (optional): Full name of the token
-   - Extract if mentioned explicitly
+3. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
 
-4. **startDate** (optional): Start date for data range
-   - Look for dates in various formats and convert to YYYY-MM-DD
-   - Phrases like "last month", "past 30 days", "since January"
+4. **token_name** (optional): Full name of the token for API calls
 
-5. **endDate** (optional): End date for data range
-   - Look for end dates or "until" phrases
-   - Default to current date if start date is specified but end date is not
+5. **startDate** (optional): Start date for data range
+   - Look for dates in YYYY-MM-DD format
+   - Convert relative dates like "last month", "past 30 days"
 
-6. **limit** (optional, default: 50): Number of data points to return
+6. **endDate** (optional): End date for data range
+   - Look for dates in YYYY-MM-DD format
+
+7. **limit** (optional, default: 50): Number of data points to return
    - Look for phrases like "50 days", "last 100 candles", "200 data points"
 
-7. **page** (optional, default: 1): Page number for pagination
+8. **page** (optional, default: 1): Page number for pagination
 
-8. **analysisType** (optional, default: "all"): What type of analysis they want
+9. **analysisType** (optional, default: "all"): What type of analysis they want
    - "swing_trading" - focus on swing trading opportunities and signals
    - "trend_analysis" - focus on trend identification and direction
    - "technical_indicators" - focus on technical indicators and patterns
    - "all" - comprehensive OHLCV analysis
 
-Examples:
-- "Get daily OHLCV data for Bitcoin" \u2192 {symbol: "BTC", analysisType: "all"}
-- "Show me daily candles for ETH last 30 days" \u2192 {symbol: "ETH", limit: 30, analysisType: "all"}
-- "Daily price data for swing trading BTC" \u2192 {symbol: "BTC", analysisType: "swing_trading"}
-- "Technical analysis of daily Ethereum data" \u2192 {symbol: "ETH", analysisType: "technical_indicators"}
+CRITICAL EXAMPLES:
+- "Get daily OHLCV for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Show me daily candles for BTC" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Daily data for ETH for swing trading" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "swing_trading"}
+- "DOGE daily OHLCV" \u2192 {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
+- "Solana trend analysis" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "trend_analysis"}
 
 Extract the request details from the user's message.
 `;
+function extractCryptocurrencySimple3(text) {
+  const cryptoPatterns = [
+    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
+    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
+    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
+    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
+    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
+    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
+    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" },
+    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
+    { regex: /\b(binance coin|bnb)\b/i, name: "BNB", symbol: "BNB" },
+    { regex: /\b(ripple|xrp)\b/i, name: "XRP", symbol: "XRP" },
+    { regex: /\b(litecoin|ltc)\b/i, name: "Litecoin", symbol: "LTC" },
+    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
+    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
+    { regex: /\b(shiba inu|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" }
+  ];
+  for (const pattern of cryptoPatterns) {
+    if (pattern.regex.test(text)) {
+      return {
+        cryptocurrency: pattern.name,
+        symbol: pattern.symbol
+      };
+    }
+  }
+  return {};
+}
 var getDailyOhlcvAction = {
   name: "GET_DAILY_OHLCV_TOKENMETRICS",
   description: "Get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency tokens from TokenMetrics",
@@ -9621,20 +10145,21 @@ var getDailyOhlcvAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _params, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing daily OHLCV request...`);
       const ohlcvRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         DAILY_OHLCV_EXTRACTION_TEMPLATE,
         DailyOhlcvRequestSchema,
         requestId
       );
       console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
-      const processedRequest = {
+      let processedRequest = {
+        cryptocurrency: ohlcvRequest.cryptocurrency,
         token_id: ohlcvRequest.token_id,
         symbol: ohlcvRequest.symbol,
         token_name: ohlcvRequest.token_name,
@@ -9644,25 +10169,70 @@ var getDailyOhlcvAction = {
         page: ohlcvRequest.page || 1,
         analysisType: ohlcvRequest.analysisType || "all"
       };
+      if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
+        console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
+        const regexResult = extractCryptocurrencySimple3(message.content.text);
+        if (regexResult.cryptocurrency) {
+          processedRequest.cryptocurrency = regexResult.cryptocurrency;
+          processedRequest.symbol = regexResult.symbol;
+          console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
+        }
+      }
+      if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
+        const symbolToNameMap = {
+          "BTC": "Bitcoin",
+          "ETH": "Ethereum",
+          "DOGE": "Dogecoin",
+          "SOL": "Solana",
+          "AVAX": "Avalanche",
+          "ADA": "Cardano",
+          "DOT": "Polkadot",
+          "LINK": "Chainlink",
+          "BNB": "BNB",
+          "XRP": "XRP",
+          "LTC": "Litecoin",
+          "MATIC": "Polygon",
+          "UNI": "Uniswap",
+          "SHIB": "Shiba Inu"
+        };
+        const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
+        if (fullName) {
+          console.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
+          processedRequest.cryptocurrency = fullName;
+          if (!processedRequest.symbol) {
+            processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
+          }
+        }
+      }
+      let resolvedToken = null;
+      if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+        try {
+          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+          if (resolvedToken) {
+            processedRequest.token_id = resolvedToken.token_id;
+            processedRequest.symbol = resolvedToken.symbol;
+            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+          }
+        } catch (error) {
+          console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+        }
+      }
       const apiParams = {
         limit: processedRequest.limit,
         page: processedRequest.page
       };
-      if (processedRequest.token_id) {
-        apiParams.token_id = processedRequest.token_id;
-      }
       if (processedRequest.symbol) {
         apiParams.symbol = processedRequest.symbol;
+        console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
+      } else if (processedRequest.cryptocurrency) {
+        apiParams.token_name = processedRequest.cryptocurrency;
+        console.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
+      } else if (processedRequest.token_id) {
+        apiParams.token_id = processedRequest.token_id;
+        console.log(`[${requestId}] Using token_id parameter: ${processedRequest.token_id}`);
       }
-      if (processedRequest.token_name) {
-        apiParams.token_name = processedRequest.token_name;
-      }
-      if (processedRequest.startDate) {
-        apiParams.startDate = processedRequest.startDate;
-      }
-      if (processedRequest.endDate) {
-        apiParams.endDate = processedRequest.endDate;
-      }
+      if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
+      if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
       const response = await callTokenMetricsAPI(
         "/v2/daily-ohlcv",
         apiParams,
@@ -9670,16 +10240,235 @@ var getDailyOhlcvAction = {
       );
       console.log(`[${requestId}] API response received, processing OHLCV data...`);
       const ohlcvData = Array.isArray(response) ? response : response.data || [];
-      const ohlcvAnalysis = analyzeDailyOhlcvData(ohlcvData, processedRequest.analysisType);
+      let filteredByToken = ohlcvData;
+      if (ohlcvData.length > 0 && processedRequest.symbol) {
+        const tokenGroups = ohlcvData.reduce((groups, item) => {
+          const tokenId = item.TOKEN_ID;
+          if (!groups[tokenId]) {
+            groups[tokenId] = [];
+          }
+          groups[tokenId].push(item);
+          return groups;
+        }, {});
+        const tokenIds = Object.keys(tokenGroups);
+        console.log(
+          `[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`,
+          tokenIds.map((id) => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`)
+        );
+        if (tokenIds.length > 1) {
+          let selectedTokenId = null;
+          let maxScore = -1;
+          for (const tokenId of tokenIds) {
+            const tokenData = tokenGroups[tokenId];
+            const firstItem = tokenData[0];
+            let score = 0;
+            const avgPrice = tokenData.reduce((sum, item) => sum + (item.CLOSE || 0), 0) / tokenData.length;
+            if (avgPrice > 1e3) score += 100;
+            else if (avgPrice > 100) score += 50;
+            else if (avgPrice > 10) score += 20;
+            else if (avgPrice > 1) score += 10;
+            const avgVolume = tokenData.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / tokenData.length;
+            if (avgVolume > 1e9) score += 50;
+            else if (avgVolume > 1e8) score += 30;
+            else if (avgVolume > 1e7) score += 20;
+            else if (avgVolume > 1e6) score += 10;
+            const tokenName2 = firstItem.TOKEN_NAME?.toLowerCase() || "";
+            const symbol = processedRequest.symbol?.toLowerCase() || "";
+            if (tokenName2 === symbol) score += 30;
+            else if (tokenName2.includes(symbol)) score += 20;
+            else if (symbol === "btc" && tokenName2 === "bitcoin") score += 40;
+            else if (symbol === "eth" && tokenName2 === "ethereum") score += 40;
+            else if (symbol === "doge" && tokenName2 === "dogecoin") score += 40;
+            if (tokenName2.includes("wrapped") || tokenName2.includes("osmosis") || tokenName2.includes("synthetic") || tokenName2.includes("bridged")) {
+              score -= 20;
+            }
+            console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
+            if (score > maxScore) {
+              maxScore = score;
+              selectedTokenId = tokenId;
+            }
+          }
+          if (selectedTokenId) {
+            filteredByToken = tokenGroups[selectedTokenId];
+            const selectedToken = filteredByToken[0];
+            console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
+          } else {
+            console.log(`[${requestId}] No clear main token identified, using all data`);
+          }
+        } else {
+          console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
+        }
+      }
+      const validData = filteredByToken.filter((item) => {
+        if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
+          console.log(`[${requestId}] Filtering out invalid data point:`, item);
+          return false;
+        }
+        const priceRange = (item.HIGH - item.LOW) / item.LOW;
+        if (priceRange > 10) {
+          console.log(`[${requestId}] Filtering out extreme outlier:`, item);
+          return false;
+        }
+        return true;
+      });
+      console.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
+      console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
+      const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+      const ohlcvAnalysis = analyzeDailyOhlcvData(sortedData, processedRequest.analysisType);
+      const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
+      let responseText2 = `\u{1F4CA} **Daily OHLCV Data for ${tokenName}**
+
+`;
+      if (sortedData.length === 0) {
+        responseText2 += `\u274C No valid daily OHLCV data found for ${tokenName}. This could mean:
+`;
+        responseText2 += `\u2022 The token may not have sufficient trading history
+`;
+        responseText2 += `\u2022 TokenMetrics may not have daily data for this token
+`;
+        responseText2 += `\u2022 All data points were filtered out due to quality issues
+`;
+        responseText2 += `\u2022 Try using a different token name or symbol
+
+`;
+        responseText2 += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
+      } else {
+        if (ohlcvData.length > sortedData.length) {
+          const tokenFiltered = ohlcvData.length - filteredByToken.length;
+          const qualityFiltered = filteredByToken.length - sortedData.length;
+          if (tokenFiltered > 0 && qualityFiltered > 0) {
+            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
+
+`;
+          } else if (tokenFiltered > 0) {
+            responseText2 += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
+
+`;
+          } else if (qualityFiltered > 0) {
+            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+
+`;
+          }
+        }
+        const recentData = sortedData.slice(-5).reverse();
+        responseText2 += `\u{1F4C8} **Recent Daily Data (Last ${recentData.length} days):**
+`;
+        recentData.forEach((item, index) => {
+          const date = new Date(item.DATE || item.TIMESTAMP);
+          const dateStr = date.toLocaleDateString();
+          responseText2 += `
+**Day ${index + 1}** (${dateStr}):
+`;
+          responseText2 += `\u2022 Open: ${formatCurrency(item.OPEN)}
+`;
+          responseText2 += `\u2022 High: ${formatCurrency(item.HIGH)}
+`;
+          responseText2 += `\u2022 Low: ${formatCurrency(item.LOW)}
+`;
+          responseText2 += `\u2022 Close: ${formatCurrency(item.CLOSE)}
+`;
+          responseText2 += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
+`;
+        });
+        if (ohlcvAnalysis && ohlcvAnalysis.summary) {
+          responseText2 += `
+
+\u{1F4CA} **Analysis Summary:**
+${ohlcvAnalysis.summary}
+`;
+        }
+        if (ohlcvAnalysis?.price_analysis) {
+          const priceAnalysis = ohlcvAnalysis.price_analysis;
+          responseText2 += `
+\u{1F4B0} **Price Movement:**
+`;
+          responseText2 += `\u2022 Direction: ${priceAnalysis.direction || "Unknown"}
+`;
+          responseText2 += `\u2022 Change: ${priceAnalysis.price_change || "N/A"} (${priceAnalysis.change_percent || "N/A"})
+`;
+          responseText2 += `\u2022 Range: ${priceAnalysis.lowest_price || "N/A"} - ${priceAnalysis.highest_price || "N/A"}
+`;
+        }
+        if (ohlcvAnalysis?.trend_analysis) {
+          const trendAnalysis = ohlcvAnalysis.trend_analysis;
+          responseText2 += `
+\u{1F4C8} **Trend Analysis:**
+`;
+          responseText2 += `\u2022 Primary Trend: ${trendAnalysis.primary_trend}
+`;
+          responseText2 += `\u2022 Trend Strength: ${trendAnalysis.trend_strength}
+`;
+          responseText2 += `\u2022 Momentum: ${trendAnalysis.momentum}
+`;
+        }
+        if (ohlcvAnalysis?.volume_analysis) {
+          const volumeAnalysis = ohlcvAnalysis.volume_analysis;
+          responseText2 += `
+\u{1F4CA} **Volume Analysis:**
+`;
+          responseText2 += `\u2022 Average Volume: ${volumeAnalysis.average_volume || "N/A"}
+`;
+          responseText2 += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend || "Unknown"}
+`;
+          responseText2 += `\u2022 Volume Pattern: ${volumeAnalysis.volume_pattern || "Unknown"}
+`;
+        }
+        if (ohlcvAnalysis?.trading_recommendations?.primary_recommendations?.length > 0) {
+          responseText2 += `
+\u{1F3AF} **Trading Recommendations:**
+`;
+          ohlcvAnalysis.trading_recommendations.primary_recommendations.forEach((rec) => {
+            responseText2 += `\u2022 ${rec}
+`;
+          });
+        }
+        if (processedRequest.analysisType === "swing_trading" && ohlcvAnalysis?.swing_trading_focus) {
+          responseText2 += `
+\u26A1 **Swing Trading Insights:**
+`;
+          ohlcvAnalysis.swing_trading_focus.insights?.forEach((insight) => {
+            responseText2 += `\u2022 ${insight}
+`;
+          });
+        } else if (processedRequest.analysisType === "trend_analysis" && ohlcvAnalysis?.trend_focus) {
+          responseText2 += `
+\u{1F4C8} **Trend Analysis Insights:**
+`;
+          ohlcvAnalysis.trend_focus.insights?.forEach((insight) => {
+            responseText2 += `\u2022 ${insight}
+`;
+          });
+        } else if (processedRequest.analysisType === "technical_indicators" && ohlcvAnalysis?.technical_focus) {
+          responseText2 += `
+\u{1F50D} **Technical Analysis:**
+`;
+          ohlcvAnalysis.technical_focus.insights?.forEach((insight) => {
+            responseText2 += `\u2022 ${insight}
+`;
+          });
+        }
+        responseText2 += `
+
+\u{1F4CB} **Data Summary:**
+`;
+        responseText2 += `\u2022 Total Data Points: ${sortedData.length}
+`;
+        responseText2 += `\u2022 Timeframe: 1 day intervals
+`;
+        responseText2 += `\u2022 Analysis Type: ${processedRequest.analysisType}
+`;
+        responseText2 += `\u2022 Data Source: TokenMetrics Official API
+`;
+      }
       const result = {
         success: true,
-        message: `Successfully retrieved ${ohlcvData.length} daily OHLCV data points`,
+        message: `Successfully retrieved ${sortedData.length} daily OHLCV data points`,
         request_id: requestId,
-        ohlcv_data: ohlcvData,
+        ohlcv_data: sortedData,
         analysis: ohlcvAnalysis,
         metadata: {
           endpoint: "daily-ohlcv",
-          requested_token: processedRequest.symbol || processedRequest.token_id,
+          requested_token: processedRequest.symbol || processedRequest.cryptocurrency || processedRequest.token_id,
           date_range: {
             start: processedRequest.startDate,
             end: processedRequest.endDate
@@ -9689,7 +10478,7 @@ var getDailyOhlcvAction = {
             page: processedRequest.page,
             limit: processedRequest.limit
           },
-          data_points: ohlcvData.length,
+          data_points: sortedData.length,
           timeframe: "1 day",
           api_version: "v2",
           data_source: "TokenMetrics Official API"
@@ -9709,15 +10498,15 @@ var getDailyOhlcvAction = {
       };
       console.log(`[${requestId}] Daily OHLCV analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
+      if (callback2) {
+        callback2({
+          text: responseText2,
           content: {
             success: true,
             request_id: requestId,
             data: result,
             metadata: {
-              endpoint: "dailyohlcv",
+              endpoint: "daily-ohlcv",
               data_source: "TokenMetrics Official API",
               api_version: "v2"
             }
@@ -9871,21 +10660,37 @@ function analyzeTechnicalIndicators(data) {
   };
 }
 function analyzeDailyTrend(data) {
-  if (data.length < 5) return { primary_trend: "Unknown" };
+  if (data.length < 2) return { primary_trend: "Insufficient Data" };
   const closes = data.map((d) => d.CLOSE);
   const highs = data.map((d) => d.HIGH);
   const lows = data.map((d) => d.LOW);
-  const shortTrend = identifyTrend(closes.slice(-5));
-  const mediumTrend = identifyTrend(closes.slice(-15));
-  const longTrend = identifyTrend(closes);
-  const higherHighs = countHigherHighs(highs.slice(-10));
-  const higherLows = countHigherLows(lows.slice(-10));
+  let shortTrend, mediumTrend, longTrend;
+  if (closes.length >= 3) {
+    shortTrend = identifyTrend(closes.slice(-3));
+  } else {
+    shortTrend = identifyTrend(closes);
+  }
+  if (closes.length >= 5) {
+    mediumTrend = identifyTrend(closes.slice(-5));
+  } else {
+    mediumTrend = shortTrend;
+  }
+  longTrend = identifyTrend(closes);
+  const analysisWindow = Math.min(10, highs.length);
+  const higherHighs = countHigherHighs(highs.slice(-analysisWindow));
+  const higherLows = countHigherLows(lows.slice(-analysisWindow));
   let primaryTrend;
-  if (shortTrend === "Up" && mediumTrend === "Up") primaryTrend = "Strong Uptrend";
-  else if (shortTrend === "Down" && mediumTrend === "Down") primaryTrend = "Strong Downtrend";
-  else if (shortTrend === "Up") primaryTrend = "Uptrend";
-  else if (shortTrend === "Down") primaryTrend = "Downtrend";
-  else primaryTrend = "Sideways";
+  if (data.length >= 5) {
+    if (shortTrend === "Up" && mediumTrend === "Up") primaryTrend = "Strong Uptrend";
+    else if (shortTrend === "Down" && mediumTrend === "Down") primaryTrend = "Strong Downtrend";
+    else if (shortTrend === "Up") primaryTrend = "Uptrend";
+    else if (shortTrend === "Down") primaryTrend = "Downtrend";
+    else primaryTrend = "Sideways";
+  } else {
+    if (shortTrend === "Up") primaryTrend = "Short-term Uptrend";
+    else if (shortTrend === "Down") primaryTrend = "Short-term Downtrend";
+    else primaryTrend = "Sideways";
+  }
   return {
     primary_trend: primaryTrend,
     short_term_trend: shortTrend,
@@ -9894,7 +10699,8 @@ function analyzeDailyTrend(data) {
     trend_strength: calculateTrendStrength(closes),
     higher_highs: higherHighs,
     higher_lows: higherLows,
-    trend_consistency: analyzeTrendConsistency(closes)
+    trend_consistency: analyzeTrendConsistency(closes),
+    momentum: calculateMomentumFromTrend(closes)
   };
 }
 function analyzeSupportResistance(data) {
@@ -10078,17 +10884,24 @@ function countHigherLows(lows) {
   return count;
 }
 function calculateTrendStrength(closes) {
-  if (closes.length < 10) return "Unknown";
+  if (closes.length < 2) return "Insufficient Data";
   const firstPrice = closes[0];
   const lastPrice = closes[closes.length - 1];
   const change = Math.abs((lastPrice - firstPrice) / firstPrice);
-  if (change > 0.5) return "Very Strong";
-  if (change > 0.3) return "Strong";
-  if (change > 0.1) return "Moderate";
-  return "Weak";
+  if (closes.length >= 10) {
+    if (change > 0.5) return "Very Strong";
+    if (change > 0.3) return "Strong";
+    if (change > 0.1) return "Moderate";
+    return "Weak";
+  } else {
+    if (change > 0.2) return "Strong";
+    if (change > 0.05) return "Moderate";
+    if (change > 0.01) return "Weak";
+    return "Very Weak";
+  }
 }
 function analyzeTrendConsistency(closes) {
-  if (closes.length < 5) return "Unknown";
+  if (closes.length < 2) return "Insufficient Data";
   let directionalChanges = 0;
   let previousDirection = null;
   for (let i = 1; i < closes.length; i++) {
@@ -10103,6 +10916,26 @@ function analyzeTrendConsistency(closes) {
   if (consistency > 0.6) return "Consistent";
   if (consistency > 0.4) return "Moderate";
   return "Inconsistent";
+}
+function calculateMomentumFromTrend(closes) {
+  if (closes.length < 2) return "Unknown";
+  const recentChange = closes[closes.length - 1] - closes[closes.length - 2];
+  const recentPercent = recentChange / closes[closes.length - 2] * 100;
+  if (closes.length >= 3) {
+    const previousChange = closes[closes.length - 2] - closes[closes.length - 3];
+    const previousPercent = previousChange / closes[closes.length - 3] * 100;
+    if (recentPercent > previousPercent && recentPercent > 0) return "Accelerating Upward";
+    if (recentPercent < previousPercent && recentPercent < 0) return "Accelerating Downward";
+    if (recentPercent > 0) return "Positive";
+    if (recentPercent < 0) return "Negative";
+    return "Neutral";
+  } else {
+    if (recentPercent > 2) return "Strong Positive";
+    if (recentPercent > 0) return "Positive";
+    if (recentPercent < -2) return "Strong Negative";
+    if (recentPercent < 0) return "Negative";
+    return "Neutral";
+  }
 }
 function findResistanceLevels(highs) {
   const levels = [];
@@ -10254,7 +11087,7 @@ CRITICAL EXAMPLES:
 
 Extract the request details from the user's message.
 `;
-function extractCryptocurrencySimple3(text) {
+function extractCryptocurrencySimple4(text) {
   const cryptoPatterns = [
     { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
     { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
@@ -10368,7 +11201,7 @@ var getHourlyOhlcvAction = {
       };
       if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
         console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
-        const regexResult = extractCryptocurrencySimple3(message.content.text);
+        const regexResult = extractCryptocurrencySimple4(message.content.text);
         if (regexResult.cryptocurrency) {
           processedRequest.cryptocurrency = regexResult.cryptocurrency;
           processedRequest.symbol = regexResult.symbol;
@@ -10434,7 +11267,80 @@ var getHourlyOhlcvAction = {
       );
       console.log(`[${requestId}] API response received, processing data...`);
       const ohlcvData = Array.isArray(response) ? response : response.data || [];
-      const sortedData = ohlcvData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+      let filteredByToken = ohlcvData;
+      if (ohlcvData.length > 0 && processedRequest.symbol) {
+        const tokenGroups = ohlcvData.reduce((groups, item) => {
+          const tokenId = item.TOKEN_ID;
+          if (!groups[tokenId]) {
+            groups[tokenId] = [];
+          }
+          groups[tokenId].push(item);
+          return groups;
+        }, {});
+        const tokenIds = Object.keys(tokenGroups);
+        console.log(
+          `[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`,
+          tokenIds.map((id) => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`)
+        );
+        if (tokenIds.length > 1) {
+          let selectedTokenId = null;
+          let maxScore = -1;
+          for (const tokenId of tokenIds) {
+            const tokenData = tokenGroups[tokenId];
+            const firstItem = tokenData[0];
+            let score = 0;
+            const avgPrice = tokenData.reduce((sum, item) => sum + (item.CLOSE || 0), 0) / tokenData.length;
+            if (avgPrice > 1e3) score += 100;
+            else if (avgPrice > 100) score += 50;
+            else if (avgPrice > 10) score += 20;
+            else if (avgPrice > 1) score += 10;
+            const avgVolume = tokenData.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / tokenData.length;
+            if (avgVolume > 1e9) score += 50;
+            else if (avgVolume > 1e8) score += 30;
+            else if (avgVolume > 1e7) score += 20;
+            else if (avgVolume > 1e6) score += 10;
+            const tokenName2 = firstItem.TOKEN_NAME?.toLowerCase() || "";
+            const symbol = processedRequest.symbol?.toLowerCase() || "";
+            if (tokenName2 === symbol) score += 30;
+            else if (tokenName2.includes(symbol)) score += 20;
+            else if (symbol === "btc" && tokenName2 === "bitcoin") score += 40;
+            else if (symbol === "eth" && tokenName2 === "ethereum") score += 40;
+            else if (symbol === "doge" && tokenName2 === "dogecoin") score += 40;
+            if (tokenName2.includes("wrapped") || tokenName2.includes("osmosis") || tokenName2.includes("synthetic") || tokenName2.includes("bridged")) {
+              score -= 20;
+            }
+            console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
+            if (score > maxScore) {
+              maxScore = score;
+              selectedTokenId = tokenId;
+            }
+          }
+          if (selectedTokenId) {
+            filteredByToken = tokenGroups[selectedTokenId];
+            const selectedToken = filteredByToken[0];
+            console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
+          } else {
+            console.log(`[${requestId}] No clear main token identified, using all data`);
+          }
+        } else {
+          console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
+        }
+      }
+      const validData = filteredByToken.filter((item) => {
+        if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
+          console.log(`[${requestId}] Filtering out invalid data point:`, item);
+          return false;
+        }
+        const priceRange = (item.HIGH - item.LOW) / item.LOW;
+        if (priceRange > 10) {
+          console.log(`[${requestId}] Filtering out extreme outlier:`, item);
+          return false;
+        }
+        return true;
+      });
+      console.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
+      console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
+      const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
       const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
       const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
       let responseText2 = `\u{1F4CA} **Hourly OHLCV Data for ${tokenName}**
@@ -10452,6 +11358,23 @@ var getHourlyOhlcvAction = {
 `;
         responseText2 += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
       } else {
+        if (ohlcvData.length > sortedData.length) {
+          const tokenFiltered = ohlcvData.length - filteredByToken.length;
+          const qualityFiltered = filteredByToken.length - sortedData.length;
+          if (tokenFiltered > 0 && qualityFiltered > 0) {
+            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
+
+`;
+          } else if (tokenFiltered > 0) {
+            responseText2 += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
+
+`;
+          } else if (qualityFiltered > 0) {
+            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+
+`;
+          }
+        }
         const recentData = sortedData.slice(-5).reverse();
         responseText2 += `\u{1F4C8} **Recent Hourly Data (Last ${recentData.length} hours):**
 `;
@@ -10683,7 +11606,7 @@ function analyzeHourlyOhlcvData(ohlcvData, analysisType = "all") {
           session_analysis: analyzeSessionBreakdowns(sortedData),
           intraday_signals: generateIntradaySignals(priceAnalysis, trendAnalysis),
           intraday_insights: [
-            `\u{1F4C8} Intraday trend: ${trendAnalysis.intraday_trend || "Neutral"}`,
+            `\u{1F4C8} Intraday trend: ${trendAnalysis.direction}`,
             `\u{1F550} Best trading hours: ${identifyBestTradingHours(sortedData)}`,
             `\u{1F4B9} Day trading setups: ${technicalAnalysis.day_trading_setups || 0}`
           ]
@@ -10788,26 +11711,58 @@ function analyzeVolatility(data) {
   };
 }
 function analyzeTrend(data) {
-  if (data.length < 3) return { direction: "Unknown" };
+  if (data.length < 2) return { direction: "Insufficient Data" };
   const closes = data.map((d) => d.CLOSE);
   const periods = [5, 10, 20];
   const trends = [];
   for (const period of periods) {
     if (closes.length >= period) {
       const recentMA = closes.slice(-period).reduce((sum, price) => sum + price, 0) / period;
-      const earlierMA = closes.slice(-period * 2, -period).reduce((sum, price) => sum + price, 0) / period;
-      trends.push(recentMA > earlierMA ? 1 : -1);
+      if (closes.length >= period * 2) {
+        const earlierMA = closes.slice(-period * 2, -period).reduce((sum, price) => sum + price, 0) / period;
+        trends.push(recentMA > earlierMA ? 1 : -1);
+      } else {
+        const firstPrice = closes[0];
+        trends.push(recentMA > firstPrice ? 1 : -1);
+      }
     }
+  }
+  if (trends.length === 0) {
+    const firstPrice = closes[0];
+    const lastPrice = closes[closes.length - 1];
+    const change = (lastPrice - firstPrice) / firstPrice;
+    if (change > 0.01) trends.push(1);
+    else if (change < -0.01) trends.push(-1);
+    else trends.push(0);
   }
   const overallTrend = trends.reduce((sum, trend) => sum + trend, 0);
   let direction;
   if (overallTrend > 0) direction = "Uptrend";
   else if (overallTrend < 0) direction = "Downtrend";
   else direction = "Sideways";
+  let strength;
+  if (data.length >= 10) {
+    strength = Math.abs(overallTrend) > 2 ? "Strong" : "Weak";
+  } else {
+    const firstPrice = closes[0];
+    const lastPrice = closes[closes.length - 1];
+    const change = Math.abs((lastPrice - firstPrice) / firstPrice);
+    strength = change > 0.05 ? "Strong" : "Weak";
+  }
+  let shortTermBias;
+  if (closes.length >= 6) {
+    shortTermBias = closes[closes.length - 1] > closes[closes.length - 6] ? "Bullish" : "Bearish";
+  } else {
+    const midPoint = Math.floor(closes.length / 2);
+    const recentAvg = closes.slice(midPoint).reduce((sum, price) => sum + price, 0) / (closes.length - midPoint);
+    const earlierAvg = closes.slice(0, midPoint).reduce((sum, price) => sum + price, 0) / midPoint;
+    shortTermBias = recentAvg > earlierAvg ? "Bullish" : "Bearish";
+  }
   return {
     direction,
-    strength: Math.abs(overallTrend) > 2 ? "Strong" : "Weak",
-    short_term_bias: closes[closes.length - 1] > closes[closes.length - 6] ? "Bullish" : "Bearish"
+    strength,
+    short_term_bias: shortTermBias,
+    trend_confidence: trends.length > 1 ? "High" : "Moderate"
   };
 }
 function generateOhlcvInsights(priceAnalysis, volumeAnalysis, volatilityAnalysis, trendAnalysis) {
@@ -11962,7 +12917,7 @@ var ResistanceSupportRequestSchema = z.object({
   page: z.number().min(1).optional().describe("Page number for pagination"),
   analysisType: z.enum(["trading_levels", "breakout_analysis", "risk_management", "all"]).optional().describe("Type of analysis to focus on")
 });
-function extractCryptocurrencySimple4(text) {
+function extractCryptocurrencySimple5(text) {
   const normalizedText = text.toLowerCase();
   const patterns = [
     // Bitcoin patterns
@@ -12121,7 +13076,7 @@ var getResistanceSupportAction = {
         analysisType: levelsRequest.analysisType || "all"
       };
       const userText = message.content.text || "";
-      const regexResult = extractCryptocurrencySimple4(userText);
+      const regexResult = extractCryptocurrencySimple5(userText);
       if (regexResult) {
         const aiExtracted = processedRequest.cryptocurrency?.toLowerCase() || "";
         const regexExtracted = regexResult.cryptocurrency?.toLowerCase() || "";
@@ -13054,7 +14009,7 @@ Based on the conversation context, identify the scenario analysis request detail
 - If unclear, extract the exact text mentioned
 
 Extract the scenario analysis request from the user's message:`;
-function extractCryptocurrencySimple5(text) {
+function extractCryptocurrencySimple6(text) {
   const upperText = text.toUpperCase();
   const symbolMap = {
     "BTC": { cryptocurrency: "Bitcoin", symbol: "BTC" },
@@ -13186,7 +14141,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
       console.log(`[${requestId}] AI Extracted:`, scenarioRequest);
       if (!scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
         console.log(`[${requestId}] AI extraction incomplete, applying regex fallback...`);
-        const regexResult = extractCryptocurrencySimple5(userMessage);
+        const regexResult = extractCryptocurrencySimple6(userMessage);
         if (regexResult.cryptocurrency || regexResult.symbol) {
           scenarioRequest = {
             ...scenarioRequest,
@@ -14070,6 +15025,9 @@ var SentimentRequestSchema = z.object({
 var SENTIMENT_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting sentiment analysis requests from natural language.
 
+IMPORTANT: This API provides GENERAL CRYPTO MARKET sentiment and news, NOT token-specific data.
+When users ask for "Bitcoin news" or "Ethereum sentiment", they get overall crypto market sentiment that affects all tokens.
+
 The user wants to get hourly sentiment scores from Twitter, Reddit, and news sources. Extract the following information:
 
 1. **limit** (optional, default: 24): Number of sentiment data points to return
@@ -14088,6 +15046,8 @@ Examples:
 - "Get market sentiment" \u2192 {analysisType: "all"}
 - "Show me social media sentiment trends" \u2192 {analysisType: "social_trends"}
 - "Check news sentiment impact" \u2192 {analysisType: "news_impact"}
+- "Get news for Bitcoin" \u2192 {analysisType: "news_impact"} (returns general crypto news sentiment)
+- "Bitcoin news sentiment" \u2192 {analysisType: "news_impact"} (returns general crypto news sentiment)
 - "Market mood for the past 24 hours" \u2192 {limit: 24, analysisType: "market_mood"}
 - "Sentiment analysis for the past week" \u2192 {limit: 168, analysisType: "all"}
 
@@ -14095,7 +15055,7 @@ Extract the request details from the user's message.
 `;
 var getSentimentAction = {
   name: "GET_SENTIMENT_TOKENMETRICS",
-  description: "Get hourly sentiment scores from Twitter, Reddit, and news sources with market mood analysis from TokenMetrics",
+  description: "Get hourly sentiment scores and news analysis from Twitter, Reddit, and crypto news sources with market mood analysis from TokenMetrics",
   similes: [
     "get sentiment",
     "market sentiment",
@@ -14105,7 +15065,12 @@ var getSentimentAction = {
     "news sentiment",
     "twitter sentiment",
     "reddit sentiment",
-    "social media sentiment"
+    "social media sentiment",
+    "get news",
+    "crypto news",
+    "market news",
+    "news analysis",
+    "news impact"
   ],
   examples: [
     [
@@ -14152,16 +15117,31 @@ var getSentimentAction = {
           action: "GET_SENTIMENT_TOKENMETRICS"
         }
       }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Get news for Bitcoin"
+        }
+      },
+      {
+        user: "{{user2}}",
+        content: {
+          text: "I'll retrieve the latest crypto market news and sentiment analysis that affects Bitcoin and the broader market.",
+          action: "GET_SENTIMENT_TOKENMETRICS"
+        }
+      }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _params, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing sentiment analysis request...`);
       const sentimentRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         SENTIMENT_EXTRACTION_TEMPLATE,
         SentimentRequestSchema,
         requestId
@@ -14226,11 +15206,86 @@ var getSentimentAction = {
           ]
         }
       };
+      let responseText2 = "";
+      if (processedRequest.analysisType === "news_impact") {
+        responseText2 = `\u{1F4F0} **Crypto Market News & Sentiment Analysis**
+
+`;
+        responseText2 += `\u2139\uFE0F *Note: This provides general crypto market news sentiment that affects all cryptocurrencies, not token-specific news.*
+
+`;
+      } else {
+        responseText2 = `\u{1F4CA} **Crypto Market Sentiment Analysis**
+
+`;
+      }
+      if (sentimentData.length === 0) {
+        responseText2 += `\u274C No sentiment data available at the moment.
+
+`;
+      } else {
+        const latest = sentimentData[0];
+        const marketGrade = latest.MARKET_SENTIMENT_GRADE || 0;
+        const marketLabel = latest.MARKET_SENTIMENT_LABEL || "Unknown";
+        responseText2 += `\u{1F3AF} **Current Market Sentiment**: ${marketLabel} (${marketGrade})
+
+`;
+        if (latest.TWITTER_SENTIMENT_GRADE !== void 0) {
+          responseText2 += `\u{1F426} **Twitter**: ${latest.TWITTER_SENTIMENT_LABEL || "Unknown"} (${latest.TWITTER_SENTIMENT_GRADE})
+`;
+        }
+        if (latest.REDDIT_SENTIMENT_GRADE !== void 0) {
+          responseText2 += `\u{1F4F1} **Reddit**: ${latest.REDDIT_SENTIMENT_LABEL || "Unknown"} (${latest.REDDIT_SENTIMENT_GRADE})
+`;
+        }
+        if (latest.NEWS_SENTIMENT_GRADE !== void 0) {
+          responseText2 += `\u{1F4F0} **News**: ${latest.NEWS_SENTIMENT_LABEL || "Unknown"} (${latest.NEWS_SENTIMENT_GRADE})
+
+`;
+        }
+        if (latest.NEWS_SUMMARY) {
+          responseText2 += `\u{1F4F0} **News Summary**: ${latest.NEWS_SUMMARY}
+
+`;
+        }
+        if (latest.TWITTER_SUMMARY) {
+          responseText2 += `\u{1F426} **Twitter Summary**: ${latest.TWITTER_SUMMARY}
+
+`;
+        }
+        if (latest.REDDIT_SUMMARY) {
+          responseText2 += `\u{1F4F1} **Reddit Summary**: ${latest.REDDIT_SUMMARY}
+
+`;
+        }
+        if (sentimentAnalysis.insights && sentimentAnalysis.insights.length > 0) {
+          responseText2 += `\u{1F4A1} **Key Insights**:
+`;
+          sentimentAnalysis.insights.slice(0, 3).forEach((insight, index) => {
+            responseText2 += `${index + 1}. ${insight}
+`;
+          });
+          responseText2 += `
+`;
+        }
+        if (sentimentAnalysis.trading_implications) {
+          responseText2 += `\u{1F4C8} **Trading Implications**: ${sentimentAnalysis.trading_implications.recommendation}
+`;
+          responseText2 += `\u26A0\uFE0F **Risk Level**: ${sentimentAnalysis.trading_implications.risk_level}
+
+`;
+        }
+      }
+      responseText2 += `\u{1F4CA} Retrieved ${sentimentData.length} sentiment data points from TokenMetrics
+`;
+      responseText2 += `\u{1F550} Analysis focus: ${processedRequest.analysisType}
+`;
+      responseText2 += `\u{1F4C4} Page ${processedRequest.page} (limit: ${processedRequest.limit})`;
       console.log(`[${requestId}] Sentiment analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
+      if (callback2) {
+        callback2({
+          text: responseText2,
           content: {
             success: true,
             request_id: requestId,
@@ -15213,35 +16268,45 @@ function generateRiskAssessment2(tmaiData, confidenceAnalysis) {
 import {
   elizaLogger as elizaLogger8
 } from "@elizaos/core";
-var tokensTemplate = `# Task: Extract Tokens Request Information
+var tokensTemplate = `# Task: Extract Token Search Request Information
 
-Based on the conversation context, identify what tokens information the user is requesting.
+IMPORTANT: This is for TOKEN SEARCH/DATABASE QUERIES, NOT price requests.
+
+Based on the conversation context, identify what token information the user is requesting.
 
 # Conversation Context:
 {{recentMessages}}
 
 # Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
-- Token search requests ("list tokens", "available tokens", "supported cryptocurrencies", "find token")
-- Token categories (DeFi, Layer-1, meme tokens, gaming, NFT, etc.)
-- Exchange filters (Binance, Coinbase, Uniswap, etc.)
-- Market filters (market cap, volume, price range)
+Look for TOKEN SEARCH/DATABASE requests, such as:
+- Token listing requests ("list tokens", "available tokens", "supported cryptocurrencies")
+- Token database searches ("search for [token] information", "find token details", "lookup token")
+- Category filtering ("show me DeFi tokens", "gaming tokens", "meme tokens")
+- Exchange filtering ("tokens on Binance", "Coinbase supported tokens")
+- Market filtering ("high market cap tokens", "tokens by volume")
 
-The user might say things like:
+EXAMPLES OF TOKEN SEARCH REQUESTS:
 - "List all available tokens"
 - "Show me DeFi tokens"
-- "Find tokens on Binance"
-- "Get supported cryptocurrencies"
+- "Find token information for Bitcoin"
+- "Search token database for Ethereum"
+- "Get supported cryptocurrencies list"
+- "Find token details for Solana"
 - "Show me tokens with high market cap"
 - "List tokens in gaming category"
-- "Find token by symbol BTC"
+- "Search for Avalanche token information"
+- "Find SOL token details"
 
-Extract the relevant information for the tokens request.
+DO NOT MATCH PRICE REQUESTS:
+- "What's the price of Bitcoin?" (this is a PRICE request)
+- "How much is ETH worth?" (this is a PRICE request)
+- "Get Bitcoin price" (this is a PRICE request)
+- "Show me DOGE price" (this is a PRICE request)
+
+Extract the relevant information for the TOKEN SEARCH request.
 
 # Response Format:
-Return a structured object with the tokens request information.`;
+Return a structured object with the token search request information.`;
 var TokensRequestSchema = z.object({
   cryptocurrency: z.string().nullable().describe("The specific cryptocurrency symbol or name mentioned"),
   category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, gaming, meme)"),
@@ -15250,6 +16315,39 @@ var TokensRequestSchema = z.object({
   search_type: z.enum(["all", "specific", "category", "exchange", "filtered"]).describe("Type of token search"),
   confidence: z.number().min(0).max(1).describe("Confidence in extraction")
 });
+function normalizeCryptocurrencyName(name) {
+  const nameMap = {
+    // Common variations to official names
+    "btc": "Bitcoin",
+    "bitcoin": "Bitcoin",
+    "eth": "Ethereum",
+    "ethereum": "Ethereum",
+    "sol": "Solana",
+    "solana": "Solana",
+    "doge": "Dogecoin",
+    "dogecoin": "Dogecoin",
+    "avax": "Avalanche",
+    "avalanche": "Avalanche",
+    "ada": "Cardano",
+    "cardano": "Cardano",
+    "matic": "Polygon",
+    "polygon": "Polygon",
+    "dot": "Polkadot",
+    "polkadot": "Polkadot",
+    "link": "Chainlink",
+    "chainlink": "Chainlink",
+    "uni": "Uniswap",
+    "uniswap": "Uniswap",
+    "ltc": "Litecoin",
+    "litecoin": "Litecoin",
+    "xrp": "XRP",
+    "ripple": "XRP",
+    "bnb": "BNB",
+    "binance coin": "BNB"
+  };
+  const normalized = nameMap[name.toLowerCase()];
+  return normalized || name;
+}
 async function fetchTokens(params, runtime) {
   elizaLogger8.log(`\u{1F4E1} Fetching tokens with params:`, params);
   try {
@@ -15391,9 +16489,28 @@ var getTokensAction = {
     "FIND_TOKENS",
     "AVAILABLE_TOKENS",
     "SUPPORTED_CRYPTOCURRENCIES",
-    "TOKEN_LIST"
+    "TOKEN_LIST",
+    "SEARCH_TOKENS",
+    "TOKEN_SEARCH",
+    "FIND_TOKEN_INFO",
+    "TOKEN_DETAILS",
+    "TOKEN_DATABASE",
+    "LOOKUP_TOKEN",
+    "search for token",
+    "find token",
+    "token information",
+    "token details",
+    "search token",
+    "lookup token",
+    "find token info",
+    "search for",
+    "find information",
+    "token database",
+    "supported tokens",
+    "available tokens",
+    "list tokens"
   ],
-  description: "Get list of supported cryptocurrencies and tokens from TokenMetrics",
+  description: "Get list of supported cryptocurrencies and tokens from TokenMetrics database - for searching token information, not prices",
   validate: async (runtime, message) => {
     elizaLogger8.log("\u{1F50D} Validating getTokensAction");
     try {
@@ -15454,8 +16571,12 @@ Try asking something like:
         page: 1
       };
       if (tokensRequest.cryptocurrency) {
-        apiParams.symbol = tokensRequest.cryptocurrency.toUpperCase();
-        elizaLogger8.log(`\u{1F50D} Searching for specific token: ${tokensRequest.cryptocurrency}`);
+        apiParams.token_name = normalizeCryptocurrencyName(tokensRequest.cryptocurrency);
+        elizaLogger8.log(`\u{1F50D} Searching for specific token by name: ${apiParams.token_name}`);
+        if (apiParams.token_name.length <= 5) {
+          apiParams.symbol = apiParams.token_name.toUpperCase();
+          elizaLogger8.log(`\u{1F50D} Also searching by symbol: ${apiParams.symbol}`);
+        }
       }
       if (tokensRequest.category) {
         apiParams.category = tokensRequest.category.toLowerCase();
@@ -15563,7 +16684,7 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         user: "{{user2}}",
         content: {
-          text: "I'll fetch all available cryptocurrencies from TokenMetrics.",
+          text: "I'll fetch all available cryptocurrencies from TokenMetrics database.",
           action: "GET_TOKENS_TOKENMETRICS"
         }
       }
@@ -15578,7 +16699,7 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         user: "{{user2}}",
         content: {
-          text: "I'll get all DeFi category tokens from TokenMetrics.",
+          text: "I'll get all DeFi category tokens from TokenMetrics database.",
           action: "GET_TOKENS_TOKENMETRICS"
         }
       }
@@ -15587,13 +16708,58 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         user: "{{user1}}",
         content: {
-          text: "Find Bitcoin token details"
+          text: "Search for Bitcoin token information"
         }
       },
       {
         user: "{{user2}}",
         content: {
-          text: "I'll search for Bitcoin token information in TokenMetrics database.",
+          text: "I'll search for Bitcoin token details in TokenMetrics database.",
+          action: "GET_TOKENS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Find token details for Ethereum"
+        }
+      },
+      {
+        user: "{{user2}}",
+        content: {
+          text: "I'll look up Ethereum token information from TokenMetrics database.",
+          action: "GET_TOKENS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Get supported cryptocurrencies list"
+        }
+      },
+      {
+        user: "{{user2}}",
+        content: {
+          text: "I'll retrieve the complete list of supported cryptocurrencies from TokenMetrics.",
+          action: "GET_TOKENS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        user: "{{user1}}",
+        content: {
+          text: "Search token database for Solana"
+        }
+      },
+      {
+        user: "{{user2}}",
+        content: {
+          text: "I'll search the TokenMetrics database for Solana token information.",
           action: "GET_TOKENS_TOKENMETRICS"
         }
       }
@@ -15692,14 +16858,14 @@ var getTopMarketCapAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _options, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing top market cap request...`);
       const marketCapRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         TOP_MARKET_CAP_EXTRACTION_TEMPLATE,
         TopMarketCapRequestSchema,
         requestId
@@ -15722,6 +16888,7 @@ var getTopMarketCapAction = {
       console.log(`[${requestId}] API response received, processing data...`);
       const topTokens = Array.isArray(response) ? response : response.data || [];
       const marketAnalysis = analyzeTopTokensRanking(topTokens, processedRequest.top_k, processedRequest.analysisType);
+      const responseText2 = formatTopMarketCapResponse(topTokens, marketAnalysis, processedRequest);
       const result = {
         success: true,
         message: `Successfully retrieved top ${topTokens.length} tokens by market capitalization ranking`,
@@ -15750,10 +16917,16 @@ var getTopMarketCapAction = {
         }
       };
       console.log(`[${requestId}] Top market cap analysis completed successfully`);
-      return result;
+      if (callback2) {
+        callback2({
+          text: responseText2,
+          content: result
+        });
+      }
+      return true;
     } catch (error) {
       console.error("Error in getTopMarketCapAction:", error);
-      return {
+      const errorResult = {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
         message: "Failed to retrieve top market cap tokens from TokenMetrics API",
@@ -15772,6 +16945,13 @@ var getTopMarketCapAction = {
           api_note: "This endpoint returns token rankings by market cap, not actual market cap values"
         }
       };
+      if (callback2) {
+        callback2({
+          text: "\u274C Failed to retrieve top market cap data. Please try again later.",
+          content: errorResult
+        });
+      }
+      return false;
     }
   },
   async validate(runtime, _message) {
@@ -15918,6 +17098,50 @@ function generateRankingPortfolioImplications(tokensReturned, requested) {
   implications.push("\u2696\uFE0F Use market cap weighting for passive investment strategies");
   return implications;
 }
+function formatTopMarketCapResponse(topTokens, analysis, request) {
+  if (!topTokens || topTokens.length === 0) {
+    return "\u274C No top market cap data available at the moment.";
+  }
+  const { top_k, analysisType } = request;
+  let response = `\u{1F3C6} **Top ${topTokens.length} Cryptocurrencies by Market Cap**
+
+`;
+  const displayCount = Math.min(topTokens.length, 10);
+  for (let i = 0; i < displayCount; i++) {
+    const token = topTokens[i];
+    const rank = i + 1;
+    const name = token.NAME || token.TOKEN_NAME || "Unknown";
+    const symbol = token.SYMBOL || token.TOKEN_SYMBOL || "N/A";
+    response += `${rank}. **${name}** (${symbol})
+`;
+  }
+  if (topTokens.length > displayCount) {
+    response += `
+... and ${topTokens.length - displayCount} more tokens
+`;
+  }
+  if (analysis?.insights && analysis.insights.length > 0) {
+    response += `
+\u{1F4CA} **Key Insights:**
+`;
+    analysis.insights.slice(0, 4).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  }
+  if (analysis?.recommendations && analysis.recommendations.length > 0) {
+    response += `
+\u{1F4A1} **Recommendations:**
+`;
+    analysis.recommendations.slice(0, 3).forEach((rec) => {
+      response += `\u2022 ${rec}
+`;
+    });
+  }
+  response += `
+\u{1F4DA} **Note:** Market cap = Current Price \xD7 Circulating Supply. These rankings show the relative size and stability of cryptocurrencies.`;
+  return response;
+}
 
 // src/actions/getCryptoInvestorsAction.ts
 var CryptoInvestorsRequestSchema = z.object({
@@ -16011,14 +17235,14 @@ var getCryptoInvestorsAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _options, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing crypto investors request...`);
       const investorsRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         CRYPTO_INVESTORS_EXTRACTION_TEMPLATE,
         CryptoInvestorsRequestSchema,
         requestId
@@ -16041,6 +17265,7 @@ var getCryptoInvestorsAction = {
       console.log(`[${requestId}] API response received, processing data...`);
       const investorsData = Array.isArray(response) ? response : response.data || [];
       const investorsAnalysis = analyzeCryptoInvestors(investorsData, processedRequest.analysisType);
+      const responseText2 = formatCryptoInvestorsResponse(investorsData, investorsAnalysis, processedRequest);
       const result = {
         success: true,
         message: `Successfully retrieved ${investorsData.length} crypto investors data`,
@@ -16077,25 +17302,16 @@ var getCryptoInvestorsAction = {
       };
       console.log(`[${requestId}] Crypto investors analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "cryptoinvestors",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
-          }
+      if (callback2) {
+        callback2({
+          text: responseText2,
+          content: result
         });
       }
       return true;
     } catch (error) {
       console.error("Error in getCryptoInvestorsAction:", error);
-      return {
+      const errorResult = {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error occurred",
         message: "Failed to retrieve crypto investors from TokenMetrics API",
@@ -16112,6 +17328,13 @@ var getCryptoInvestorsAction = {
           ]
         }
       };
+      if (callback2) {
+        callback2({
+          text: "\u274C Failed to retrieve crypto investors data. Please try again later.",
+          content: errorResult
+        });
+      }
+      return false;
     }
   },
   async validate(runtime, _message) {
@@ -16196,28 +17419,28 @@ function analyzeCryptoInvestors(investorsData, analysisType = "all") {
   };
 }
 function analyzeInvestorPerformance(investorsData) {
-  const scores = investorsData.map((investor) => investor.INVESTOR_SCORE).filter((score) => score !== null && score !== void 0);
+  const scores = investorsData.map((investor) => investor.ROI_AVERAGE).filter((score) => score !== null && score !== void 0);
   if (scores.length === 0) {
     return { overall_performance: "Unknown", average_score: 0 };
   }
   const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
   const maxScore = Math.max(...scores);
   const minScore = Math.min(...scores);
-  const highPerformers = scores.filter((s) => s >= 80).length;
-  const goodPerformers = scores.filter((s) => s >= 60 && s < 80).length;
-  const averagePerformers = scores.filter((s) => s >= 40 && s < 60).length;
-  const poorPerformers = scores.filter((s) => s < 40).length;
+  const highPerformers = scores.filter((s) => s >= 0.5).length;
+  const goodPerformers = scores.filter((s) => s >= 0.2 && s < 0.5).length;
+  const averagePerformers = scores.filter((s) => s >= 0 && s < 0.2).length;
+  const poorPerformers = scores.filter((s) => s < 0).length;
   let overallPerformance;
-  if (averageScore >= 70) overallPerformance = "Excellent";
-  else if (averageScore >= 60) overallPerformance = "Good";
-  else if (averageScore >= 50) overallPerformance = "Average";
+  if (averageScore >= 0.5) overallPerformance = "Excellent";
+  else if (averageScore >= 0.2) overallPerformance = "Good";
+  else if (averageScore >= 0) overallPerformance = "Average";
   else overallPerformance = "Below Average";
   return {
     overall_performance: overallPerformance,
-    average_score: averageScore.toFixed(1),
-    max_score: maxScore,
-    min_score: minScore,
-    score_range: maxScore - minScore,
+    average_score: `${(averageScore * 100).toFixed(1)}%`,
+    max_score: `${(maxScore * 100).toFixed(1)}%`,
+    min_score: `${(minScore * 100).toFixed(1)}%`,
+    score_range: `${((maxScore - minScore) * 100).toFixed(1)}%`,
     performance_distribution: {
       high_performers: `${highPerformers} (${(highPerformers / scores.length * 100).toFixed(1)}%)`,
       good_performers: `${goodPerformers} (${(goodPerformers / scores.length * 100).toFixed(1)}%)`,
@@ -16230,7 +17453,7 @@ function analyzeInvestorPerformance(investorsData) {
 function analyzeMarketParticipation(investorsData) {
   const totalInvestors = investorsData.length;
   const activeInvestors = investorsData.filter(
-    (investor) => investor.PORTFOLIO_VALUE && investor.PORTFOLIO_VALUE > 0
+    (investor) => investor.ROUND_COUNT && parseInt(investor.ROUND_COUNT) > 0
   ).length;
   const participationRate = totalInvestors > 0 ? activeInvestors / totalInvestors * 100 : 0;
   let participationLevel;
@@ -16238,17 +17461,17 @@ function analyzeMarketParticipation(investorsData) {
   else if (participationRate >= 60) participationLevel = "High";
   else if (participationRate >= 40) participationLevel = "Moderate";
   else participationLevel = "Low";
-  const portfolioValues = investorsData.map((investor) => investor.PORTFOLIO_VALUE).filter((value) => value && value > 0);
-  let portfolioAnalysis = {};
-  if (portfolioValues.length > 0) {
-    const totalValue = portfolioValues.reduce((sum, value) => sum + value, 0);
-    const averageValue = totalValue / portfolioValues.length;
-    const maxValue = Math.max(...portfolioValues);
-    portfolioAnalysis = {
-      total_portfolio_value: formatCurrency(totalValue),
-      average_portfolio_value: formatCurrency(averageValue),
-      largest_portfolio: formatCurrency(maxValue),
-      portfolio_concentration: analyzePortfolioConcentration(portfolioValues)
+  const roundCounts = investorsData.map((investor) => parseInt(investor.ROUND_COUNT) || 0).filter((count) => count > 0);
+  let roundAnalysis = {};
+  if (roundCounts.length > 0) {
+    const totalRounds = roundCounts.reduce((sum, count) => sum + count, 0);
+    const averageRounds = totalRounds / roundCounts.length;
+    const maxRounds = Math.max(...roundCounts);
+    roundAnalysis = {
+      total_investment_rounds: totalRounds,
+      average_rounds_per_investor: averageRounds.toFixed(1),
+      most_active_investor_rounds: maxRounds,
+      investment_activity: analyzeInvestmentActivity(roundCounts)
     };
   }
   return {
@@ -16256,16 +17479,18 @@ function analyzeMarketParticipation(investorsData) {
     participation_rate: `${participationRate.toFixed(1)}%`,
     total_investors: totalInvestors,
     active_investors: activeInvestors,
-    portfolio_analysis: portfolioAnalysis,
+    round_analysis: roundAnalysis,
     market_coverage: assessMarketCoverage(investorsData)
   };
 }
 function analyzeInvestorInfluence(investorsData) {
   const influenceMetrics = investorsData.map((investor) => ({
-    name: investor.INVESTOR_NAME || investor.NAME || "Unknown",
-    score: investor.INVESTOR_SCORE || 0,
-    portfolio_value: investor.PORTFOLIO_VALUE || 0,
-    follower_count: investor.FOLLOWER_COUNT || 0,
+    name: investor.INVESTOR_NAME || "Unknown",
+    roi_average: investor.ROI_AVERAGE || 0,
+    roi_median: investor.ROI_MEDIAN || 0,
+    round_count: parseInt(investor.ROUND_COUNT) || 0,
+    has_website: !!investor.INVESTOR_WEBSITE,
+    has_twitter: !!investor.INVESTOR_TWITTER,
     influence_score: calculateInfluenceScore(investor)
   })).sort((a, b) => b.influence_score - a.influence_score);
   const topInfluencers = influenceMetrics.slice(0, 10);
@@ -16274,8 +17499,9 @@ function analyzeInvestorInfluence(investorsData) {
     top_influencers: topInfluencers.slice(0, 5).map((inv) => ({
       name: inv.name,
       influence_score: inv.influence_score.toFixed(1),
-      investor_score: inv.score,
-      portfolio_value: formatCurrency(inv.portfolio_value)
+      roi_average: `${(inv.roi_average * 100).toFixed(1)}%`,
+      investment_rounds: inv.round_count,
+      online_presence: (inv.has_website ? "Website " : "") + (inv.has_twitter ? "Twitter" : "")
     })),
     average_influence: averageInfluence.toFixed(1),
     influence_distribution: analyzeInfluenceDistribution(influenceMetrics),
@@ -16358,80 +17584,86 @@ function generateMarketImplications(performanceAnalysis, sentimentAnalysis) {
   };
 }
 function identifyTopPerformers(investorsData) {
-  const performers = investorsData.filter((investor) => investor.INVESTOR_SCORE).sort((a, b) => b.INVESTOR_SCORE - a.INVESTOR_SCORE).slice(0, 10);
+  const performers = investorsData.filter((investor) => investor.ROI_AVERAGE !== null && investor.ROI_AVERAGE !== void 0).sort((a, b) => b.ROI_AVERAGE - a.ROI_AVERAGE).slice(0, 10);
   return {
     top_10_performers: performers.map((investor, index) => ({
       rank: index + 1,
-      name: investor.INVESTOR_NAME || investor.NAME || `Investor ${index + 1}`,
-      score: investor.INVESTOR_SCORE,
-      portfolio_value: investor.PORTFOLIO_VALUE ? formatCurrency(investor.PORTFOLIO_VALUE) : "N/A",
-      performance_category: categorizePerformance(investor.INVESTOR_SCORE)
+      name: investor.INVESTOR_NAME || `Investor ${index + 1}`,
+      roi_average: `${(investor.ROI_AVERAGE * 100).toFixed(1)}%`,
+      roi_median: investor.ROI_MEDIAN ? `${(investor.ROI_MEDIAN * 100).toFixed(1)}%` : "N/A",
+      round_count: investor.ROUND_COUNT || "N/A",
+      performance_category: categorizePerformance(investor.ROI_AVERAGE)
     })),
-    performance_gap: performers.length > 1 ? performers[0].INVESTOR_SCORE - performers[performers.length - 1].INVESTOR_SCORE : 0,
-    elite_threshold: performers.length > 0 ? performers[0].INVESTOR_SCORE : 0
+    performance_gap: performers.length > 1 ? `${((performers[0].ROI_AVERAGE - performers[performers.length - 1].ROI_AVERAGE) * 100).toFixed(1)}%` : "0%",
+    elite_threshold: performers.length > 0 ? `${(performers[0].ROI_AVERAGE * 100).toFixed(1)}%` : "0%"
   };
 }
 function calculateInfluenceScore(investor) {
   let score = 0;
-  if (investor.INVESTOR_SCORE) score += investor.INVESTOR_SCORE * 0.4;
-  if (investor.PORTFOLIO_VALUE) {
-    const portfolioScore = Math.min(investor.PORTFOLIO_VALUE / 1e7, 50);
-    score += portfolioScore * 0.3;
+  if (investor.ROI_AVERAGE) {
+    const roiScore = Math.max(0, investor.ROI_AVERAGE * 100);
+    score += Math.min(roiScore, 50) * 0.4;
   }
-  if (investor.FOLLOWER_COUNT) {
-    const followerScore = Math.min(investor.FOLLOWER_COUNT / 1e4, 30);
-    score += followerScore * 0.2;
+  if (investor.ROUND_COUNT) {
+    const roundScore = Math.min(parseInt(investor.ROUND_COUNT), 20);
+    score += roundScore * 0.3;
   }
-  if (investor.LAST_ACTIVITY && isRecentActivity(investor.LAST_ACTIVITY)) {
-    score += 10 * 0.1;
-  }
+  if (investor.INVESTOR_WEBSITE) score += 10 * 0.15;
+  if (investor.INVESTOR_TWITTER) score += 10 * 0.15;
   return Math.min(score, 100);
 }
 function isRecentActivity(lastActivity) {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
   return new Date(lastActivity) > thirtyDaysAgo;
 }
+function analyzeInvestmentActivity(roundCounts) {
+  const averageRounds = roundCounts.reduce((sum, count) => sum + count, 0) / roundCounts.length;
+  if (averageRounds > 10) return "Very Active";
+  if (averageRounds > 5) return "Active";
+  if (averageRounds > 2) return "Moderate";
+  return "Limited";
+}
 function assessPerformanceQuality(averageScore, highPerformers, totalInvestors) {
   const highPerformerRatio = highPerformers / totalInvestors;
-  if (averageScore > 70 && highPerformerRatio > 0.3) return "Exceptional";
-  if (averageScore > 60 && highPerformerRatio > 0.2) return "High Quality";
-  if (averageScore > 50 && highPerformerRatio > 0.1) return "Good Quality";
-  if (averageScore > 40) return "Average Quality";
+  if (averageScore > 0.3 && highPerformerRatio > 0.3) return "Exceptional";
+  if (averageScore > 0.1 && highPerformerRatio > 0.2) return "High Quality";
+  if (averageScore > 0 && highPerformerRatio > 0.1) return "Good Quality";
+  if (averageScore > -0.2) return "Average Quality";
   return "Below Average Quality";
 }
-function analyzePortfolioConcentration(portfolioValues) {
-  const sortedValues = portfolioValues.sort((a, b) => b - a);
-  const totalValue = sortedValues.reduce((sum, value) => sum + value, 0);
-  const top10Percent = Math.ceil(sortedValues.length * 0.1);
-  const top10Value = sortedValues.slice(0, top10Percent).reduce((sum, value) => sum + value, 0);
-  const concentrationRatio = top10Value / totalValue * 100;
-  if (concentrationRatio > 80) return "Highly Concentrated";
-  if (concentrationRatio > 60) return "Concentrated";
-  if (concentrationRatio > 40) return "Moderately Concentrated";
-  return "Distributed";
+function categorizePerformance(score) {
+  if (score >= 2) return "Elite";
+  if (score >= 1) return "Excellent";
+  if (score >= 0.5) return "Good";
+  if (score >= 0.2) return "Average";
+  if (score >= 0) return "Below Average";
+  return "Poor";
 }
-function assessMarketCoverage(investorsData) {
-  const categories = new Set(investorsData.map((inv) => inv.CATEGORY).filter((c) => c));
-  const regions = new Set(investorsData.map((inv) => inv.REGION).filter((r) => r));
-  if (categories.size > 5 && regions.size > 8) return "Global and Diverse";
-  if (categories.size > 3 && regions.size > 5) return "Broad Coverage";
-  if (categories.size > 2 && regions.size > 3) return "Moderate Coverage";
-  return "Limited Coverage";
+function assessDataCompleteness(investorsData) {
+  const requiredFields = ["INVESTOR_NAME", "ROI_AVERAGE", "ROUND_COUNT"];
+  let completeness = 0;
+  investorsData.forEach((investor) => {
+    const presentFields = requiredFields.filter(
+      (field) => investor[field] !== null && investor[field] !== void 0
+    );
+    completeness += presentFields.length / requiredFields.length;
+  });
+  const avgCompleteness = completeness / investorsData.length * 100;
+  if (avgCompleteness > 80) return "Very Complete";
+  if (avgCompleteness > 60) return "Complete";
+  if (avgCompleteness > 40) return "Moderate";
+  return "Limited";
 }
-function analyzeInfluenceDistribution(influenceMetrics) {
-  const highInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 80).length;
-  const moderateInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 60 && inv.influence_score < 80).length;
-  const lowInfluence = influenceMetrics.filter((inv) => inv.influence_score < 60).length;
-  return {
-    high_influence: `${highInfluence} (${(highInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
-    moderate_influence: `${moderateInfluence} (${(moderateInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
-    low_influence: `${lowInfluence} (${(lowInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
-    influence_concentration: highInfluence > influenceMetrics.length * 0.2 ? "Concentrated" : "Distributed"
-  };
+function assessCoverageScope2(investorsData) {
+  const investorCount = investorsData.length;
+  if (investorCount > 100) return "Comprehensive";
+  if (investorCount > 50) return "Broad";
+  if (investorCount > 25) return "Moderate";
+  return "Limited";
 }
 function identifyMarketLeaders(topInfluencers) {
   return topInfluencers.slice(0, 3).map(
-    (influencer) => `${influencer.name} (Score: ${influencer.influence_score})`
+    (influencer) => `${influencer.name} (Influence: ${influencer.influence_score})`
   );
 }
 function determinMarketMood(sentiment, activityRate) {
@@ -16489,35 +17721,130 @@ function identifyOpportunities(performanceAnalysis, sentimentAnalysis) {
   opportunities.push("Use investor influence data for better market timing");
   return opportunities;
 }
-function assessDataCompleteness(investorsData) {
-  const requiredFields = ["INVESTOR_NAME", "INVESTOR_SCORE", "PORTFOLIO_VALUE"];
-  let completeness = 0;
-  investorsData.forEach((investor) => {
-    const presentFields = requiredFields.filter(
-      (field) => investor[field] !== null && investor[field] !== void 0
-    );
-    completeness += presentFields.length / requiredFields.length;
-  });
-  const avgCompleteness = completeness / investorsData.length * 100;
-  if (avgCompleteness > 80) return "Very Complete";
-  if (avgCompleteness > 60) return "Complete";
-  if (avgCompleteness > 40) return "Moderate";
-  return "Limited";
+function analyzeInfluenceDistribution(influenceMetrics) {
+  const highInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 80).length;
+  const moderateInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 60 && inv.influence_score < 80).length;
+  const lowInfluence = influenceMetrics.filter((inv) => inv.influence_score < 60).length;
+  return {
+    high_influence: `${highInfluence} (${(highInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
+    moderate_influence: `${moderateInfluence} (${(moderateInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
+    low_influence: `${lowInfluence} (${(lowInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
+    influence_concentration: highInfluence > influenceMetrics.length * 0.2 ? "Concentrated" : "Distributed"
+  };
 }
-function assessCoverageScope2(investorsData) {
-  const investorCount = investorsData.length;
-  if (investorCount > 100) return "Comprehensive";
-  if (investorCount > 50) return "Broad";
-  if (investorCount > 25) return "Moderate";
-  return "Limited";
+function assessMarketCoverage(investorsData) {
+  const websiteCount = investorsData.filter((inv) => inv.INVESTOR_WEBSITE).length;
+  const twitterCount = investorsData.filter((inv) => inv.INVESTOR_TWITTER).length;
+  const onlinePresence = (websiteCount + twitterCount) / (investorsData.length * 2) * 100;
+  if (onlinePresence > 70) return "High Online Presence";
+  if (onlinePresence > 50) return "Moderate Online Presence";
+  if (onlinePresence > 30) return "Limited Online Presence";
+  return "Minimal Online Presence";
 }
-function categorizePerformance(score) {
-  if (score >= 90) return "Elite";
-  if (score >= 80) return "Excellent";
-  if (score >= 70) return "Good";
-  if (score >= 60) return "Average";
-  if (score >= 50) return "Below Average";
-  return "Poor";
+function formatCryptoInvestorsResponse(investorsData, analysis, request) {
+  if (!investorsData || investorsData.length === 0) {
+    return "\u274C No crypto investors data available at the moment.";
+  }
+  const { limit, analysisType } = request;
+  let response = `\u{1F465} **Crypto Investors Analysis** (${investorsData.length} investors)
+
+`;
+  const displayCount = Math.min(investorsData.length, 10);
+  response += `\u{1F3C6} **Top ${displayCount} Investors by ROI:**
+`;
+  const sortedInvestors = [...investorsData].sort((a, b) => (b.ROI_AVERAGE || 0) - (a.ROI_AVERAGE || 0));
+  for (let i = 0; i < displayCount; i++) {
+    const investor = sortedInvestors[i];
+    const rank = i + 1;
+    const name = investor.INVESTOR_NAME || `Investor ${rank}`;
+    const roi = investor.ROI_AVERAGE !== null ? `${(investor.ROI_AVERAGE * 100).toFixed(1)}%` : "N/A";
+    const rounds = investor.ROUND_COUNT || "N/A";
+    response += `${rank}. **${name}** - ROI: ${roi} (${rounds} rounds)
+`;
+  }
+  if (investorsData.length > displayCount) {
+    response += `
+... and ${investorsData.length - displayCount} more investors
+`;
+  }
+  if (analysis?.insights && analysis.insights.length > 0) {
+    response += `
+\u{1F4CA} **Key Insights:**
+`;
+    analysis.insights.slice(0, 4).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  }
+  if (analysis?.performance_analysis) {
+    const perf = analysis.performance_analysis;
+    response += `
+\u{1F4C8} **Performance Overview:**
+`;
+    response += `\u2022 Average ROI: ${perf.average_score}
+`;
+    response += `\u2022 Overall Performance: ${perf.overall_performance}
+`;
+    if (perf.performance_distribution) {
+      response += `\u2022 High Performers (50%+ ROI): ${perf.performance_distribution.high_performers}
+`;
+      response += `\u2022 Poor Performers (Negative ROI): ${perf.performance_distribution.poor_performers}
+`;
+    }
+  }
+  if (analysis?.market_participation) {
+    const market = analysis.market_participation;
+    response += `
+\u{1F3AF} **Market Participation:**
+`;
+    response += `\u2022 Participation Level: ${market.participation_level}
+`;
+    if (market.participation_rate) {
+      response += `\u2022 Active Rate: ${market.participation_rate}
+`;
+    }
+    if (market.round_analysis?.total_investment_rounds) {
+      response += `\u2022 Total Investment Rounds: ${market.round_analysis.total_investment_rounds}
+`;
+    }
+  }
+  if (analysisType === "performance" && analysis?.performance_focus) {
+    response += `
+\u{1F3C6} **Performance Focus:**
+`;
+    analysis.performance_focus.performance_insights?.slice(0, 3).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  } else if (analysisType === "influence" && analysis?.influence_focus) {
+    response += `
+\u{1F31F} **Influence Focus:**
+`;
+    analysis.influence_focus.influence_insights?.slice(0, 3).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  } else if (analysisType === "sentiment" && analysis?.sentiment_focus) {
+    response += `
+\u{1F60A} **Sentiment Focus:**
+`;
+    analysis.sentiment_focus.sentiment_insights?.slice(0, 3).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  }
+  if (analysis?.investment_strategy && analysis.investment_strategy.length > 0) {
+    response += `
+\u{1F4A1} **Investment Strategy:**
+`;
+    analysis.investment_strategy.slice(0, 3).forEach((strategy) => {
+      response += `\u2022 ${strategy}
+`;
+    });
+  }
+  response += `
+\u{1F4DA} **Note:** ROI scores are based on average returns from investment rounds. Negative values indicate losses.`;
+  return response;
 }
 
 // src/actions/getIndicesPerformanceAction.ts
@@ -16628,14 +17955,14 @@ var getIndicesPerformanceAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  async handler(runtime, message, state, _options, callback2) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices performance request...`);
       const performanceRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state || await runtime.composeState(message),
         INDICES_PERFORMANCE_EXTRACTION_TEMPLATE,
         IndicesPerformanceRequestSchema,
         requestId
@@ -16715,10 +18042,11 @@ var getIndicesPerformanceAction = {
         }
       };
       console.log(`[${requestId}] Indices performance analysis completed successfully`);
+      const responseText2 = formatIndicesPerformanceResponse(result);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
+      if (callback2) {
+        callback2({
+          text: responseText2,
           content: {
             success: true,
             request_id: requestId,
@@ -16734,11 +18062,16 @@ var getIndicesPerformanceAction = {
       return true;
     } catch (error) {
       console.error("Error in getIndicesPerformance action:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve indices performance data from TokenMetrics"
-      };
+      if (callback2) {
+        callback2({
+          text: `\u274C Failed to retrieve indices performance data: ${error instanceof Error ? error.message : "Unknown error"}`,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred"
+          }
+        });
+      }
+      return false;
     }
   },
   async validate(runtime, _message) {
@@ -16885,9 +18218,123 @@ function analyzePerformanceData(performance, analysisType = "all") {
 }
 function calculateVaR(returns, confidence = 0.05) {
   if (returns.length === 0) return 0;
-  const sortedReturns = [...returns].sort((a, b) => a - b);
-  const index = Math.floor(returns.length * confidence);
+  const sortedReturns = returns.sort((a, b) => a - b);
+  const index = Math.floor(confidence * sortedReturns.length);
   return sortedReturns[index] || 0;
+}
+function formatIndicesPerformanceResponse(result) {
+  const { indices_performance, analysis, metadata } = result;
+  let response = `\u{1F4CA} **Index Performance Analysis**
+
+`;
+  if (indices_performance && indices_performance.length > 0) {
+    response += `\u{1F3AF} **Index ${metadata.index_id} Performance (${indices_performance.length} data points)**
+
+`;
+    if (analysis && analysis.performance_metrics) {
+      const metrics = analysis.performance_metrics;
+      response += `\u{1F4C8} **Performance Summary:**
+`;
+      if (metrics.total_return !== void 0) {
+        response += `\u2022 Total Return: ${formatPercentage(metrics.total_return)}
+`;
+      }
+      if (metrics.avg_daily_return !== void 0) {
+        response += `\u2022 Average Daily Return: ${formatPercentage(metrics.avg_daily_return)}
+`;
+      }
+      if (metrics.avg_volatility !== void 0) {
+        response += `\u2022 Volatility: ${formatPercentage(metrics.avg_volatility)}
+`;
+      }
+      if (metrics.win_rate !== void 0) {
+        response += `\u2022 Win Rate: ${formatPercentage(metrics.win_rate)}
+`;
+      }
+      if (metrics.best_day !== void 0) {
+        response += `\u2022 Best Day: ${formatPercentage(metrics.best_day)}
+`;
+      }
+      if (metrics.worst_day !== void 0) {
+        response += `\u2022 Worst Day: ${formatPercentage(metrics.worst_day)}
+`;
+      }
+      response += `
+`;
+    }
+    if (analysis && analysis.time_period) {
+      const period = analysis.time_period;
+      response += `\u{1F4C5} **Time Period:**
+`;
+      response += `\u2022 Start Date: ${period.start_date || "N/A"}
+`;
+      response += `\u2022 End Date: ${period.end_date || "N/A"}
+`;
+      response += `\u2022 Data Points: ${period.data_points || 0}
+`;
+      response += `\u2022 Trading Days: ${period.trading_days || 0}
+`;
+      response += `
+`;
+    }
+    if (analysis && analysis.latest_values) {
+      const latest = analysis.latest_values;
+      response += `\u{1F4CA} **Latest Values:**
+`;
+      if (latest.index_cumulative_roi !== void 0) {
+        response += `\u2022 Cumulative ROI: ${formatPercentage(latest.index_cumulative_roi)}
+`;
+      }
+      if (latest.market_cap) {
+        response += `\u2022 Market Cap: ${formatCurrency(latest.market_cap)}
+`;
+      }
+      if (latest.volume) {
+        response += `\u2022 Volume: ${formatCurrency(latest.volume)}
+`;
+      }
+      response += `
+`;
+    }
+    if (analysis && analysis.insights) {
+      response += `\u{1F4A1} **Key Insights:**
+`;
+      analysis.insights.slice(0, 5).forEach((insight) => {
+        response += `\u2022 ${insight}
+`;
+      });
+      response += `
+`;
+    }
+    if (analysis && analysis.recommendations) {
+      response += `\u{1F3AF} **Recommendations:**
+`;
+      analysis.recommendations.slice(0, 3).forEach((rec) => {
+        response += `\u2022 ${rec}
+`;
+      });
+    }
+  } else {
+    response += `\u274C No performance data found for index ${metadata.index_id}.
+
+`;
+    response += `This could be due to:
+`;
+    response += `\u2022 Invalid index ID
+`;
+    response += `\u2022 No performance history available
+`;
+    response += `\u2022 Date range outside available data
+`;
+    response += `\u2022 API connectivity issues
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
 }
 
 // src/index.ts

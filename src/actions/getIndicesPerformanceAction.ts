@@ -138,7 +138,13 @@ export const getIndicesPerformanceAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing indices performance request...`);
@@ -147,7 +153,7 @@ export const getIndicesPerformanceAction: Action = {
             const performanceRequest = await extractTokenMetricsRequest<IndicesPerformanceRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 INDICES_PERFORMANCE_EXTRACTION_TEMPLATE,
                 IndicesPerformanceRequestSchema,
                 requestId
@@ -243,6 +249,10 @@ export const getIndicesPerformanceAction: Action = {
             };
             
             console.log(`[${requestId}] Indices performance analysis completed successfully`);
+            
+            // Format response text for user
+            const responseText = formatIndicesPerformanceResponse(result);
+            
             console.log(`[${requestId}] Analysis completed successfully`);
             
             // Use callback to send response to user (like working actions)
@@ -265,11 +275,18 @@ export const getIndicesPerformanceAction: Action = {
             return true;
         } catch (error) {
             console.error("Error in getIndicesPerformance action:", error);
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve indices performance data from TokenMetrics"
-            };
+            
+            if (callback) {
+                callback({
+                    text: `❌ Failed to retrieve indices performance data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                    }
+                });
+            }
+            
+            return false;
         }
     },
 
@@ -464,12 +481,107 @@ function analyzePerformanceData(performance: any[], analysisType: string = "all"
 }
 
 /**
- * Calculate Value at Risk (VaR) at 95% confidence level
+ * Calculate Value at Risk (VaR) for performance data
  */
 function calculateVaR(returns: number[], confidence: number = 0.05): number {
     if (returns.length === 0) return 0;
     
-    const sortedReturns = [...returns].sort((a, b) => a - b);
-    const index = Math.floor(returns.length * confidence);
+    const sortedReturns = returns.sort((a, b) => a - b);
+    const index = Math.floor(confidence * sortedReturns.length);
+    
     return sortedReturns[index] || 0;
+}
+
+/**
+ * Format indices performance response for user display
+ */
+function formatIndicesPerformanceResponse(result: any): string {
+    const { indices_performance, analysis, metadata } = result;
+    
+    let response = `📊 **Index Performance Analysis**\n\n`;
+    
+    if (indices_performance && indices_performance.length > 0) {
+        response += `🎯 **Index ${metadata.index_id} Performance (${indices_performance.length} data points)**\n\n`;
+        
+        // Add performance metrics
+        if (analysis && analysis.performance_metrics) {
+            const metrics = analysis.performance_metrics;
+            response += `📈 **Performance Summary:**\n`;
+            if (metrics.total_return !== undefined) {
+                response += `• Total Return: ${formatPercentage(metrics.total_return)}\n`;
+            }
+            if (metrics.avg_daily_return !== undefined) {
+                response += `• Average Daily Return: ${formatPercentage(metrics.avg_daily_return)}\n`;
+            }
+            if (metrics.avg_volatility !== undefined) {
+                response += `• Volatility: ${formatPercentage(metrics.avg_volatility)}\n`;
+            }
+            if (metrics.win_rate !== undefined) {
+                response += `• Win Rate: ${formatPercentage(metrics.win_rate)}\n`;
+            }
+            if (metrics.best_day !== undefined) {
+                response += `• Best Day: ${formatPercentage(metrics.best_day)}\n`;
+            }
+            if (metrics.worst_day !== undefined) {
+                response += `• Worst Day: ${formatPercentage(metrics.worst_day)}\n`;
+            }
+            response += `\n`;
+        }
+        
+        // Add time period info
+        if (analysis && analysis.time_period) {
+            const period = analysis.time_period;
+            response += `📅 **Time Period:**\n`;
+            response += `• Start Date: ${period.start_date || 'N/A'}\n`;
+            response += `• End Date: ${period.end_date || 'N/A'}\n`;
+            response += `• Data Points: ${period.data_points || 0}\n`;
+            response += `• Trading Days: ${period.trading_days || 0}\n`;
+            response += `\n`;
+        }
+        
+        // Add latest values
+        if (analysis && analysis.latest_values) {
+            const latest = analysis.latest_values;
+            response += `📊 **Latest Values:**\n`;
+            if (latest.index_cumulative_roi !== undefined) {
+                response += `• Cumulative ROI: ${formatPercentage(latest.index_cumulative_roi)}\n`;
+            }
+            if (latest.market_cap) {
+                response += `• Market Cap: ${formatCurrency(latest.market_cap)}\n`;
+            }
+            if (latest.volume) {
+                response += `• Volume: ${formatCurrency(latest.volume)}\n`;
+            }
+            response += `\n`;
+        }
+        
+        // Add analysis insights
+        if (analysis && analysis.insights) {
+            response += `💡 **Key Insights:**\n`;
+            analysis.insights.slice(0, 5).forEach((insight: string) => {
+                response += `• ${insight}\n`;
+            });
+            response += `\n`;
+        }
+        
+        // Add recommendations
+        if (analysis && analysis.recommendations) {
+            response += `🎯 **Recommendations:**\n`;
+            analysis.recommendations.slice(0, 3).forEach((rec: string) => {
+                response += `• ${rec}\n`;
+            });
+        }
+    } else {
+        response += `❌ No performance data found for index ${metadata.index_id}.\n\n`;
+        response += `This could be due to:\n`;
+        response += `• Invalid index ID\n`;
+        response += `• No performance history available\n`;
+        response += `• Date range outside available data\n`;
+        response += `• API connectivity issues\n`;
+    }
+    
+    response += `\n📊 **Data Source**: TokenMetrics Indices Engine\n`;
+    response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
 } 
