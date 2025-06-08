@@ -1,14 +1,82 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { QuantmetricsResponse, QuantmetricsRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
+import type { QuantmetricsResponse } from "../types";
+
+// Zod schema for quantmetrics request validation
+const QuantmetricsRequestSchema = z.object({
+    cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
+    token_id: z.number().optional().describe("Specific token ID if known"),
+    symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+    category: z.string().optional().describe("Token category filter (e.g., defi, layer1)"),
+    exchange: z.string().optional().describe("Exchange filter"),
+    marketcap: z.number().optional().describe("Minimum market cap filter"),
+    volume: z.number().optional().describe("Minimum volume filter"),
+    fdv: z.number().optional().describe("Minimum fully diluted valuation filter"),
+    limit: z.number().min(1).max(1000).optional().describe("Number of results to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["risk", "returns", "performance", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type QuantmetricsRequest = z.infer<typeof QuantmetricsRequestSchema>;
+
+// AI extraction template for natural language processing
+const QUANTMETRICS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting quantitative metrics requests from natural language.
+
+The user wants to get comprehensive quantitative metrics for cryptocurrency analysis. Extract the following information:
+
+1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
+   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
+   - Can be a specific token or general request
+
+2. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
+
+3. **symbol** (optional): Token symbol
+   - Extract symbols like "BTC", "ETH", "ADA", etc.
+
+4. **category** (optional): Token category filter
+   - Look for categories like "defi", "layer1", "gaming", "nft"
+
+5. **exchange** (optional): Exchange filter
+   - Exchange names like "binance", "coinbase", "uniswap"
+
+6. **marketcap** (optional): Minimum market cap filter
+   - Look for phrases like "market cap over $500M", "large cap tokens"
+   - Convert to numbers (e.g., "$500M" → 500000000)
+
+7. **volume** (optional): Minimum volume filter
+   - Look for volume requirements
+
+8. **fdv** (optional): Minimum fully diluted valuation filter
+
+9. **limit** (optional, default: 50): Number of results to return
+
+10. **page** (optional, default: 1): Page number for pagination
+
+11. **analysisType** (optional, default: "all"): What type of analysis they want
+    - "risk" - focus on risk metrics (volatility, drawdown, VaR)
+    - "returns" - focus on return metrics (CAGR, Sharpe, Sortino)
+    - "performance" - focus on performance analysis
+    - "all" - comprehensive analysis
+
+Examples:
+- "Get quantitative metrics for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Risk metrics for DeFi tokens with market cap over $500M" → {category: "defi", marketcap: 500000000, analysisType: "risk"}
+- "Show me Sharpe ratio and returns for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "returns"}
+- "Quantitative analysis for large cap tokens" → {marketcap: 1000000000, analysisType: "all"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * CORRECTED Quantmetrics Action - Based on actual TokenMetrics API documentation
@@ -18,7 +86,7 @@ import type { QuantmetricsResponse, QuantmetricsRequest } from "../types";
  * According to the API docs, it supports extensive filtering and uses page-based pagination.
  */
 export const getQuantmetricsAction: Action = {
-    name: "getQuantmetrics",
+    name: "GET_QUANTMETRICS_TOKENMETRICS",
     description: "Get comprehensive quantitative metrics including volatility, Sharpe ratio, CAGR, and risk measurements from TokenMetrics",
     similes: [
         "get quantitative metrics",
@@ -29,74 +97,153 @@ export const getQuantmetricsAction: Action = {
         "analyze returns",
         "portfolio risk analysis"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get quantitative metrics for Bitcoin"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve comprehensive quantitative metrics for Bitcoin including volatility, Sharpe ratio, and risk measurements.",
+                    action: "GET_QUANTMETRICS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me risk metrics for DeFi tokens with market cap over $500M"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll analyze quantitative risk metrics for large-cap DeFi tokens.",
+                    action: "GET_QUANTMETRICS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Analyze Sharpe ratio and returns for Ethereum"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get the quantitative return metrics and Sharpe ratio analysis for Ethereum.",
+                    action: "GET_QUANTMETRICS_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing quantmetrics request...`);
             
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // CORRECTED: Build parameters based on actual API documentation
-            const requestParams: QuantmetricsRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Extensive filtering options from API docs
-                category: typeof messageContent.category === 'string' ? messageContent.category : undefined,
-                exchange: typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined,
-                marketcap: typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined,
-                volume: typeof messageContent.volume === 'number' ? messageContent.volume : undefined,
-                fdv: typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined,
-                
-                // CORRECTED: Use page instead of offset for pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters according to actual API requirements
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call with corrected authentication
-            const response = await callTokenMetricsApi<QuantmetricsResponse>(
-                TOKENMETRICS_ENDPOINTS.quantmetrics,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const quantRequest = await extractTokenMetricsRequest<QuantmetricsRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                QUANTMETRICS_EXTRACTION_TEMPLATE,
+                QuantmetricsRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<QuantmetricsResponse>(response, "getQuantmetrics");
-            const quantmetrics = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, quantRequest);
             
-            // Analyze the quantitative data
-            const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                cryptocurrency: quantRequest.cryptocurrency,
+                token_id: quantRequest.token_id,
+                symbol: quantRequest.symbol,
+                category: quantRequest.category,
+                exchange: quantRequest.exchange,
+                marketcap: quantRequest.marketcap,
+                volume: quantRequest.volume,
+                fdv: quantRequest.fdv,
+                limit: quantRequest.limit || 50,
+                page: quantRequest.page || 1,
+                analysisType: quantRequest.analysisType || "all"
+            };
             
-            return {
+            // Resolve token if cryptocurrency name is provided
+            let resolvedToken = null;
+            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+                try {
+                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+                    if (resolvedToken) {
+                        processedRequest.token_id = resolvedToken.token_id;
+                        processedRequest.symbol = resolvedToken.symbol;
+                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                    }
+                } catch (error) {
+                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                }
+            }
+            
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add optional parameters if provided
+            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
+            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
+            if (processedRequest.category) apiParams.category = processedRequest.category;
+            if (processedRequest.exchange) apiParams.exchange = processedRequest.exchange;
+            if (processedRequest.marketcap) apiParams.marketcap = processedRequest.marketcap;
+            if (processedRequest.volume) apiParams.volume = processedRequest.volume;
+            if (processedRequest.fdv) apiParams.fdv = processedRequest.fdv;
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/quantmetrics",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const quantmetrics = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the quantitative data based on requested analysis type
+            const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved quantitative metrics for ${quantmetrics.length} data points`,
+                request_id: requestId,
                 quantmetrics: quantmetrics,
                 analysis: quantAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.quantmetrics,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    endpoint: "quantmetrics",
+                    requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
+                    resolved_token: resolvedToken,
                     filters_applied: {
-                        category: requestParams.category,
-                        exchange: requestParams.exchange,
-                        min_marketcap: requestParams.marketcap,
-                        min_volume: requestParams.volume,
-                        min_fdv: requestParams.fdv
+                        category: processedRequest.category,
+                        exchange: processedRequest.exchange,
+                        min_marketcap: processedRequest.marketcap,
+                        min_volume: processedRequest.volume,
+                        min_fdv: processedRequest.fdv
                     },
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
+                    analysis_focus: processedRequest.analysisType,
                     data_points: quantmetrics.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
@@ -110,6 +257,9 @@ export const getQuantmetricsAction: Action = {
                     ALL_TIME_RETURN: "Cumulative return since the token's inception"
                 }
             };
+            
+            console.log(`[${requestId}] Quantmetrics analysis completed successfully`);
+            return result;
             
         } catch (error) {
             console.error("Error in getQuantmetricsAction:", error);
@@ -127,7 +277,7 @@ export const getQuantmetricsAction: Action = {
                         "Verify the token has sufficient historical data for analysis"
                     ],
                     common_solutions: [
-                        "Try using a major token (BTC=3375, ETH=1027) to test functionality",
+                        "Try using a major token (BTC, ETH) to test functionality",
                         "Use the tokens endpoint first to verify correct TOKEN_ID",
                         "Check if your subscription includes quantitative metrics access",
                         "Remove filters to get broader results"
@@ -137,56 +287,15 @@ export const getQuantmetricsAction: Action = {
         }
     },
     
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get quantitative metrics for Bitcoin",
-                    symbol: "BTC"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve comprehensive quantitative metrics for Bitcoin including volatility, Sharpe ratio, and risk measurements.",
-                    action: "GET_QUANTMETRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me risk metrics for DeFi tokens with market cap over $500M",
-                    category: "defi",
-                    marketcap: 500000000
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll analyze quantitative risk metrics for large-cap DeFi tokens.",
-                    action: "GET_QUANTMETRICS"
-                }
-            }
-        ]
-    ],
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
  * Analyze quantitative metrics to provide investment insights
  */
-function analyzeQuantitativeMetrics(quantData: any[]): any {
+function analyzeQuantitativeMetrics(quantData: any[], analysisType: string): any {
     if (!quantData || quantData.length === 0) {
         return {
             summary: "No quantitative data available for analysis",
@@ -255,33 +364,27 @@ function analyzeRiskMetrics(quantData: any[]): any {
 }
 
 function analyzeReturnMetrics(quantData: any[]): any {
-    const sharpeRatios = quantData.map(d => d.SHARPE).filter(s => s !== null && s !== undefined);
-    const cagrs = quantData.map(d => d.CAGR).filter(c => c !== null && c !== undefined);
-    const allTimeReturns = quantData.map(d => d.ALL_TIME_RETURN).filter(r => r !== null && r !== undefined);
-    
-    if (sharpeRatios.length === 0 && cagrs.length === 0) {
-        return { return_quality: "Unknown", performance_assessment: "Insufficient data" };
-    }
+    const sharpeRatios = quantData.map(d => d.SHARPE || 0).filter(s => !isNaN(s));
+    const cagrValues = quantData.map(d => d.CAGR || 0).filter(c => !isNaN(c));
+    const sortinoRatios = quantData.map(d => d.SORTINO || 0).filter(s => !isNaN(s));
     
     const avgSharpe = sharpeRatios.length > 0 ? sharpeRatios.reduce((sum, s) => sum + s, 0) / sharpeRatios.length : 0;
-    const avgCAGR = cagrs.length > 0 ? cagrs.reduce((sum, c) => sum + c, 0) / cagrs.length : 0;
-    const avgAllTimeReturn = allTimeReturns.length > 0 ? 
-        allTimeReturns.reduce((sum, r) => sum + r, 0) / allTimeReturns.length : 0;
+    const avgCAGR = cagrValues.length > 0 ? cagrValues.reduce((sum, c) => sum + c, 0) / cagrValues.length : 0;
+    const avgSortino = sortinoRatios.length > 0 ? sortinoRatios.reduce((sum, s) => sum + s, 0) / sortinoRatios.length : 0;
     
-    // Assess return quality
-    let returnQuality;
-    if (avgSharpe > 1.5) returnQuality = "Excellent";
-    else if (avgSharpe > 1.0) returnQuality = "Good";
-    else if (avgSharpe > 0.5) returnQuality = "Fair";
-    else if (avgSharpe > 0) returnQuality = "Poor";
-    else returnQuality = "Very Poor";
+    const insights = [];
+    if (sharpeRatios.length > 0) {
+        insights.push(`🏆 Average Sharpe Ratio: ${avgSharpe.toFixed(2)}`);
+        insights.push(`📈 Average CAGR: ${formatPercentage(avgCAGR)}`);
+    }
     
     return {
-        return_quality: returnQuality,
-        average_sharpe_ratio: avgSharpe.toFixed(3),
-        average_cagr: formatTokenMetricsNumber(avgCAGR, 'percentage'),
-        average_all_time_return: formatTokenMetricsNumber(avgAllTimeReturn, 'percentage'),
-        performance_assessment: generatePerformanceAssessment(avgSharpe, avgCAGR)
+        avg_sharpe: avgSharpe,
+        avg_cagr: avgCAGR,
+        avg_sortino: avgSortino,
+        sharpe_distribution: analyzeDistribution(sharpeRatios),
+        cagr_distribution: analyzeDistribution(cagrValues),
+        insights: insights
     };
 }
 
@@ -323,7 +426,7 @@ function generateQuantitativeInsights(quantData: any[], riskAnalysis: any, retur
     }
     
     // Return insights
-    const avgSharpe = parseFloat(returnAnalysis.average_sharpe_ratio);
+    const avgSharpe = parseFloat(returnAnalysis.avg_sharpe);
     if (avgSharpe > 1.0) {
         insights.push("Positive Sharpe ratios indicate these assets have historically provided good risk-adjusted returns");
     } else if (avgSharpe < 0) {
@@ -360,13 +463,13 @@ function generateComparativeAnalysis(quantData: any[]): any {
             rank: index + 1,
             name: `${token.NAME} (${token.SYMBOL})`,
             sharpe_ratio: token.SHARPE.toFixed(3),
-            cagr: token.CAGR ? formatTokenMetricsNumber(token.CAGR, 'percentage') : 'N/A'
+            cagr: token.CAGR ? formatPercentage(token.CAGR) : 'N/A'
         })),
         risk_ranking: sortedByVolatility.slice(0, 3).map((token, index) => ({
             rank: index + 1,
             name: `${token.NAME} (${token.SYMBOL})`,
             volatility: token.VOLATILITY.toFixed(2),
-            max_drawdown: token.MAX_DRAWDOWN ? formatTokenMetricsNumber(token.MAX_DRAWDOWN, 'percentage') : 'N/A'
+            max_drawdown: token.MAX_DRAWDOWN ? formatPercentage(token.MAX_DRAWDOWN) : 'N/A'
         })),
         analysis_scope: `${quantData.length} tokens analyzed`
     };
@@ -396,4 +499,24 @@ function generatePerformanceAssessment(avgSharpe: number, avgCAGR: number): stri
     } else {
         return "Poor performance - negative risk-adjusted returns";
     }
+}
+
+/**
+ * Analyze distribution of values into categories
+ */
+function analyzeDistribution(values: number[]): any {
+    if (values.length === 0) {
+        return { high: 0, medium: 0, low: 0 };
+    }
+    
+    // Define thresholds based on typical ranges for financial metrics
+    const high = values.filter(v => v > 1).length;
+    const medium = values.filter(v => v > 0 && v <= 1).length;
+    const low = values.filter(v => v <= 0).length;
+    
+    return {
+        high: `${high} (${((high / values.length) * 100).toFixed(1)}%)`,
+        medium: `${medium} (${((medium / values.length) * 100).toFixed(1)}%)`,
+        low: `${low} (${((low / values.length) * 100).toFixed(1)}%)`
+    };
 }

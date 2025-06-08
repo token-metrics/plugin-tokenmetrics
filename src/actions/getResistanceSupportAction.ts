@@ -1,14 +1,62 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { ResistanceSupportResponse, ResistanceSupportRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
+import type { ResistanceSupportResponse } from "../types";
+
+// Zod schema for resistance support request validation
+const ResistanceSupportRequestSchema = z.object({
+    cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
+    token_id: z.number().optional().describe("Specific token ID if known"),
+    symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+    limit: z.number().min(1).max(100).optional().describe("Number of levels to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["trading_levels", "breakout_analysis", "risk_management", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type ResistanceSupportRequest = z.infer<typeof ResistanceSupportRequestSchema>;
+
+// AI extraction template for natural language processing
+const RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting resistance and support level requests from natural language.
+
+The user wants to get historical levels of resistance and support for cryptocurrency technical analysis. Extract the following information:
+
+1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
+   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
+   - Can be a specific token or general request
+
+2. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
+
+3. **symbol** (optional): Token symbol
+   - Extract symbols like "BTC", "ETH", "ADA", etc.
+
+4. **limit** (optional, default: 50): Number of levels to return
+
+5. **page** (optional, default: 1): Page number for pagination
+
+6. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "trading_levels" - focus on key trading levels and entry/exit points
+   - "breakout_analysis" - focus on potential breakout/breakdown scenarios
+   - "risk_management" - focus on stop-loss and risk management levels
+   - "all" - comprehensive resistance and support analysis
+
+Examples:
+- "Get resistance and support levels for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Show me key trading levels for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "trading_levels"}
+- "Support and resistance for breakout analysis" → {analysisType: "breakout_analysis"}
+- "Risk management levels for Solana" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "risk_management"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * RESISTANCE & SUPPORT ACTION - Based on actual TokenMetrics API documentation
@@ -18,7 +66,7 @@ import type { ResistanceSupportResponse, ResistanceSupportRequest } from "../typ
  * Essential for technical analysis, entry/exit planning, and risk management strategies.
  */
 export const getResistanceSupportAction: Action = {
-    name: "getResistanceSupport",
+    name: "GET_RESISTANCE_SUPPORT_TOKENMETRICS",
     description: "Get historical levels of resistance and support for cryptocurrency tokens from TokenMetrics for technical analysis and trading strategies",
     similes: [
         "get resistance support",
@@ -27,61 +75,139 @@ export const getResistanceSupportAction: Action = {
         "price levels",
         "key levels",
         "support resistance analysis",
-        "technical analysis levels"
+        "technical analysis levels",
+        "trading levels",
+        "breakout levels"
+    ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get resistance and support levels for Bitcoin"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve the key resistance and support levels for Bitcoin from TokenMetrics technical analysis.",
+                    action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me support and resistance levels for Ethereum"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get the technical support and resistance levels for Ethereum to help with trading decisions.",
+                    action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Risk management levels for Solana"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get resistance and support levels for Solana focused on risk management and stop-loss placement.",
+                    action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
+                }
+            }
+        ]
     ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing resistance and support levels request...`);
             
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: ResistanceSupportRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<ResistanceSupportResponse>(
-                TOKENMETRICS_ENDPOINTS.resistanceSupport,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const levelsRequest = await extractTokenMetricsRequest<ResistanceSupportRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE,
+                ResistanceSupportRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<ResistanceSupportResponse>(response, "getResistanceSupport");
-            const levelsData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, levelsRequest);
             
-            // Analyze the resistance and support data
-            const levelsAnalysis = analyzeResistanceSupportLevels(levelsData);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                cryptocurrency: levelsRequest.cryptocurrency,
+                token_id: levelsRequest.token_id,
+                symbol: levelsRequest.symbol,
+                limit: levelsRequest.limit || 50,
+                page: levelsRequest.page || 1,
+                analysisType: levelsRequest.analysisType || "all"
+            };
             
-            return {
+            // Resolve token if cryptocurrency name is provided
+            let resolvedToken = null;
+            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+                try {
+                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+                    if (resolvedToken) {
+                        processedRequest.token_id = resolvedToken.token_id;
+                        processedRequest.symbol = resolvedToken.symbol;
+                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                    }
+                } catch (error) {
+                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                }
+            }
+            
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add token identification parameters
+            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
+            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/resistance-support",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const levelsData = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the resistance and support levels based on requested analysis type
+            const levelsAnalysis = analyzeResistanceSupportLevels(levelsData, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
-                message: `Successfully retrieved ${levelsData.length} resistance and support levels`,
+                message: `Successfully retrieved ${levelsData.length} resistance and support levels from TokenMetrics`,
+                request_id: requestId,
                 resistance_support_levels: levelsData,
                 analysis: levelsAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.resistanceSupport,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    endpoint: "resistance-support",
+                    requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
+                    resolved_token: resolvedToken,
+                    analysis_focus: processedRequest.analysisType,
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
                     data_points: levelsData.length,
                     api_version: "v2",
@@ -105,6 +231,9 @@ export const getResistanceSupportAction: Action = {
                     ]
                 }
             };
+            
+            console.log(`[${requestId}] Resistance and support analysis completed successfully`);
+            return result;
             
         } catch (error) {
             console.error("Error in getResistanceSupportAction:", error);
@@ -132,55 +261,15 @@ export const getResistanceSupportAction: Action = {
         }
     },
     
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get resistance and support levels for Bitcoin",
-                    symbol: "BTC"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve the key resistance and support levels for Bitcoin from TokenMetrics technical analysis.",
-                    action: "GET_RESISTANCE_SUPPORT"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me support and resistance levels for Ethereum",
-                    symbol: "ETH"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the technical support and resistance levels for Ethereum to help with trading decisions.",
-                    action: "GET_RESISTANCE_SUPPORT"
-                }
-            }
-        ]
-    ],
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
- * Comprehensive analysis of resistance and support levels for trading strategies
+ * Comprehensive analysis of resistance and support levels for trading strategies based on analysis type
  */
-function analyzeResistanceSupportLevels(levelsData: any[]): any {
+function analyzeResistanceSupportLevels(levelsData: any[], analysisType: string = "all"): any {
     if (!levelsData || levelsData.length === 0) {
         return {
             summary: "No resistance and support levels data available for analysis",
@@ -197,37 +286,85 @@ function analyzeResistanceSupportLevels(levelsData: any[]): any {
         level.LEVEL_TYPE === 'SUPPORT' || level.TYPE === 'SUPPORT'
     );
     
-    // Analyze level strength and significance
-    const levelAnalysis = analyzeLevelStrength(levelsData);
-    const proximityAnalysis = analyzeLevelProximity(levelsData);
+    // Core analysis components
+    const levelStrength = analyzeLevelStrength(levelsData);
+    const levelProximity = analyzeLevelProximity(levelsData);
     const tradingOpportunities = identifyTradingOpportunities(resistanceLevels, supportLevels);
     const riskManagement = generateRiskManagementGuidance(resistanceLevels, supportLevels);
     
-    // Generate comprehensive insights
-    const insights = generateTechnicalInsights(resistanceLevels, supportLevels, levelAnalysis);
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "trading_levels":
+            focusedAnalysis = {
+                trading_focus: {
+                    key_entry_levels: identifyKeyEntryLevels(supportLevels),
+                    key_exit_levels: identifyKeyExitLevels(resistanceLevels),
+                    optimal_trading_zones: identifyOptimalTradingZones(resistanceLevels, supportLevels),
+                    trading_insights: [
+                        `🎯 Key support levels: ${supportLevels.length}`,
+                        `🚧 Key resistance levels: ${resistanceLevels.length}`,
+                        `📊 Trading opportunities: ${tradingOpportunities.immediate_setups || 0}`
+                    ]
+                }
+            };
+            break;
+            
+        case "breakout_analysis":
+            focusedAnalysis = {
+                breakout_focus: {
+                    breakout_candidates: identifyBreakoutCandidates(resistanceLevels, supportLevels),
+                    breakdown_risks: identifyBreakdownRisks(supportLevels),
+                    momentum_levels: identifyMomentumLevels(levelsData),
+                    breakout_insights: [
+                        `🚀 Breakout candidates: ${resistanceLevels.filter(r => r.STRENGTH > 0.7).length}`,
+                        `⚠️ Breakdown risks: ${supportLevels.filter(s => s.STRENGTH < 0.5).length}`,
+                        `💪 Strong levels: ${levelStrength.strong_levels || 0}`
+                    ]
+                }
+            };
+            break;
+            
+        case "risk_management":
+            focusedAnalysis = {
+                risk_management_focus: {
+                    stop_loss_levels: identifyStopLossLevels(supportLevels),
+                    take_profit_levels: identifyTakeProfitLevels(resistanceLevels),
+                    risk_reward_ratios: calculateRiskRewardRatios(resistanceLevels, supportLevels),
+                    risk_insights: [
+                        `🛡️ Stop-loss levels: ${supportLevels.length}`,
+                        `🎯 Take-profit levels: ${resistanceLevels.length}`,
+                        `⚖️ Risk/reward quality: ${riskManagement.overall_assessment || 'Unknown'}`
+                    ]
+                }
+            };
+            break;
+    }
     
     return {
-        summary: `Technical analysis reveals ${resistanceLevels.length} resistance levels and ${supportLevels.length} support levels with ${levelAnalysis.strong_levels} high-strength levels identified`,
-        level_distribution: {
-            total_levels: levelsData.length,
+        summary: `Analysis of ${levelsData.length} levels (${resistanceLevels.length} resistance, ${supportLevels.length} support) with ${levelStrength.strong_levels} strong levels identified`,
+        analysis_type: analysisType,
+        level_breakdown: {
             resistance_levels: resistanceLevels.length,
             support_levels: supportLevels.length,
-            level_density: calculateLevelDensity(levelsData)
+            total_levels: levelsData.length
         },
-        key_resistance_levels: identifyKeyLevels(resistanceLevels, 'resistance'),
-        key_support_levels: identifyKeyLevels(supportLevels, 'support'),
-        level_analysis: levelAnalysis,
-        proximity_analysis: proximityAnalysis,
+        level_strength: levelStrength,
+        level_proximity: levelProximity,
         trading_opportunities: tradingOpportunities,
         risk_management: riskManagement,
-        insights: insights,
-        technical_outlook: generateTechnicalOutlook(resistanceLevels, supportLevels, levelAnalysis),
+        insights: generateTechnicalInsights(resistanceLevels, supportLevels, levelStrength),
+        technical_outlook: generateTechnicalOutlook(resistanceLevels, supportLevels, levelStrength),
+        ...focusedAnalysis,
         data_quality: {
             source: "TokenMetrics Technical Analysis Engine",
-            total_levels: levelsData.length,
-            coverage_timeframe: assessCoverageTimeframe(levelsData),
-            analysis_depth: assessAnalysisDepth(levelsData)
-        }
+            level_count: levelsData.length,
+            coverage: assessCoverageTimeframe(levelsData),
+            analysis_depth: assessAnalysisDepth(levelsData),
+            reliability: assessReliability(levelStrength.average_strength || 0, levelStrength.strong_levels || 0, levelsData.length)
+        },
+        level_classification: classifyLevels(resistanceLevels, supportLevels, analysisType)
     };
 }
 
@@ -289,9 +426,9 @@ function analyzeLevelProximity(levelsData: any[]): any {
         min_spacing: `${minSpacing.toFixed(2)}%`,
         max_spacing: `${maxSpacing.toFixed(2)}%`,
         price_range: {
-            lowest_level: formatTokenMetricsNumber(priceLevels[0], 'currency'),
-            highest_level: formatTokenMetricsNumber(priceLevels[priceLevels.length - 1], 'currency'),
-            total_range: formatTokenMetricsNumber(priceLevels[priceLevels.length - 1] - priceLevels[0], 'currency')
+            lowest_level: formatCurrency(priceLevels[0]),
+            highest_level: formatCurrency(priceLevels[priceLevels.length - 1]),
+            total_range: formatCurrency(priceLevels[priceLevels.length - 1] - priceLevels[0])
         },
         level_clustering: assessLevelClustering(spacings)
     };
@@ -315,7 +452,7 @@ function identifyTradingOpportunities(resistanceLevels: any[], supportLevels: an
     strongSupport.forEach(level => {
         opportunities.push({
             type: "Long Entry Opportunity",
-            description: `Strong support at ${formatTokenMetricsNumber(level.PRICE_LEVEL || level.LEVEL_PRICE, 'currency')}`,
+            description: `Strong support at ${formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE)}`,
             strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
             strategy: "Consider long positions on bounces from this level",
             risk_management: "Set stop-loss below support level"
@@ -325,7 +462,7 @@ function identifyTradingOpportunities(resistanceLevels: any[], supportLevels: an
     strongResistance.forEach(level => {
         opportunities.push({
             type: "Short Entry Opportunity",
-            description: `Strong resistance at ${formatTokenMetricsNumber(level.PRICE_LEVEL || level.LEVEL_PRICE, 'currency')}`,
+            description: `Strong resistance at ${formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE)}`,
             strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
             strategy: "Consider short positions on rejections from this level",
             risk_management: "Set stop-loss above resistance level"
@@ -369,7 +506,7 @@ function generateRiskManagementGuidance(resistanceLevels: any[], supportLevels: 
         
         guidance.push({
             type: "Stop-Loss Placement",
-            recommendation: `Place stop-losses below ${formatTokenMetricsNumber(nearestSupport.PRICE_LEVEL || nearestSupport.LEVEL_PRICE, 'currency')} support level`,
+            recommendation: `Place stop-losses below ${formatCurrency(nearestSupport.PRICE_LEVEL || nearestSupport.LEVEL_PRICE)} support level`,
             rationale: "Support break indicates trend reversal or acceleration"
         });
     }
@@ -381,7 +518,7 @@ function generateRiskManagementGuidance(resistanceLevels: any[], supportLevels: 
         
         guidance.push({
             type: "Take-Profit Placement",
-            recommendation: `Consider taking profits near ${formatTokenMetricsNumber(nearestResistance.PRICE_LEVEL || nearestResistance.LEVEL_PRICE, 'currency')} resistance level`,
+            recommendation: `Consider taking profits near ${formatCurrency(nearestResistance.PRICE_LEVEL || nearestResistance.LEVEL_PRICE)} resistance level`,
             rationale: "Resistance often causes price rejections and profit-taking"
         });
     }
@@ -494,7 +631,7 @@ function identifyKeyLevels(levels: any[], type: string): any[] {
         .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))
         .slice(0, 5)
         .map(level => ({
-            price_level: formatTokenMetricsNumber(level.PRICE_LEVEL || level.LEVEL_PRICE, 'currency'),
+            price_level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
             strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
             type: type,
             timeframe: level.TIMEFRAME || 'Unknown',
@@ -555,7 +692,7 @@ function identifyPriorityLevels(strongResistance: any[], strongSupport: any[]): 
         .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))
         .slice(0, 3)
         .map(level => ({
-            price: formatTokenMetricsNumber(level.PRICE_LEVEL || level.LEVEL_PRICE, 'currency'),
+            price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
             type: level.type,
             strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
             priority: "High"
@@ -625,11 +762,11 @@ function identifyKeyEvents(resistanceLevels: any[], supportLevels: any[]): strin
         .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
     
     if (strongestResistance) {
-        events.push(`Break above ${formatTokenMetricsNumber(strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE, 'currency')} resistance could trigger upside breakout`);
+        events.push(`Break above ${formatCurrency(strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE)} resistance could trigger upside breakout`);
     }
     
     if (strongestSupport) {
-        events.push(`Break below ${formatTokenMetricsNumber(strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE, 'currency')} support could trigger downside breakdown`);
+        events.push(`Break below ${formatCurrency(strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE)} support could trigger downside breakdown`);
     }
     
     if (events.length === 0) {
@@ -637,4 +774,225 @@ function identifyKeyEvents(resistanceLevels: any[], supportLevels: any[]): strin
     }
     
     return events;
+}
+
+// Additional analysis functions for focused analysis types
+function identifyKeyEntryLevels(supportLevels: any[]): any[] {
+    return supportLevels
+        .filter(level => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.6)
+        .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))
+        .slice(0, 3)
+        .map(level => ({
+            price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+            recommendation: "Strong support level for long entries"
+        }));
+}
+
+function identifyKeyExitLevels(resistanceLevels: any[]): any[] {
+    return resistanceLevels
+        .filter(level => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.6)
+        .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))
+        .slice(0, 3)
+        .map(level => ({
+            price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+            recommendation: "Strong resistance level for profit taking"
+        }));
+}
+
+function identifyOptimalTradingZones(resistanceLevels: any[], supportLevels: any[]): any[] {
+    const zones = [];
+    
+    // Find zones between strong support and resistance levels
+    for (const support of supportLevels.slice(0, 3)) {
+        for (const resistance of resistanceLevels.slice(0, 3)) {
+            const supportPrice = support.PRICE_LEVEL || support.LEVEL_PRICE;
+            const resistancePrice = resistance.PRICE_LEVEL || resistance.LEVEL_PRICE;
+            
+            if (resistancePrice > supportPrice) {
+                const range = ((resistancePrice - supportPrice) / supportPrice) * 100;
+                if (range > 2 && range < 20) { // 2-20% range is optimal for trading
+                    zones.push({
+                        support_level: formatCurrency(supportPrice),
+                        resistance_level: formatCurrency(resistancePrice),
+                        range_percentage: `${range.toFixed(2)}%`,
+                        quality: range > 5 ? "High" : "Medium"
+                    });
+                }
+            }
+        }
+    }
+    
+    return zones.slice(0, 3);
+}
+
+function identifyBreakoutCandidates(resistanceLevels: any[], supportLevels: any[]): any[] {
+    const candidates: any[] = [];
+    
+    // Strong resistance levels that could break
+    const strongResistance = resistanceLevels.filter(level => 
+        (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.7
+    );
+    
+    strongResistance.forEach(level => {
+        candidates.push({
+            type: "Upside Breakout",
+            level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+            probability: level.STRENGTH > 0.8 ? "High" : "Medium"
+        });
+    });
+    
+    return candidates.slice(0, 3);
+}
+
+function identifyBreakdownRisks(supportLevels: any[]): any[] {
+    const risks: any[] = [];
+    
+    // Weak support levels that could break
+    const weakSupport = supportLevels.filter(level => 
+        (level.STRENGTH || level.LEVEL_STRENGTH || 0) < 0.5
+    );
+    
+    weakSupport.forEach(level => {
+        risks.push({
+            type: "Downside Breakdown",
+            level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+            risk_level: level.STRENGTH < 0.3 ? "High" : "Medium"
+        });
+    });
+    
+    return risks.slice(0, 3);
+}
+
+function identifyMomentumLevels(levelsData: any[]): any[] {
+    // Levels that could generate momentum on break
+    return levelsData
+        .filter(level => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.75)
+        .map(level => ({
+            price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            type: level.LEVEL_TYPE || level.TYPE || "Unknown",
+            momentum_potential: "High",
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0
+        }))
+        .slice(0, 3);
+}
+
+function identifyStopLossLevels(supportLevels: any[]): any[] {
+    return supportLevels
+        .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))
+        .slice(0, 3)
+        .map(level => ({
+            price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+            recommendation: "Place stop-loss below this level",
+            risk_level: level.STRENGTH > 0.7 ? "Low" : "Medium"
+        }));
+}
+
+function identifyTakeProfitLevels(resistanceLevels: any[]): any[] {
+    return resistanceLevels
+        .sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))
+        .slice(0, 3)
+        .map(level => ({
+            price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+            strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+            recommendation: "Consider taking profits at this level",
+            probability: level.STRENGTH > 0.7 ? "High" : "Medium"
+        }));
+}
+
+function calculateRiskRewardRatios(resistanceLevels: any[], supportLevels: any[]): any[] {
+    const ratios = [];
+    
+    if (supportLevels.length > 0 && resistanceLevels.length > 0) {
+        const strongestSupport = supportLevels.reduce((prev, current) => 
+            (prev.STRENGTH || prev.LEVEL_STRENGTH || 0) > (current.STRENGTH || current.LEVEL_STRENGTH || 0) ? prev : current
+        );
+        
+        const strongestResistance = resistanceLevels.reduce((prev, current) => 
+            (prev.STRENGTH || prev.LEVEL_STRENGTH || 0) > (current.STRENGTH || current.LEVEL_STRENGTH || 0) ? prev : current
+        );
+        
+        const supportPrice = strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE;
+        const resistancePrice = strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE;
+        
+        if (resistancePrice > supportPrice) {
+            const reward = resistancePrice - supportPrice;
+            const risk = supportPrice * 0.02; // Assume 2% stop loss
+            const ratio = reward / risk;
+            
+            ratios.push({
+                entry_level: formatCurrency(supportPrice),
+                target_level: formatCurrency(resistancePrice),
+                risk_reward_ratio: `1:${ratio.toFixed(2)}`,
+                quality: ratio > 3 ? "Excellent" : ratio > 2 ? "Good" : "Fair"
+            });
+        }
+    }
+    
+    return ratios;
+}
+
+function classifyLevels(resistanceLevels: any[], supportLevels: any[], analysisType: string): any {
+    const classification = {
+        by_strength: {
+            strong_resistance: resistanceLevels.filter(r => (r.STRENGTH || r.LEVEL_STRENGTH || 0) > 0.7).length,
+            medium_resistance: resistanceLevels.filter(r => {
+                const strength = r.STRENGTH || r.LEVEL_STRENGTH || 0;
+                return strength >= 0.4 && strength <= 0.7;
+            }).length,
+            weak_resistance: resistanceLevels.filter(r => (r.STRENGTH || r.LEVEL_STRENGTH || 0) < 0.4).length,
+            strong_support: supportLevels.filter(s => (s.STRENGTH || s.LEVEL_STRENGTH || 0) > 0.7).length,
+            medium_support: supportLevels.filter(s => {
+                const strength = s.STRENGTH || s.LEVEL_STRENGTH || 0;
+                return strength >= 0.4 && strength <= 0.7;
+            }).length,
+            weak_support: supportLevels.filter(s => (s.STRENGTH || s.LEVEL_STRENGTH || 0) < 0.4).length
+        },
+        by_analysis_type: {
+            focus: analysisType,
+            primary_levels: analysisType === "trading_levels" ? "Entry/Exit points" :
+                           analysisType === "breakout_analysis" ? "Breakout candidates" :
+                           analysisType === "risk_management" ? "Stop-loss/Take-profit" : "All levels",
+            level_priority: determineLevelPriority(resistanceLevels, supportLevels, analysisType)
+        },
+        overall_assessment: {
+            total_levels: resistanceLevels.length + supportLevels.length,
+            balance: Math.abs(resistanceLevels.length - supportLevels.length) < 3 ? "Balanced" : "Imbalanced",
+            market_structure: classifyMarketStructure(resistanceLevels, supportLevels)
+        }
+    };
+    
+    return classification;
+}
+
+function determineLevelPriority(resistanceLevels: any[], supportLevels: any[], analysisType: string): string {
+    const avgResistanceStrength = resistanceLevels.length > 0 ? 
+        resistanceLevels.reduce((sum, r) => sum + (r.STRENGTH || r.LEVEL_STRENGTH || 0), 0) / resistanceLevels.length : 0;
+    const avgSupportStrength = supportLevels.length > 0 ? 
+        supportLevels.reduce((sum, s) => sum + (s.STRENGTH || s.LEVEL_STRENGTH || 0), 0) / supportLevels.length : 0;
+    
+    switch (analysisType) {
+        case "trading_levels":
+            return avgSupportStrength > avgResistanceStrength ? "Support-focused" : "Resistance-focused";
+        case "breakout_analysis":
+            return "Resistance-focused";
+        case "risk_management":
+            return "Support-focused";
+        default:
+            return "Balanced";
+    }
+}
+
+function classifyMarketStructure(resistanceLevels: any[], supportLevels: any[]): string {
+    const strongResistance = resistanceLevels.filter(r => (r.STRENGTH || r.LEVEL_STRENGTH || 0) > 0.7).length;
+    const strongSupport = supportLevels.filter(s => (s.STRENGTH || s.LEVEL_STRENGTH || 0) > 0.7).length;
+    
+    if (strongResistance > strongSupport + 2) return "Resistance-heavy";
+    if (strongSupport > strongResistance + 2) return "Support-heavy";
+    if (strongResistance > 2 && strongSupport > 2) return "Well-defined range";
+    return "Developing structure";
 }
