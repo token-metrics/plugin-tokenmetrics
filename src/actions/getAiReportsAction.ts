@@ -128,7 +128,7 @@ export const getAiReportsAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(runtime: IAgentRuntime, message: Memory, _state: State | undefined, _params: any, callback?: HandlerCallback) {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing AI reports request...`);
@@ -218,6 +218,132 @@ export const getAiReportsAction: Action = {
                 }
             };
             
+            // Format response text for user
+            const tokenName = processedRequest.symbol || processedRequest.token_id || "various tokens";
+            
+            let responseText = `🤖 **AI Reports Analysis${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}**\n\n`;
+            
+            if (aiReports.length === 0) {
+                responseText += `❌ No AI reports found${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}. This could mean:\n`;
+                responseText += `• TokenMetrics AI hasn't analyzed this token yet\n`;
+                responseText += `• The token may not meet criteria for AI analysis\n`;
+                responseText += `• Try using a major cryptocurrency like Bitcoin or Ethereum\n\n`;
+            } else {
+                responseText += `✅ **Found ${aiReports.length} comprehensive AI-generated reports**\n\n`;
+                
+                // Report types summary
+                const reportTypes = reportsAnalysis.report_coverage.report_types;
+                if (reportTypes && reportTypes.length > 0) {
+                    responseText += `📊 **Available Report Types:**\n`;
+                    reportTypes.forEach((type: any) => {
+                        responseText += `• ${type.type}: ${type.count} reports (${type.percentage}%)\n`;
+                    });
+                    responseText += `\n`;
+                }
+                
+                // Analysis type specific content
+                if (processedRequest.analysisType === "investment" && reportsAnalysis.investment_focus) {
+                    responseText += `💰 **Investment Analysis Focus:**\n`;
+                    responseText += `• Investment analyses available: ${reportsAnalysis.investment_focus.investment_reports}\n`;
+                    if (reportsAnalysis.investment_focus.key_investment_points && reportsAnalysis.investment_focus.key_investment_points.length > 0) {
+                        responseText += `\n💡 **Key Investment Insights:**\n`;
+                        reportsAnalysis.investment_focus.key_investment_points.slice(0, 3).forEach((point: string) => {
+                            responseText += `• ${point}\n`;
+                        });
+                    }
+                } else if (processedRequest.analysisType === "technical" && reportsAnalysis.technical_focus) {
+                    responseText += `🔧 **Technical Analysis Focus:**\n`;
+                    responseText += `• Code reviews available: ${reportsAnalysis.technical_focus.code_reviews}\n`;
+                    if (reportsAnalysis.technical_focus.technical_highlights && reportsAnalysis.technical_focus.technical_highlights.length > 0) {
+                        responseText += `\n🔍 **Technical Highlights:**\n`;
+                        reportsAnalysis.technical_focus.technical_highlights.slice(0, 3).forEach((highlight: string) => {
+                            responseText += `• ${highlight}\n`;
+                        });
+                    }
+                } else if (processedRequest.analysisType === "comprehensive" && reportsAnalysis.comprehensive_focus) {
+                    responseText += `📚 **Comprehensive Analysis Focus:**\n`;
+                    responseText += `• Deep dive reports: ${reportsAnalysis.comprehensive_focus.deep_dive_reports}\n`;
+                    if (reportsAnalysis.comprehensive_focus.comprehensive_highlights && reportsAnalysis.comprehensive_focus.comprehensive_highlights.length > 0) {
+                        responseText += `\n📖 **Comprehensive Highlights:**\n`;
+                        reportsAnalysis.comprehensive_focus.comprehensive_highlights.slice(0, 3).forEach((highlight: string) => {
+                            responseText += `• ${highlight}\n`;
+                        });
+                    }
+                } else {
+                    responseText += `📊 **Comprehensive AI Analysis:**\n`;
+                    responseText += `• ${reportsAnalysis.summary}\n`;
+                    
+                    // Show highlights from all available report types
+                    if (reportsAnalysis.report_content) {
+                        const content = reportsAnalysis.report_content;
+                        
+                        if (content.investment_analyses && content.investment_analyses.length > 0) {
+                            responseText += `\n💰 **Investment Analysis Available** (${content.investment_analyses.length} reports)\n`;
+                            // Show a preview of the first investment analysis
+                            const firstAnalysis = content.investment_analyses[0];
+                            if (firstAnalysis.content && firstAnalysis.content.length > 100) {
+                                const preview = firstAnalysis.content.substring(0, 300).replace(/\n/g, ' ').trim();
+                                responseText += `📝 Preview: "${preview}..."\n`;
+                            }
+                        }
+                        
+                        if (content.deep_dive_reports && content.deep_dive_reports.length > 0) {
+                            responseText += `\n📚 **Deep Dive Reports Available** (${content.deep_dive_reports.length} reports)\n`;
+                            // Show a preview of the first deep dive
+                            const firstDeepDive = content.deep_dive_reports[0];
+                            if (firstDeepDive.content && firstDeepDive.content.length > 100) {
+                                const preview = firstDeepDive.content.substring(0, 300).replace(/\n/g, ' ').trim();
+                                responseText += `📝 Preview: "${preview}..."\n`;
+                            }
+                        }
+                        
+                        if (content.code_reviews && content.code_reviews.length > 0) {
+                            responseText += `\n🔧 **Code Reviews Available** (${content.code_reviews.length} reports)\n`;
+                            // Show a preview of the first code review
+                            const firstCodeReview = content.code_reviews[0];
+                            if (firstCodeReview.content && firstCodeReview.content.length > 100) {
+                                const preview = firstCodeReview.content.substring(0, 300).replace(/\n/g, ' ').trim();
+                                responseText += `📝 Preview: "${preview}..."\n`;
+                            }
+                        }
+                        
+                        if (content.executive_summaries && content.executive_summaries.length > 0) {
+                            responseText += `\n📋 **Executive Summaries Available** (${content.executive_summaries.length} reports)\n`;
+                            // Show a preview of the first executive summary
+                            const firstSummary = content.executive_summaries[0];
+                            if (firstSummary.content && firstSummary.content.length > 100) {
+                                const preview = firstSummary.content.substring(0, 300).replace(/\n/g, ' ').trim();
+                                responseText += `📝 Preview: "${preview}..."\n`;
+                            }
+                        }
+                    }
+                }
+                
+                // Research themes
+                if (reportsAnalysis.research_themes && reportsAnalysis.research_themes.length > 0) {
+                    responseText += `\n🔍 **Key Research Themes:**\n`;
+                    reportsAnalysis.research_themes.slice(0, 4).forEach((theme: string) => {
+                        responseText += `• ${theme}\n`;
+                    });
+                }
+                
+                // Data quality assessment
+                if (reportsAnalysis.data_quality) {
+                    responseText += `\n📈 **Data Quality Assessment:**\n`;
+                    responseText += `• Coverage: ${reportsAnalysis.data_quality.coverage_breadth}\n`;
+                    responseText += `• Completeness: ${reportsAnalysis.data_quality.completeness}\n`;
+                    responseText += `• Freshness: ${reportsAnalysis.data_quality.freshness}\n`;
+                }
+                
+                responseText += `\n📋 **Usage Guidelines:**\n`;
+                responseText += `• Use for due diligence and investment research\n`;
+                responseText += `• Combine with quantitative metrics for complete picture\n`;
+                responseText += `• Review report generation date for relevance\n`;
+                responseText += `• Consider reports as one input in investment decision process\n`;
+            }
+            
+            responseText += `\n🔗 **Data Source:** TokenMetrics AI Engine (v2)`;
+            
             console.log(`[${requestId}] AI reports analysis completed successfully`);
             console.log(`[${requestId}] Analysis completed successfully`);
             
@@ -242,24 +368,30 @@ export const getAiReportsAction: Action = {
         } catch (error) {
             console.error("Error in getAiReports action:", error);
             
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve AI reports from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/ai-reports is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Ensure your API key has access to AI reports endpoint",
-                        "Check that the token has been analyzed by TokenMetrics AI"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Check if your subscription includes AI reports access",
-                        "Verify TokenMetrics has generated reports for the requested token"
-                    ]
-                }
-            };
+            const errorMessage = `❌ **Failed to get AI reports**\n\n` +
+                `**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}\n\n` +
+                `**Troubleshooting:**\n` +
+                `• Ensure TokenMetrics AI has analyzed the requested token\n` +
+                `• Try using a major cryptocurrency like Bitcoin or Ethereum\n` +
+                `• Check if your TokenMetrics subscription includes AI reports\n` +
+                `• Verify the token meets criteria for AI analysis\n\n` +
+                `**Common Solutions:**\n` +
+                `• Use full token names or symbols (e.g., "Bitcoin" or "BTC")\n` +
+                `• Check if TokenMetrics has generated reports for the requested token\n` +
+                `• Ensure your API key has access to the ai-reports endpoint`;
+            
+            if (callback) {
+                callback({
+                    text: errorMessage,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred",
+                        message: "Failed to retrieve AI reports from TokenMetrics API"
+                    }
+                });
+            }
+            
+            return false;
         }
     },
 
@@ -280,7 +412,8 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
         };
     }
     
-    // Analyze report coverage and types
+    // Extract actual report content from API response
+    const reportContent = extractReportContent(reportsData);
     const reportCoverage = analyzeReportCoverage(reportsData);
     const contentAnalysis = analyzeReportContent(reportsData);
     const qualityAssessment = assessReportQuality(reportsData);
@@ -293,12 +426,12 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
         case "investment":
             focusedAnalysis = {
                 investment_focus: {
-                    investment_recommendations: extractInvestmentRecommendations(reportsData),
-                    risk_assessments: extractRiskAssessments(reportsData),
+                    investment_reports: reportsData.filter(r => r.INVESTMENT_ANALYSIS || r.INVESTMENT_ANALYSIS_POINTER).length,
+                    key_investment_points: extractInvestmentHighlights(reportsData),
                     investment_insights: [
-                        `📈 Investment reports analyzed: ${reportsData.filter(r => r.REPORT_TYPE?.includes('Investment')).length}`,
-                        `🎯 Risk/reward assessments available: ${reportsData.filter(r => r.RISK_SCORE).length}`,
-                        `💰 Portfolio recommendations: ${reportsData.filter(r => r.RECOMMENDATIONS?.some((rec: any) => rec.includes('portfolio'))).length}`
+                        `📈 Investment analyses available: ${reportsData.filter(r => r.INVESTMENT_ANALYSIS).length}`,
+                        `🎯 Executive summaries: ${reportsData.filter(r => r.INVESTMENT_ANALYSIS_POINTER).length}`,
+                        `💰 Market analysis included: ${reportsData.filter(r => r.INVESTMENT_ANALYSIS?.includes('Market Analysis')).length}`
                     ]
                 }
             };
@@ -307,12 +440,12 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
         case "technical":
             focusedAnalysis = {
                 technical_focus: {
-                    code_reviews: extractCodeReviews(reportsData),
-                    technical_analysis: extractTechnicalAnalysis(reportsData),
+                    code_reviews: reportsData.filter(r => r.CODE_REVIEW).length,
+                    technical_highlights: extractTechnicalHighlights(reportsData),
                     technical_insights: [
-                        `🔧 Technical reports analyzed: ${reportsData.filter(r => r.REPORT_TYPE?.includes('Technical')).length}`,
-                        `📊 Code quality assessments: ${reportsData.filter(r => r.CODE_QUALITY_SCORE).length}`,
-                        `🛡️ Security evaluations: ${reportsData.filter(r => r.SECURITY_SCORE).length}`
+                        `🔧 Code reviews available: ${reportsData.filter(r => r.CODE_REVIEW).length}`,
+                        `📊 Architecture analysis: ${reportsData.filter(r => r.CODE_REVIEW?.includes('Architecture')).length}`,
+                        `🛡️ Security assessments: ${reportsData.filter(r => r.CODE_REVIEW?.includes('security')).length}`
                     ]
                 }
             };
@@ -321,12 +454,12 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
         case "comprehensive":
             focusedAnalysis = {
                 comprehensive_focus: {
-                    deep_dive_reports: extractDeepDiveReports(reportsData),
-                    comprehensive_analysis: extractComprehensiveAnalysis(reportsData),
+                    deep_dive_reports: reportsData.filter(r => r.DEEP_DIVE).length,
+                    comprehensive_highlights: extractComprehensiveHighlights(reportsData),
                     comprehensive_insights: [
-                        `📚 Comprehensive reports: ${reportsData.filter(r => r.REPORT_TYPE?.includes('Deep Dive')).length}`,
-                        `🔍 Multi-faceted analysis: ${reportsData.filter(r => r.ANALYSIS_CATEGORIES?.length > 3).length}`,
-                        `📖 Detailed evaluations: ${reportsData.filter(r => r.REPORT_CONTENT?.length > 1000).length}`
+                        `📚 Deep dive reports: ${reportsData.filter(r => r.DEEP_DIVE).length}`,
+                        `🔍 Multi-faceted analysis: ${reportsData.filter(r => r.DEEP_DIVE && r.INVESTMENT_ANALYSIS && r.CODE_REVIEW).length}`,
+                        `📖 Detailed evaluations: ${reportsData.filter(r => r.DEEP_DIVE?.length > 1000).length}`
                     ]
                 }
             };
@@ -334,8 +467,9 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
     }
     
     return {
-        summary: `AI analysis covering ${reportsData.length} reports with ${reportCoverage.unique_tokens} unique tokens analyzed`,
+        summary: `AI analysis covering ${reportsData.length} comprehensive reports for ${reportCoverage.unique_tokens} tokens`,
         analysis_type: analysisType,
+        report_content: reportContent,
         report_coverage: reportCoverage,
         content_analysis: contentAnalysis,
         quality_assessment: qualityAssessment,
@@ -347,11 +481,12 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
             source: "TokenMetrics AI Engine",
             total_reports: reportsData.length,
             coverage_breadth: assessCoverageBreadth(reportsData),
-            freshness: assessReportFreshness(reportsData)
+            freshness: assessReportFreshness(reportsData),
+            completeness: assessActualReportCompleteness(reportsData)
         },
         investment_considerations: [
             "📊 Use AI reports as part of comprehensive due diligence",
-            "🎯 Cross-reference recommendations with quantitative metrics",
+            "🎯 Cross-reference recommendations with quantitative metrics", 
             "📅 Consider report generation date for relevance",
             "🔍 Focus on reports matching your investment timeline",
             "⚖️ Balance AI insights with fundamental analysis",
@@ -360,34 +495,215 @@ function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any
     };
 }
 
+/**
+ * Extract actual report content from API response
+ */
+function extractReportContent(reportsData: any[]): any {
+    const content = {
+        investment_analyses: [] as any[],
+        deep_dive_reports: [] as any[],
+        code_reviews: [] as any[],
+        executive_summaries: [] as any[]
+    };
+    
+    reportsData.forEach(report => {
+        if (report.INVESTMENT_ANALYSIS) {
+            content.investment_analyses.push({
+                token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+                content: report.INVESTMENT_ANALYSIS,
+                length: report.INVESTMENT_ANALYSIS.length
+            });
+        }
+        
+        if (report.DEEP_DIVE) {
+            content.deep_dive_reports.push({
+                token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+                content: report.DEEP_DIVE,
+                length: report.DEEP_DIVE.length
+            });
+        }
+        
+        if (report.CODE_REVIEW) {
+            content.code_reviews.push({
+                token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+                content: report.CODE_REVIEW,
+                length: report.CODE_REVIEW.length
+            });
+        }
+        
+        if (report.INVESTMENT_ANALYSIS_POINTER) {
+            content.executive_summaries.push({
+                token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+                content: report.INVESTMENT_ANALYSIS_POINTER,
+                length: report.INVESTMENT_ANALYSIS_POINTER.length
+            });
+        }
+    });
+    
+    return content;
+}
+
+/**
+ * Extract investment highlights from actual API data
+ */
+function extractInvestmentHighlights(reportsData: any[]): string[] {
+    const highlights: string[] = [];
+    
+    reportsData.forEach(report => {
+        if (report.INVESTMENT_ANALYSIS) {
+            // Extract key sections from investment analysis
+            const analysis = report.INVESTMENT_ANALYSIS;
+            
+            // Look for executive summary
+            if (analysis.includes('Executive Summary')) {
+                const summaryMatch = analysis.match(/## Executive Summary\n(.*?)(?=\n##|$)/s);
+                if (summaryMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL}: ${summaryMatch[1].substring(0, 200)}...`);
+                }
+            }
+            
+            // Look for key features or conclusions
+            if (analysis.includes('Conclusion')) {
+                const conclusionMatch = analysis.match(/## Conclusion\n(.*?)(?=\n##|$)/s);
+                if (conclusionMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Outlook: ${conclusionMatch[1].substring(0, 150)}...`);
+                }
+            }
+        }
+        
+        if (report.INVESTMENT_ANALYSIS_POINTER) {
+            // Extract bullet points from executive summary
+            const pointer = report.INVESTMENT_ANALYSIS_POINTER;
+            const bulletPoints = pointer.match(/- .+/g);
+            if (bulletPoints && bulletPoints.length > 0) {
+                highlights.push(`${report.TOKEN_SYMBOL}: ${bulletPoints[0].substring(2, 150)}...`);
+            }
+        }
+    });
+    
+    return highlights.slice(0, 5);
+}
+
+/**
+ * Extract technical highlights from code reviews
+ */
+function extractTechnicalHighlights(reportsData: any[]): string[] {
+    const highlights: string[] = [];
+    
+    reportsData.forEach(report => {
+        if (report.CODE_REVIEW) {
+            const review = report.CODE_REVIEW;
+            
+            // Look for innovation section
+            if (review.includes('Innovation')) {
+                const innovationMatch = review.match(/## Innovation\n(.*?)(?=\n##|$)/s);
+                if (innovationMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Innovation: ${innovationMatch[1].substring(0, 150)}...`);
+                }
+            }
+            
+            // Look for architecture section
+            if (review.includes('Architecture')) {
+                const archMatch = review.match(/## Architecture\n(.*?)(?=\n##|$)/s);
+                if (archMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Architecture: ${archMatch[1].substring(0, 150)}...`);
+                }
+            }
+            
+            // Look for code quality section
+            if (review.includes('Code Quality')) {
+                const qualityMatch = review.match(/## Code Quality\n(.*?)(?=\n##|$)/s);
+                if (qualityMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Code Quality: ${qualityMatch[1].substring(0, 150)}...`);
+                }
+            }
+        }
+    });
+    
+    return highlights.slice(0, 5);
+}
+
+/**
+ * Extract comprehensive highlights from deep dive reports
+ */
+function extractComprehensiveHighlights(reportsData: any[]): string[] {
+    const highlights: string[] = [];
+    
+    reportsData.forEach(report => {
+        if (report.DEEP_DIVE) {
+            const deepDive = report.DEEP_DIVE;
+            
+            // Look for vision section
+            if (deepDive.includes('Vision')) {
+                const visionMatch = deepDive.match(/### Vision\n(.*?)(?=\n###|$)/s);
+                if (visionMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Vision: ${visionMatch[1].substring(0, 150)}...`);
+                }
+            }
+            
+            // Look for problem/solution sections
+            if (deepDive.includes('Problem')) {
+                const problemMatch = deepDive.match(/### Problem\n(.*?)(?=\n###|$)/s);
+                if (problemMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Problem Solved: ${problemMatch[1].substring(0, 150)}...`);
+                }
+            }
+            
+            // Look for market analysis
+            if (deepDive.includes('Market Analysis')) {
+                const marketMatch = deepDive.match(/## Market Analysis\n(.*?)(?=\n##|$)/s);
+                if (marketMatch) {
+                    highlights.push(`${report.TOKEN_SYMBOL} Market: ${marketMatch[1].substring(0, 150)}...`);
+                }
+            }
+        }
+    });
+    
+    return highlights.slice(0, 5);
+}
+
 function analyzeReportCoverage(reportsData: any[]): any {
-    const uniqueTokens = new Set(reportsData.map(r => r.SYMBOL).filter(s => s)).size;
+    const uniqueTokens = new Set(reportsData.map(r => r.TOKEN_SYMBOL || r.TOKEN_NAME).filter(s => s)).size;
     const tokenCoverage = new Map();
     
     // Analyze coverage by token
     reportsData.forEach(report => {
-        const symbol = report.SYMBOL || 'Unknown';
+        const symbol = report.TOKEN_SYMBOL || report.TOKEN_NAME || 'Unknown';
         if (!tokenCoverage.has(symbol)) {
-            tokenCoverage.set(symbol, []);
+            tokenCoverage.set(symbol, {
+                reports: [],
+                report_types: new Set()
+            });
         }
-        tokenCoverage.get(symbol).push(report);
+        
+        const tokenData = tokenCoverage.get(symbol);
+        tokenData.reports.push(report);
+        
+        // Track report types available
+        if (report.INVESTMENT_ANALYSIS) tokenData.report_types.add('Investment Analysis');
+        if (report.DEEP_DIVE) tokenData.report_types.add('Deep Dive');
+        if (report.CODE_REVIEW) tokenData.report_types.add('Code Review');
+        if (report.INVESTMENT_ANALYSIS_POINTER) tokenData.report_types.add('Executive Summary');
     });
     
     // Find most analyzed tokens
     const mostAnalyzed = Array.from(tokenCoverage.entries())
-        .sort((a, b) => b[1].length - a[1].length)
+        .sort((a, b) => b[1].reports.length - a[1].reports.length)
         .slice(0, 5)
-        .map(([symbol, reports]) => ({
+        .map(([symbol, data]) => ({
             symbol: symbol,
-            report_count: reports.length,
-            latest_report: reports[reports.length - 1]?.DATE || 'Unknown'
+            report_count: data.reports.length,
+            report_types: Array.from(data.report_types),
+            token_id: data.reports[0]?.TOKEN_ID || 'Unknown'
         }));
     
-    // Analyze report types/categories
+    // Analyze report types across all data
     const reportTypes = new Map();
     reportsData.forEach(report => {
-        const type = report.REPORT_TYPE || 'General Analysis';
-        reportTypes.set(type, (reportTypes.get(type) || 0) + 1);
+        if (report.INVESTMENT_ANALYSIS) reportTypes.set('Investment Analysis', (reportTypes.get('Investment Analysis') || 0) + 1);
+        if (report.DEEP_DIVE) reportTypes.set('Deep Dive', (reportTypes.get('Deep Dive') || 0) + 1);
+        if (report.CODE_REVIEW) reportTypes.set('Code Review', (reportTypes.get('Code Review') || 0) + 1);
+        if (report.INVESTMENT_ANALYSIS_POINTER) reportTypes.set('Executive Summary', (reportTypes.get('Executive Summary') || 0) + 1);
     });
     
     return {
@@ -401,6 +717,25 @@ function analyzeReportCoverage(reportsData: any[]): any {
         })),
         coverage_depth: uniqueTokens > 0 ? (reportsData.length / uniqueTokens).toFixed(1) : '0'
     };
+}
+
+function assessActualReportCompleteness(reportsData: any[]): string {
+    const requiredFields = ['INVESTMENT_ANALYSIS', 'DEEP_DIVE', 'CODE_REVIEW', 'INVESTMENT_ANALYSIS_POINTER'];
+    let completeness = 0;
+    
+    reportsData.forEach(report => {
+        const presentFields = requiredFields.filter(field => 
+            report[field] && report[field].length > 0
+        );
+        completeness += presentFields.length / requiredFields.length;
+    });
+    
+    const avgCompleteness = (completeness / reportsData.length) * 100;
+    
+    if (avgCompleteness > 80) return "Very Complete";
+    if (avgCompleteness > 60) return "Complete";
+    if (avgCompleteness > 40) return "Moderate";
+    return "Limited";
 }
 
 function analyzeReportContent(reportsData: any[]): any {
@@ -847,88 +1182,4 @@ function generateIntelligenceSummary(intelligence: any): string {
     }
     
     return summary;
-}
-
-// Helper functions for focused analysis
-
-function extractInvestmentRecommendations(reportsData: any[]): any[] {
-    return reportsData
-        .filter(report => report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS))
-        .flatMap(report => report.RECOMMENDATIONS)
-        .filter(rec => rec && (rec.includes('buy') || rec.includes('sell') || rec.includes('hold') || rec.includes('invest')))
-        .slice(0, 10);
-}
-
-function extractRiskAssessments(reportsData: any[]): any[] {
-    return reportsData
-        .filter(report => report.RISK_SCORE || report.RISK_ASSESSMENT)
-        .map(report => ({
-            symbol: report.SYMBOL,
-            risk_score: report.RISK_SCORE,
-            risk_assessment: report.RISK_ASSESSMENT,
-            risk_factors: report.RISK_FACTORS
-        }))
-        .slice(0, 10);
-}
-
-function extractCodeReviews(reportsData: any[]): any[] {
-    return reportsData
-        .filter(report => report.CODE_QUALITY_SCORE || report.SECURITY_SCORE || report.REPORT_TYPE?.includes('Code'))
-        .map(report => ({
-            symbol: report.SYMBOL,
-            code_quality_score: report.CODE_QUALITY_SCORE,
-            security_score: report.SECURITY_SCORE,
-            audit_findings: report.AUDIT_FINDINGS
-        }))
-        .slice(0, 10);
-}
-
-function extractTechnicalAnalysis(reportsData: any[]): any[] {
-    return reportsData
-        .filter(report => report.TECHNICAL_INDICATORS || report.REPORT_TYPE?.includes('Technical'))
-        .map(report => ({
-            symbol: report.SYMBOL,
-            technical_indicators: report.TECHNICAL_INDICATORS,
-            price_targets: report.PRICE_TARGETS,
-            support_resistance: report.SUPPORT_RESISTANCE
-        }))
-        .slice(0, 10);
-}
-
-function extractDeepDiveReports(reportsData: any[]): any[] {
-    return reportsData
-        .filter(report => report.REPORT_TYPE?.includes('Deep Dive') || (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 1000))
-        .map(report => ({
-            symbol: report.SYMBOL,
-            report_type: report.REPORT_TYPE,
-            content_length: report.REPORT_CONTENT?.length || 0,
-            analysis_categories: report.ANALYSIS_CATEGORIES,
-            generated_date: report.GENERATED_DATE
-        }))
-        .slice(0, 10);
-}
-
-function extractComprehensiveAnalysis(reportsData: any[]): any[] {
-    return reportsData
-        .filter(report => report.ANALYSIS_CATEGORIES && Array.isArray(report.ANALYSIS_CATEGORIES) && report.ANALYSIS_CATEGORIES.length > 3)
-        .map(report => ({
-            symbol: report.SYMBOL,
-            analysis_categories: report.ANALYSIS_CATEGORIES,
-            key_insights: report.KEY_INSIGHTS,
-            recommendations: report.RECOMMENDATIONS,
-            completeness_score: calculateCompletenessScore(report)
-        }))
-        .slice(0, 10);
-}
-
-function calculateCompletenessScore(report: any): number {
-    let score = 0;
-    if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS)) score += 2;
-    if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS)) score += 2;
-    if (report.RISK_ASSESSMENT) score += 1;
-    if (report.PRICE_TARGETS) score += 1;
-    if (report.TECHNICAL_INDICATORS) score += 1;
-    if (report.FUNDAMENTAL_ANALYSIS) score += 1;
-    if (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 500) score += 2;
-    return score;
 }
