@@ -1,14 +1,67 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { CorrelationResponse, CorrelationRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { CorrelationResponse } from "../types";
+
+// Zod schema for correlation request validation
+const CorrelationRequestSchema = z.object({
+    token_id: z.number().min(1).optional().describe("The ID of the token to analyze correlation for"),
+    symbol: z.string().optional().describe("The symbol of the token to analyze correlation for"),
+    category: z.string().optional().describe("Filter by token category (e.g., defi, layer1, gaming)"),
+    exchange: z.string().optional().describe("Filter by exchange"),
+    limit: z.number().min(1).max(100).optional().describe("Number of correlation results to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["diversification", "hedging", "risk_management", "all"]).optional().describe("Type of correlation analysis to focus on")
+});
+
+type CorrelationRequest = z.infer<typeof CorrelationRequestSchema>;
+
+// AI extraction template for natural language processing
+const CORRELATION_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting correlation analysis requests from natural language.
+
+The user wants to analyze price correlations between cryptocurrencies. Extract the following information:
+
+1. **token_id** (optional): Numeric ID of the token
+   - Only extract if explicitly mentioned as a number
+
+2. **symbol** (optional): Token symbol like BTC, ETH, etc.
+   - Look for cryptocurrency symbols or names
+   - Convert names to symbols if possible (Bitcoin → BTC, Ethereum → ETH)
+
+3. **category** (optional): Token category filter
+   - Look for categories like "defi", "layer1", "gaming", "meme", "infrastructure"
+   - Extract from phrases like "DeFi tokens", "Layer 1 blockchains", "gaming coins"
+
+4. **exchange** (optional): Exchange filter
+   - Look for exchange names like "binance", "coinbase", "kraken"
+
+5. **limit** (optional, default: 50): Number of results to return
+   - Look for phrases like "top 20", "first 100", "50 correlations"
+
+6. **page** (optional, default: 1): Page number for pagination
+
+7. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "diversification" - focus on finding uncorrelated assets for portfolio diversification
+   - "hedging" - focus on negatively correlated assets for hedging strategies
+   - "risk_management" - focus on correlation risks and concentration analysis
+   - "all" - comprehensive correlation analysis
+
+Examples:
+- "Get correlation analysis for Bitcoin" → {symbol: "BTC", analysisType: "all"}
+- "Show me DeFi tokens for diversification" → {category: "defi", analysisType: "diversification"}
+- "Find hedging opportunities for ETH" → {symbol: "ETH", analysisType: "hedging"}
+- "Correlation risk analysis for top 20 tokens" → {limit: 20, analysisType: "risk_management"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * CORRELATION ACTION - Based on actual TokenMetrics API documentation
@@ -18,7 +71,7 @@ import type { CorrelationResponse, CorrelationRequest } from "../types";
  * Essential for portfolio diversification, risk management, and understanding market relationships.
  */
 export const getCorrelationAction: Action = {
-    name: "getCorrelation",
+    name: "GET_CORRELATION_TOKENMETRICS",
     description: "Get Top 10 and Bottom 10 correlation of tokens with the top 100 market cap tokens from TokenMetrics for diversification and risk analysis",
     similes: [
         "get correlation",
@@ -29,67 +82,134 @@ export const getCorrelationAction: Action = {
         "correlation matrix",
         "relationship analysis"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get correlation analysis for Bitcoin"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll retrieve Bitcoin's correlation with other top cryptocurrencies for diversification analysis.",
+                    action: "GET_CORRELATION_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me correlation data for DeFi tokens"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll analyze correlation patterns within the DeFi sector for portfolio optimization.",
+                    action: "GET_CORRELATION_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Find hedging opportunities for Ethereum"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll identify negatively correlated assets that could serve as hedges for Ethereum.",
+                    action: "GET_CORRELATION_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing correlation analysis request...`);
             
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: CorrelationRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Additional filtering parameters from API docs
-                category: typeof messageContent.category === 'string' ? messageContent.category : undefined,
-                exchange: typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined,
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<CorrelationResponse>(
-                TOKENMETRICS_ENDPOINTS.correlation,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const correlationRequest = await extractTokenMetricsRequest<CorrelationRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                CORRELATION_EXTRACTION_TEMPLATE,
+                CorrelationRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<CorrelationResponse>(response, "getCorrelation");
-            const correlationData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, correlationRequest);
             
-            // Analyze the correlation data
-            const correlationAnalysis = analyzeCorrelationData(correlationData);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                token_id: correlationRequest.token_id,
+                symbol: correlationRequest.symbol,
+                category: correlationRequest.category,
+                exchange: correlationRequest.exchange,
+                limit: correlationRequest.limit || 50,
+                page: correlationRequest.page || 1,
+                analysisType: correlationRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add token identification parameters
+            if (processedRequest.token_id) {
+                apiParams.token_id = processedRequest.token_id;
+            }
+            if (processedRequest.symbol) {
+                apiParams.symbol = processedRequest.symbol;
+            }
+            if (processedRequest.category) {
+                apiParams.category = processedRequest.category;
+            }
+            if (processedRequest.exchange) {
+                apiParams.exchange = processedRequest.exchange;
+            }
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/correlation",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing correlation data...`);
+            
+            // Process response data
+            const correlationData = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the correlation data based on requested analysis type
+            const correlationAnalysis = analyzeCorrelationData(correlationData, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved correlation data for ${correlationData.length} token relationships`,
+                request_id: requestId,
                 correlation_data: correlationData,
                 analysis: correlationAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.correlation,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    endpoint: "correlation",
+                    requested_token: processedRequest.symbol || processedRequest.token_id,
                     filters_applied: {
-                        category: requestParams.category,
-                        exchange: requestParams.exchange
+                        category: processedRequest.category,
+                        exchange: processedRequest.exchange
                     },
+                    analysis_focus: processedRequest.analysisType,
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
                     data_points: correlationData.length,
                     api_version: "v2",
@@ -121,8 +241,11 @@ export const getCorrelationAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] Correlation analysis completed successfully`);
+            return result;
+            
         } catch (error) {
-            console.error("Error in getCorrelationAction:", error);
+            console.error("Error in getCorrelation action:", error);
             
             return {
                 success: false,
@@ -146,56 +269,16 @@ export const getCorrelationAction: Action = {
             };
         }
     },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get correlation analysis for Bitcoin",
-                    symbol: "BTC"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve Bitcoin's correlation with other top cryptocurrencies for diversification analysis.",
-                    action: "GET_CORRELATION"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me correlation data for DeFi tokens",
-                    category: "defi"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll analyze correlation patterns within the DeFi sector for portfolio optimization.",
-                    action: "GET_CORRELATION"
-                }
-            }
-        ]
-    ],
+
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
  * Comprehensive analysis of correlation data for portfolio optimization and risk management
  */
-function analyzeCorrelationData(correlationData: any[]): any {
+function analyzeCorrelationData(correlationData: any[], analysisType: string = "all"): any {
     if (!correlationData || correlationData.length === 0) {
         return {
             summary: "No correlation data available for analysis",
@@ -214,8 +297,68 @@ function analyzeCorrelationData(correlationData: any[]): any {
     // Generate strategic insights
     const insights = generateCorrelationInsights(correlationDistribution, diversificationAnalysis, riskAnalysis);
     
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "diversification":
+            focusedAnalysis = {
+                diversification_focus: {
+                    best_diversifiers: diversificationAnalysis.best_diversifiers.slice(0, 5),
+                    diversification_score: diversificationAnalysis.diversification_ratio,
+                    portfolio_recommendations: generateDiversificationRecommendations(correlationData),
+                    diversification_insights: [
+                        `🎯 ${diversificationAnalysis.low_correlation_assets} assets with low correlation found`,
+                        `📊 Diversification quality: ${diversificationAnalysis.diversification_quality}`,
+                        `⚖️ Portfolio balance: ${diversificationAnalysis.diversification_ratio} of assets suitable for diversification`,
+                        `🔄 Rebalancing frequency: ${getDiversificationRebalancingFrequency(correlationDistribution.average_correlation)}`
+                    ]
+                }
+            };
+            break;
+            
+        case "hedging":
+            focusedAnalysis = {
+                hedging_focus: {
+                    hedging_opportunities: identifyHedgingOpportunities(correlationData),
+                    negative_correlations: correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) < -0.3),
+                    hedging_strategies: generateHedgingStrategies(correlationData),
+                    hedging_insights: [
+                        `🛡️ ${correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) < -0.3).length} potential hedging assets identified`,
+                        `📉 Strongest hedge: ${getStrongestHedge(correlationData)}`,
+                        `⚖️ Hedge effectiveness: ${assessOverallHedgingEffectiveness(correlationData)}`,
+                        `🔄 Dynamic hedging recommended: ${shouldUseDynamicHedging(correlationDistribution.average_correlation)}`
+                    ]
+                }
+            };
+            break;
+            
+        case "risk_management":
+            focusedAnalysis = {
+                risk_management_focus: {
+                    concentration_risks: riskAnalysis,
+                    risk_factors: identifyCorrelationRiskFactors(
+                        correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) > 0.7),
+                        correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) > 0.9)
+                    ),
+                    stress_test_implications: generateStressTestImplications(
+                        parseFloat(correlationDistribution.average_correlation),
+                        correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) > 0.7).length / correlationData.length
+                    ),
+                    risk_insights: [
+                        `⚠️ Concentration risk level: ${riskAnalysis.concentration_risk}`,
+                        `📊 High correlation assets: ${correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) > 0.7).length}`,
+                        `🎯 Portfolio efficiency score: ${calculatePortfolioEfficiencyScore(correlationData)}`,
+                        `📈 Volatility multiplier: ${calculateVolatilityMultiplier(parseFloat(correlationDistribution.average_correlation))}`
+                    ]
+                }
+            };
+            break;
+    }
+    
     return {
         summary: `Correlation analysis of ${correlationData.length} relationships shows ${diversificationAnalysis.diversification_quality} diversification opportunities with ${riskAnalysis.concentration_risk} concentration risk`,
+        analysis_type: analysisType,
         correlation_distribution: correlationDistribution,
         diversification_analysis: diversificationAnalysis,
         risk_analysis: riskAnalysis,
@@ -224,12 +367,21 @@ function analyzeCorrelationData(correlationData: any[]): any {
         insights: insights,
         strategic_recommendations: generateStrategicRecommendations(diversificationAnalysis, riskAnalysis, portfolioOptimization),
         hedging_opportunities: identifyHedgingOpportunities(correlationData),
+        ...focusedAnalysis,
         data_quality: {
             source: "TokenMetrics Correlation Engine",
             relationship_count: correlationData.length,
             coverage_scope: assessCoverageScope(correlationData),
             data_reliability: assessDataReliability(correlationData)
-        }
+        },
+        portfolio_construction_guidelines: [
+            "🎯 Target correlation below 0.3 for effective diversification",
+            "⚖️ Balance high-return assets with low-correlation alternatives",
+            "🔄 Rebalance when correlations shift significantly",
+            "📊 Monitor correlation changes during market stress",
+            "🛡️ Use negative correlations for hedging strategies",
+            "📈 Consider correlation stability over time periods"
+        ]
     };
 }
 
@@ -844,15 +996,82 @@ function assessCoverageScope(correlationData: any[]): string {
 }
 
 function assessDataReliability(correlationData: any[]): string {
-    const withValidCorrelations = correlationData.filter(item => 
-        (item.CORRELATION || item.CORRELATION_VALUE) !== null && 
-        (item.CORRELATION || item.CORRELATION_VALUE) !== undefined
+    const validCorrelations = correlationData.filter(item => 
+        (item.CORRELATION !== null && item.CORRELATION !== undefined) || 
+        (item.CORRELATION_VALUE !== null && item.CORRELATION_VALUE !== undefined)
     ).length;
     
-    const reliabilityRatio = withValidCorrelations / correlationData.length;
+    const reliabilityRatio = correlationData.length > 0 ? (validCorrelations / correlationData.length) : 0;
     
-    if (reliabilityRatio > 0.9) return "Very High";
-    if (reliabilityRatio > 0.8) return "High";
-    if (reliabilityRatio > 0.7) return "Moderate";
-    return "Low";
+    if (reliabilityRatio > 0.95) return "Excellent - comprehensive correlation data";
+    if (reliabilityRatio > 0.85) return "Good - most relationships have valid correlation data";
+    if (reliabilityRatio > 0.7) return "Fair - some missing correlation values";
+    return "Limited - significant gaps in correlation data";
+}
+
+// Helper functions for focused analysis
+
+function generateDiversificationRecommendations(correlationData: any[]): any[] {
+    const lowCorrelationAssets = correlationData
+        .filter(item => Math.abs(item.CORRELATION || item.CORRELATION_VALUE || 0) < 0.3)
+        .sort((a, b) => Math.abs(a.CORRELATION || a.CORRELATION_VALUE || 0) - Math.abs(b.CORRELATION || b.CORRELATION_VALUE || 0))
+        .slice(0, 5);
+    
+    return lowCorrelationAssets.map(asset => ({
+        token: `${asset.TOKEN_NAME || asset.NAME || 'Unknown'} (${asset.SYMBOL || 'N/A'})`,
+        correlation: (asset.CORRELATION || asset.CORRELATION_VALUE || 0).toFixed(3),
+        allocation_suggestion: suggestAllocation(asset.CORRELATION || asset.CORRELATION_VALUE || 0),
+        diversification_benefit: interpretDiversificationBenefit(asset.CORRELATION || asset.CORRELATION_VALUE || 0)
+    }));
+}
+
+function getDiversificationRebalancingFrequency(avgCorrelation: string): string {
+    const correlation = parseFloat(avgCorrelation);
+    if (correlation > 0.6) return "Monthly - high correlation requires frequent rebalancing";
+    if (correlation > 0.4) return "Quarterly - moderate correlation needs regular monitoring";
+    if (correlation > 0.2) return "Semi-annually - low correlation allows longer periods";
+    return "Annually - very low correlation provides stable diversification";
+}
+
+function generateHedgingStrategies(correlationData: any[]): any[] {
+    const hedgingAssets = correlationData
+        .filter(item => (item.CORRELATION || item.CORRELATION_VALUE) < -0.2)
+        .sort((a, b) => (a.CORRELATION || a.CORRELATION_VALUE) - (b.CORRELATION || b.CORRELATION_VALUE))
+        .slice(0, 5);
+    
+    return hedgingAssets.map(asset => ({
+        token: `${asset.TOKEN_NAME || asset.NAME || 'Unknown'} (${asset.SYMBOL || 'N/A'})`,
+        correlation: (asset.CORRELATION || asset.CORRELATION_VALUE || 0).toFixed(3),
+        hedge_ratio: calculateHedgeRatio(asset.CORRELATION || asset.CORRELATION_VALUE || 0),
+        hedging_strategy: determineHedgingStrategy(asset.CORRELATION || asset.CORRELATION_VALUE || 0),
+        effectiveness: assessHedgingEffectiveness(asset.CORRELATION || asset.CORRELATION_VALUE || 0)
+    }));
+}
+
+function getStrongestHedge(correlationData: any[]): string {
+    const negativeCorrelations = correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) < 0);
+    if (negativeCorrelations.length === 0) return "No negative correlations found";
+    
+    const strongest = negativeCorrelations.reduce((min, current) => 
+        (current.CORRELATION || current.CORRELATION_VALUE) < (min.CORRELATION || min.CORRELATION_VALUE) ? current : min
+    );
+    
+    return `${strongest.TOKEN_NAME || strongest.NAME || 'Unknown'} (${strongest.SYMBOL || 'N/A'}) with ${(strongest.CORRELATION || strongest.CORRELATION_VALUE || 0).toFixed(3)} correlation`;
+}
+
+function assessOverallHedgingEffectiveness(correlationData: any[]): string {
+    const negativeCorrelations = correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) < 0);
+    const strongNegativeCorrelations = correlationData.filter(item => (item.CORRELATION || item.CORRELATION_VALUE) < -0.5);
+    
+    if (strongNegativeCorrelations.length > 3) return "Excellent - multiple strong hedging options available";
+    if (negativeCorrelations.length > 5) return "Good - several hedging opportunities identified";
+    if (negativeCorrelations.length > 2) return "Moderate - limited hedging options available";
+    return "Poor - few or no effective hedging opportunities";
+}
+
+function shouldUseDynamicHedging(avgCorrelation: string): string {
+    const correlation = parseFloat(avgCorrelation);
+    if (correlation > 0.7) return "Yes - high correlations require dynamic hedging strategies";
+    if (correlation > 0.4) return "Consider - moderate correlations may benefit from dynamic approaches";
+    return "No - low correlations allow for static hedging strategies";
 }

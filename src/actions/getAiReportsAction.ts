@@ -1,13 +1,58 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { AiReportsResponse, AiReportsRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { AiReportsResponse } from "../types";
+
+// Zod schema for AI reports request validation
+const AiReportsRequestSchema = z.object({
+    token_id: z.number().min(1).optional().describe("The ID of the token to get AI reports for"),
+    symbol: z.string().optional().describe("The symbol of the token to get AI reports for"),
+    limit: z.number().min(1).max(100).optional().describe("Number of reports to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["investment", "technical", "comprehensive", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type AiReportsRequest = z.infer<typeof AiReportsRequestSchema>;
+
+// AI extraction template for natural language processing
+const AI_REPORTS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting AI reports requests from natural language.
+
+The user wants to get AI-generated reports for cryptocurrency analysis. Extract the following information:
+
+1. **token_id** (optional): Numeric ID of the token
+   - Only extract if explicitly mentioned as a number
+
+2. **symbol** (optional): Token symbol like BTC, ETH, etc.
+   - Look for cryptocurrency symbols or names
+   - Convert names to symbols if possible (Bitcoin → BTC, Ethereum → ETH)
+
+3. **limit** (optional, default: 50): Number of reports to return
+   - Look for phrases like "50 reports", "top 20", "first 100"
+
+4. **page** (optional, default: 1): Page number for pagination
+
+5. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "investment" - focus on investment recommendations and analysis
+   - "technical" - focus on technical analysis and code reviews
+   - "comprehensive" - focus on deep dive comprehensive reports
+   - "all" - all types of AI reports
+
+Examples:
+- "Get AI reports for Bitcoin" → {symbol: "BTC", analysisType: "all"}
+- "Show me investment analysis for ETH" → {symbol: "ETH", analysisType: "investment"}
+- "Get comprehensive AI reports" → {analysisType: "comprehensive"}
+- "Technical analysis reports for token 123" → {token_id: 123, analysisType: "technical"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * AI REPORTS ACTION - Based on actual TokenMetrics API documentation
@@ -17,8 +62,8 @@ import type { AiReportsResponse, AiReportsRequest } from "../types";
  * tokens, including deep dives, investment analyses, and code reviews.
  */
 export const getAiReportsAction: Action = {
-    name: "getAiReports",
-    description: "Retrieve AI-generated reports providing comprehensive analyses of cryptocurrency tokens, including deep dives, investment analyses, and code reviews",
+    name: "GET_AI_REPORTS_TOKENMETRICS",
+    description: "Retrieve AI-generated reports providing comprehensive analyses of cryptocurrency tokens, including deep dives, investment analyses, and code reviews from TokenMetrics",
     similes: [
         "get ai reports",
         "ai analysis reports",
@@ -28,60 +73,123 @@ export const getAiReportsAction: Action = {
         "comprehensive token analysis",
         "ai generated insights"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get AI analysis reports for Bitcoin"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll retrieve comprehensive AI-generated analysis reports for Bitcoin from TokenMetrics.",
+                    action: "GET_AI_REPORTS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me the latest AI reports available"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll get the latest AI-generated reports from TokenMetrics covering various cryptocurrency projects.",
+                    action: "GET_AI_REPORTS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get investment analysis reports for Ethereum"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll retrieve AI-generated investment analysis reports for Ethereum.",
+                    action: "GET_AI_REPORTS_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing AI reports request...`);
             
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: AiReportsRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<AiReportsResponse>(
-                TOKENMETRICS_ENDPOINTS.aiReports,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const aiReportsRequest = await extractTokenMetricsRequest<AiReportsRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                AI_REPORTS_EXTRACTION_TEMPLATE,
+                AiReportsRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<AiReportsResponse>(response, "getAiReports");
-            const aiReports = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, aiReportsRequest);
             
-            // Analyze the AI reports
-            const reportsAnalysis = analyzeAiReports(aiReports);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                token_id: aiReportsRequest.token_id,
+                symbol: aiReportsRequest.symbol,
+                limit: aiReportsRequest.limit || 50,
+                page: aiReportsRequest.page || 1,
+                analysisType: aiReportsRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add token identification parameters
+            if (processedRequest.token_id) {
+                apiParams.token_id = processedRequest.token_id;
+            }
+            if (processedRequest.symbol) {
+                apiParams.symbol = processedRequest.symbol;
+            }
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/ai-reports",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const aiReports = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the AI reports based on requested analysis type
+            const reportsAnalysis = analyzeAiReports(aiReports, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved ${aiReports.length} AI-generated reports`,
+                request_id: requestId,
                 ai_reports: aiReports,
                 analysis: reportsAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.aiReports,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    endpoint: "ai-reports",
+                    requested_token: processedRequest.symbol || processedRequest.token_id,
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
+                    analysis_focus: processedRequest.analysisType,
                     data_points: aiReports.length,
                     api_version: "v2",
                     data_source: "TokenMetrics AI Engine"
@@ -103,8 +211,11 @@ export const getAiReportsAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] AI reports analysis completed successfully`);
+            return result;
+            
         } catch (error) {
-            console.error("Error in getAiReportsAction:", error);
+            console.error("Error in getAiReports action:", error);
             
             return {
                 success: false,
@@ -126,55 +237,16 @@ export const getAiReportsAction: Action = {
             };
         }
     },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get AI analysis reports for Bitcoin",
-                    symbol: "BTC"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve comprehensive AI-generated analysis reports for Bitcoin from TokenMetrics.",
-                    action: "GET_AI_REPORTS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me the latest AI reports available"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the latest AI-generated reports from TokenMetrics covering various cryptocurrency projects.",
-                    action: "GET_AI_REPORTS"
-                }
-            }
-        ]
-    ],
+
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
- * Analyze AI reports to extract key insights and themes
+ * Analyze AI reports to extract key insights and themes based on analysis type
  */
-function analyzeAiReports(reportsData: any[]): any {
+function analyzeAiReports(reportsData: any[], analysisType: string = "all"): any {
     if (!reportsData || reportsData.length === 0) {
         return {
             summary: "No AI reports available for analysis",
@@ -189,20 +261,77 @@ function analyzeAiReports(reportsData: any[]): any {
     const qualityAssessment = assessReportQuality(reportsData);
     const topInsights = extractTopInsights(reportsData);
     
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "investment":
+            focusedAnalysis = {
+                investment_focus: {
+                    investment_recommendations: extractInvestmentRecommendations(reportsData),
+                    risk_assessments: extractRiskAssessments(reportsData),
+                    investment_insights: [
+                        `📈 Investment reports analyzed: ${reportsData.filter(r => r.REPORT_TYPE?.includes('Investment')).length}`,
+                        `🎯 Risk/reward assessments available: ${reportsData.filter(r => r.RISK_SCORE).length}`,
+                        `💰 Portfolio recommendations: ${reportsData.filter(r => r.RECOMMENDATIONS?.some((rec: any) => rec.includes('portfolio'))).length}`
+                    ]
+                }
+            };
+            break;
+            
+        case "technical":
+            focusedAnalysis = {
+                technical_focus: {
+                    code_reviews: extractCodeReviews(reportsData),
+                    technical_analysis: extractTechnicalAnalysis(reportsData),
+                    technical_insights: [
+                        `🔧 Technical reports analyzed: ${reportsData.filter(r => r.REPORT_TYPE?.includes('Technical')).length}`,
+                        `📊 Code quality assessments: ${reportsData.filter(r => r.CODE_QUALITY_SCORE).length}`,
+                        `🛡️ Security evaluations: ${reportsData.filter(r => r.SECURITY_SCORE).length}`
+                    ]
+                }
+            };
+            break;
+            
+        case "comprehensive":
+            focusedAnalysis = {
+                comprehensive_focus: {
+                    deep_dive_reports: extractDeepDiveReports(reportsData),
+                    comprehensive_analysis: extractComprehensiveAnalysis(reportsData),
+                    comprehensive_insights: [
+                        `📚 Comprehensive reports: ${reportsData.filter(r => r.REPORT_TYPE?.includes('Deep Dive')).length}`,
+                        `🔍 Multi-faceted analysis: ${reportsData.filter(r => r.ANALYSIS_CATEGORIES?.length > 3).length}`,
+                        `📖 Detailed evaluations: ${reportsData.filter(r => r.REPORT_CONTENT?.length > 1000).length}`
+                    ]
+                }
+            };
+            break;
+    }
+    
     return {
         summary: `AI analysis covering ${reportsData.length} reports with ${reportCoverage.unique_tokens} unique tokens analyzed`,
+        analysis_type: analysisType,
         report_coverage: reportCoverage,
         content_analysis: contentAnalysis,
         quality_assessment: qualityAssessment,
         top_insights: topInsights,
         research_themes: identifyResearchThemes(reportsData),
         actionable_intelligence: generateActionableIntelligence(reportsData),
+        ...focusedAnalysis,
         data_quality: {
             source: "TokenMetrics AI Engine",
             total_reports: reportsData.length,
             coverage_breadth: assessCoverageBreadth(reportsData),
             freshness: assessReportFreshness(reportsData)
-        }
+        },
+        investment_considerations: [
+            "📊 Use AI reports as part of comprehensive due diligence",
+            "🎯 Cross-reference recommendations with quantitative metrics",
+            "📅 Consider report generation date for relevance",
+            "🔍 Focus on reports matching your investment timeline",
+            "⚖️ Balance AI insights with fundamental analysis",
+            "📈 Track report accuracy over time for validation"
+        ]
     };
 }
 
@@ -676,17 +805,105 @@ function categorizeRecommendations(recommendations: any[]): any[] {
 }
 
 function generateIntelligenceSummary(intelligence: any): string {
-    const signalCount = intelligence.investment_signals.length;
-    const riskCount = intelligence.risk_alerts.length;
-    const opportunityCount = intelligence.opportunity_highlights.length;
+    const { recommendations, insights, risk_factors } = intelligence;
     
-    if (signalCount === 0 && riskCount === 0 && opportunityCount === 0) {
-        return "Limited actionable intelligence extracted from current reports";
+    let summary = "📊 **AI Intelligence Summary**\n\n";
+    
+    if (recommendations && recommendations.length > 0) {
+        summary += `🎯 **Key Recommendations**: ${recommendations.slice(0, 3).join(', ')}\n`;
     }
     
-    let summary = `${signalCount} investment signals`;
-    if (riskCount > 0) summary += `, ${riskCount} risk alerts`;
-    if (opportunityCount > 0) summary += `, ${opportunityCount} opportunities identified`;
+    if (insights && insights.length > 0) {
+        summary += `💡 **Top Insights**: ${insights.slice(0, 3).join(', ')}\n`;
+    }
     
-    return summary + " across analyzed reports";
+    if (risk_factors && risk_factors.length > 0) {
+        summary += `⚠️ **Risk Factors**: ${risk_factors.slice(0, 2).join(', ')}\n`;
+    }
+    
+    return summary;
+}
+
+// Helper functions for focused analysis
+
+function extractInvestmentRecommendations(reportsData: any[]): any[] {
+    return reportsData
+        .filter(report => report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS))
+        .flatMap(report => report.RECOMMENDATIONS)
+        .filter(rec => rec && (rec.includes('buy') || rec.includes('sell') || rec.includes('hold') || rec.includes('invest')))
+        .slice(0, 10);
+}
+
+function extractRiskAssessments(reportsData: any[]): any[] {
+    return reportsData
+        .filter(report => report.RISK_SCORE || report.RISK_ASSESSMENT)
+        .map(report => ({
+            symbol: report.SYMBOL,
+            risk_score: report.RISK_SCORE,
+            risk_assessment: report.RISK_ASSESSMENT,
+            risk_factors: report.RISK_FACTORS
+        }))
+        .slice(0, 10);
+}
+
+function extractCodeReviews(reportsData: any[]): any[] {
+    return reportsData
+        .filter(report => report.CODE_QUALITY_SCORE || report.SECURITY_SCORE || report.REPORT_TYPE?.includes('Code'))
+        .map(report => ({
+            symbol: report.SYMBOL,
+            code_quality_score: report.CODE_QUALITY_SCORE,
+            security_score: report.SECURITY_SCORE,
+            audit_findings: report.AUDIT_FINDINGS
+        }))
+        .slice(0, 10);
+}
+
+function extractTechnicalAnalysis(reportsData: any[]): any[] {
+    return reportsData
+        .filter(report => report.TECHNICAL_INDICATORS || report.REPORT_TYPE?.includes('Technical'))
+        .map(report => ({
+            symbol: report.SYMBOL,
+            technical_indicators: report.TECHNICAL_INDICATORS,
+            price_targets: report.PRICE_TARGETS,
+            support_resistance: report.SUPPORT_RESISTANCE
+        }))
+        .slice(0, 10);
+}
+
+function extractDeepDiveReports(reportsData: any[]): any[] {
+    return reportsData
+        .filter(report => report.REPORT_TYPE?.includes('Deep Dive') || (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 1000))
+        .map(report => ({
+            symbol: report.SYMBOL,
+            report_type: report.REPORT_TYPE,
+            content_length: report.REPORT_CONTENT?.length || 0,
+            analysis_categories: report.ANALYSIS_CATEGORIES,
+            generated_date: report.GENERATED_DATE
+        }))
+        .slice(0, 10);
+}
+
+function extractComprehensiveAnalysis(reportsData: any[]): any[] {
+    return reportsData
+        .filter(report => report.ANALYSIS_CATEGORIES && Array.isArray(report.ANALYSIS_CATEGORIES) && report.ANALYSIS_CATEGORIES.length > 3)
+        .map(report => ({
+            symbol: report.SYMBOL,
+            analysis_categories: report.ANALYSIS_CATEGORIES,
+            key_insights: report.KEY_INSIGHTS,
+            recommendations: report.RECOMMENDATIONS,
+            completeness_score: calculateCompletenessScore(report)
+        }))
+        .slice(0, 10);
+}
+
+function calculateCompletenessScore(report: any): number {
+    let score = 0;
+    if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS)) score += 2;
+    if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS)) score += 2;
+    if (report.RISK_ASSESSMENT) score += 1;
+    if (report.PRICE_TARGETS) score += 1;
+    if (report.TECHNICAL_INDICATORS) score += 1;
+    if (report.FUNDAMENTAL_ANALYSIS) score += 1;
+    if (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 500) score += 2;
+    return score;
 }

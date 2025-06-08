@@ -1,14 +1,72 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { DailyOhlcvResponse, DailyOhlcvRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { DailyOhlcvResponse } from "../types";
+
+// Zod schema for daily OHLCV request validation
+const DailyOhlcvRequestSchema = z.object({
+    token_id: z.number().min(1).optional().describe("The ID of the token to get daily OHLCV data for"),
+    symbol: z.string().optional().describe("The symbol of the token to get daily OHLCV data for"),
+    token_name: z.string().optional().describe("The name of the token"),
+    startDate: z.string().optional().describe("Start date in YYYY-MM-DD format"),
+    endDate: z.string().optional().describe("End date in YYYY-MM-DD format"),
+    limit: z.number().min(1).max(1000).optional().describe("Number of data points to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["swing_trading", "trend_analysis", "technical_indicators", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type DailyOhlcvRequest = z.infer<typeof DailyOhlcvRequestSchema>;
+
+// AI extraction template for natural language processing
+const DAILY_OHLCV_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting daily OHLCV data requests from natural language.
+
+The user wants to get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
+
+1. **token_id** (optional): Numeric ID of the token
+   - Only extract if explicitly mentioned as a number
+
+2. **symbol** (optional): Token symbol like BTC, ETH, etc.
+   - Look for cryptocurrency symbols or names
+   - Convert names to symbols if possible (Bitcoin → BTC, Ethereum → ETH)
+
+3. **token_name** (optional): Full name of the token
+   - Extract if mentioned explicitly
+
+4. **startDate** (optional): Start date for data range
+   - Look for dates in various formats and convert to YYYY-MM-DD
+   - Phrases like "last month", "past 30 days", "since January"
+
+5. **endDate** (optional): End date for data range
+   - Look for end dates or "until" phrases
+   - Default to current date if start date is specified but end date is not
+
+6. **limit** (optional, default: 50): Number of data points to return
+   - Look for phrases like "50 days", "last 100 candles", "200 data points"
+
+7. **page** (optional, default: 1): Page number for pagination
+
+8. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "swing_trading" - focus on swing trading opportunities and signals
+   - "trend_analysis" - focus on trend identification and direction
+   - "technical_indicators" - focus on technical indicators and patterns
+   - "all" - comprehensive OHLCV analysis
+
+Examples:
+- "Get daily OHLCV data for Bitcoin" → {symbol: "BTC", analysisType: "all"}
+- "Show me daily candles for ETH last 30 days" → {symbol: "ETH", limit: 30, analysisType: "all"}
+- "Daily price data for swing trading BTC" → {symbol: "BTC", analysisType: "swing_trading"}
+- "Technical analysis of daily Ethereum data" → {symbol: "ETH", analysisType: "technical_indicators"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * DAILY OHLCV ACTION - Based on actual TokenMetrics API documentation
@@ -18,7 +76,7 @@ import type { DailyOhlcvResponse, DailyOhlcvRequest } from "../types";
  * Essential for swing trading, technical analysis, and medium-term investment strategies.
  */
 export const getDailyOhlcvAction: Action = {
-    name: "getDailyOhlcv",
+    name: "GET_DAILY_OHLCV_TOKENMETRICS",
     description: "Get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency tokens from TokenMetrics",
     similes: [
         "get daily ohlcv",
@@ -29,70 +87,138 @@ export const getDailyOhlcvAction: Action = {
         "daily technical analysis",
         "daily market data"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get daily OHLCV data for Bitcoin"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll retrieve daily OHLCV data for Bitcoin from TokenMetrics.",
+                    action: "GET_DAILY_OHLCV_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me daily candle data for ETH for the past month"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll get daily OHLCV data for Ethereum for the past month.",
+                    action: "GET_DAILY_OHLCV_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Daily price data for swing trading analysis"
+                }
+            },
+            {
+                user: "{{agent}}",
+                content: {
+                    text: "I'll retrieve daily OHLCV data optimized for swing trading analysis.",
+                    action: "GET_DAILY_OHLCV_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing daily OHLCV request...`);
             
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: DailyOhlcvRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                token_name: typeof messageContent.token_name === 'string' ? messageContent.token_name : undefined,
-                
-                // Date range parameters
-                startDate: typeof messageContent.startDate === 'string' ? messageContent.startDate : 
-                          typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
-                endDate: typeof messageContent.endDate === 'string' ? messageContent.endDate :
-                        typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<DailyOhlcvResponse>(
-                TOKENMETRICS_ENDPOINTS.dailyOhlcv,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const ohlcvRequest = await extractTokenMetricsRequest<DailyOhlcvRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                DAILY_OHLCV_EXTRACTION_TEMPLATE,
+                DailyOhlcvRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<DailyOhlcvResponse>(response, "getDailyOhlcv");
-            const ohlcvData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
             
-            // Analyze the daily OHLCV data
-            const ohlcvAnalysis = analyzeDailyOhlcvData(ohlcvData);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                token_id: ohlcvRequest.token_id,
+                symbol: ohlcvRequest.symbol,
+                token_name: ohlcvRequest.token_name,
+                startDate: ohlcvRequest.startDate,
+                endDate: ohlcvRequest.endDate,
+                limit: ohlcvRequest.limit || 50,
+                page: ohlcvRequest.page || 1,
+                analysisType: ohlcvRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add token identification parameters
+            if (processedRequest.token_id) {
+                apiParams.token_id = processedRequest.token_id;
+            }
+            if (processedRequest.symbol) {
+                apiParams.symbol = processedRequest.symbol;
+            }
+            if (processedRequest.token_name) {
+                apiParams.token_name = processedRequest.token_name;
+            }
+            if (processedRequest.startDate) {
+                apiParams.startDate = processedRequest.startDate;
+            }
+            if (processedRequest.endDate) {
+                apiParams.endDate = processedRequest.endDate;
+            }
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/daily-ohlcv",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing OHLCV data...`);
+            
+            // Process response data
+            const ohlcvData = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the daily OHLCV data based on requested analysis type
+            const ohlcvAnalysis = analyzeDailyOhlcvData(ohlcvData, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved ${ohlcvData.length} daily OHLCV data points`,
+                request_id: requestId,
                 ohlcv_data: ohlcvData,
                 analysis: ohlcvAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.dailyOhlcv,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    endpoint: "daily-ohlcv",
+                    requested_token: processedRequest.symbol || processedRequest.token_id,
                     date_range: {
-                        start: requestParams.startDate,
-                        end: requestParams.endDate
+                        start: processedRequest.startDate,
+                        end: processedRequest.endDate
                     },
+                    analysis_focus: processedRequest.analysisType,
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
                     data_points: ohlcvData.length,
                     timeframe: "1 day",
@@ -113,8 +239,11 @@ export const getDailyOhlcvAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] Daily OHLCV analysis completed successfully`);
+            return result;
+            
         } catch (error) {
-            console.error("Error in getDailyOhlcvAction:", error);
+            console.error("Error in getDailyOhlcv action:", error);
             
             return {
                 success: false,
@@ -137,58 +266,16 @@ export const getDailyOhlcvAction: Action = {
             };
         }
     },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get daily OHLCV data for Bitcoin",
-                    symbol: "BTC"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve daily OHLCV data for Bitcoin from TokenMetrics.",
-                    action: "GET_DAILY_OHLCV"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me daily candle data for ETH for the past month",
-                    symbol: "ETH",
-                    startDate: "2024-11-01",
-                    endDate: "2024-12-01"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get daily OHLCV data for Ethereum for the specified month.",
-                    action: "GET_DAILY_OHLCV"
-                }
-            }
-        ]
-    ],
+
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
  * Analyze daily OHLCV data for swing trading and investment insights
  */
-function analyzeDailyOhlcvData(ohlcvData: any[]): any {
+function analyzeDailyOhlcvData(ohlcvData: any[], analysisType: string = "all"): any {
     if (!ohlcvData || ohlcvData.length === 0) {
         return {
             summary: "No daily OHLCV data available for analysis",
@@ -258,15 +345,15 @@ function analyzeDailyPriceMovement(data: any[]): any {
     else volatilityLevel = "Very Low";
     
     return {
-        start_price: formatTokenMetricsNumber(firstPrice, 'currency'),
-        end_price: formatTokenMetricsNumber(lastPrice, 'currency'),
-        price_change: formatTokenMetricsNumber(priceChange, 'currency'),
-        change_percent: formatTokenMetricsNumber(changePercent, 'percentage'),
-        highest_price: formatTokenMetricsNumber(highestPrice, 'currency'),
-        lowest_price: formatTokenMetricsNumber(lowestPrice, 'currency'),
-        price_range: formatTokenMetricsNumber(priceRange, 'currency'),
-        range_percent: formatTokenMetricsNumber(rangePercent, 'percentage'),
-        daily_volatility: formatTokenMetricsNumber(volatility, 'percentage'),
+        start_price: formatCurrency(firstPrice),
+        end_price: formatCurrency(lastPrice),
+        price_change: formatCurrency(priceChange),
+        change_percent: formatPercentage(changePercent),
+        highest_price: formatCurrency(highestPrice),
+        lowest_price: formatCurrency(lowestPrice),
+        price_range: formatCurrency(priceRange),
+        range_percent: formatPercentage(rangePercent),
+        daily_volatility: formatPercentage(volatility),
         volatility_level: volatilityLevel,
         direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways",
         momentum: calculateMomentum(data)
@@ -292,9 +379,9 @@ function analyzeDailyVolumePatterns(data: any[]): any {
                        recentVolume < earlierVolume * 0.9 ? "Decreasing" : "Stable";
     
     return {
-        average_volume: formatTokenMetricsNumber(avgVolume, 'currency'),
-        max_volume: formatTokenMetricsNumber(maxVolume, 'currency'),
-        min_volume: formatTokenMetricsNumber(minVolume, 'currency'),
+        average_volume: formatCurrency(avgVolume),
+        max_volume: formatCurrency(maxVolume),
+        min_volume: formatCurrency(minVolume),
         volume_trend: volumeTrend,
         volume_price_correlation: volumePriceCorrelation.toFixed(3),
         volume_pattern: classifyVolumePattern(volumes),
@@ -322,8 +409,8 @@ function analyzeTechnicalIndicators(data: any[]): any {
     
     return {
         moving_averages: {
-            sma_20: formatTokenMetricsNumber(sma20, 'currency'),
-            sma_50: formatTokenMetricsNumber(sma50, 'currency'),
+            sma_20: formatCurrency(sma20),
+            sma_50: formatCurrency(sma50),
             price_vs_sma20: currentPrice > sma20 ? "Above" : "Below",
             price_vs_sma50: currentPrice > sma50 ? "Above" : "Below",
             ma_alignment: sma20 > sma50 ? "Bullish" : "Bearish"
@@ -390,8 +477,8 @@ function analyzeSupportResistance(data: any[]): any {
         nearest_resistance: findNearestLevel(currentPrice, resistanceLevels, "resistance"),
         nearest_support: findNearestLevel(currentPrice, supportLevels, "support"),
         key_levels: {
-            major_resistance: formatTokenMetricsNumber(Math.max(...resistanceLevels), 'currency'),
-            major_support: formatTokenMetricsNumber(Math.min(...supportLevels), 'currency')
+            major_resistance: formatCurrency(Math.max(...resistanceLevels)),
+            major_support: formatCurrency(Math.min(...supportLevels))
         },
         level_strength: "Based on price action and volume confirmation"
     };
@@ -675,7 +762,7 @@ function findNearestLevel(currentPrice: number, levels: number[], type: string):
     });
     
     const distance = ((nearestLevel - currentPrice) / currentPrice) * 100;
-    return `${formatTokenMetricsNumber(nearestLevel, 'currency')} (${distance.toFixed(2)}% ${distance > 0 ? 'above' : 'below'})`;
+    return `${formatCurrency(nearestLevel)} (${distance.toFixed(2)}% ${distance > 0 ? 'above' : 'below'})`;
 }
 
 function determineTechnicalBias(price: number, sma20: number, sma50: number, rsi: number): string {

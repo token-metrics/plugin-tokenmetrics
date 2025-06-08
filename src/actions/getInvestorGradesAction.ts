@@ -1,187 +1,450 @@
-import type { Action } from "@elizaos/core";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { InvestorGradesResponse, InvestorGradesRequest } from "../types";
+    type Action,
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    type ActionExample,
+    elizaLogger,
+    composeContext,
+    generateObject,
+    ModelClass
+} from "@elizaos/core";
+import { z } from "zod";
+import {
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
+
+// Template for extracting investor grades information from conversations
+const investorGradesTemplate = `# Task: Extract Investor Grades Request Information
+
+Based on the conversation context, identify what investor grades information the user is requesting.
+
+# Conversation Context:
+{{recentMessages}}
+
+# Instructions:
+Look for any mentions of:
+- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
+- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
+- Investor grade requests ("investor grades", "investment grades", "long-term grades", "investment ratings")
+- Grade types ("A", "B", "C", "D", "F" grades)
+- Investment timeframes ("long-term", "investment horizon", "hodl")
+- Market filters (category, exchange, market cap, volume)
+
+The user might say things like:
+- "Get investor grades for Bitcoin"
+- "Show me long-term investment grades"
+- "What are the current investor ratings?"
+- "Get A-grade tokens for investment"
+- "Show investment grades for DeFi tokens"
+- "Get grades for long-term holding"
+- "What tokens have A+ investor grades?"
+
+Extract the relevant information for the investor grades request.
+
+# Response Format:
+Return a structured object with the investor grades request information.`;
+
+// Schema for the extracted data
+const InvestorGradesRequestSchema = z.object({
+    cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
+    grade_filter: z.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
+    category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
+    exchange: z.string().nullable().describe("Exchange filter"),
+    time_period: z.string().nullable().describe("Time period or date range"),
+    market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
+    confidence: z.number().min(0).max(1).describe("Confidence in extraction")
+});
+
+type InvestorGradesRequest = z.infer<typeof InvestorGradesRequestSchema>;
 
 /**
- * INVESTOR GRADES ACTION - Based on actual TokenMetrics API documentation
- * Real Endpoint: GET https://api.tokenmetrics.com/v2/investor-grades
- * 
- * This action provides long-term investment grades including Technology and Fundamental metrics.
- * Essential for long-term investment decisions and portfolio allocation strategies.
+ * Fetch investor grades data from TokenMetrics API
  */
-export const getInvestorGradesAction: Action = {
-    name: "getInvestorGrades",
-    description: "Get long-term investment grades including Technology and Fundamental metrics from TokenMetrics for portfolio allocation decisions",
-    similes: [
-        "get investor grades",
-        "long term grades",
-        "investment grades",
-        "fundamental analysis",
-        "technology assessment",
-        "portfolio grades",
-        "investment quality"
-    ],
+async function fetchInvestorGrades(params: Record<string, any>, runtime: IAgentRuntime): Promise<any> {
+    elizaLogger.log(`📡 Fetching investor grades with params:`, params);
     
-    async handler(_runtime, message, _state) {
-        try {
-            const messageContent = message.content as any;
-            
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: InvestorGradesRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Date range parameters
-                startDate: typeof messageContent.startDate === 'string' ? messageContent.startDate : 
-                          typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
-                endDate: typeof messageContent.endDate === 'string' ? messageContent.endDate :
-                        typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
-                
-                // Filtering parameters from API docs
-                category: typeof messageContent.category === 'string' ? messageContent.category : undefined,
-                exchange: typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined,
-                marketcap: typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined,
-                fdv: typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined,
-                volume: typeof messageContent.volume === 'number' ? messageContent.volume : undefined,
-                investorGrade: typeof messageContent.investorGrade === 'number' ? messageContent.investorGrade : undefined,
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<InvestorGradesResponse>(
-                TOKENMETRICS_ENDPOINTS.investorGrades,
-                apiParams,
-                "GET"
-            );
-            
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<InvestorGradesResponse>(response, "getInvestorGrades");
-            const investorGrades = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-            
-            // Analyze the investor grades
-            const gradesAnalysis = analyzeInvestorGrades(investorGrades);
-            
-            return {
-                success: true,
-                message: `Successfully retrieved investor grades for ${investorGrades.length} data points`,
-                investor_grades: investorGrades,
-                analysis: gradesAnalysis,
-                metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.investorGrades,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
-                    date_range: {
-                        start: requestParams.startDate,
-                        end: requestParams.endDate
-                    },
-                    filters_applied: {
-                        category: requestParams.category,
-                        exchange: requestParams.exchange,
-                        min_marketcap: requestParams.marketcap,
-                        min_volume: requestParams.volume,
-                        min_fdv: requestParams.fdv
-                    },
-                    pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
-                    },
-                    data_points: investorGrades.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics Official API"
-                },
-                grades_explanation: {
-                    INVESTOR_GRADE: "Overall long-term investment attractiveness (0-100)",
-                    FUNDAMENTAL_GRADE: "Assessment of project fundamentals, team, and business model",
-                    TECHNOLOGY_GRADE: "Evaluation of technical innovation and blockchain technology",
-                    grade_interpretation: {
-                        "90-100": "Exceptional - Top-tier investment opportunity",
-                        "80-89": "Excellent - Strong long-term investment potential",
-                        "70-79": "Good - Solid investment with manageable risks",
-                        "60-69": "Fair - Moderate investment potential with some concerns",
-                        "50-59": "Weak - Limited investment appeal",
-                        "0-49": "Poor - High risk, avoid for conservative portfolios"
-                    },
-                    usage_guidelines: [
-                        "Use for long-term portfolio allocation decisions",
-                        "Higher grades indicate better risk-adjusted return potential",
-                        "Consider grade trends over time for entry/exit timing",
-                        "Combine with market conditions for optimal positioning"
-                    ]
-                }
-            };
-            
-        } catch (error) {
-            console.error("Error in getInvestorGradesAction:", error);
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve investor grades from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/investor-grades is accessible",
-                    parameter_validation: [
-                        "Verify token_id or symbol is correct and supported",
-                        "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
-                        "Ensure numeric filters (marketcap, volume, fdv) are positive numbers",
-                        "Confirm your API key has access to investor grades endpoint"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Remove filters to get broader results",
-                        "Check if your subscription includes investor grades access",
-                        "Verify the token has been analyzed by TokenMetrics"
-                    ]
-                }
-            };
+    try {
+        const data = await callTokenMetricsAPI('/v2/investor-grades', params, runtime);
+        
+        if (!data) {
+            throw new Error("No data received from investor grades API");
         }
-    },
+        
+        elizaLogger.log(`✅ Successfully fetched investor grades data`);
+        return data;
+        
+    } catch (error) {
+        elizaLogger.error("❌ Error fetching investor grades:", error);
+        throw error;
+    }
+}
+
+/**
+ * Format investor grades response for user
+ */
+function formatInvestorGradesResponse(data: any[], tokenInfo?: any): string {
+    if (!data || data.length === 0) {
+        return "❌ No investor grades found for the specified criteria.";
+    }
+
+    const grades = Array.isArray(data) ? data : [data];
+    const gradeCount = grades.length;
     
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
+    // Analyze grade distribution
+    const gradeDistribution = {
+        A: grades.filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A').length,
+        B: grades.filter(g => g.INVESTOR_GRADE === 'B' || g.GRADE === 'B').length,
+        C: grades.filter(g => g.INVESTOR_GRADE === 'C' || g.GRADE === 'C').length,
+        D: grades.filter(g => g.INVESTOR_GRADE === 'D' || g.GRADE === 'D').length,
+        F: grades.filter(g => g.INVESTOR_GRADE === 'F' || g.GRADE === 'F').length
+    };
+
+    let response = `📊 **TokenMetrics Investor Grades Analysis**\n\n`;
+    
+    if (tokenInfo) {
+        response += `🎯 **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})\n`;
+    }
+    
+    response += `📈 **Grade Summary**: ${gradeCount} tokens analyzed\n`;
+    response += `🟢 **A Grade**: ${gradeDistribution.A} tokens (${((gradeDistribution.A/gradeCount)*100).toFixed(1)}%)\n`;
+    response += `🔵 **B Grade**: ${gradeDistribution.B} tokens (${((gradeDistribution.B/gradeCount)*100).toFixed(1)}%)\n`;
+    response += `🟡 **C Grade**: ${gradeDistribution.C} tokens (${((gradeDistribution.C/gradeCount)*100).toFixed(1)}%)\n`;
+    response += `🟠 **D Grade**: ${gradeDistribution.D} tokens (${((gradeDistribution.D/gradeCount)*100).toFixed(1)}%)\n`;
+    response += `🔴 **F Grade**: ${gradeDistribution.F} tokens (${((gradeDistribution.F/gradeCount)*100).toFixed(1)}%)\n\n`;
+
+    // Show top graded tokens
+    const topGrades = grades
+        .filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A')
+        .slice(0, 5);
+    
+    if (topGrades.length > 0) {
+        response += `🏆 **Top A-Grade Investment Tokens**:\n`;
+        topGrades.forEach((grade, index) => {
+            const gradeValue = grade.INVESTOR_GRADE || grade.GRADE;
+            response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${gradeValue}`;
+            if (grade.SCORE) {
+                response += ` - Score: ${grade.SCORE}`;
+            }
+            if (grade.DATE) {
+                response += ` (${grade.DATE})`;
+            }
+            response += `\n`;
+        });
+    }
+
+    // Investment recommendations based on grades
+    response += `\n💡 **AI Investment Recommendations**:\n`;
+    const aGradePercentage = (gradeDistribution.A / gradeCount) * 100;
+    const fGradePercentage = (gradeDistribution.F / gradeCount) * 100;
+    
+    if (aGradePercentage > 30) {
+        response += `• Strong investment environment with ${aGradePercentage.toFixed(1)}% A-grade tokens\n`;
+        response += `• Consider building long-term positions in top-rated cryptocurrencies\n`;
+        response += `• Focus on A and B grade tokens for portfolio allocation\n`;
+    } else if (fGradePercentage > 30) {
+        response += `• Challenging investment environment with ${fGradePercentage.toFixed(1)}% F-grade tokens\n`;
+        response += `• Exercise extreme caution with new investments\n`;
+        response += `• Consider dollar-cost averaging or waiting for better conditions\n`;
+    } else {
+        response += `• Mixed investment conditions - selective approach recommended\n`;
+        response += `• Focus on highest-grade tokens with strong fundamentals\n`;
+        response += `• Avoid D and F grade tokens for long-term holdings\n`;
+    }
+
+    response += `\n📊 **Data Source**: TokenMetrics AI Investor Grades\n`;
+    response += `⏰ **Analysis Time**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
+}
+
+/**
+ * Analyze investor grades data
+ */
+function analyzeInvestorGrades(data: any[]): any {
+    if (!data || data.length === 0) {
+        return { error: "No data to analyze" };
+    }
+
+    const grades = Array.isArray(data) ? data : [data];
+    
+    const gradeDistribution = {
+        A: grades.filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A').length,
+        B: grades.filter(g => g.INVESTOR_GRADE === 'B' || g.GRADE === 'B').length,
+        C: grades.filter(g => g.INVESTOR_GRADE === 'C' || g.GRADE === 'C').length,
+        D: grades.filter(g => g.INVESTOR_GRADE === 'D' || g.GRADE === 'D').length,
+        F: grades.filter(g => g.INVESTOR_GRADE === 'F' || g.GRADE === 'F').length
+    };
+
+    const analysis = {
+        total_tokens: grades.length,
+        grade_distribution: gradeDistribution,
+        top_investments: grades
+            .filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A')
+            .slice(0, 10)
+            .map(g => ({
+                symbol: g.TOKEN_SYMBOL || g.SYMBOL,
+                name: g.TOKEN_NAME || g.NAME,
+                grade: g.INVESTOR_GRADE || g.GRADE,
+                score: g.SCORE,
+                date: g.DATE
+            })),
+        investment_quality: "neutral"
+    };
+
+    // Determine overall investment quality
+    const aPercentage = (gradeDistribution.A / grades.length) * 100;
+    const fPercentage = (gradeDistribution.F / grades.length) * 100;
+    
+    if (aPercentage > 40) {
+        analysis.investment_quality = "excellent";
+    } else if (aPercentage > 25) {
+        analysis.investment_quality = "good";
+    } else if (fPercentage > 40) {
+        analysis.investment_quality = "poor";
+    } else {
+        analysis.investment_quality = "fair";
+    }
+
+    return analysis;
+}
+
+export const getInvestorGradesAction: Action = {
+    name: "GET_INVESTOR_GRADES_TOKENMETRICS",
+    similes: [
+        "GET_INVESTOR_GRADES",
+        "GET_INVESTMENT_GRADES", 
+        "GET_LONG_TERM_GRADES",
+        "GET_INVESTMENT_RATINGS",
+        "INVESTOR_GRADES",
+        "INVESTMENT_GRADES",
+        "LONG_TERM_RATINGS"
+    ],
+    description: "Get AI-generated investor grades and ratings for long-term cryptocurrency investments from TokenMetrics",
+    
+    validate: async (runtime: IAgentRuntime, message: Memory) => {
+        elizaLogger.log("🔍 Validating getInvestorGradesAction");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
             return false;
         }
-        return true;
     },
-    
+
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
+        const requestId = generateRequestId();
+        
+        elizaLogger.log("🚀 Starting TokenMetrics investor grades handler");
+        elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
+        elizaLogger.log(`🆔 Request ID: ${requestId}`);
+
+        try {
+            // STEP 1: Validate API key early
+            validateAndGetApiKey(runtime);
+
+            // STEP 2: Extract investor grades request using AI
+            const gradesRequest = await extractTokenMetricsRequest(
+                runtime,
+                message,
+                state || await runtime.composeState(message),
+                investorGradesTemplate,
+                InvestorGradesRequestSchema,
+                requestId
+            );
+
+            elizaLogger.log("🎯 AI Extracted grades request:", gradesRequest);
+            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || 'general market'}"`);
+
+            // STEP 3: Validate that we have sufficient information
+            if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
+                elizaLogger.log("❌ AI extraction failed or insufficient information");
+                
+                if (callback) {
+                    callback({
+                        text: `❌ I couldn't identify specific investor grades criteria from your request.
+
+I can get AI investor grades for:
+• Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+• Grade filters (A, B, C, D, F grades)
+• Token categories (DeFi, Layer-1, meme tokens)
+• Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+• "Get investor grades for Bitcoin"
+• "Show me A-grade investment tokens"
+• "What are the current long-term grades?"
+• "Get investment grades for DeFi tokens"`,
+                        content: { 
+                            error: "Insufficient investor grades criteria",
+                            confidence: gradesRequest?.confidence || 0,
+                            request_id: requestId
+                        }
+                    });
+                }
+                return false;
+            }
+
+            elizaLogger.success("🎯 Final extraction result:", gradesRequest);
+
+            // STEP 4: Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: 50,
+                page: 1
+            };
+
+            // Handle token-specific requests
+            let tokenInfo = null;
+            if (gradesRequest.cryptocurrency) {
+                elizaLogger.log(`🔍 Resolving token for: "${gradesRequest.cryptocurrency}"`);
+                tokenInfo = await resolveTokenSmart(gradesRequest.cryptocurrency, runtime);
+                
+                if (tokenInfo) {
+                    apiParams.token_id = tokenInfo.TOKEN_ID;
+                    elizaLogger.log(`✅ Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+                } else {
+                    apiParams.symbol = gradesRequest.cryptocurrency.toUpperCase();
+                    elizaLogger.log(`🔍 Using symbol: ${gradesRequest.cryptocurrency}`);
+                }
+            }
+
+            // Handle grade filtering
+            if (gradesRequest.grade_filter && gradesRequest.grade_filter !== "any") {
+                apiParams.grade = gradesRequest.grade_filter;
+            }
+
+            // Handle category filtering
+            if (gradesRequest.category) {
+                apiParams.category = gradesRequest.category;
+            }
+
+            // Handle exchange filtering
+            if (gradesRequest.exchange) {
+                apiParams.exchange = gradesRequest.exchange;
+            }
+
+            elizaLogger.log(`📡 API parameters:`, apiParams);
+
+            // STEP 5: Fetch investor grades data
+            elizaLogger.log(`📡 Fetching investor grades data`);
+            const gradesData = await fetchInvestorGrades(apiParams, runtime);
+            
+            if (!gradesData) {
+                elizaLogger.log("❌ Failed to fetch investor grades data");
+                
+                if (callback) {
+                    callback({
+                        text: `❌ Unable to fetch investor grades data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+• No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+                        content: { 
+                            error: "API fetch failed",
+                            request_id: requestId
+                        }
+                    });
+                }
+                return false;
+            }
+
+            // Handle the response data
+            const grades = Array.isArray(gradesData) ? gradesData : (gradesData.data || []);
+            
+            elizaLogger.log(`🔍 Received ${grades.length} investor grades`);
+
+            // STEP 6: Format and present the results
+            const responseText = formatInvestorGradesResponse(grades, tokenInfo);
+            const analysis = analyzeInvestorGrades(grades);
+
+            elizaLogger.success("✅ Successfully processed investor grades request");
+
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        grades_data: grades,
+                        analysis: analysis,
+                        source: "TokenMetrics AI Investor Grades",
+                        request_id: requestId,
+                        query_details: {
+                            original_request: gradesRequest.cryptocurrency || "general market",
+                            grade_filter: gradesRequest.grade_filter,
+                            category: gradesRequest.category,
+                            confidence: gradesRequest.confidence,
+                            data_freshness: "real-time",
+                            request_id: requestId,
+                            extraction_method: "ai_with_cache_busting"
+                        }
+                    }
+                });
+            }
+
+            return true;
+
+        } catch (error) {
+            elizaLogger.error("❌ Error in TokenMetrics investor grades handler:", error);
+            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
+            
+            if (callback) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                
+                callback({
+                    text: `❌ I encountered an error while fetching investor grades: ${errorMessage}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true,
+                        request_id: requestId
+                    }
+                });
+            }
+            
+            return false;
+        }
+    },
+
     examples: [
         [
             {
                 user: "{{user1}}",
                 content: {
-                    text: "What's Bitcoin's investor grade?",
-                    symbol: "BTC"
+                    text: "Get investor grades for Bitcoin"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll get Bitcoin's current TokenMetrics investor grade for long-term investment analysis.",
-                    action: "GET_INVESTOR_GRADES"
+                    text: "I'll fetch the latest AI investor grades for Bitcoin from TokenMetrics.",
+                    action: "GET_INVESTOR_GRADES_TOKENMETRICS"
                 }
             }
         ],
@@ -189,17 +452,14 @@ export const getInvestorGradesAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Show me investment grades for DeFi tokens with high market cap",
-                    category: "defi",
-                    marketcap: 1000000000,
-                    limit: 20
+                    text: "Show me A-grade investment tokens"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll analyze investor grades for large-cap DeFi tokens from TokenMetrics.",
-                    action: "GET_INVESTOR_GRADES"
+                    text: "I'll get all A-grade tokens for long-term investment from TokenMetrics.",
+                    action: "GET_INVESTOR_GRADES_TOKENMETRICS"
                 }
             }
         ],
@@ -207,447 +467,16 @@ export const getInvestorGradesAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Get investor grades for tokens with high technology scores",
-                    investorGrade: 80
+                    text: "What are the current long-term investment grades?"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll find tokens with high investor grades indicating strong long-term potential.",
-                    action: "GET_INVESTOR_GRADES"
+                    text: "Let me fetch the latest AI investor grades and ratings from TokenMetrics.",
+                    action: "GET_INVESTOR_GRADES_TOKENMETRICS"
                 }
             }
         ]
-    ],
+    ] as ActionExample[][],
 };
-
-/**
- * Comprehensive analysis of investor grades for long-term investment decisions
- */
-function analyzeInvestorGrades(gradesData: any[]): any {
-    if (!gradesData || gradesData.length === 0) {
-        return {
-            summary: "No investor grades data available for analysis",
-            investment_outlook: "Cannot assess",
-            insights: []
-        };
-    }
-    
-    // Analyze grade distribution and quality
-    const gradeDistribution = analyzeGradeDistribution(gradesData);
-    const qualityAssessment = assessInvestmentQuality(gradesData);
-    const sectorAnalysis = analyzeSectorDistribution(gradesData);
-    const fundamentalAnalysis = analyzeFundamentalGrades(gradesData);
-    const technologyAnalysis = analyzeTechnologyGrades(gradesData);
-    
-    // Generate investment insights
-    const insights = generateInvestmentInsights(gradeDistribution, qualityAssessment, sectorAnalysis);
-    
-    return {
-        summary: `Investment analysis of ${gradesData.length} tokens shows ${qualityAssessment.overall_quality} quality with ${gradeDistribution.average_grade.toFixed(1)} average investor grade`,
-        grade_distribution: gradeDistribution,
-        quality_assessment: qualityAssessment,
-        sector_analysis: sectorAnalysis,
-        fundamental_analysis: fundamentalAnalysis,
-        technology_analysis: technologyAnalysis,
-        insights: insights,
-        investment_recommendations: generateInvestmentRecommendations(qualityAssessment, gradeDistribution, sectorAnalysis),
-        portfolio_implications: generatePortfolioImplications(gradeDistribution, qualityAssessment),
-        data_quality: {
-            source: "TokenMetrics Official API",
-            data_points: gradesData.length,
-            reliability: "High - Comprehensive fundamental and technical analysis",
-            coverage: analyzeCoverage(gradesData)
-        }
-    };
-}
-
-function analyzeGradeDistribution(gradesData: any[]): any {
-    const investorGrades = gradesData.map(d => d.INVESTOR_GRADE).filter(g => g !== null && g !== undefined);
-    
-    if (investorGrades.length === 0) {
-        return { average_grade: 0, distribution: "No data" };
-    }
-    
-    const averageGrade = investorGrades.reduce((sum, grade) => sum + grade, 0) / investorGrades.length;
-    
-    // Categorize grades into investment tiers
-    const exceptional = investorGrades.filter(g => g >= 90).length;
-    const excellent = investorGrades.filter(g => g >= 80 && g < 90).length;
-    const good = investorGrades.filter(g => g >= 70 && g < 80).length;
-    const fair = investorGrades.filter(g => g >= 60 && g < 70).length;
-    const weak = investorGrades.filter(g => g >= 50 && g < 60).length;
-    const poor = investorGrades.filter(g => g < 50).length;
-    
-    return {
-        average_grade: averageGrade,
-        median_grade: calculateMedian(investorGrades),
-        total_tokens: investorGrades.length,
-        distribution: {
-            exceptional: `${exceptional} tokens (${((exceptional / investorGrades.length) * 100).toFixed(1)}%)`,
-            excellent: `${excellent} tokens (${((excellent / investorGrades.length) * 100).toFixed(1)}%)`,
-            good: `${good} tokens (${((good / investorGrades.length) * 100).toFixed(1)}%)`,
-            fair: `${fair} tokens (${((fair / investorGrades.length) * 100).toFixed(1)}%)`,
-            weak: `${weak} tokens (${((weak / investorGrades.length) * 100).toFixed(1)}%)`,
-            poor: `${poor} tokens (${((poor / investorGrades.length) * 100).toFixed(1)}%)`
-        },
-        investment_universe_quality: averageGrade >= 75 ? "High Quality" : 
-                                   averageGrade >= 65 ? "Good Quality" : 
-                                   averageGrade >= 55 ? "Mixed Quality" : "Low Quality"
-    };
-}
-
-function assessInvestmentQuality(gradesData: any[]): any {
-    const highQualityTokens = gradesData.filter(d => d.INVESTOR_GRADE >= 80);
-    const investmentGradeTokens = gradesData.filter(d => d.INVESTOR_GRADE >= 70);
-    const speculativeTokens = gradesData.filter(d => d.INVESTOR_GRADE < 60);
-    
-    // Assess overall market quality
-    const highQualityPercent = (highQualityTokens.length / gradesData.length) * 100;
-    let overallQuality;
-    
-    if (highQualityPercent > 40) overallQuality = "Excellent";
-    else if (highQualityPercent > 25) overallQuality = "Good";
-    else if (highQualityPercent > 15) overallQuality = "Fair";
-    else overallQuality = "Poor";
-    
-    // Find top investment opportunities
-    const topOpportunities = gradesData
-        .filter(d => d.INVESTOR_GRADE >= 80)
-        .sort((a, b) => b.INVESTOR_GRADE - a.INVESTOR_GRADE)
-        .slice(0, 5)
-        .map(token => ({
-            name: `${token.NAME} (${token.SYMBOL})`,
-            investor_grade: `${token.INVESTOR_GRADE}/100`,
-            fundamental_grade: token.FUNDAMENTAL_GRADE ? `${token.FUNDAMENTAL_GRADE}/100` : 'N/A',
-            technology_grade: token.TECHNOLOGY_GRADE ? `${token.TECHNOLOGY_GRADE}/100` : 'N/A',
-            market_cap: token.MARKET_CAP ? formatTokenMetricsNumber(token.MARKET_CAP, 'currency') : 'N/A',
-            category: token.CATEGORY || 'Unknown'
-        }));
-    
-    return {
-        overall_quality: overallQuality,
-        high_quality_tokens: highQualityTokens.length,
-        investment_grade_tokens: investmentGradeTokens.length,
-        speculative_tokens: speculativeTokens.length,
-        top_opportunities: topOpportunities,
-        quality_metrics: {
-            high_quality_percentage: highQualityPercent.toFixed(1),
-            investment_grade_percentage: ((investmentGradeTokens.length / gradesData.length) * 100).toFixed(1),
-            speculative_percentage: ((speculativeTokens.length / gradesData.length) * 100).toFixed(1)
-        }
-    };
-}
-
-function analyzeSectorDistribution(gradesData: any[]): any {
-    const sectorGrades = new Map();
-    
-    gradesData.forEach(token => {
-        const sector = token.CATEGORY || 'Unknown';
-        if (!sectorGrades.has(sector)) {
-            sectorGrades.set(sector, []);
-        }
-        sectorGrades.get(sector).push(token.INVESTOR_GRADE);
-    });
-    
-    // Calculate sector averages and rankings
-    const sectorAnalysis = Array.from(sectorGrades.entries()).map(([sector, grades]) => {
-        const validGrades = grades.filter((g: any) => g !== null && g !== undefined);
-        const averageGrade = validGrades.length > 0 ? 
-            validGrades.reduce((sum: number, grade: number) => sum + grade, 0) / validGrades.length : 0;
-        
-        return {
-            sector: sector,
-            average_grade: averageGrade,
-            token_count: validGrades.length,
-            quality_assessment: averageGrade >= 75 ? "High Quality" : 
-                              averageGrade >= 65 ? "Good Quality" : 
-                              averageGrade >= 55 ? "Mixed Quality" : "Low Quality"
-        };
-    }).sort((a, b) => b.average_grade - a.average_grade);
-    
-    return {
-        total_sectors: sectorAnalysis.length,
-        sector_rankings: sectorAnalysis,
-        best_sector: sectorAnalysis[0]?.sector || 'Unknown',
-        best_sector_grade: sectorAnalysis[0]?.average_grade.toFixed(1) || '0',
-        diversification_available: sectorAnalysis.length >= 5 ? "Good" : "Limited"
-    };
-}
-
-function analyzeFundamentalGrades(gradesData: any[]): any {
-    const fundamentalGrades = gradesData
-        .map(d => d.FUNDAMENTAL_GRADE)
-        .filter(g => g !== null && g !== undefined);
-    
-    if (fundamentalGrades.length === 0) {
-        return { status: "No fundamental grade data available" };
-    }
-    
-    const averageFundamental = fundamentalGrades.reduce((sum, grade) => sum + grade, 0) / fundamentalGrades.length;
-    const strongFundamentals = fundamentalGrades.filter(g => g >= 80).length;
-    const weakFundamentals = fundamentalGrades.filter(g => g < 60).length;
-    
-    // Find tokens with strongest fundamentals
-    const topFundamentals = gradesData
-        .filter(d => d.FUNDAMENTAL_GRADE >= 80)
-        .sort((a, b) => b.FUNDAMENTAL_GRADE - a.FUNDAMENTAL_GRADE)
-        .slice(0, 3)
-        .map(token => ({
-            name: `${token.NAME} (${token.SYMBOL})`,
-            fundamental_grade: `${token.FUNDAMENTAL_GRADE}/100`,
-            category: token.CATEGORY || 'Unknown'
-        }));
-    
-    return {
-        average_fundamental_grade: averageFundamental.toFixed(1),
-        strong_fundamentals: strongFundamentals,
-        weak_fundamentals: weakFundamentals,
-        fundamental_quality: averageFundamental >= 75 ? "Strong" : 
-                           averageFundamental >= 65 ? "Good" : 
-                           averageFundamental >= 55 ? "Mixed" : "Weak",
-        top_fundamental_tokens: topFundamentals,
-        fundamental_distribution: analyzeFundamentalDistribution(fundamentalGrades)
-    };
-}
-
-function analyzeTechnologyGrades(gradesData: any[]): any {
-    const technologyGrades = gradesData
-        .map(d => d.TECHNOLOGY_GRADE)
-        .filter(g => g !== null && g !== undefined);
-    
-    if (technologyGrades.length === 0) {
-        return { status: "No technology grade data available" };
-    }
-    
-    const averageTechnology = technologyGrades.reduce((sum, grade) => sum + grade, 0) / technologyGrades.length;
-    const innovativeTech = technologyGrades.filter(g => g >= 80).length;
-    const outdatedTech = technologyGrades.filter(g => g < 60).length;
-    
-    // Find most innovative technology tokens
-    const topTechnology = gradesData
-        .filter(d => d.TECHNOLOGY_GRADE >= 80)
-        .sort((a, b) => b.TECHNOLOGY_GRADE - a.TECHNOLOGY_GRADE)
-        .slice(0, 3)
-        .map(token => ({
-            name: `${token.NAME} (${token.SYMBOL})`,
-            technology_grade: `${token.TECHNOLOGY_GRADE}/100`,
-            category: token.CATEGORY || 'Unknown'
-        }));
-    
-    return {
-        average_technology_grade: averageTechnology.toFixed(1),
-        innovative_technology: innovativeTech,
-        outdated_technology: outdatedTech,
-        technology_quality: averageTechnology >= 75 ? "Cutting-edge" : 
-                          averageTechnology >= 65 ? "Advanced" : 
-                          averageTechnology >= 55 ? "Standard" : "Lagging",
-        top_technology_tokens: topTechnology,
-        innovation_assessment: assessInnovationLevel(technologyGrades)
-    };
-}
-
-function generateInvestmentInsights(gradeDistribution: any, qualityAssessment: any, sectorAnalysis: any): string[] {
-    const insights = [];
-    
-    // Quality insights
-    if (qualityAssessment.overall_quality === "Excellent") {
-        insights.push("Exceptional investment universe with high concentration of quality tokens - favorable for portfolio construction");
-    } else if (qualityAssessment.overall_quality === "Poor") {
-        insights.push("Limited high-quality investment options - requires very selective approach and thorough due diligence");
-    }
-    
-    // Grade distribution insights
-    const highQualityPercent = parseFloat(qualityAssessment.quality_metrics.high_quality_percentage);
-    if (highQualityPercent > 30) {
-        insights.push(`${highQualityPercent}% of tokens show excellent grades - good opportunity for diversified high-quality portfolio`);
-    } else if (highQualityPercent < 10) {
-        insights.push("Very few tokens meet high-quality standards - consider focused allocation to top-tier assets only");
-    }
-    
-    // Sector insights
-    if (sectorAnalysis.diversification_available === "Good") {
-        insights.push(`${sectorAnalysis.total_sectors} sectors analyzed - good diversification opportunities across different blockchain verticals`);
-        insights.push(`${sectorAnalysis.best_sector} sector leads with ${sectorAnalysis.best_sector_grade} average grade - consider overweighting this sector`);
-    } else {
-        insights.push("Limited sector diversification available - concentrated allocation may be necessary");
-    }
-    
-    // Investment opportunity insights
-    if (qualityAssessment.top_opportunities.length >= 3) {
-        insights.push(`${qualityAssessment.top_opportunities.length} top-tier investment opportunities identified with grades above 80`);
-    } else if (qualityAssessment.top_opportunities.length === 0) {
-        insights.push("No exceptional investment opportunities currently available - consider waiting for better market conditions");
-    }
-    
-    return insights;
-}
-
-function generateInvestmentRecommendations(qualityAssessment: any, gradeDistribution: any, sectorAnalysis: any): any {
-    const recommendations = [];
-    let portfolioStrategy = "Conservative";
-    
-    // Based on overall quality
-    if (qualityAssessment.overall_quality === "Excellent") {
-        recommendations.push("High-quality investment environment supports aggressive allocation to crypto assets");
-        recommendations.push("Consider building core positions in top-rated tokens");
-        portfolioStrategy = "Aggressive Growth";
-    } else if (qualityAssessment.overall_quality === "Good") {
-        recommendations.push("Moderate quality environment supports balanced crypto allocation");
-        portfolioStrategy = "Balanced Growth";
-    } else {
-        recommendations.push("Low quality environment suggests defensive positioning and selective exposure");
-        portfolioStrategy = "Defensive";
-    }
-    
-    // Sector recommendations
-    if (sectorAnalysis.best_sector && sectorAnalysis.best_sector !== 'Unknown') {
-        recommendations.push(`Consider overweighting ${sectorAnalysis.best_sector} sector given its superior grade average`);
-    }
-    
-    // Quality-based recommendations
-    const highQualityPercent = parseFloat(qualityAssessment.quality_metrics.high_quality_percentage);
-    if (highQualityPercent > 25) {
-        recommendations.push("Sufficient high-quality options allow for diversified approach within crypto allocation");
-    } else {
-        recommendations.push("Limited quality options suggest concentrated approach focusing on highest-rated assets");
-    }
-    
-    // Risk management recommendations
-    recommendations.push("Use investor grades as primary filter for initial token screening");
-    recommendations.push("Combine investor grades with market timing for optimal entry points");
-    recommendations.push("Regularly review grade changes to identify emerging opportunities or deteriorating assets");
-    
-    return {
-        portfolio_strategy: portfolioStrategy,
-        primary_recommendations: recommendations.slice(0, 3),
-        secondary_recommendations: recommendations.slice(3),
-        allocation_guidance: generateAllocationGuidance(qualityAssessment, gradeDistribution)
-    };
-}
-
-function generatePortfolioImplications(gradeDistribution: any, qualityAssessment: any): any {
-    const implications = [];
-    
-    // Portfolio construction implications
-    if (gradeDistribution.investment_universe_quality === "High Quality") {
-        implications.push("High-quality universe supports larger crypto allocation within total portfolio");
-        implications.push("Can implement equal-weight or market-cap weighted approach given quality distribution");
-    } else if (gradeDistribution.investment_universe_quality === "Low Quality") {
-        implications.push("Low-quality universe requires minimal crypto allocation and maximum selectivity");
-        implications.push("Focus on 1-3 highest grade tokens only to minimize risk");
-    }
-    
-    // Risk implications
-    const speculativePercent = parseFloat(qualityAssessment.quality_metrics.speculative_percentage);
-    if (speculativePercent > 60) {
-        implications.push("High speculative content requires enhanced risk management and position sizing discipline");
-    }
-    
-    // Diversification implications
-    if (qualityAssessment.investment_grade_tokens >= 10) {
-        implications.push("Sufficient investment-grade options allow for proper diversification within crypto allocation");
-    } else {
-        implications.push("Limited investment-grade options may require broader asset class diversification");
-    }
-    
-    return {
-        portfolio_construction: implications,
-        risk_considerations: [
-            "Investor grades reflect long-term potential but don't account for short-term volatility",
-            "Grade changes over time can indicate shifting fundamentals requiring portfolio rebalancing",
-            "High grades don't eliminate correlation risk during market-wide downturns"
-        ],
-        rebalancing_triggers: [
-            "Significant grade changes (>10 points) warrant position review",
-            "New high-grade opportunities may justify reallocation from lower-grade positions",
-            "Sector grade leadership changes suggest sector rotation opportunities"
-        ]
-    };
-}
-
-function generateAllocationGuidance(qualityAssessment: any, gradeDistribution: any): any {
-    const highQualityPercent = parseFloat(qualityAssessment.quality_metrics.high_quality_percentage);
-    
-    let suggestedAllocation;
-    if (highQualityPercent > 30 && gradeDistribution.average_grade > 75) {
-        suggestedAllocation = "15-25% of total portfolio";
-    } else if (highQualityPercent > 20 && gradeDistribution.average_grade > 70) {
-        suggestedAllocation = "10-20% of total portfolio";
-    } else if (highQualityPercent > 10 && gradeDistribution.average_grade > 65) {
-        suggestedAllocation = "5-15% of total portfolio";
-    } else {
-        suggestedAllocation = "3-8% of total portfolio";
-    }
-    
-    return {
-        crypto_allocation_range: suggestedAllocation,
-        allocation_rationale: generateAllocationRationale(qualityAssessment, gradeDistribution),
-        position_sizing: "Weight positions by investor grade with higher grades receiving larger allocations",
-        rebalancing_frequency: "Quarterly review with semi-annual rebalancing"
-    };
-}
-
-// Helper functions
-
-function calculateMedian(numbers: number[]): number {
-    const sorted = numbers.sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    
-    if (sorted.length % 2 === 0) {
-        return (sorted[middle - 1] + sorted[middle]) / 2;
-    } else {
-        return sorted[middle];
-    }
-}
-
-function analyzeFundamentalDistribution(grades: number[]): string {
-    const strong = grades.filter(g => g >= 80).length;
-    const good = grades.filter(g => g >= 70 && g < 80).length;
-    const weak = grades.filter(g => g < 60).length;
-    
-    const strongPercent = (strong / grades.length) * 100;
-    const weakPercent = (weak / grades.length) * 100;
-    
-    if (strongPercent > 40) return "Fundamentally Strong Market";
-    if (weakPercent > 50) return "Weak Fundamentals Prevalent";
-    return "Mixed Fundamental Quality";
-}
-
-function assessInnovationLevel(technologyGrades: number[]): string {
-    const innovative = technologyGrades.filter(g => g >= 80).length;
-    const innovativePercent = (innovative / technologyGrades.length) * 100;
-    
-    if (innovativePercent > 30) return "High Innovation Environment";
-    if (innovativePercent > 15) return "Moderate Innovation";
-    return "Limited Innovation";
-}
-
-function analyzeCoverage(gradesData: any[]): string {
-    const withFundamental = gradesData.filter(d => d.FUNDAMENTAL_GRADE).length;
-    const withTechnology = gradesData.filter(d => d.TECHNOLOGY_GRADE).length;
-    const withInvestor = gradesData.filter(d => d.INVESTOR_GRADE).length;
-    
-    const avgCoverage = ((withFundamental + withTechnology + withInvestor) / (gradesData.length * 3)) * 100;
-    
-    if (avgCoverage > 90) return "Comprehensive";
-    if (avgCoverage > 75) return "Good";
-    if (avgCoverage > 60) return "Moderate";
-    return "Limited";
-}
-
-function generateAllocationRationale(qualityAssessment: any, gradeDistribution: any): string {
-    const quality = qualityAssessment.overall_quality;
-    const avgGrade = gradeDistribution.average_grade;
-    
-    if (quality === "Excellent" && avgGrade > 75) {
-        return "High-quality investment universe with strong average grades supports higher allocation";
-    } else if (quality === "Good" && avgGrade > 70) {
-        return "Good quality with solid grades supports moderate allocation with selectivity";
-    } else if (quality === "Fair") {
-        return "Mixed quality environment requires conservative allocation focused on highest grades";
-    } else {
-        return "Poor quality environment suggests minimal allocation to only exceptional opportunities";
-    }
-}
