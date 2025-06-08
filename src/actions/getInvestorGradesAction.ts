@@ -21,7 +21,7 @@ import {
     resolveTokenSmart
 } from "./aiActionHelper";
 
-// Template for extracting investor grades information from conversations
+// Enhanced template for extracting investor grades information from conversations
 const investorGradesTemplate = `# Task: Extract Investor Grades Request Information
 
 Based on the conversation context, identify what investor grades information the user is requesting.
@@ -29,14 +29,23 @@ Based on the conversation context, identify what investor grades information the
 # Conversation Context:
 {{recentMessages}}
 
+# CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+
 # Instructions:
 Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
+- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, DOGE, SHIB, PEPE, etc.)
+- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, Dogecoin, etc.)
 - Investor grade requests ("investor grades", "investment grades", "long-term grades", "investment ratings")
 - Grade types ("A", "B", "C", "D", "F" grades)
 - Investment timeframes ("long-term", "investment horizon", "hodl")
 - Market filters (category, exchange, market cap, volume)
+
+PATTERN RECOGNITION:
+- "Bitcoin" or "BTC" → cryptocurrency: "Bitcoin", symbol: "BTC"
+- "Ethereum" or "ETH" → cryptocurrency: "Ethereum", symbol: "ETH"  
+- "Solana" or "SOL" → cryptocurrency: "Solana", symbol: "SOL"
+- "Dogecoin" or "DOGE" → cryptocurrency: "Dogecoin", symbol: "DOGE"
+- "Avalanche" or "AVAX" → cryptocurrency: "Avalanche", symbol: "AVAX"
 
 The user might say things like:
 - "Get investor grades for Bitcoin"
@@ -46,24 +55,70 @@ The user might say things like:
 - "Show investment grades for DeFi tokens"
 - "Get grades for long-term holding"
 - "What tokens have A+ investor grades?"
+- "Investment rating for SOL"
+- "Show me investment grades for AVAX"
 
 Extract the relevant information for the investor grades request.
 
 # Response Format:
-Return a structured object with the investor grades request information.`;
+Return a structured object with the investor grades request information.
 
-// Schema for the extracted data
+# Cache Busting ID: {{requestId}}
+# Timestamp: {{timestamp}}
+
+USER MESSAGE: "{{userMessage}}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
+// Enhanced schema for the extracted data
 const InvestorGradesRequestSchema = z.object({
     cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
+    symbol: z.string().nullable().describe("The cryptocurrency symbol if identified"),
     grade_filter: z.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
     category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-    exchange: z.string().nullable().describe("Exchange filter"),
-    time_period: z.string().nullable().describe("Time period or date range"),
-    market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
     confidence: z.number().min(0).max(1).describe("Confidence in extraction")
 });
 
 type InvestorGradesRequest = z.infer<typeof InvestorGradesRequestSchema>;
+
+/**
+ * Simple regex-based cryptocurrency extraction as fallback
+ */
+function extractCryptocurrencySimple(text: string): { cryptocurrency: string; symbol: string } | null {
+    const cryptoPatterns = [
+        { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
+        { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
+        { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
+        { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
+        { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
+        { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
+        { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
+        { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
+        { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
+        { regex: /\b(shiba|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" },
+        { regex: /\b(pepe)\b/i, name: "Pepe", symbol: "PEPE" },
+        { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" }
+    ];
+
+    for (const pattern of cryptoPatterns) {
+        if (pattern.regex.test(text)) {
+            return { cryptocurrency: pattern.name, symbol: pattern.symbol };
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Convert numeric grade (0-100) to letter grade (A-F)
+ */
+function convertToLetterGrade(numericGrade: number): string {
+    if (numericGrade >= 90) return 'A';
+    if (numericGrade >= 80) return 'B';
+    if (numericGrade >= 70) return 'C';
+    if (numericGrade >= 60) return 'D';
+    return 'F';
+}
 
 /**
  * Fetch investor grades data from TokenMetrics API
@@ -98,14 +153,17 @@ function formatInvestorGradesResponse(data: any[], tokenInfo?: any): string {
     const grades = Array.isArray(data) ? data : [data];
     const gradeCount = grades.length;
     
-    // Analyze grade distribution
+    // Analyze grade distribution - FIXED: Use correct field names and convert numeric to letter grades
     const gradeDistribution = {
-        A: grades.filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A').length,
-        B: grades.filter(g => g.INVESTOR_GRADE === 'B' || g.GRADE === 'B').length,
-        C: grades.filter(g => g.INVESTOR_GRADE === 'C' || g.GRADE === 'C').length,
-        D: grades.filter(g => g.INVESTOR_GRADE === 'D' || g.GRADE === 'D').length,
-        F: grades.filter(g => g.INVESTOR_GRADE === 'F' || g.GRADE === 'F').length
+        A: 0, B: 0, C: 0, D: 0, F: 0
     };
+
+    grades.forEach(item => {
+        // Get numeric grade from various possible fields
+        const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+        const letterGrade = convertToLetterGrade(numericGrade);
+        gradeDistribution[letterGrade as keyof typeof gradeDistribution]++;
+    });
 
     let response = `📊 **TokenMetrics Investor Grades Analysis**\n\n`;
     
@@ -120,28 +178,57 @@ function formatInvestorGradesResponse(data: any[], tokenInfo?: any): string {
     response += `🟠 **D Grade**: ${gradeDistribution.D} tokens (${((gradeDistribution.D/gradeCount)*100).toFixed(1)}%)\n`;
     response += `🔴 **F Grade**: ${gradeDistribution.F} tokens (${((gradeDistribution.F/gradeCount)*100).toFixed(1)}%)\n\n`;
 
-    // Show top graded tokens
-    const topGrades = grades
-        .filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A')
-        .slice(0, 5);
-    
-    if (topGrades.length > 0) {
-        response += `🏆 **Top A-Grade Investment Tokens**:\n`;
-        topGrades.forEach((grade, index) => {
-            const gradeValue = grade.INVESTOR_GRADE || grade.GRADE;
-            response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${gradeValue}`;
-            if (grade.SCORE) {
-                response += ` - Score: ${grade.SCORE}`;
-            }
-            if (grade.DATE) {
-                response += ` (${grade.DATE})`;
-            }
+    // Show detailed analysis for specific tokens
+    if (tokenInfo && grades.length === 1) {
+        const grade = grades[0];
+        const numericGrade = grade.TM_INVESTOR_GRADE || grade.INVESTOR_GRADE || grade.TA_GRADE || grade.QUANT_GRADE || 0;
+        const letterGrade = convertToLetterGrade(numericGrade);
+        
+        response += `📋 **Detailed Analysis for ${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL}**:\n`;
+        response += `• **Overall Grade**: ${letterGrade} (${numericGrade.toFixed(1)}/100)\n`;
+        
+        if (grade.TA_GRADE) {
+            response += `• **Technical Analysis**: ${convertToLetterGrade(grade.TA_GRADE)} (${grade.TA_GRADE.toFixed(1)}/100)\n`;
+        }
+        if (grade.QUANT_GRADE) {
+            response += `• **Quantitative Analysis**: ${convertToLetterGrade(grade.QUANT_GRADE)} (${grade.QUANT_GRADE.toFixed(1)}/100)\n`;
+        }
+        if (grade.CHANGE_24H) {
+            const changeIcon = grade.CHANGE_24H >= 0 ? '📈' : '📉';
+            response += `• **24h Change**: ${changeIcon} ${grade.CHANGE_24H > 0 ? '+' : ''}${grade.CHANGE_24H.toFixed(2)}%\n`;
+        }
+        if (grade.DATE) {
+            response += `• **Last Updated**: ${grade.DATE}\n`;
+        }
+        response += `\n`;
+    } else {
+        // Show top graded tokens for general queries
+        const topGrades = grades
+            .map(item => ({
+                ...item,
+                numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
+            }))
+            .filter(g => g.numericGrade >= 90) // A-grade tokens
+            .sort((a, b) => b.numericGrade - a.numericGrade)
+            .slice(0, 5);
+        
+        if (topGrades.length > 0) {
+            response += `🏆 **Top A-Grade Investment Tokens**:\n`;
+            topGrades.forEach((grade, index) => {
+                const letterGrade = convertToLetterGrade(grade.numericGrade);
+                response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${letterGrade} (${grade.numericGrade.toFixed(1)})`;
+                if (grade.CHANGE_24H) {
+                    const changeIcon = grade.CHANGE_24H >= 0 ? '📈' : '📉';
+                    response += ` ${changeIcon} ${grade.CHANGE_24H > 0 ? '+' : ''}${grade.CHANGE_24H.toFixed(2)}%`;
+                }
+                response += `\n`;
+            });
             response += `\n`;
-        });
+        }
     }
 
     // Investment recommendations based on grades
-    response += `\n💡 **AI Investment Recommendations**:\n`;
+    response += `💡 **AI Investment Recommendations**:\n`;
     const aGradePercentage = (gradeDistribution.A / gradeCount) * 100;
     const fGradePercentage = (gradeDistribution.F / gradeCount) * 100;
     
@@ -175,25 +262,33 @@ function analyzeInvestorGrades(data: any[]): any {
 
     const grades = Array.isArray(data) ? data : [data];
     
+    // FIXED: Use correct field names and convert numeric to letter grades
     const gradeDistribution = {
-        A: grades.filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A').length,
-        B: grades.filter(g => g.INVESTOR_GRADE === 'B' || g.GRADE === 'B').length,
-        C: grades.filter(g => g.INVESTOR_GRADE === 'C' || g.GRADE === 'C').length,
-        D: grades.filter(g => g.INVESTOR_GRADE === 'D' || g.GRADE === 'D').length,
-        F: grades.filter(g => g.INVESTOR_GRADE === 'F' || g.GRADE === 'F').length
+        A: 0, B: 0, C: 0, D: 0, F: 0
     };
+
+    grades.forEach(item => {
+        const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+        const letterGrade = convertToLetterGrade(numericGrade);
+        gradeDistribution[letterGrade as keyof typeof gradeDistribution]++;
+    });
 
     const analysis = {
         total_tokens: grades.length,
         grade_distribution: gradeDistribution,
         top_investments: grades
-            .filter(g => g.INVESTOR_GRADE === 'A' || g.GRADE === 'A')
+            .map(item => ({
+                ...item,
+                numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
+            }))
+            .filter(g => g.numericGrade >= 90)
+            .sort((a, b) => b.numericGrade - a.numericGrade)
             .slice(0, 10)
             .map(g => ({
                 symbol: g.TOKEN_SYMBOL || g.SYMBOL,
                 name: g.TOKEN_NAME || g.NAME,
-                grade: g.INVESTOR_GRADE || g.GRADE,
-                score: g.SCORE,
+                grade: convertToLetterGrade(g.numericGrade),
+                score: g.numericGrade,
                 date: g.DATE
             })),
         investment_quality: "neutral"
@@ -258,21 +353,56 @@ export const getInvestorGradesAction: Action = {
             // STEP 1: Validate API key early
             validateAndGetApiKey(runtime);
 
-            // STEP 2: Extract investor grades request using AI
-            const gradesRequest = await extractTokenMetricsRequest(
+            // STEP 2: Extract investor grades request using AI with enhanced template
+            const timestamp = new Date().toISOString();
+            const userMessage = message.content?.text || "";
+            
+            console.log(`🔍 AI EXTRACTION CONTEXT [${requestId}]:`);
+            console.log(`📝 User message: "${userMessage}"`);
+            console.log(`📋 Template being used:`);
+            console.log(investorGradesTemplate);
+            console.log(`🔚 END CONTEXT [${requestId}]`);
+
+            // Enhanced template with cache busting
+            const enhancedTemplate = investorGradesTemplate
+                .replace('{{requestId}}', requestId)
+                .replace('{{timestamp}}', timestamp)
+                .replace('{{userMessage}}', userMessage);
+
+            const gradesRequestResult = await generateObject({
                 runtime,
-                message,
-                state || await runtime.composeState(message),
-                investorGradesTemplate,
-                InvestorGradesRequestSchema,
-                requestId
-            );
+                context: composeContext({
+                    state: state || await runtime.composeState(message),
+                    template: enhancedTemplate
+                }),
+                modelClass: ModelClass.LARGE, // Use GPT-4o for better instruction following
+                schema: InvestorGradesRequestSchema,
+                mode: "json"
+            });
+
+            const gradesRequest = gradesRequestResult.object as InvestorGradesRequest;
 
             elizaLogger.log("🎯 AI Extracted grades request:", gradesRequest);
             elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || 'general market'}"`);
 
-            // STEP 3: Validate that we have sufficient information
-            if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
+            // STEP 3: Apply regex fallback if AI extraction failed or produced wrong results
+            let finalRequest = gradesRequest;
+            if (!gradesRequest.cryptocurrency || gradesRequest.confidence < 0.5) {
+                elizaLogger.log("🔄 Applying regex fallback for cryptocurrency extraction");
+                const regexResult = extractCryptocurrencySimple(userMessage);
+                if (regexResult) {
+                    finalRequest = {
+                        ...gradesRequest,
+                        cryptocurrency: regexResult.cryptocurrency,
+                        symbol: regexResult.symbol,
+                        confidence: Math.max(gradesRequest.confidence, 0.8)
+                    };
+                    elizaLogger.log("✅ Regex fallback successful:", regexResult);
+                }
+            }
+
+            // STEP 4: Validate that we have sufficient information
+            if (!finalRequest.cryptocurrency && !finalRequest.grade_filter && !finalRequest.category && finalRequest.confidence < 0.3) {
                 elizaLogger.log("❌ AI extraction failed or insufficient information");
                 
                 if (callback) {
@@ -292,7 +422,7 @@ Try asking something like:
 • "Get investment grades for DeFi tokens"`,
                         content: { 
                             error: "Insufficient investor grades criteria",
-                            confidence: gradesRequest?.confidence || 0,
+                            confidence: finalRequest?.confidence || 0,
                             request_id: requestId
                         }
                     });
@@ -300,9 +430,9 @@ Try asking something like:
                 return false;
             }
 
-            elizaLogger.success("🎯 Final extraction result:", gradesRequest);
+            elizaLogger.success("🎯 Final extraction result:", finalRequest);
 
-            // STEP 4: Build API parameters
+            // STEP 5: Build API parameters
             const apiParams: Record<string, any> = {
                 limit: 50,
                 page: 1
@@ -310,37 +440,32 @@ Try asking something like:
 
             // Handle token-specific requests
             let tokenInfo = null;
-            if (gradesRequest.cryptocurrency) {
-                elizaLogger.log(`🔍 Resolving token for: "${gradesRequest.cryptocurrency}"`);
-                tokenInfo = await resolveTokenSmart(gradesRequest.cryptocurrency, runtime);
+            if (finalRequest.cryptocurrency) {
+                elizaLogger.log(`🔍 Resolving token for: "${finalRequest.cryptocurrency}"`);
+                tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
                 
                 if (tokenInfo) {
                     apiParams.token_id = tokenInfo.TOKEN_ID;
                     elizaLogger.log(`✅ Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
                 } else {
-                    apiParams.symbol = gradesRequest.cryptocurrency.toUpperCase();
-                    elizaLogger.log(`🔍 Using symbol: ${gradesRequest.cryptocurrency}`);
+                    apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
+                    elizaLogger.log(`🔍 Using symbol: ${finalRequest.cryptocurrency}`);
                 }
             }
 
             // Handle grade filtering
-            if (gradesRequest.grade_filter && gradesRequest.grade_filter !== "any") {
-                apiParams.grade = gradesRequest.grade_filter;
+            if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
+                apiParams.grade = finalRequest.grade_filter;
             }
 
             // Handle category filtering
-            if (gradesRequest.category) {
-                apiParams.category = gradesRequest.category;
-            }
-
-            // Handle exchange filtering
-            if (gradesRequest.exchange) {
-                apiParams.exchange = gradesRequest.exchange;
+            if (finalRequest.category) {
+                apiParams.category = finalRequest.category;
             }
 
             elizaLogger.log(`📡 API parameters:`, apiParams);
 
-            // STEP 5: Fetch investor grades data
+            // STEP 6: Fetch investor grades data
             elizaLogger.log(`📡 Fetching investor grades data`);
             const gradesData = await fetchInvestorGrades(apiParams, runtime);
             
@@ -372,7 +497,7 @@ Please try again in a few moments or try with different criteria.`,
             
             elizaLogger.log(`🔍 Received ${grades.length} investor grades`);
 
-            // STEP 6: Format and present the results
+            // STEP 7: Format and present the results
             const responseText = formatInvestorGradesResponse(grades, tokenInfo);
             const analysis = analyzeInvestorGrades(grades);
 
@@ -388,13 +513,13 @@ Please try again in a few moments or try with different criteria.`,
                         source: "TokenMetrics AI Investor Grades",
                         request_id: requestId,
                         query_details: {
-                            original_request: gradesRequest.cryptocurrency || "general market",
-                            grade_filter: gradesRequest.grade_filter,
-                            category: gradesRequest.category,
-                            confidence: gradesRequest.confidence,
+                            original_request: finalRequest.cryptocurrency || "general market",
+                            grade_filter: finalRequest.grade_filter,
+                            category: finalRequest.category,
+                            confidence: finalRequest.confidence,
                             data_freshness: "real-time",
                             request_id: requestId,
-                            extraction_method: "ai_with_cache_busting"
+                            extraction_method: "ai_with_cache_busting_and_regex_fallback"
                         }
                     }
                 });

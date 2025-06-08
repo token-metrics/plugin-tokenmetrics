@@ -1,4 +1,11 @@
 import type { Action } from "@elizaos/core";
+import {
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    elizaLogger
+} from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -145,7 +152,13 @@ export const getQuantmetricsAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing quantmetrics request...`);
@@ -154,7 +167,7 @@ export const getQuantmetricsAction: Action = {
             const quantRequest = await extractTokenMetricsRequest<QuantmetricsRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 QUANTMETRICS_EXTRACTION_TEMPLATE,
                 QuantmetricsRequestSchema,
                 requestId
@@ -222,68 +235,159 @@ export const getQuantmetricsAction: Action = {
             // Analyze the quantitative data based on requested analysis type
             const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics, processedRequest.analysisType);
             
-            const result = {
-                success: true,
-                message: `Successfully retrieved quantitative metrics for ${quantmetrics.length} data points`,
-                request_id: requestId,
-                quantmetrics: quantmetrics,
-                analysis: quantAnalysis,
-                metadata: {
-                    endpoint: "quantmetrics",
-                    requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-                    resolved_token: resolvedToken,
-                    filters_applied: {
-                        category: processedRequest.category,
-                        exchange: processedRequest.exchange,
-                        min_marketcap: processedRequest.marketcap,
-                        min_volume: processedRequest.volume,
-                        min_fdv: processedRequest.fdv
-                    },
-                    pagination: {
-                        page: processedRequest.page,
-                        limit: processedRequest.limit
-                    },
-                    analysis_focus: processedRequest.analysisType,
-                    data_points: quantmetrics.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics Official API"
-                },
-                metrics_explanation: {
-                    VOLATILITY: "Price volatility measurement - higher values indicate more volatile assets",
-                    SHARPE: "Risk-adjusted return metric - higher values indicate better risk-adjusted performance",
-                    SORTINO: "Downside risk-adjusted return - focuses only on negative volatility",
-                    MAX_DRAWDOWN: "Largest peak-to-trough decline - indicates worst-case scenario losses",
-                    CAGR: "Compound Annual Growth Rate - annualized return over the investment period",
-                    ALL_TIME_RETURN: "Cumulative return since the token's inception"
+            // Format user-friendly response
+            let responseText = `⚡ **Quantitative Metrics Analysis**\n\n`;
+            
+            if (processedRequest.cryptocurrency || processedRequest.symbol) {
+                responseText += `🎯 **Token**: ${processedRequest.cryptocurrency || processedRequest.symbol}\n`;
+            }
+            
+            responseText += `📊 **Data Points**: ${quantmetrics.length} metrics analyzed\n\n`;
+            
+            if (quantmetrics.length > 0) {
+                const firstMetric = quantmetrics[0];
+                
+                responseText += `📈 **Key Metrics**:\n`;
+                if (firstMetric.VOLATILITY !== undefined) {
+                    responseText += `• **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%\n`;
                 }
-            };
+                if (firstMetric.SHARPE !== undefined) {
+                    responseText += `• **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}\n`;
+                }
+                if (firstMetric.MAX_DRAWDOWN !== undefined) {
+                    responseText += `• **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%\n`;
+                }
+                if (firstMetric.CAGR !== undefined) {
+                    responseText += `• **CAGR**: ${firstMetric.CAGR.toFixed(2)}%\n`;
+                }
+                if (firstMetric.ALL_TIME_RETURN !== undefined) {
+                    responseText += `• **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%\n`;
+                }
+                
+                responseText += `\n`;
+                
+                // Add analysis summary
+                if (quantAnalysis.summary) {
+                    responseText += `🧠 **Analysis**: ${quantAnalysis.summary}\n\n`;
+                }
+                
+                // Add risk assessment
+                if (quantAnalysis.risk_analysis?.risk_assessment) {
+                    responseText += `⚠️ **Risk Assessment**: ${quantAnalysis.risk_analysis.risk_assessment}\n\n`;
+                }
+                
+                // Add portfolio implications
+                if (quantAnalysis.portfolio_implications && quantAnalysis.portfolio_implications.length > 0) {
+                    responseText += `💼 **Portfolio Implications**:\n`;
+                    quantAnalysis.portfolio_implications.slice(0, 3).forEach((implication: string, index: number) => {
+                        responseText += `${index + 1}. ${implication}\n`;
+                    });
+                    responseText += `\n`;
+                }
+                
+                // Add insights
+                if (quantAnalysis.insights && quantAnalysis.insights.length > 0) {
+                    responseText += `💡 **Key Insights**:\n`;
+                    quantAnalysis.insights.slice(0, 3).forEach((insight: string, index: number) => {
+                        responseText += `${index + 1}. ${insight}\n`;
+                    });
+                }
+            } else {
+                responseText += `❌ No quantitative metrics data available for the specified criteria.\n\n`;
+                responseText += `💡 **Try**:\n`;
+                responseText += `• Using a major cryptocurrency (Bitcoin, Ethereum)\n`;
+                responseText += `• Checking if the token has sufficient historical data\n`;
+                responseText += `• Verifying your TokenMetrics subscription includes quantmetrics access`;
+            }
+            
+            responseText += `\n\n📊 **Data Source**: TokenMetrics Quantmetrics API\n`;
+            responseText += `⏰ **Updated**: ${new Date().toLocaleString()}`;
             
             console.log(`[${requestId}] Quantmetrics analysis completed successfully`);
-            return result;
+            
+            // Use callback to send response to user (like working actions)
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        request_id: requestId,
+                        quantmetrics: quantmetrics,
+                        analysis: quantAnalysis,
+                        metadata: {
+                            endpoint: "quantmetrics",
+                            requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
+                            resolved_token: resolvedToken,
+                            filters_applied: {
+                                category: processedRequest.category,
+                                exchange: processedRequest.exchange,
+                                min_marketcap: processedRequest.marketcap,
+                                min_volume: processedRequest.volume,
+                                min_fdv: processedRequest.fdv
+                            },
+                            pagination: {
+                                page: processedRequest.page,
+                                limit: processedRequest.limit
+                            },
+                            analysis_focus: processedRequest.analysisType,
+                            data_points: quantmetrics.length,
+                            api_version: "v2",
+                            data_source: "TokenMetrics Official API"
+                        },
+                        metrics_explanation: {
+                            VOLATILITY: "Price volatility measurement - higher values indicate more volatile assets",
+                            SHARPE: "Risk-adjusted return metric - higher values indicate better risk-adjusted performance",
+                            SORTINO: "Downside risk-adjusted return - focuses only on negative volatility",
+                            MAX_DRAWDOWN: "Largest peak-to-trough decline - indicates worst-case scenario losses",
+                            CAGR: "Compound Annual Growth Rate - annualized return over the investment period",
+                            ALL_TIME_RETURN: "Cumulative return since the token's inception"
+                        }
+                    }
+                });
+            }
+            
+            return true;
             
         } catch (error) {
             console.error("Error in getQuantmetricsAction:", error);
             
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve quantitative metrics from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/quantmetrics is accessible",
-                    parameter_validation: [
-                        "Verify the token symbol or ID is correct and supported by TokenMetrics",
-                        "Check that numeric filters (marketcap, volume, fdv) are positive numbers",
-                        "Ensure your API key has access to quantmetrics endpoint",
-                        "Verify the token has sufficient historical data for analysis"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Use the tokens endpoint first to verify correct TOKEN_ID",
-                        "Check if your subscription includes quantitative metrics access",
-                        "Remove filters to get broader results"
-                    ]
-                }
-            };
+            if (callback) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                
+                callback({
+                    text: `❌ I encountered an error while fetching quantitative metrics: ${errorMessage}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Insufficient subscription access to quantmetrics endpoint
+• Token not found or insufficient historical data
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: {
+                            endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/quantmetrics is accessible",
+                            parameter_validation: [
+                                "Verify the token symbol or ID is correct and supported by TokenMetrics",
+                                "Check that numeric filters (marketcap, volume, fdv) are positive numbers",
+                                "Ensure your API key has access to quantmetrics endpoint",
+                                "Verify the token has sufficient historical data for analysis"
+                            ],
+                            common_solutions: [
+                                "Try using a major token (BTC, ETH) to test functionality",
+                                "Use the tokens endpoint first to verify correct TOKEN_ID",
+                                "Check if your subscription includes quantitative metrics access",
+                                "Remove filters to get broader results"
+                            ]
+                        }
+                    }
+                });
+            }
+            
+            return false;
         }
     },
     

@@ -10,6 +10,8 @@ import {
     resolveTokenSmart
 } from "./aiActionHelper";
 import type { HourlyOhlcvResponse } from "../types";
+import type { IAgentRuntime, Memory, State } from "@elizaos/core";
+import type { HandlerCallback } from "@elizaos/core";
 
 // Zod schema for hourly OHLCV request validation
 const HourlyOhlcvRequestSchema = z.object({
@@ -28,21 +30,30 @@ type HourlyOhlcvRequest = z.infer<typeof HourlyOhlcvRequestSchema>;
 
 // AI extraction template for natural language processing
 const HOURLY_OHLCV_EXTRACTION_TEMPLATE = `
+CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+
 You are an AI assistant specialized in extracting hourly OHLCV data requests from natural language.
 
 The user wants to get hourly OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
 
-1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
-   - Can be a specific token or general request
+1. **cryptocurrency** (required): The EXACT name or symbol of the cryptocurrency mentioned by the user
+   - Bitcoin, BTC → "Bitcoin"
+   - Ethereum, ETH → "Ethereum" 
+   - Dogecoin, DOGE → "Dogecoin"
+   - Solana, SOL → "Solana"
+   - Avalanche, AVAX → "Avalanche"
+   - Cardano, ADA → "Cardano"
+   - Polkadot, DOT → "Polkadot"
+   - Chainlink, LINK → "Chainlink"
+   - CRITICAL: Use the EXACT name/symbol the user mentioned
 
-2. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
-
-3. **symbol** (optional): Token symbol
+2. **symbol** (optional): Token symbol if mentioned
    - Extract symbols like "BTC", "ETH", "ADA", etc.
 
-4. **token_name** (optional): Full name of the token
+3. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
+
+4. **token_name** (optional): Full name of the token for API calls
 
 5. **startDate** (optional): Start date for data range
    - Look for dates in YYYY-MM-DD format
@@ -50,27 +61,58 @@ The user wants to get hourly OHLCV (Open, High, Low, Close, Volume) data for cry
 
 6. **endDate** (optional): End date for data range
    - Look for dates in YYYY-MM-DD format
-   - If not specified but startDate is, assume current date
 
-7. **limit** (optional, default: 168): Number of data points to return
-   - 168 = 1 week of hourly data (24 hours × 7 days)
+7. **limit** (optional, default: 50): Number of data points to return
+   - Maximum 50 allowed by API
 
 8. **page** (optional, default: 1): Page number for pagination
 
 9. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "scalping" - focus on very short-term price movements and patterns
-   - "intraday" - focus on day trading patterns and signals
+   - "scalping" - focus on very short-term price movements
+   - "intraday" - focus on day trading patterns
    - "technical_patterns" - focus on technical analysis patterns
    - "all" - comprehensive hourly analysis
 
-Examples:
+CRITICAL EXAMPLES:
 - "Get hourly OHLCV for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me hourly candles for ETH for scalping" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "scalping"}
-- "Hourly price data for the past 3 days" → {analysisType: "all", limit: 72}
-- "Intraday trading data for BTC" → {symbol: "BTC", analysisType: "intraday"}
+- "Show me hourly candles for BTC" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Hourly data for ETH for scalping" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "scalping"}
+- "DOGE hourly OHLCV" → {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
+- "Solana intraday data" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "intraday"}
 
 Extract the request details from the user's message.
 `;
+
+// Regex fallback function for cryptocurrency extraction
+function extractCryptocurrencySimple(text: string): { cryptocurrency?: string; symbol?: string } {
+    const cryptoPatterns = [
+        { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
+        { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
+        { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
+        { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
+        { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
+        { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
+        { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" },
+        { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
+        { regex: /\b(binance coin|bnb)\b/i, name: "BNB", symbol: "BNB" },
+        { regex: /\b(ripple|xrp)\b/i, name: "XRP", symbol: "XRP" },
+        { regex: /\b(litecoin|ltc)\b/i, name: "Litecoin", symbol: "LTC" },
+        { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
+        { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
+        { regex: /\b(shiba inu|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" }
+    ];
+    
+    for (const pattern of cryptoPatterns) {
+        if (pattern.regex.test(text)) {
+            return { 
+                cryptocurrency: pattern.name, 
+                symbol: pattern.symbol 
+            };
+        }
+    }
+    
+    return {};
+}
 
 /**
  * HOURLY OHLCV ACTION - Based on actual TokenMetrics API documentation
@@ -140,7 +182,7 @@ export const getHourlyOhlcvAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing hourly OHLCV request...`);
@@ -149,7 +191,7 @@ export const getHourlyOhlcvAction: Action = {
             const ohlcvRequest = await extractTokenMetricsRequest<HourlyOhlcvRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state || await runtime.composeState(message),
                 HOURLY_OHLCV_EXTRACTION_TEMPLATE,
                 HourlyOhlcvRequestSchema,
                 requestId
@@ -157,18 +199,60 @@ export const getHourlyOhlcvAction: Action = {
             
             console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
             
-            // Apply defaults for optional fields
-            const processedRequest = {
+            // Enhanced extraction with regex fallback for better symbol support
+            let processedRequest = {
                 cryptocurrency: ohlcvRequest.cryptocurrency,
                 token_id: ohlcvRequest.token_id,
                 symbol: ohlcvRequest.symbol,
                 token_name: ohlcvRequest.token_name,
                 startDate: ohlcvRequest.startDate,
                 endDate: ohlcvRequest.endDate,
-                limit: ohlcvRequest.limit || 168, // 1 week of hourly data
+                limit: ohlcvRequest.limit || 50, // API maximum limit is 50
                 page: ohlcvRequest.page || 1,
                 analysisType: ohlcvRequest.analysisType || "all"
             };
+            
+            // Apply regex fallback if AI extraction failed or returned wrong data
+            if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes('unknown')) {
+                console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
+                const regexResult = extractCryptocurrencySimple(message.content.text);
+                if (regexResult.cryptocurrency) {
+                    processedRequest.cryptocurrency = regexResult.cryptocurrency;
+                    processedRequest.symbol = regexResult.symbol;
+                    console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
+                }
+            }
+            
+            // CRITICAL: Convert symbols to full names for API compatibility
+            // The hourly OHLCV API only accepts full cryptocurrency names, not symbols
+            if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
+                // This looks like a symbol, convert to full name
+                const symbolToNameMap: Record<string, string> = {
+                    'BTC': 'Bitcoin',
+                    'ETH': 'Ethereum', 
+                    'DOGE': 'Dogecoin',
+                    'SOL': 'Solana',
+                    'AVAX': 'Avalanche',
+                    'ADA': 'Cardano',
+                    'DOT': 'Polkadot',
+                    'LINK': 'Chainlink',
+                    'BNB': 'BNB',
+                    'XRP': 'XRP',
+                    'LTC': 'Litecoin',
+                    'MATIC': 'Polygon',
+                    'UNI': 'Uniswap',
+                    'SHIB': 'Shiba Inu'
+                };
+                
+                const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
+                if (fullName) {
+                    console.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
+                    processedRequest.cryptocurrency = fullName;
+                    if (!processedRequest.symbol) {
+                        processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
+                    }
+                }
+            }
             
             // Resolve token if cryptocurrency name is provided
             let resolvedToken = null;
@@ -185,18 +269,22 @@ export const getHourlyOhlcvAction: Action = {
                 }
             }
             
-            // Build API parameters
+            // Build API parameters - TokenMetrics hourly OHLCV accepts token_name parameter
             const apiParams: Record<string, any> = {
                 limit: processedRequest.limit,
                 page: processedRequest.page
             };
             
-            // Add token identification parameters
-            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
-            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
-            if (processedRequest.token_name) apiParams.token_name = processedRequest.token_name;
+            // Add token identification parameter - use the full cryptocurrency name
+            if (processedRequest.cryptocurrency) {
+                apiParams.token_name = processedRequest.cryptocurrency;
+                console.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
+            } else if (processedRequest.token_name) {
+                apiParams.token_name = processedRequest.token_name;
+                console.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
+            }
             
-            // Add date range parameters
+            // Add date range parameters if provided
             if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
             if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
             
@@ -212,14 +300,103 @@ export const getHourlyOhlcvAction: Action = {
             // Process response data
             const ohlcvData = Array.isArray(response) ? response : response.data || [];
             
+            // Sort data chronologically (oldest first for proper analysis)
+            const sortedData = ohlcvData.sort((a: any, b: any) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+            
             // Analyze the OHLCV data based on requested analysis type
-            const ohlcvAnalysis = analyzeHourlyOhlcvData(ohlcvData, processedRequest.analysisType);
+            const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
+            
+            // Format response text for user
+            const tokenName = resolvedToken?.name || 
+                             processedRequest.cryptocurrency || 
+                             processedRequest.symbol || 
+                             "the requested token";
+            
+            let responseText = `📊 **Hourly OHLCV Data for ${tokenName}**\n\n`;
+            
+            if (ohlcvData.length === 0) {
+                responseText += `❌ No hourly OHLCV data found for ${tokenName}. This could mean:\n`;
+                responseText += `• The token may not have sufficient trading history\n`;
+                responseText += `• TokenMetrics may not have hourly data for this token\n`;
+                responseText += `• Try using a different token name or symbol\n\n`;
+                responseText += `💡 **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
+            } else {
+                // Show recent OHLCV data points (most recent first for display)
+                const recentData = sortedData.slice(-5).reverse(); // Get last 5 hours and reverse for display
+                responseText += `📈 **Recent Hourly Data (Last ${recentData.length} hours):**\n`;
+                
+                recentData.forEach((item: any, index: number) => {
+                    const date = new Date(item.DATE || item.TIMESTAMP);
+                    const timeStr = date.toLocaleString();
+                    responseText += `\n**Hour ${index + 1}** (${timeStr}):\n`;
+                    responseText += `• Open: ${formatCurrency(item.OPEN)}\n`;
+                    responseText += `• High: ${formatCurrency(item.HIGH)}\n`;
+                    responseText += `• Low: ${formatCurrency(item.LOW)}\n`;
+                    responseText += `• Close: ${formatCurrency(item.CLOSE)}\n`;
+                    responseText += `• Volume: ${formatCurrency(item.VOLUME)}\n`;
+                });
+                
+                // Add analysis summary
+                if (ohlcvAnalysis && ohlcvAnalysis.summary) {
+                    responseText += `\n\n📊 **Analysis Summary:**\n${ohlcvAnalysis.summary}\n`;
+                }
+                
+                // Add price movement analysis
+                if (ohlcvAnalysis?.price_analysis) {
+                    const priceAnalysis = ohlcvAnalysis.price_analysis;
+                    responseText += `\n💰 **Price Movement:**\n`;
+                    responseText += `• Direction: ${priceAnalysis.direction}\n`;
+                    responseText += `• Change: ${priceAnalysis.price_change} (${priceAnalysis.change_percent})\n`;
+                    responseText += `• Range: ${priceAnalysis.lowest_price} - ${priceAnalysis.highest_price}\n`;
+                }
+                
+                // Add volume analysis
+                if (ohlcvAnalysis?.volume_analysis) {
+                    const volumeAnalysis = ohlcvAnalysis.volume_analysis;
+                    responseText += `\n📊 **Volume Analysis:**\n`;
+                    responseText += `• Average Volume: ${volumeAnalysis.average_volume}\n`;
+                    responseText += `• Volume Trend: ${volumeAnalysis.volume_trend}\n`;
+                    responseText += `• Consistency: ${volumeAnalysis.volume_consistency}\n`;
+                }
+                
+                // Add trading signals
+                if (ohlcvAnalysis?.trading_signals?.signals?.length > 0) {
+                    responseText += `\n🎯 **Trading Signals:**\n`;
+                    ohlcvAnalysis.trading_signals.signals.forEach((signal: any) => {
+                        responseText += `• ${signal.type}: ${signal.signal}\n`;
+                    });
+                }
+                
+                // Add analysis type specific insights
+                if (processedRequest.analysisType === "scalping" && ohlcvAnalysis?.scalping_focus) {
+                    responseText += `\n⚡ **Scalping Insights:**\n`;
+                    ohlcvAnalysis.scalping_focus.scalping_insights?.forEach((insight: string) => {
+                        responseText += `• ${insight}\n`;
+                    });
+                } else if (processedRequest.analysisType === "intraday" && ohlcvAnalysis?.intraday_focus) {
+                    responseText += `\n📈 **Intraday Insights:**\n`;
+                    ohlcvAnalysis.intraday_focus.intraday_insights?.forEach((insight: string) => {
+                        responseText += `• ${insight}\n`;
+                    });
+                } else if (processedRequest.analysisType === "technical_patterns" && ohlcvAnalysis?.technical_focus) {
+                    responseText += `\n🔍 **Technical Analysis:**\n`;
+                    ohlcvAnalysis.technical_focus.technical_insights?.forEach((insight: string) => {
+                        responseText += `• ${insight}\n`;
+                    });
+                }
+                
+                responseText += `\n\n📋 **Data Summary:**\n`;
+                responseText += `• Total Data Points: ${sortedData.length}\n`;
+                responseText += `• Timeframe: 1 hour intervals\n`;
+                responseText += `• Analysis Type: ${processedRequest.analysisType}\n`;
+                responseText += `• Data Source: TokenMetrics Official API\n`;
+            }
             
             const result = {
                 success: true,
-                message: `Successfully retrieved ${ohlcvData.length} hourly OHLCV data points`,
+                message: `Successfully retrieved ${sortedData.length} hourly OHLCV data points`,
                 request_id: requestId,
-                ohlcv_data: ohlcvData,
+                ohlcv_data: sortedData,
                 analysis: ohlcvAnalysis,
                 metadata: {
                     endpoint: "hourly-ohlcv",
@@ -234,7 +411,7 @@ export const getHourlyOhlcvAction: Action = {
                         page: processedRequest.page,
                         limit: processedRequest.limit
                     },
-                    data_points: ohlcvData.length,
+                    data_points: sortedData.length,
                     timeframe: "1 hour",
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
@@ -255,12 +432,33 @@ export const getHourlyOhlcvAction: Action = {
             };
             
             console.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
-            return result;
+            
+            // Use callback pattern to send formatted response
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: result
+                });
+            }
+            return true;
             
         } catch (error) {
             console.error("Error in getHourlyOhlcvAction:", error);
             
-            return {
+            const errorMessage = `❌ **Failed to retrieve hourly OHLCV data**\n\n`;
+            const errorText = errorMessage + 
+                `**Error**: ${error instanceof Error ? error.message : "Unknown error occurred"}\n\n` +
+                `**Troubleshooting Tips:**\n` +
+                `• Verify the token name or symbol is correct\n` +
+                `• Check your TokenMetrics API key is valid\n` +
+                `• Try using major cryptocurrencies like Bitcoin or Ethereum\n` +
+                `• Ensure your subscription includes OHLCV data access\n\n` +
+                `**Common Solutions:**\n` +
+                `• Remove date filters to get recent data\n` +
+                `• Reduce the limit if requesting too much data\n` +
+                `• Check if the token has sufficient trading history`;
+            
+            const errorResult = {
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve hourly OHLCV data from TokenMetrics API",
@@ -280,6 +478,14 @@ export const getHourlyOhlcvAction: Action = {
                     ]
                 }
             };
+            
+            if (callback) {
+                callback({
+                    text: errorText,
+                    content: errorResult
+                });
+            }
+            return false;
         }
     },
     
@@ -300,8 +506,8 @@ function analyzeHourlyOhlcvData(ohlcvData: any[], analysisType: string = "all"):
         };
     }
     
-    // Sort data chronologically (most recent first)
-    const sortedData = ohlcvData.sort((a, b) => new Date(b.DATE || b.TIMESTAMP).getTime() - new Date(a.DATE || a.TIMESTAMP).getTime());
+    // Sort data chronologically (oldest first for proper analysis)
+    const sortedData = ohlcvData.sort((a: any, b: any) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
     
     // Core analysis components
     const priceAnalysis = analyzePriceMovement(sortedData);
@@ -361,7 +567,7 @@ function analyzeHourlyOhlcvData(ohlcvData: any[], analysisType: string = "all"):
     }
     
     return {
-        summary: `Hourly analysis of ${sortedData.length} data points showing ${priceAnalysis.overall_direction} price action with ${volatilityAnalysis.volatility_level} volatility`,
+        summary: `Hourly analysis of ${sortedData.length} data points showing ${priceAnalysis.direction || 'neutral'} price action with ${volatilityAnalysis.level || 'unknown'} volatility`,
         analysis_type: analysisType,
         price_analysis: priceAnalysis,
         volume_analysis: volumeAnalysis,
@@ -384,10 +590,10 @@ function analyzeHourlyOhlcvData(ohlcvData: any[], analysisType: string = "all"):
 }
 
 function analyzePriceMovement(data: any[]): any {
-    if (data.length < 2) return { change: 0, change_percent: 0 };
+    if (data.length < 2) return { change: 0, change_percent: 0, direction: "Sideways" };
     
-    const firstPrice = data[0].OPEN;
-    const lastPrice = data[data.length - 1].CLOSE;
+    const firstPrice = data[0].OPEN; // Oldest data point
+    const lastPrice = data[data.length - 1].CLOSE; // Newest data point
     const highestPrice = Math.max(...data.map(d => d.HIGH));
     const lowestPrice = Math.min(...data.map(d => d.LOW));
     
@@ -405,7 +611,8 @@ function analyzePriceMovement(data: any[]): any {
         lowest_price: formatCurrency(lowestPrice),
         price_range: formatCurrency(priceRange),
         range_percent: formatPercentage(rangePercent),
-        direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways"
+        direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways",
+        overall_direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways" // Add this for backward compatibility
     };
 }
 
