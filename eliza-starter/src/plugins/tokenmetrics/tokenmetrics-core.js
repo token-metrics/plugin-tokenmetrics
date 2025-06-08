@@ -4176,10 +4176,10 @@ async function searchTokenByName(tokenName, runtime) {
     elizaLogger.log("\u274C Empty token name provided");
     return null;
   }
-  elizaLogger.log(`\u{1F50D} Searching for token: "${trimmedName}"`);
+  elizaLogger.log(`\u{1F50D} DEBUGGING: searchTokenByName called with: "${trimmedName}"`);
   try {
     const url = `https://api.tokenmetrics.com/v2/tokens?token_name=${encodeURIComponent(trimmedName)}`;
-    elizaLogger.log(`\u{1F4E1} API URL: ${url}`);
+    elizaLogger.log(`\u{1F4E1} DEBUGGING: API URL: ${url}`);
     const response = await fetchWithRetry(url, {
       method: "GET",
       headers: {
@@ -4193,7 +4193,7 @@ async function searchTokenByName(tokenName, runtime) {
       return null;
     }
     const data = await response.json();
-    elizaLogger.log(`\u{1F4CA} API Response:`, {
+    elizaLogger.log(`\u{1F4CA} DEBUGGING: searchTokenByName API Response:`, {
       success: data.success,
       message: data.message,
       length: data.length,
@@ -4202,7 +4202,7 @@ async function searchTokenByName(tokenName, runtime) {
     });
     if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
       const token = data.data[0];
-      elizaLogger.success(`\u2705 Found token: ${token.TOKEN_NAME} (${token.TOKEN_SYMBOL}) - ID: ${token.TOKEN_ID}`);
+      elizaLogger.success(`\u2705 DEBUGGING: searchTokenByName found: ${token.TOKEN_NAME} (${token.TOKEN_SYMBOL}) - ID: ${token.TOKEN_ID}`);
       return {
         TOKEN_ID: token.TOKEN_ID,
         NAME: token.TOKEN_NAME,
@@ -4211,11 +4211,11 @@ async function searchTokenByName(tokenName, runtime) {
         EXCHANGE_LIST: token.EXCHANGE_LIST
       };
     } else {
-      elizaLogger.log(`\u274C No token found for: "${trimmedName}"`);
+      elizaLogger.log(`\u274C DEBUGGING: searchTokenByName - No token found for: "${trimmedName}"`);
       return null;
     }
   } catch (error) {
-    elizaLogger.error(`\u274C Error searching for token "${trimmedName}":`, error);
+    elizaLogger.error(`\u274C DEBUGGING: searchTokenByName error for "${trimmedName}":`, error);
     return null;
   }
 }
@@ -4310,30 +4310,32 @@ function mapSymbolToName(input) {
   return input;
 }
 async function resolveTokenSmart(input, runtime) {
-  elizaLogger.log(`\u{1F50D} Resolving token for input: "${input}"`);
+  elizaLogger.log(`\u{1F50D} DEBUGGING: resolveTokenSmart called with input: "${input}"`);
+  elizaLogger.log(`\u{1F50D} DEBUGGING: Step 1 - Trying direct search for: "${input}"`);
   let result = await searchTokenByName(input, runtime);
   if (result) {
-    elizaLogger.success(`\u2705 Direct search successful: ${result.NAME} (${result.SYMBOL}) - ID: ${result.TOKEN_ID}`);
+    elizaLogger.success(`\u2705 DEBUGGING: Direct search successful: ${result.NAME} (${result.SYMBOL}) - ID: ${result.TOKEN_ID}`);
     return result;
   }
   const mappedName = mapSymbolToName(input);
+  elizaLogger.log(`\u{1F50D} DEBUGGING: Step 2 - Symbol mapping: "${input}" \u2192 "${mappedName}"`);
   if (mappedName !== input) {
-    elizaLogger.log(`\u{1F504} Trying mapped name: "${mappedName}"`);
+    elizaLogger.log(`\u{1F504} DEBUGGING: Trying mapped name: "${mappedName}"`);
     result = await searchTokenByName(mappedName, runtime);
     if (result) {
-      elizaLogger.success(`\u2705 Symbol mapping successful: ${input} \u2192 ${result.NAME} (${result.SYMBOL}) - ID: ${result.TOKEN_ID}`);
+      elizaLogger.success(`\u2705 DEBUGGING: Symbol mapping successful: ${input} \u2192 ${result.NAME} (${result.SYMBOL}) - ID: ${result.TOKEN_ID}`);
       return result;
     }
   }
-  elizaLogger.log(`\u274C Could not resolve token for: "${input}"`);
+  elizaLogger.log(`\u274C DEBUGGING: resolveTokenSmart failed for: "${input}"`);
   return null;
 }
 async function fetchTokenMetricsPrice(tokenId, runtime) {
   try {
     const apiKey = validateAndGetApiKey(runtime);
-    elizaLogger.log(`\u{1F4E1} Fetching price data for token_id: ${tokenId}`);
+    elizaLogger.log(`\u{1F4E1} DEBUGGING: fetchTokenMetricsPrice called for token_id: ${tokenId}`);
     const url = `https://api.tokenmetrics.com/v2/price?token_id=${tokenId}`;
-    elizaLogger.log(`\u{1F310} Price API URL: ${url}`);
+    elizaLogger.log(`\u{1F310} DEBUGGING: Price API URL: ${url}`);
     const response = await fetchWithRetry(url, {
       method: "GET",
       headers: {
@@ -4344,7 +4346,7 @@ async function fetchTokenMetricsPrice(tokenId, runtime) {
       }
     });
     const rawData = await response.text();
-    elizaLogger.log(`\u{1F4C4} Price API Response length: ${rawData.length} characters`);
+    elizaLogger.log(`\u{1F4C4} DEBUGGING: Price API Response length: ${rawData.length} characters`);
     let data;
     try {
       data = JSON.parse(rawData);
@@ -4352,7 +4354,7 @@ async function fetchTokenMetricsPrice(tokenId, runtime) {
       elizaLogger.error("\u274C Failed to parse price JSON response:", parseError);
       throw new Error("Invalid JSON response from TokenMetrics price API");
     }
-    elizaLogger.log("\u{1F4CA} Price API Response structure:", {
+    elizaLogger.log("\u{1F4CA} DEBUGGING: Price API Response structure:", {
       success: data.success,
       message: data.message,
       hasData: !!data.data,
@@ -4375,14 +4377,16 @@ async function fetchTokenMetricsPrice(tokenId, runtime) {
     if (!priceData) {
       throw new Error("No price data found in response");
     }
-    elizaLogger.success("\u2705 Successfully retrieved price data:", {
+    elizaLogger.success("\u2705 DEBUGGING: fetchTokenMetricsPrice retrieved price data:", {
+      requestedTokenId: tokenId,
       symbol: priceData.SYMBOL || priceData.TOKEN_SYMBOL,
+      name: priceData.NAME || priceData.TOKEN_NAME,
       price: priceData.PRICE || priceData.CURRENT_PRICE,
       change: priceData.PRICE_24H_CHANGE_PERCENT
     });
     return priceData;
   } catch (error) {
-    elizaLogger.error("\u274C Error fetching price from TokenMetrics:", error);
+    elizaLogger.error(`\u274C DEBUGGING: fetchTokenMetricsPrice error for token_id ${tokenId}:`, error);
     return null;
   }
 }
@@ -4513,19 +4517,26 @@ var getPriceAction = {
     return isValid2;
   },
   handler: async (runtime, message, state, options, callback) => {
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     elizaLogger.log("\u{1F680} Starting TokenMetrics price handler");
-    elizaLogger.log("\u{1F4DD} Processing user message:", message.content?.text || "No text content");
+    elizaLogger.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
-      if (!state) {
-        state = await runtime.composeState(message);
-        elizaLogger.log("\u{1F4CA} Composed fresh state from message");
-      }
+      elizaLogger.log("\u{1F504} Forcing fresh state composition with cache busting...");
+      state = await runtime.composeState(message);
+      elizaLogger.log("\u{1F4CA} Composed fresh state with cache busting");
+      const uniqueTemplate = `${priceTemplate}
+
+# Cache Busting ID: ${requestId}
+# Timestamp: ${(/* @__PURE__ */ new Date()).toISOString()}
+
+Please analyze the CURRENT user message and extract the cryptocurrency information.`;
       const context = composeContext({
         state,
-        template: priceTemplate
+        template: uniqueTemplate
       });
-      elizaLogger.log("\u{1F3AF} Context created, extracting token information...");
+      elizaLogger.log("\u{1F3AF} Context created with cache busting, extracting token information...");
       const response = await generateObject({
         runtime,
         context,
@@ -4533,9 +4544,11 @@ var getPriceAction = {
         schema: TokenRequestSchema
       });
       const tokenRequest = response.object;
-      elizaLogger.log("\u{1F3AF} Extracted token request:", tokenRequest);
+      elizaLogger.log("\u{1F3AF} AI Extracted token request:", tokenRequest);
+      elizaLogger.log("\u{1F50D} DEBUGGING: AI understood user asked for:", tokenRequest.cryptocurrency);
+      elizaLogger.log(`\u{1F194} Request ${requestId}: AI Processing "${tokenRequest.cryptocurrency || "null"}"`);
       if (!tokenRequest.cryptocurrency || tokenRequest.confidence < 0.5) {
-        elizaLogger.log("\u274C No cryptocurrency identified or low confidence");
+        elizaLogger.log("\u274C AI extraction failed or low confidence");
         if (callback) {
           callback({
             text: `\u274C I couldn't identify which cryptocurrency you're asking about.
@@ -4552,13 +4565,17 @@ Try asking something like:
 \u2022 "Show me Chainlink current value"`,
             content: {
               error: "No cryptocurrency identified",
-              confidence: tokenRequest.confidence
+              confidence: tokenRequest?.confidence || 0,
+              request_id: requestId
             }
           });
         }
         return false;
       }
-      elizaLogger.log(`\u{1F50D} Resolving token: "${tokenRequest.cryptocurrency}"`);
+      elizaLogger.success("\u{1F3AF} Final extraction result:", tokenRequest);
+      elizaLogger.log(`\u{1F194} Request ${requestId}: Final processing "${tokenRequest.cryptocurrency}"`);
+      elizaLogger.log(`\u{1F50D} DEBUGGING: Resolving token for input: "${tokenRequest.cryptocurrency}"`);
+      elizaLogger.log(`\u{1F194} Request ${requestId}: Resolving "${tokenRequest.cryptocurrency}"`);
       const tokenInfo = await resolveTokenSmart(tokenRequest.cryptocurrency, runtime);
       if (!tokenInfo) {
         elizaLogger.log(`\u274C Could not resolve token: ${tokenRequest.cryptocurrency}`);
@@ -4577,14 +4594,18 @@ Try using the official name, such as:
 \u2022 Or check the exact spelling on CoinMarketCap`,
             content: {
               error: "Token not found",
-              requested_token: tokenRequest.cryptocurrency
+              requested_token: tokenRequest.cryptocurrency,
+              request_id: requestId
             }
           });
         }
         return false;
       }
-      elizaLogger.success(`\u2705 Successfully resolved token: ${tokenInfo.NAME} (${tokenInfo.SYMBOL}) - ID: ${tokenInfo.TOKEN_ID}`);
+      elizaLogger.success(`\u2705 DEBUGGING: Successfully resolved token: ${tokenInfo.NAME} (${tokenInfo.SYMBOL}) - ID: ${tokenInfo.TOKEN_ID}`);
+      elizaLogger.log(`\u{1F50D} DEBUGGING: About to fetch price for TOKEN_ID: ${tokenInfo.TOKEN_ID}`);
+      elizaLogger.log(`\u{1F194} Request ${requestId}: Resolved to ${tokenInfo.NAME} (${tokenInfo.SYMBOL}) - ID: ${tokenInfo.TOKEN_ID}`);
       elizaLogger.log(`\u{1F4E1} Fetching price data for ${tokenInfo.SYMBOL}`);
+      elizaLogger.log(`\u{1F194} Request ${requestId}: Fetching price for ${tokenInfo.SYMBOL}`);
       const priceData = await fetchTokenMetricsPrice(tokenInfo.TOKEN_ID, runtime);
       if (!priceData) {
         elizaLogger.log("\u274C Failed to fetch price data from API");
@@ -4601,15 +4622,26 @@ This could be due to:
 Please try again in a few moments.`,
             content: {
               error: "API fetch failed",
-              token: tokenInfo
+              token: tokenInfo,
+              request_id: requestId
             }
           });
         }
         return false;
       }
+      elizaLogger.log(`\u{1F50D} DEBUGGING: Received price data for:`, {
+        requestedToken: tokenRequest.cryptocurrency,
+        resolvedToken: `${tokenInfo.NAME} (${tokenInfo.SYMBOL})`,
+        priceDataSymbol: priceData.SYMBOL || priceData.TOKEN_SYMBOL,
+        priceDataName: priceData.NAME || priceData.TOKEN_NAME,
+        price: priceData.PRICE || priceData.CURRENT_PRICE
+      });
+      elizaLogger.log(`\u{1F194} Request ${requestId}: Price data - ${priceData.SYMBOL || priceData.TOKEN_SYMBOL} at ${formatCurrency(priceData.PRICE || priceData.CURRENT_PRICE)}`);
       const responseText = formatPriceResponse(priceData, tokenInfo);
       const analysis = analyzePriceData(priceData);
-      elizaLogger.success("\u2705 Successfully processed price request with real-time data");
+      elizaLogger.success("\u2705 Successfully processed price request with AI + real-time data");
+      elizaLogger.log(`\u{1F50D} DEBUGGING: Final response will show: ${priceData.SYMBOL || priceData.TOKEN_SYMBOL} at ${formatCurrency(priceData.PRICE || priceData.CURRENT_PRICE)}`);
+      elizaLogger.log(`\u{1F194} Request ${requestId}: FINAL RESULT - ${priceData.SYMBOL || priceData.TOKEN_SYMBOL} at ${formatCurrency(priceData.PRICE || priceData.CURRENT_PRICE)}`);
       if (callback) {
         callback({
           text: responseText,
@@ -4619,11 +4651,14 @@ Please try again in a few moments.`,
             price_data: priceData,
             analysis,
             source: "TokenMetrics API (Real-time)",
+            request_id: requestId,
             query_details: {
               original_request: tokenRequest.cryptocurrency,
               resolved_to: `${tokenInfo.NAME} (${tokenInfo.SYMBOL})`,
               confidence: tokenRequest.confidence,
-              data_freshness: "real-time"
+              data_freshness: "real-time",
+              request_id: requestId,
+              extraction_method: "ai_with_cache_busting"
             }
           }
         });
@@ -4631,6 +4666,7 @@ Please try again in a few moments.`,
       return true;
     } catch (error) {
       elizaLogger.error("\u274C Error in TokenMetrics price handler:", error);
+      elizaLogger.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
       if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         callback({
@@ -4646,7 +4682,8 @@ Please check your TokenMetrics API key configuration and try again.`,
           content: {
             error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true
+            troubleshooting: true,
+            request_id: requestId
           }
         });
       }
