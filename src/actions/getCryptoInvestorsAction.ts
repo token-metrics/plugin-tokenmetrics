@@ -1,13 +1,52 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { CryptoInvestorsResponse, CryptoInvestorsRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { CryptoInvestorsResponse } from "../types";
+
+// Zod schema for crypto investors request validation
+const CryptoInvestorsRequestSchema = z.object({
+    limit: z.number().min(1).max(1000).optional().describe("Number of investors to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["performance", "influence", "sentiment", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type CryptoInvestorsRequest = z.infer<typeof CryptoInvestorsRequestSchema>;
+
+// AI extraction template for natural language processing
+const CRYPTO_INVESTORS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting crypto investors data requests from natural language.
+
+The user wants to get information about crypto investors and their market activity. Extract the following information:
+
+1. **limit** (optional, default: 50): How many investors they want to see
+   - Look for numbers like "top 20 investors", "50 investors", "first 100"
+   - Common requests: "top 20" → 20, "50 investors" → 50, "all investors" → 100
+   - Maximum is 1000
+
+2. **page** (optional, default: 1): Which page of results (for pagination)
+   - Usually not mentioned unless they want specific pages
+
+3. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "performance" - focus on investor performance and returns
+   - "influence" - focus on market influence and following
+   - "sentiment" - focus on market sentiment and activity
+   - "all" - comprehensive analysis
+
+Examples:
+- "Show me crypto investors" → {limit: 50, page: 1, analysisType: "all"}
+- "Get top 20 crypto investors by performance" → {limit: 20, page: 1, analysisType: "performance"}
+- "List influential crypto investors" → {limit: 50, page: 1, analysisType: "influence"}
+- "Crypto investor sentiment analysis" → {limit: 50, page: 1, analysisType: "sentiment"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * CRYPTO INVESTORS ACTION - Based on actual TokenMetrics API documentation
@@ -17,7 +56,7 @@ import type { CryptoInvestorsResponse, CryptoInvestorsRequest } from "../types";
  * Essential for understanding investor sentiment and tracking influential market participants.
  */
 export const getCryptoInvestorsAction: Action = {
-    name: "getCryptoInvestors",
+    name: "GET_CRYPTO_INVESTORS_TOKENMETRICS",
     description: "Get the latest list of crypto investors and their scores from TokenMetrics for market sentiment analysis",
     similes: [
         "get crypto investors",
@@ -28,50 +67,112 @@ export const getCryptoInvestorsAction: Action = {
         "influential investors",
         "crypto investor analysis"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me the latest crypto investors data"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve the latest crypto investors list and their scores from TokenMetrics.",
+                    action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get top 20 crypto investors by performance"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get the top 20 crypto investors ranked by their performance scores.",
+                    action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Analyze influential crypto investors"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll analyze the most influential crypto investors and their market impact.",
+                    action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing crypto investors request...`);
             
-            // Build parameters based on actual API documentation
-            const requestParams: CryptoInvestorsRequest = {
-                // Pagination parameters
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<CryptoInvestorsResponse>(
-                TOKENMETRICS_ENDPOINTS.cryptoInvestors,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const investorsRequest = await extractTokenMetricsRequest<CryptoInvestorsRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                CRYPTO_INVESTORS_EXTRACTION_TEMPLATE,
+                CryptoInvestorsRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<CryptoInvestorsResponse>(response, "getCryptoInvestors");
-            const investorsData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, investorsRequest);
             
-            // Analyze the investors data
-            const investorsAnalysis = analyzeCryptoInvestors(investorsData);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                limit: investorsRequest.limit || 50,
+                page: investorsRequest.page || 1,
+                analysisType: investorsRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/crypto-investors",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const investorsData = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the investors data based on requested analysis type
+            const investorsAnalysis = analyzeCryptoInvestors(investorsData, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved ${investorsData.length} crypto investors data`,
+                request_id: requestId,
                 crypto_investors: investorsData,
                 analysis: investorsAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.cryptoInvestors,
+                    endpoint: "crypto-investors",
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
+                    analysis_focus: processedRequest.analysisType,
                     data_points: investorsData.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
@@ -93,6 +194,9 @@ export const getCryptoInvestorsAction: Action = {
                     ]
                 }
             };
+            
+            console.log(`[${requestId}] Crypto investors analysis completed successfully`);
+            return result;
             
         } catch (error) {
             console.error("Error in getCryptoInvestorsAction:", error);
@@ -117,54 +221,15 @@ export const getCryptoInvestorsAction: Action = {
         }
     },
     
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me the latest crypto investors data"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve the latest crypto investors list and their scores from TokenMetrics.",
-                    action: "GET_CRYPTO_INVESTORS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get top 20 crypto investors by score",
-                    limit: 20
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the top 20 crypto investors ranked by their TokenMetrics scores.",
-                    action: "GET_CRYPTO_INVESTORS"
-                }
-            }
-        ]
-    ],
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
- * Comprehensive analysis of crypto investors data
+ * Comprehensive analysis of crypto investors data based on analysis type
  */
-function analyzeCryptoInvestors(investorsData: any[]): any {
+function analyzeCryptoInvestors(investorsData: any[], analysisType: string = "all"): any {
     if (!investorsData || investorsData.length === 0) {
         return {
             summary: "No crypto investors data available for analysis",
@@ -173,22 +238,71 @@ function analyzeCryptoInvestors(investorsData: any[]): any {
         };
     }
     
-    // Analyze investor performance and distribution
+    // Base analysis
     const performanceAnalysis = analyzeInvestorPerformance(investorsData);
     const marketParticipation = analyzeMarketParticipation(investorsData);
     const influenceAnalysis = analyzeInvestorInfluence(investorsData);
     const sentimentAnalysis = analyzeInvestorSentiment(investorsData);
     
-    // Generate insights
+    // Generate base insights
     const insights = generateInvestorInsights(performanceAnalysis, marketParticipation, influenceAnalysis);
+    
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "performance":
+            focusedAnalysis = {
+                performance_focus: {
+                    top_performers: identifyTopPerformers(investorsData),
+                    performance_distribution: performanceAnalysis,
+                    performance_insights: [
+                        `📈 Average performance score: ${performanceAnalysis.average_score}`,
+                        `🏆 High performers: ${performanceAnalysis.high_performers} investors`,
+                        `📊 Performance quality: ${performanceAnalysis.overall_performance}`
+                    ]
+                }
+            };
+            break;
+            
+        case "influence":
+            focusedAnalysis = {
+                influence_focus: {
+                    market_leaders: identifyMarketLeaders(influenceAnalysis.top_influencers || []),
+                    influence_distribution: influenceAnalysis,
+                    influence_insights: [
+                        `🌟 Top influencers identified: ${influenceAnalysis.top_influencers?.length || 0}`,
+                        `📊 Influence distribution: ${influenceAnalysis.influence_distribution?.level || "Moderate"}`,
+                        `🎯 Market leadership: ${influenceAnalysis.market_leadership || "Distributed"}`
+                    ]
+                }
+            };
+            break;
+            
+        case "sentiment":
+            focusedAnalysis = {
+                sentiment_focus: {
+                    market_mood: determinMarketMood(sentimentAnalysis.sentiment, sentimentAnalysis.activity_rate),
+                    sentiment_indicators: sentimentAnalysis,
+                    sentiment_insights: [
+                        `😊 Market sentiment: ${sentimentAnalysis.sentiment}`,
+                        `📊 Activity rate: ${formatPercentage(sentimentAnalysis.activity_rate)}`,
+                        `🎯 Market outlook: ${determineMarketOutlook(performanceAnalysis, sentimentAnalysis)}`
+                    ]
+                }
+            };
+            break;
+    }
     
     return {
         summary: `Analysis of ${investorsData.length} crypto investors shows ${performanceAnalysis.overall_performance} performance with ${marketParticipation.participation_level} market participation`,
+        analysis_type: analysisType,
         performance_analysis: performanceAnalysis,
         market_participation: marketParticipation,
         influence_analysis: influenceAnalysis,
         sentiment_analysis: sentimentAnalysis,
         insights: insights,
+        ...focusedAnalysis,
         market_implications: generateMarketImplications(performanceAnalysis, sentimentAnalysis),
         top_performers: identifyTopPerformers(investorsData),
         data_quality: {
@@ -196,7 +310,10 @@ function analyzeCryptoInvestors(investorsData: any[]): any {
             investor_count: investorsData.length,
             data_completeness: assessDataCompleteness(investorsData),
             coverage_scope: assessCoverageScope(investorsData)
-        }
+        },
+        investment_strategy: suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis),
+        risk_considerations: identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis),
+        opportunities: identifyOpportunities(performanceAnalysis, sentimentAnalysis)
     };
 }
 
@@ -267,9 +384,9 @@ function analyzeMarketParticipation(investorsData: any[]): any {
         const maxValue = Math.max(...portfolioValues);
         
         portfolioAnalysis = {
-            total_portfolio_value: formatTokenMetricsNumber(totalValue, 'currency'),
-            average_portfolio_value: formatTokenMetricsNumber(averageValue, 'currency'),
-            largest_portfolio: formatTokenMetricsNumber(maxValue, 'currency'),
+            total_portfolio_value: formatCurrency(totalValue),
+            average_portfolio_value: formatCurrency(averageValue),
+            largest_portfolio: formatCurrency(maxValue),
             portfolio_concentration: analyzePortfolioConcentration(portfolioValues)
         };
     }
@@ -302,7 +419,7 @@ function analyzeInvestorInfluence(investorsData: any[]): any {
             name: inv.name,
             influence_score: inv.influence_score.toFixed(1),
             investor_score: inv.score,
-            portfolio_value: formatTokenMetricsNumber(inv.portfolio_value, 'currency')
+            portfolio_value: formatCurrency(inv.portfolio_value)
         })),
         average_influence: averageInfluence.toFixed(1),
         influence_distribution: analyzeInfluenceDistribution(influenceMetrics),
@@ -422,7 +539,7 @@ function identifyTopPerformers(investorsData: any[]): any {
             name: investor.INVESTOR_NAME || investor.NAME || `Investor ${index + 1}`,
             score: investor.INVESTOR_SCORE,
             portfolio_value: investor.PORTFOLIO_VALUE ? 
-                formatTokenMetricsNumber(investor.PORTFOLIO_VALUE, 'currency') : 'N/A',
+                formatCurrency(investor.PORTFOLIO_VALUE) : 'N/A',
             performance_category: categorizePerformance(investor.INVESTOR_SCORE)
         })),
         performance_gap: performers.length > 1 ? 

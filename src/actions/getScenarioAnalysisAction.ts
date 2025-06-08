@@ -1,14 +1,62 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { ScenarioAnalysisResponse, ScenarioAnalysisRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
+import type { ScenarioAnalysisResponse } from "../types";
+
+// Zod schema for scenario analysis request validation
+const ScenarioAnalysisRequestSchema = z.object({
+    cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
+    token_id: z.number().optional().describe("Specific token ID if known"),
+    symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+    limit: z.number().min(1).max(100).optional().describe("Number of scenarios to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["risk_assessment", "portfolio_planning", "stress_testing", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type ScenarioAnalysisRequest = z.infer<typeof ScenarioAnalysisRequestSchema>;
+
+// AI extraction template for natural language processing
+const SCENARIO_ANALYSIS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting scenario analysis requests from natural language.
+
+The user wants to get price predictions based on different cryptocurrency market scenarios. Extract the following information:
+
+1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
+   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
+   - Can be a specific token or general request
+
+2. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
+
+3. **symbol** (optional): Token symbol
+   - Extract symbols like "BTC", "ETH", "ADA", etc.
+
+4. **limit** (optional, default: 20): Number of scenarios to return
+
+5. **page** (optional, default: 1): Page number for pagination
+
+6. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "risk_assessment" - focus on downside risks and worst-case scenarios
+   - "portfolio_planning" - focus on scenarios for portfolio allocation
+   - "stress_testing" - focus on extreme market conditions
+   - "all" - comprehensive scenario analysis
+
+Examples:
+- "Get scenario analysis for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Show me risk scenarios for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "risk_assessment"}
+- "Portfolio planning scenarios for crypto" → {analysisType: "portfolio_planning"}
+- "Stress test scenarios for market crash" → {analysisType: "stress_testing"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * SCENARIO ANALYSIS ACTION - Based on actual TokenMetrics API documentation
@@ -18,7 +66,7 @@ import type { ScenarioAnalysisResponse, ScenarioAnalysisRequest } from "../types
  * Essential for risk assessment, portfolio planning, and strategic decision making.
  */
 export const getScenarioAnalysisAction: Action = {
-    name: "getScenarioAnalysis",
+    name: "GET_SCENARIO_ANALYSIS_TOKENMETRICS",
     description: "Get price predictions based on different cryptocurrency market scenarios from TokenMetrics for risk assessment and strategic planning",
     similes: [
         "get scenario analysis",
@@ -27,61 +75,139 @@ export const getScenarioAnalysisAction: Action = {
         "price scenarios",
         "scenario modeling",
         "what if analysis",
-        "market scenario planning"
+        "market scenario planning",
+        "stress testing",
+        "risk scenarios"
+    ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get scenario analysis for Bitcoin"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve price scenario analysis for Bitcoin under different market conditions.",
+                    action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me risk scenarios for portfolio planning"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get comprehensive scenario analysis for portfolio risk assessment and planning.",
+                    action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Stress test scenarios for market crash"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve stress testing scenarios for extreme market conditions.",
+                    action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
+                }
+            }
+        ]
     ],
     
-    async handler(_runtime, message, _state) {
+    async handler(runtime, message, _state) {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing scenario analysis request...`);
             
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: ScenarioAnalysisRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<ScenarioAnalysisResponse>(
-                TOKENMETRICS_ENDPOINTS.scenarioAnalysis,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const scenarioRequest = await extractTokenMetricsRequest<ScenarioAnalysisRequest>(
+                runtime,
+                message,
+                _state || await runtime.composeState(message),
+                SCENARIO_ANALYSIS_EXTRACTION_TEMPLATE,
+                ScenarioAnalysisRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<ScenarioAnalysisResponse>(response, "getScenarioAnalysis");
-            const scenarioData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, scenarioRequest);
             
-            // Analyze the scenario data
-            const scenarioAnalysis = analyzeScenarioData(scenarioData);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                cryptocurrency: scenarioRequest.cryptocurrency,
+                token_id: scenarioRequest.token_id,
+                symbol: scenarioRequest.symbol,
+                limit: scenarioRequest.limit || 20,
+                page: scenarioRequest.page || 1,
+                analysisType: scenarioRequest.analysisType || "all"
+            };
             
-            return {
+            // Resolve token if cryptocurrency name is provided
+            let resolvedToken = null;
+            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+                try {
+                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+                    if (resolvedToken) {
+                        processedRequest.token_id = resolvedToken.token_id;
+                        processedRequest.symbol = resolvedToken.symbol;
+                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                    }
+                } catch (error) {
+                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                }
+            }
+            
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add token identification parameters
+            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
+            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/scenario-analysis",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const scenarioData = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the scenario data based on requested analysis type
+            const scenarioAnalysis = analyzeScenarioData(scenarioData, processedRequest.analysisType);
+            
+            const result = {
                 success: true,
-                message: `Successfully retrieved ${scenarioData.length} scenario analysis data points`,
+                message: `Successfully retrieved ${scenarioData.length} scenario analysis data points from TokenMetrics`,
+                request_id: requestId,
                 scenario_data: scenarioData,
                 analysis: scenarioAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.scenarioAnalysis,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
+                    endpoint: "scenario-analysis",
+                    requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
+                    resolved_token: resolvedToken,
+                    analysis_focus: processedRequest.analysisType,
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
                     data_points: scenarioData.length,
                     api_version: "v2",
@@ -110,6 +236,9 @@ export const getScenarioAnalysisAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] Scenario analysis completed successfully`);
+            return result;
+            
         } catch (error) {
             console.error("Error in getScenarioAnalysisAction:", error);
             
@@ -136,55 +265,15 @@ export const getScenarioAnalysisAction: Action = {
         }
     },
     
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get scenario analysis for Bitcoin",
-                    symbol: "BTC"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve price scenario analysis for Bitcoin under different market conditions.",
-                    action: "GET_SCENARIO_ANALYSIS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me market scenario predictions for Ethereum",
-                    symbol: "ETH"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get comprehensive scenario analysis for Ethereum across different market conditions.",
-                    action: "GET_SCENARIO_ANALYSIS"
-                }
-            }
-        ]
-    ],
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
  * Comprehensive analysis of scenario data for risk assessment and strategic planning
  */
-function analyzeScenarioData(scenarioData: any[]): any {
+function analyzeScenarioData(scenarioData: any[], analysisType: string = "all"): any {
     if (!scenarioData || scenarioData.length === 0) {
         return {
             summary: "No scenario analysis data available",
@@ -193,32 +282,79 @@ function analyzeScenarioData(scenarioData: any[]): any {
         };
     }
     
-    // Analyze different scenario types and their implications
+    // Core analysis components
     const scenarioBreakdown = analyzeScenarioBreakdown(scenarioData);
     const riskAssessment = assessScenarioRisks(scenarioData);
     const opportunityAnalysis = analyzeScenarioOpportunities(scenarioData);
     const probabilityAnalysis = analyzeProbabilityDistribution(scenarioData);
-    const portfolioImplications = generatePortfolioImplications(scenarioData);
     
-    // Generate strategic insights
-    const insights = generateScenarioInsights(scenarioBreakdown, riskAssessment, opportunityAnalysis);
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "risk_assessment":
+            focusedAnalysis = {
+                risk_focus: {
+                    downside_scenarios: identifyDownsideScenarios(scenarioData),
+                    worst_case_analysis: analyzeWorstCaseScenarios(scenarioData),
+                    risk_mitigation: generateRiskMitigationStrategies(riskAssessment.max_drawdown || 0, riskAssessment.downside_scenarios || 0),
+                    risk_insights: [
+                        `⚠️ Downside scenarios: ${riskAssessment.downside_scenarios || 0}`,
+                        `📉 Maximum potential loss: ${riskAssessment.max_loss || 'Unknown'}`,
+                        `🛡️ Risk level: ${riskAssessment.overall_risk_level || 'Unknown'}`
+                    ]
+                }
+            };
+            break;
+            
+        case "portfolio_planning":
+            focusedAnalysis = {
+                portfolio_focus: {
+                    allocation_scenarios: generateAllocationScenarios(scenarioData),
+                    diversification_impact: analyzeDiversificationImpact(scenarioData),
+                    rebalancing_triggers: identifyRebalancingTriggers(scenarioData),
+                    portfolio_insights: [
+                        `📊 Allocation scenarios: ${scenarioBreakdown.scenario_types || 0}`,
+                        `🎯 Optimal allocation: ${opportunityAnalysis.optimal_allocation || 'Balanced'}`,
+                        `⚖️ Risk-return profile: ${riskAssessment.risk_return_profile || 'Moderate'}`
+                    ]
+                }
+            };
+            break;
+            
+        case "stress_testing":
+            focusedAnalysis = {
+                stress_focus: {
+                    extreme_scenarios: identifyExtremeScenarios(scenarioData),
+                    stress_test_results: performStressTests(scenarioData),
+                    survival_analysis: analyzeSurvivalProbability(scenarioData),
+                    stress_insights: [
+                        `🔥 Extreme scenarios: ${riskAssessment.extreme_scenarios || 0}`,
+                        `💪 Stress test score: ${riskAssessment.stress_score || 'Unknown'}`,
+                        `🎯 Survival probability: ${riskAssessment.survival_probability || 'Unknown'}`
+                    ]
+                }
+            };
+            break;
+    }
     
     return {
         summary: `Scenario analysis across ${scenarioData.length} scenarios shows ${riskAssessment.overall_risk_level} risk with ${opportunityAnalysis.upside_potential} upside potential`,
+        analysis_type: analysisType,
         scenario_breakdown: scenarioBreakdown,
         risk_assessment: riskAssessment,
         opportunity_analysis: opportunityAnalysis,
         probability_analysis: probabilityAnalysis,
-        portfolio_implications: portfolioImplications,
-        insights: insights,
+        insights: generateScenarioInsights(scenarioBreakdown, riskAssessment, opportunityAnalysis),
         strategic_recommendations: generateStrategicRecommendations(riskAssessment, opportunityAnalysis, probabilityAnalysis),
-        stress_testing: generateStressTestingGuidance(scenarioData),
+        ...focusedAnalysis,
         data_quality: {
             source: "TokenMetrics Scenario Modeling Engine",
             scenarios_analyzed: scenarioData.length,
             coverage_completeness: assessScenarioCoverage(scenarioData),
             model_sophistication: assessModelSophistication(scenarioData)
-        }
+        },
+        portfolio_implications: generatePortfolioImplications(scenarioData, analysisType)
     };
 }
 
@@ -247,16 +383,16 @@ function analyzeScenarioBreakdown(scenarioData: any[]): any {
         return {
             scenario_type: type,
             scenario_count: scenarios.length,
-            average_price: formatTokenMetricsNumber(avgPrice, 'currency'),
+            average_price: formatCurrency(avgPrice),
             price_range: {
-                min: formatTokenMetricsNumber(minPrice, 'currency'),
-                max: formatTokenMetricsNumber(maxPrice, 'currency'),
-                spread: formatTokenMetricsNumber(maxPrice - minPrice, 'currency')
+                min: formatCurrency(minPrice),
+                max: formatCurrency(maxPrice),
+                spread: formatCurrency(maxPrice - minPrice)
             },
             average_probability: `${avgProbability.toFixed(1)}%`,
             scenarios_detail: scenarios.slice(0, 3).map((s: any) => ({
                 description: s.SCENARIO_DESCRIPTION || s.DESCRIPTION || `${type} scenario`,
-                price_target: formatTokenMetricsNumber(s.PREDICTED_PRICE || s.PRICE_TARGET, 'currency'),
+                price_target: formatCurrency(s.PREDICTED_PRICE || s.PRICE_TARGET),
                 probability: s.PROBABILITY ? `${s.PROBABILITY}%` : 'N/A',
                 timeframe: s.TIMEFRAME || s.TIME_HORIZON || 'Unknown'
             }))
@@ -305,10 +441,10 @@ function assessScenarioRisks(scenarioData: any[]): any {
     
     return {
         overall_risk_level: riskLevel,
-        max_potential_drawdown: formatTokenMetricsNumber(maxDrawdown * 100, 'percentage'),
+        max_potential_drawdown: formatPercentage(maxDrawdown * 100),
         downside_scenarios: downSideScenarios.length,
         extreme_downside_scenarios: extremeDownside.length,
-        average_downside: formatTokenMetricsNumber(averageDownside * 100, 'percentage'),
+        average_downside: formatPercentage(averageDownside * 100),
         risk_factors: identifyRiskFactors(downSideScenarios),
         worst_case_scenario: identifyWorstCaseScenario(scenarioData),
         risk_mitigation: generateRiskMitigationStrategies(maxDrawdown, downSideScenarios.length)
@@ -348,10 +484,10 @@ function analyzeScenarioOpportunities(scenarioData: any[]): any {
     
     return {
         upside_potential: upsidePotential,
-        max_potential_upside: formatTokenMetricsNumber(maxUpside * 100, 'percentage'),
+        max_potential_upside: formatPercentage(maxUpside * 100),
         upside_scenarios: upsideScenarios.length,
         extreme_upside_scenarios: extremeUpside.length,
-        average_upside: formatTokenMetricsNumber(averageUpside * 100, 'percentage'),
+        average_upside: formatPercentage(averageUpside * 100),
         opportunity_drivers: identifyOpportunityDrivers(upsideScenarios),
         best_case_scenario: identifyBestCaseScenario(scenarioData),
         opportunity_capture: generateOpportunityCaptureStrategies(maxUpside, upsideScenarios.length)
@@ -384,7 +520,7 @@ function analyzeProbabilityDistribution(scenarioData: any[]): any {
     
     return {
         total_scenarios_with_probability: probabilityData.length,
-        weighted_average_price: formatTokenMetricsNumber(weightedAveragePrice, 'currency'),
+        weighted_average_price: formatCurrency(weightedAveragePrice),
         probability_distribution: {
             high_probability: `${highProbability.length} scenarios (>30% probability)`,
             medium_probability: `${mediumProbability.length} scenarios (15-30% probability)`,
@@ -393,13 +529,13 @@ function analyzeProbabilityDistribution(scenarioData: any[]): any {
         most_probable_scenarios: highProbability.slice(0, 3).map(item => ({
             scenario_type: item.type,
             probability: `${item.probability}%`,
-            price_target: formatTokenMetricsNumber(item.price, 'currency')
+            price_target: formatCurrency(item.price)
         })),
         confidence_level: assessConfidenceLevel(probabilityData)
     };
 }
 
-function generatePortfolioImplications(scenarioData: any[]): any {
+function generatePortfolioImplications(scenarioData: any[], analysisType: string): any {
     const implications = [];
     const recommendations = [];
     
@@ -433,7 +569,8 @@ function generatePortfolioImplications(scenarioData: any[]): any {
         allocation_recommendations: recommendations,
         position_sizing_guidance: generatePositionSizingGuidance(riskMetrics, opportunityMetrics),
         hedging_strategies: generateHedgingStrategies(riskMetrics),
-        monitoring_requirements: generateMonitoringRequirements(scenarioData)
+        monitoring_requirements: generateMonitoringRequirements(scenarioData),
+        analysis_type: analysisType
     };
 }
 
@@ -646,8 +783,8 @@ function identifyWorstCaseScenario(scenarioData: any[]): any {
     
     return {
         scenario_description: worstCase.SCENARIO_DESCRIPTION || worstCase.DESCRIPTION || 'Extreme downside scenario',
-        price_target: formatTokenMetricsNumber(worstPrice, 'currency'),
-        potential_loss: formatTokenMetricsNumber(drawdown, 'percentage'),
+        price_target: formatCurrency(worstPrice),
+        potential_loss: formatPercentage(drawdown),
         probability: worstCase.PROBABILITY ? `${worstCase.PROBABILITY}%` : 'Unknown'
     };
 }
@@ -665,8 +802,8 @@ function identifyBestCaseScenario(scenarioData: any[]): any {
     
     return {
         scenario_description: bestCase.SCENARIO_DESCRIPTION || bestCase.DESCRIPTION || 'Extreme upside scenario',
-        price_target: formatTokenMetricsNumber(bestPrice, 'currency'),
-        potential_gain: formatTokenMetricsNumber(upside, 'percentage'),
+        price_target: formatCurrency(bestPrice),
+        potential_gain: formatPercentage(upside),
         probability: bestCase.PROBABILITY ? `${bestCase.PROBABILITY}%` : 'Unknown'
     };
 }
@@ -853,4 +990,103 @@ function assessModelSophistication(scenarioData: any[]): string {
     if (sophisticationScore > 0.6) return "Intermediate";
     if (sophisticationScore > 0.4) return "Basic";
     return "Simple";
+}
+
+// Additional analysis functions for focused analysis types
+
+function identifyDownsideScenarios(scenarioData: any[]): any[] {
+    const currentPrice = getCurrentPriceEstimate(scenarioData);
+    return scenarioData.filter(scenario => {
+        const price = scenario.PREDICTED_PRICE || scenario.PRICE_TARGET;
+        return price && price < currentPrice * 0.9; // 10% or more decline
+    });
+}
+
+function analyzeWorstCaseScenarios(scenarioData: any[]): any {
+    const downside = identifyDownsideScenarios(scenarioData);
+    const worstCase = identifyWorstCaseScenario(scenarioData);
+    
+    return {
+        worst_case_scenario: worstCase,
+        severe_scenarios: downside.filter(s => {
+            const price = s.PREDICTED_PRICE || s.PRICE_TARGET;
+            const currentPrice = getCurrentPriceEstimate(scenarioData);
+            return price < currentPrice * 0.5; // 50% or more decline
+        }).length,
+        total_downside_scenarios: downside.length
+    };
+}
+
+function generateAllocationScenarios(scenarioData: any[]): any[] {
+    const scenarios = ["Conservative", "Moderate", "Aggressive"];
+    return scenarios.map(type => ({
+        allocation_type: type,
+        recommended_exposure: type === "Conservative" ? "10-20%" : 
+                             type === "Moderate" ? "20-40%" : "40-60%",
+        risk_tolerance: type.toLowerCase(),
+        scenario_count: Math.floor(scenarioData.length / 3)
+    }));
+}
+
+function analyzeDiversificationImpact(scenarioData: any[]): any {
+    return {
+        correlation_impact: "Moderate",
+        diversification_benefit: "Significant during market stress",
+        recommended_allocation: "5-15% of portfolio",
+        rebalancing_frequency: "Quarterly"
+    };
+}
+
+function identifyRebalancingTriggers(scenarioData: any[]): string[] {
+    return [
+        "Price deviation >25% from target allocation",
+        "Significant change in scenario probabilities",
+        "New extreme scenarios identified",
+        "Quarterly review regardless of performance"
+    ];
+}
+
+function identifyExtremeScenarios(scenarioData: any[]): any[] {
+    const currentPrice = getCurrentPriceEstimate(scenarioData);
+    return scenarioData.filter(scenario => {
+        const price = scenario.PREDICTED_PRICE || scenario.PRICE_TARGET;
+        const probability = scenario.PROBABILITY || 0;
+        return price && (
+            price < currentPrice * 0.3 || // 70% decline
+            price > currentPrice * 3 ||   // 200% gain
+            probability < 5               // Very low probability
+        );
+    });
+}
+
+function performStressTests(scenarioData: any[]): any {
+    const extremeScenarios = identifyExtremeScenarios(scenarioData);
+    const worstCase = identifyWorstCaseScenario(scenarioData);
+    
+    return {
+        stress_test_score: extremeScenarios.length > 3 ? "High Risk" : 
+                          extremeScenarios.length > 1 ? "Moderate Risk" : "Low Risk",
+        extreme_scenario_count: extremeScenarios.length,
+        worst_case_impact: worstCase.potential_loss || "Unknown",
+        stress_resistance: extremeScenarios.length < 2 ? "Strong" : "Weak"
+    };
+}
+
+function analyzeSurvivalProbability(scenarioData: any[]): any {
+    const totalScenarios = scenarioData.length;
+    const severeDownside = scenarioData.filter(s => {
+        const price = s.PREDICTED_PRICE || s.PRICE_TARGET;
+        const currentPrice = getCurrentPriceEstimate(scenarioData);
+        return price && price < currentPrice * 0.2; // 80% decline
+    }).length;
+    
+    const survivalRate = ((totalScenarios - severeDownside) / totalScenarios) * 100;
+    
+    return {
+        survival_probability: `${survivalRate.toFixed(1)}%`,
+        severe_scenarios: severeDownside,
+        survival_rating: survivalRate > 90 ? "Excellent" : 
+                        survivalRate > 75 ? "Good" : 
+                        survivalRate > 50 ? "Fair" : "Poor"
+    };
 }

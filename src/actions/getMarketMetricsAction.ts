@@ -1,588 +1,614 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionExample, HandlerCallback, IAgentRuntime, Memory, State } from "@elizaos/core";
+import { elizaLogger, composeContext, generateObject, ModelClass } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { MarketMetricsResponse, MarketMetricsRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
 
 /**
- * CORRECTED Market Metrics Action - Based on actual TokenMetrics API documentation
- * Real Endpoint: GET https://api.tokenmetrics.com/v2/market-metrics
+ * TokenMetrics Market Metrics Action - Refactored with AI Extraction
  * 
- * This action provides comprehensive market analytics including the crucial bullish/bearish 
+ * Provides comprehensive market analytics including the crucial bullish/bearish 
  * market indicator that helps assess overall crypto market sentiment.
- * According to the API docs, it provides insight into the full crypto market including 
- * the Bullish/Bearish Market indicator, which is TokenMetrics' proprietary market assessment.
+ * Real Endpoint: GET https://api.tokenmetrics.com/v2/market-metrics
  */
+
+// Template for extracting market metrics requests from conversations
+const marketMetricsTemplate = `You are an AI assistant specialized in extracting TokenMetrics market analytics requests from user messages.
+
+Your task is to analyze the user's message and extract relevant parameters for fetching market metrics data.
+
+Market metrics provide:
+- Bullish/bearish market indicators
+- Overall crypto market sentiment
+- Market direction analysis
+- Total crypto market insights
+
+Extract the following information from the user's request:
+
+1. **Date Range** (optional):
+   - start_date: Start date for historical data (YYYY-MM-DD format)
+   - end_date: End date for historical data (YYYY-MM-DD format)
+   - If user mentions "current", "now", "today" - leave dates empty for current data
+   - If user mentions "past week/month" - calculate appropriate date range
+
+2. **Data Preferences** (optional):
+   - limit: Number of data points to return (default: 50, max: 100)
+   - page: Page number for pagination (default: 1)
+
+3. **Analysis Focus** (extract intent):
+   - market_sentiment: User wants bullish/bearish analysis
+   - trend_analysis: User wants trend patterns
+   - strategic_insights: User wants investment implications
+   - current_status: User wants current market state
+
+Examples of user requests:
+- "What's the current crypto market sentiment?" → current data, focus on sentiment
+- "Show me market analytics for December 2024" → date range, general analytics
+- "Is the market bullish or bearish?" → current data, sentiment focus
+- "Give me market trends for the past 30 days" → 30-day range, trend focus
+
+Respond with a JSON object containing the extracted parameters.`;
+
+// Zod schema for market metrics requests
+const MarketMetricsRequestSchema = z.object({
+    start_date: z.string().optional().describe("Start date in YYYY-MM-DD format"),
+    end_date: z.string().optional().describe("End date in YYYY-MM-DD format"),
+    limit: z.number().min(1).max(100).optional().describe("Number of data points to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysis_focus: z.array(z.enum([
+        "market_sentiment", 
+        "trend_analysis", 
+        "strategic_insights", 
+        "current_status"
+    ])).optional().describe("Types of analysis to focus on")
+});
+
+type MarketMetricsRequest = z.infer<typeof MarketMetricsRequestSchema>;
+
+// Handler function
+const handler = async (
+    runtime: IAgentRuntime,
+    message: Memory,
+    state?: State,
+    _options?: any,
+    callback?: any
+): Promise<any> => {
+    elizaLogger.info("🏢 Starting TokenMetrics Market Metrics Action");
+    
+    try {
+        // Extract request using AI
+        const extractedRequest = await extractTokenMetricsRequest<MarketMetricsRequest>(
+            runtime,
+            message,
+            state || await runtime.composeState(message),
+            marketMetricsTemplate,
+            MarketMetricsRequestSchema,
+            generateRequestId()
+        );
+        
+        elizaLogger.info("📊 Extracted market metrics request:", extractedRequest);
+        
+        // Apply defaults for optional fields
+        const processedRequest = {
+            start_date: extractedRequest.start_date,
+            end_date: extractedRequest.end_date,
+            limit: extractedRequest.limit || 50,
+            page: extractedRequest.page || 1,
+            analysis_focus: extractedRequest.analysis_focus || ["market_sentiment"]
+        };
+        
+        // Build API parameters
+        const apiParams: Record<string, any> = {
+            limit: processedRequest.limit,
+            page: processedRequest.page
+        };
+        
+        // Add date parameters if provided
+        if (processedRequest.start_date) {
+            apiParams.startDate = processedRequest.start_date;
+        }
+        if (processedRequest.end_date) {
+            apiParams.endDate = processedRequest.end_date;
+        }
+        
+        // Call TokenMetrics API
+        const response = await callTokenMetricsAPI(
+            "/v2/market-metrics",
+            apiParams,
+            runtime
+        );
+        
+        if (!response || (response.error && !response.data)) {
+            throw new Error(response?.error || "Failed to fetch market metrics data");
+        }
+        
+        const marketMetrics = Array.isArray(response) ? response : response.data || [];
+        
+        // Analyze the market metrics
+        const marketAnalysis = analyzeMarketMetrics(marketMetrics);
+        const currentStatus = getCurrentMarketStatus(marketMetrics);
+        
+        // Format response based on analysis focus
+        let responseText = "📊 **TokenMetrics Market Analytics**\n\n";
+        
+        if (processedRequest.analysis_focus.includes("current_status")) {
+            responseText += `🎯 **Current Market Status**: ${currentStatus.sentiment_description}\n`;
+            responseText += `📈 **Market Direction**: ${currentStatus.direction}\n`;
+            responseText += `💪 **Signal Strength**: ${currentStatus.strength}/10\n\n`;
+        }
+        
+        if (processedRequest.analysis_focus.includes("market_sentiment")) {
+            responseText += `🔍 **Market Sentiment Analysis**:\n`;
+            responseText += `• Bullish/Bearish Indicator: ${marketAnalysis.overall_sentiment}\n`;
+            responseText += `• Confidence Level: ${marketAnalysis.confidence_level}%\n`;
+            responseText += `• Market Phase: ${marketAnalysis.market_phase}\n\n`;
+        }
+        
+        if (processedRequest.analysis_focus.includes("trend_analysis")) {
+            responseText += `📈 **Trend Analysis**:\n`;
+            responseText += `• Primary Trend: ${marketAnalysis.trend_direction}\n`;
+            responseText += `• Trend Strength: ${marketAnalysis.trend_strength}\n`;
+            responseText += `• Momentum: ${marketAnalysis.momentum}\n\n`;
+        }
+        
+        if (processedRequest.analysis_focus.includes("strategic_insights")) {
+            responseText += `💡 **Strategic Insights**:\n`;
+            if (marketAnalysis.strategic_implications) {
+                marketAnalysis.strategic_implications.forEach((insight: string, index: number) => {
+                    responseText += `${index + 1}. ${insight}\n`;
+                });
+            }
+            responseText += "\n";
+        }
+        
+        // Add key metrics summary
+        responseText += `📋 **Key Metrics Summary**:\n`;
+        responseText += `• Data Points Analyzed: ${marketMetrics.length}\n`;
+        responseText += `• Market Cap Trend: ${marketAnalysis.market_cap_trend || 'N/A'}\n`;
+        responseText += `• Volatility Level: ${marketAnalysis.volatility_level || 'N/A'}\n`;
+        
+        // Add recommendations
+        if (marketAnalysis.recommendations && marketAnalysis.recommendations.length > 0) {
+            responseText += `\n🎯 **Recommendations**:\n`;
+            marketAnalysis.recommendations.forEach((rec: string, index: number) => {
+                responseText += `${index + 1}. ${rec}\n`;
+            });
+        }
+        
+        return {
+            text: responseText,
+            success: true,
+            data: {
+                market_metrics: marketMetrics,
+                analysis: marketAnalysis,
+                current_status: currentStatus,
+                metadata: {
+                    endpoint: "/v2/market-metrics",
+                    data_points: marketMetrics.length,
+                    analysis_focus: processedRequest.analysis_focus,
+                    date_range: {
+                        start: processedRequest.start_date,
+                        end: processedRequest.end_date
+                    }
+                }
+            }
+        };
+        
+    } catch (error) {
+        elizaLogger.error("❌ Market Metrics Action Error:", error);
+        
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        
+        return {
+            text: `❌ **Error Getting Market Metrics**\n\n${errorMessage}\n\n💡 **Troubleshooting Tips**:\n• Check your TokenMetrics API key\n• Verify date format (YYYY-MM-DD)\n• Ensure you have access to market metrics endpoint`,
+            success: false,
+            error: errorMessage
+        };
+    }
+};
+
+// Validation function
+const validate = async (runtime: IAgentRuntime): Promise<boolean> => {
+    return validateAndGetApiKey(runtime) !== null;
+};
+
+// Action examples for training
+const examples: ActionExample[][] = [
+    [
+        {
+            user: "{{user1}}",
+            content: {
+                text: "What's the current crypto market sentiment?"
+            }
+        },
+        {
+            user: "{{user2}}",
+            content: {
+                text: "I'll check the current TokenMetrics market metrics to assess overall cryptocurrency market sentiment.",
+                action: "GET_MARKET_METRICS_TOKENMETRICS"
+            }
+        }
+    ],
+    [
+        {
+            user: "{{user1}}",
+            content: {
+                text: "Show me market analytics for the past 30 days"
+            }
+        },
+        {
+            user: "{{user2}}",
+            content: {
+                text: "I'll retrieve TokenMetrics market analytics for the past 30 days to analyze recent trends.",
+                action: "GET_MARKET_METRICS_TOKENMETRICS"
+            }
+        }
+    ],
+    [
+        {
+            user: "{{user1}}",
+            content: {
+                text: "Is the crypto market bullish or bearish right now?"
+            }
+        },
+        {
+            user: "{{user2}}",
+            content: {
+                text: "I'll get the latest TokenMetrics market indicator to determine current market direction.",
+                action: "GET_MARKET_METRICS_TOKENMETRICS"
+            }
+        }
+    ]
+];
+
+// Export the action
 export const getMarketMetricsAction: Action = {
-    name: "getMarketMetrics",
-    description: "Get TokenMetrics market analytics including bullish/bearish market indicator and total crypto market insights",
+    name: "GET_MARKET_METRICS_TOKENMETRICS",
+    description: "Get TokenMetrics market analytics including bullish/bearish market indicator and comprehensive market insights",
     similes: [
         "get market metrics",
-        "check market sentiment",
+        "check market sentiment", 
         "get market analytics",
         "bullish bearish indicator",
         "get market direction",
         "crypto market analysis",
         "market sentiment analysis"
     ],
-    
-    async handler(_runtime, message, _state) {
-        try {
-            const messageContent = message.content as any;
-            
-            // CORRECTED: Build parameters based on actual API documentation
-            const requestParams: MarketMetricsRequest = {
-                // CORRECTED: Use startDate/endDate as shown in actual API docs (not start_date/end_date)
-                startDate: typeof messageContent.startDate === 'string' ? messageContent.startDate : 
-                          typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined,
-                endDate: typeof messageContent.endDate === 'string' ? messageContent.endDate :
-                        typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined,
-                
-                // CORRECTED: Use page instead of offset for pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters according to actual API requirements
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call with corrected authentication (x-api-key header)
-            const response = await callTokenMetricsApi<MarketMetricsResponse>(
-                TOKENMETRICS_ENDPOINTS.marketMetrics,
-                apiParams,
-                "GET"
-            );
-            
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<MarketMetricsResponse>(response, "getMarketMetrics");
-            const marketMetrics = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-            
-            // Analyze the market metrics to provide strategic insights
-            const marketAnalysis = analyzeMarketMetrics(marketMetrics);
-            
-            return {
-                success: true,
-                message: `Successfully retrieved market metrics for ${marketMetrics.length} time periods`,
-                market_metrics: marketMetrics,
-                analysis: marketAnalysis,
-                // Include current market status for immediate decision-making
-                current_market_status: getCurrentMarketStatus(marketMetrics),
-                metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.marketMetrics,
-                    date_range: {
-                        start: requestParams.startDate,
-                        end: requestParams.endDate
-                    },
-                    pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
-                    },
-                    data_points: marketMetrics.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics Official API"
-                },
-                // Provide educational context about TokenMetrics market indicators
-                market_indicators_explanation: {
-                    bullish_bearish_indicator: {
-                        description: "TokenMetrics' proprietary market sentiment indicator providing insight into overall crypto market direction",
-                        interpretation: {
-                            "positive_values": "Bullish market conditions - favorable for increased crypto exposure",
-                            "negative_values": "Bearish market conditions - consider defensive positioning",
-                            "near_zero": "Neutral market signals - maintain current allocation"
-                        }
-                    },
-                    total_crypto_market_cap: "Comprehensive measure of the entire cryptocurrency market valuation",
-                    usage_guidelines: [
-                        "Use as a macro filter for individual token decisions",
-                        "Consider position sizing based on market signal strength",
-                        "Combine with individual token analysis for optimal results",
-                        "Monitor signal changes for timing major portfolio adjustments"
-                    ]
-                }
-            };
-            
-        } catch (error) {
-            console.error("Error in getMarketMetricsAction:", error);
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve market metrics from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/market-metrics is accessible",
-                    parameter_validation: [
-                        "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
-                        "Ensure page and limit parameters are positive integers",
-                        "Verify your API key has access to market metrics endpoint"
-                    ],
-                    common_solutions: [
-                        "Try requesting current data without date filters",
-                        "Check if your subscription includes market analytics access", 
-                        "Verify TokenMetrics API service status",
-                        "Ensure you're not exceeding rate limits"
-                    ]
-                }
-            };
-        }
-    },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "What's the current crypto market sentiment?"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll check the current TokenMetrics market metrics to assess overall cryptocurrency market sentiment.",
-                    action: "GET_MARKET_METRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me market analytics for the past 30 days",
-                    startDate: "2024-12-01",
-                    endDate: "2024-12-31"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve TokenMetrics market analytics for December 2024 to analyze recent trends.",
-                    action: "GET_MARKET_METRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Is the crypto market bullish or bearish right now?"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the latest TokenMetrics market indicator to determine current market direction.",
-                    action: "GET_MARKET_METRICS"
-                }
-            }
-        ]
-    ],
+    handler,
+    validate,
+    examples
 };
 
 /**
  * Comprehensive analysis function for market metrics from TokenMetrics.
  * This function processes real API response data and transforms it into actionable
- * strategic insights for portfolio management and market timing decisions.
- * 
- * The analysis focuses on understanding market sentiment trends, signal strength,
- * and providing actionable recommendations for different market conditions.
+ * insights for crypto market assessment.
  */
 function analyzeMarketMetrics(marketData: any[]): any {
     if (!marketData || marketData.length === 0) {
         return {
-            summary: "No market metrics data available for analysis",
-            current_sentiment: "Unknown",
-            trend_analysis: "Insufficient data",
-            strategic_implications: []
-        };
-    }
-    
-    // Sort data chronologically to ensure proper trend analysis
-    const sortedData = marketData.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
-    
-    // Get current and recent metrics for trend analysis
-    const currentMetrics = sortedData[sortedData.length - 1];
-    const recentMetrics = sortedData.slice(-10); // Last 10 data points for trend analysis
-    
-    // Analyze signal distribution and market trends
-    const signalAnalysis = analyzeSignalDistribution(sortedData);
-    const trendAnalysis = analyzeTrendPatterns(recentMetrics);
-    const strengthAssessment = assessMarketStrength(signalAnalysis, trendAnalysis);
-    
-    // Generate strategic insights based on TokenMetrics analysis
-    const strategicImplications = generateStrategicImplications(currentMetrics, trendAnalysis, signalAnalysis);
-    
-    return {
-        summary: `TokenMetrics market analysis shows ${getCurrentSentimentDescription(currentMetrics)} sentiment with ${trendAnalysis.trend_direction} trend over recent periods`,
-        
-        current_sentiment: {
-            indicator_value: currentMetrics.LAST_TM_GRADE_SIGNAL || 'N/A',
-            description: getCurrentSentimentDescription(currentMetrics),
-            date: currentMetrics.DATE,
-            total_market_cap: currentMetrics.TOTAL_CRYPTO_MCAP ? 
-                formatTokenMetricsNumber(currentMetrics.TOTAL_CRYPTO_MCAP, 'currency') : 'N/A',
-            confidence_level: strengthAssessment.confidence
-        },
-        
-        trend_analysis: {
-            direction: trendAnalysis.trend_direction,
-            consistency: trendAnalysis.consistency,
-            recent_changes: trendAnalysis.recent_changes,
-            strength: trendAnalysis.strength
-        },
-        
-        signal_distribution: {
-            bullish_periods: signalAnalysis.bullish_count,
-            bearish_periods: signalAnalysis.bearish_count,
-            neutral_periods: signalAnalysis.neutral_count,
-            bullish_percentage: signalAnalysis.bullish_percentage,
-            signal_stability: signalAnalysis.stability_score
-        },
-        
-        market_strength_assessment: strengthAssessment,
-        
-        strategic_implications: strategicImplications,
-        
-        // Provide actionable recommendations based on current conditions
-        recommendations: generateMarketRecommendations(currentMetrics, trendAnalysis, strengthAssessment),
-        
-        // Include risk considerations for portfolio management
-        risk_factors: identifyRiskFactors(trendAnalysis, signalAnalysis),
-        
-        data_quality: {
-            source: "TokenMetrics Official API",
-            data_points: sortedData.length,
-            date_range: {
-                start: sortedData[0]?.DATE,
-                end: sortedData[sortedData.length - 1]?.DATE
-            },
-            reliability: "High - TokenMetrics proprietary analysis"
-        }
-    };
-}
-
-/**
- * This function determines the current market sentiment based on TokenMetrics' indicator.
- * The sentiment description helps translate numerical values into actionable insights.
- */
-function getCurrentSentimentDescription(metrics: any): string {
-    if (!metrics || metrics.LAST_TM_GRADE_SIGNAL === undefined || metrics.LAST_TM_GRADE_SIGNAL === null) {
-        return "Neutral/Unknown";
-    }
-    
-    const signal = metrics.LAST_TM_GRADE_SIGNAL;
-    
-    // Interpret the signal value - this may need adjustment based on actual API response format
-    if (signal > 0.5) return "Bullish";
-    if (signal < -0.5) return "Bearish";
-    return "Neutral";
-}
-
-/**
- * This function provides immediate market status for quick decision making.
- * It focuses on the most recent data point and provides clear actionable guidance.
- */
-function getCurrentMarketStatus(data: any[]): any {
-    if (!data || data.length === 0) {
-        return { 
-            status: "Unknown", 
-            reason: "No data available",
-            recommendation: "Cannot provide guidance without market data"
+            overall_sentiment: "Neutral",
+            confidence_level: 0,
+            market_phase: "Unknown",
+            trend_direction: "Sideways",
+            trend_strength: "Weak",
+            momentum: "Neutral",
+            strategic_implications: ["Insufficient data for analysis"],
+            recommendations: ["Wait for more market data"]
         };
     }
     
     // Get the most recent data point
-    const latestData = data[data.length - 1];
-    const signal = latestData.LAST_TM_GRADE_SIGNAL;
+    const latestData = marketData[0] || {};
+    const recentData = marketData.slice(0, Math.min(7, marketData.length));
     
-    let recommendation;
-    let status = getCurrentSentimentDescription(latestData);
+    // Analyze signal distribution
+    const signalAnalysis = analyzeSignalDistribution(marketData);
     
-    if (status === "Bullish") {
-        recommendation = "Consider increasing crypto allocation - TokenMetrics indicates favorable market conditions";
-    } else if (status === "Bearish") {
-        recommendation = "Consider defensive positioning - TokenMetrics indicates unfavorable market conditions";
-    } else {
-        recommendation = "Maintain current allocation - TokenMetrics shows mixed market signals";
-    }
+    // Analyze trend patterns
+    const trendAnalysis = analyzeTrendPatterns(recentData);
+    
+    // Assess market strength
+    const strengthAssessment = assessMarketStrength(signalAnalysis, trendAnalysis);
+    
+    // Generate strategic implications
+    const strategicImplications = generateStrategicImplications(latestData, trendAnalysis, signalAnalysis);
+    
+    // Generate recommendations
+    const recommendations = generateMarketRecommendations(latestData, trendAnalysis, strengthAssessment);
     
     return {
-        status: status,
-        signal_value: signal,
-        market_cap: latestData.TOTAL_CRYPTO_MCAP ? 
-            formatTokenMetricsNumber(latestData.TOTAL_CRYPTO_MCAP, 'currency') : 'N/A',
-        date: latestData.DATE,
-        recommendation: recommendation,
-        confidence: signal !== undefined && signal !== null ? "Available" : "Limited"
+        overall_sentiment: getCurrentSentimentDescription(latestData),
+        confidence_level: Math.round(strengthAssessment.confidence * 100),
+        market_phase: strengthAssessment.phase,
+        trend_direction: trendAnalysis.primary_direction,
+        trend_strength: trendAnalysis.strength,
+        momentum: trendAnalysis.momentum,
+        market_cap_trend: trendAnalysis.market_cap_trend,
+        volatility_level: strengthAssessment.volatility,
+        strategic_implications: strategicImplications,
+        recommendations: recommendations,
+        signal_distribution: signalAnalysis,
+        trend_analysis: trendAnalysis,
+        strength_assessment: strengthAssessment
     };
 }
 
 /**
- * This function analyzes how bullish/bearish signals are distributed over time.
- * Understanding signal distribution helps assess the reliability and consistency of market direction.
+ * Determines current sentiment description based on market metrics
+ */
+function getCurrentSentimentDescription(metrics: any): string {
+    if (!metrics) return "Neutral";
+    
+    // Check for bullish/bearish indicators in the data
+    const bullishIndicators = metrics.bullish_score || metrics.bullish_indicator || 0;
+    const bearishIndicators = metrics.bearish_score || metrics.bearish_indicator || 0;
+    
+    if (bullishIndicators > bearishIndicators * 1.2) return "Bullish";
+    if (bearishIndicators > bullishIndicators * 1.2) return "Bearish";
+    return "Neutral";
+}
+
+/**
+ * Gets current market status with detailed breakdown
+ */
+function getCurrentMarketStatus(data: any[]): any {
+    if (!data || data.length === 0) {
+        return {
+            sentiment_description: "Unknown",
+            direction: "Sideways",
+            strength: 5,
+            confidence: 0
+        };
+    }
+    
+    const latest = data[0];
+    const sentiment = getCurrentSentimentDescription(latest);
+    
+    // Calculate strength based on available metrics
+    let strength = 5; // Default neutral
+    if (latest.market_strength) {
+        strength = Math.round(latest.market_strength * 10);
+    } else if (latest.bullish_score && latest.bearish_score) {
+        const diff = Math.abs(latest.bullish_score - latest.bearish_score);
+        strength = Math.min(10, Math.max(1, Math.round(5 + diff * 5)));
+    }
+    
+    return {
+        sentiment_description: sentiment,
+        direction: sentiment === "Neutral" ? "Sideways" : sentiment,
+        strength: Math.min(10, Math.max(1, strength)),
+        confidence: data.length >= 7 ? 0.8 : 0.5,
+        last_updated: latest.date || latest.timestamp || new Date().toISOString()
+    };
+}
+
+/**
+ * Analyzes signal distribution across the dataset
  */
 function analyzeSignalDistribution(data: any[]): any {
-    // Count different signal types based on TokenMetrics indicator values
-    const signals = data.map(d => d.LAST_TM_GRADE_SIGNAL).filter(s => s !== null && s !== undefined);
-    
-    if (signals.length === 0) {
+    if (!data || data.length === 0) {
         return {
-            bullish_count: 0,
-            bearish_count: 0,
-            neutral_count: 0,
-            bullish_percentage: "0",
-            stability_score: "0"
+            bullish_percentage: 50,
+            bearish_percentage: 50,
+            neutral_percentage: 0,
+            signal_consistency: 0,
+            dominant_signal: "Neutral"
         };
     }
     
-    const bullishCount = signals.filter(s => s > 0).length;
-    const bearishCount = signals.filter(s => s < 0).length;
-    const neutralCount = signals.filter(s => s === 0).length;
-    const totalCount = signals.length;
+    let bullishCount = 0;
+    let bearishCount = 0;
+    let neutralCount = 0;
     
-    const bullishPercentage = (bullishCount / totalCount) * 100;
+    data.forEach(item => {
+        const sentiment = getCurrentSentimentDescription(item);
+        if (sentiment === "Bullish") bullishCount++;
+        else if (sentiment === "Bearish") bearishCount++;
+        else neutralCount++;
+    });
     
-    // Calculate signal stability (fewer changes = more stable)
-    let signalChanges = 0;
-    for (let i = 1; i < data.length; i++) {
-        const current = getCurrentSentimentDescription(data[i]);
-        const previous = getCurrentSentimentDescription(data[i-1]);
-        if (current !== previous) {
-            signalChanges++;
-        }
-    }
-    const stabilityScore = Math.max(0, 100 - (signalChanges / totalCount * 100));
+    const total = data.length;
+    const bullishPct = Math.round((bullishCount / total) * 100);
+    const bearishPct = Math.round((bearishCount / total) * 100);
+    const neutralPct = Math.round((neutralCount / total) * 100);
+    
+    // Determine dominant signal
+    let dominantSignal = "Neutral";
+    if (bullishPct > bearishPct && bullishPct > neutralPct) dominantSignal = "Bullish";
+    else if (bearishPct > bullishPct && bearishPct > neutralPct) dominantSignal = "Bearish";
+    
+    // Calculate consistency (how often the dominant signal appears)
+    const consistency = Math.max(bullishPct, bearishPct, neutralPct) / 100;
     
     return {
-        bullish_count: bullishCount,
-        bearish_count: bearishCount,
-        neutral_count: neutralCount,
-        bullish_percentage: bullishPercentage.toFixed(1),
-        stability_score: stabilityScore.toFixed(1),
-        signal_changes: signalChanges
+        bullish_percentage: bullishPct,
+        bearish_percentage: bearishPct,
+        neutral_percentage: neutralPct,
+        signal_consistency: Math.round(consistency * 100),
+        dominant_signal: dominantSignal
     };
 }
 
 /**
- * This function analyzes recent trend patterns to understand market momentum.
- * Trend analysis helps identify whether conditions are improving or deteriorating.
+ * Analyzes trend patterns in recent data
  */
 function analyzeTrendPatterns(recentData: any[]): any {
-    if (recentData.length < 3) {
+    if (!recentData || recentData.length < 2) {
         return {
-            trend_direction: "Insufficient data",
-            consistency: 0,
-            recent_changes: 0,
-            strength: "Unknown"
+            primary_direction: "Sideways",
+            strength: "Weak",
+            momentum: "Neutral",
+            market_cap_trend: "Stable"
         };
     }
     
-    const signals = recentData.map(d => d.LAST_TM_GRADE_SIGNAL).filter(s => s !== null && s !== undefined);
+    // Analyze price/market cap trends if available
+    const values = recentData.map(item => 
+        item.total_market_cap || item.market_cap || item.price || 0
+    ).filter(val => val > 0);
     
-    if (signals.length < 3) {
+    if (values.length < 2) {
         return {
-            trend_direction: "Insufficient signal data",
-            consistency: 0,
-            recent_changes: 0,
-            strength: "Unknown"
+            primary_direction: "Sideways",
+            strength: "Weak", 
+            momentum: "Neutral",
+            market_cap_trend: "Stable"
         };
     }
     
-    // Calculate trend direction based on signal progression
-    const firstHalf = signals.slice(0, Math.floor(signals.length / 2));
-    const secondHalf = signals.slice(Math.floor(signals.length / 2));
+    // Calculate trend direction
+    const first = values[values.length - 1]; // Oldest
+    const last = values[0]; // Most recent
+    const change = ((last - first) / first) * 100;
     
-    const firstHalfAvg = firstHalf.reduce((sum, s) => sum + s, 0) / firstHalf.length;
-    const secondHalfAvg = secondHalf.reduce((sum, s) => sum + s, 0) / secondHalf.length;
+    let direction = "Sideways";
+    let strength = "Weak";
+    let momentum = "Neutral";
     
-    const trendChange = secondHalfAvg - firstHalfAvg;
+    if (Math.abs(change) > 5) {
+        direction = change > 0 ? "Upward" : "Downward";
+        strength = Math.abs(change) > 15 ? "Strong" : "Moderate";
+    }
     
-    let trendDirection;
-    if (trendChange > 0.1) trendDirection = "Improving";
-    else if (trendChange < -0.1) trendDirection = "Declining";
-    else trendDirection = "Stable";
-    
-    // Count recent directional changes
-    let recentChanges = 0;
-    const sentiments = recentData.map(d => getCurrentSentimentDescription(d));
-    for (let i = 1; i < sentiments.length; i++) {
-        if (sentiments[i] !== sentiments[i-1]) {
-            recentChanges++;
+    // Analyze momentum (recent vs earlier changes)
+    if (values.length >= 4) {
+        const recentChange = ((values[0] - values[1]) / values[1]) * 100;
+        const earlierChange = ((values[2] - values[3]) / values[3]) * 100;
+        
+        if (Math.abs(recentChange) > Math.abs(earlierChange) * 1.2) {
+            momentum = "Accelerating";
+        } else if (Math.abs(recentChange) < Math.abs(earlierChange) * 0.8) {
+            momentum = "Decelerating";
         }
     }
     
-    // Calculate consistency
-    const consistency = ((sentiments.length - recentChanges) / sentiments.length) * 100;
-    
-    // Assess trend strength
-    const strength = Math.abs(trendChange) > 0.2 ? "Strong" : 
-                    Math.abs(trendChange) > 0.1 ? "Moderate" : "Weak";
-    
     return {
-        trend_direction: trendDirection,
-        consistency: consistency.toFixed(1),
-        recent_changes: recentChanges,
+        primary_direction: direction,
         strength: strength,
-        trend_value: trendChange.toFixed(3)
+        momentum: momentum,
+        market_cap_trend: direction === "Sideways" ? "Stable" : direction,
+        change_percentage: Math.round(change * 100) / 100
     };
 }
 
 /**
- * This function assesses overall market strength based on signal analysis and trends.
- * Market strength assessment helps determine confidence levels for investment decisions.
+ * Assesses overall market strength
  */
 function assessMarketStrength(signalAnalysis: any, trendAnalysis: any): any {
-    let strengthScore = 50; // Base score
+    const signalStrength = signalAnalysis.signal_consistency / 100;
+    const trendStrength = trendAnalysis.strength === "Strong" ? 0.8 : 
+                         trendAnalysis.strength === "Moderate" ? 0.6 : 0.4;
     
-    // Adjust based on signal distribution
-    const bullishPercentage = parseFloat(signalAnalysis.bullish_percentage);
-    if (bullishPercentage > 70) strengthScore += 20;
-    else if (bullishPercentage < 30) strengthScore -= 20;
+    const overallStrength = (signalStrength + trendStrength) / 2;
     
-    // Adjust based on signal stability
-    const stability = parseFloat(signalAnalysis.stability_score);
-    strengthScore += (stability - 50) * 0.3;
+    let phase = "Consolidation";
+    if (overallStrength > 0.7) phase = "Trending";
+    else if (overallStrength < 0.4) phase = "Uncertain";
     
-    // Adjust based on trend consistency
-    const consistency = parseFloat(trendAnalysis.consistency);
-    strengthScore += (consistency - 50) * 0.2;
-    
-    // Adjust based on trend direction
-    if (trendAnalysis.trend_direction === "Improving") strengthScore += 10;
-    else if (trendAnalysis.trend_direction === "Declining") strengthScore -= 10;
-    
-    strengthScore = Math.max(0, Math.min(100, strengthScore));
-    
-    let confidence;
-    if (strengthScore > 75) confidence = "High";
-    else if (strengthScore > 50) confidence = "Moderate";
-    else if (strengthScore > 25) confidence = "Low";
-    else confidence = "Very Low";
+    let volatility = "Medium";
+    if (trendAnalysis.change_percentage && Math.abs(trendAnalysis.change_percentage) > 10) {
+        volatility = "High";
+    } else if (trendAnalysis.change_percentage && Math.abs(trendAnalysis.change_percentage) < 3) {
+        volatility = "Low";
+    }
     
     return {
-        score: strengthScore.toFixed(1),
-        confidence: confidence,
-        factors: {
-            signal_distribution: bullishPercentage > 60 ? "Positive" : bullishPercentage < 40 ? "Negative" : "Neutral",
-            trend_stability: stability > 70 ? "Stable" : "Unstable",
-            trend_direction: trendAnalysis.trend_direction
-        }
+        confidence: overallStrength,
+        phase: phase,
+        volatility: volatility,
+        overall_score: Math.round(overallStrength * 10)
     };
 }
 
 /**
- * This function generates strategic implications based on market analysis.
- * Strategic implications help translate market signals into portfolio decisions.
+ * Generates strategic implications based on analysis
  */
 function generateStrategicImplications(currentMetrics: any, trendAnalysis: any, signalAnalysis: any): string[] {
-    const implications = [];
+    const implications: string[] = [];
     
-    // Current signal implications
-    const currentSentiment = getCurrentSentimentDescription(currentMetrics);
-    if (currentSentiment === "Bullish") {
-        implications.push("TokenMetrics bullish signal suggests favorable conditions for crypto investments");
-        implications.push("Consider gradually increasing portfolio allocation to cryptocurrencies");
-    } else if (currentSentiment === "Bearish") {
-        implications.push("TokenMetrics bearish signal indicates potential market headwinds");
-        implications.push("Consider reducing risk exposure or taking profits on existing positions");
+    // Market direction implications
+    if (signalAnalysis.dominant_signal === "Bullish" && signalAnalysis.signal_consistency > 60) {
+        implications.push("Strong bullish sentiment suggests favorable conditions for crypto exposure");
+    } else if (signalAnalysis.dominant_signal === "Bearish" && signalAnalysis.signal_consistency > 60) {
+        implications.push("Bearish sentiment indicates defensive positioning may be prudent");
+    } else {
+        implications.push("Mixed signals suggest maintaining balanced portfolio allocation");
     }
     
-    // Trend consistency implications
-    if (parseFloat(trendAnalysis.consistency) > 80) {
-        implications.push("High trend consistency suggests reliable signal direction from TokenMetrics");
-    } else if (parseFloat(trendAnalysis.consistency) < 50) {
-        implications.push("Low trend consistency indicates uncertain market conditions");
-        implications.push("Consider waiting for clearer TokenMetrics signals before major position changes");
+    // Trend implications
+    if (trendAnalysis.primary_direction === "Upward" && trendAnalysis.strength === "Strong") {
+        implications.push("Strong upward trend supports momentum-based strategies");
+    } else if (trendAnalysis.primary_direction === "Downward" && trendAnalysis.strength === "Strong") {
+        implications.push("Strong downward trend suggests waiting for reversal signals");
     }
     
-    // Trend direction implications
-    if (trendAnalysis.trend_direction === "Improving") {
-        implications.push("Improving trend suggests market conditions are becoming more favorable");
-    } else if (trendAnalysis.trend_direction === "Declining") {
-        implications.push("Declining trend indicates deteriorating market conditions");
+    // Momentum implications
+    if (trendAnalysis.momentum === "Accelerating") {
+        implications.push("Accelerating momentum may indicate trend continuation");
+    } else if (trendAnalysis.momentum === "Decelerating") {
+        implications.push("Decelerating momentum suggests potential trend reversal");
     }
     
-    return implications;
+    return implications.length > 0 ? implications : ["Market conditions require careful monitoring"];
 }
 
 /**
- * This function generates specific market recommendations based on the analysis.
- * Recommendations are designed to be actionable for different investment strategies.
+ * Generates market recommendations
  */
 function generateMarketRecommendations(currentMetrics: any, trendAnalysis: any, strengthAssessment: any): string[] {
-    const recommendations = [];
-    const currentSentiment = getCurrentSentimentDescription(currentMetrics);
-    const confidence = strengthAssessment.confidence;
+    const recommendations: string[] = [];
     
-    // Primary signal-based recommendations
-    if (currentSentiment === "Bullish" && confidence !== "Very Low") {
-        recommendations.push("TokenMetrics bullish signal supports considering increased crypto allocation");
-        recommendations.push("Focus on established cryptocurrencies with strong fundamentals");
-    } else if (currentSentiment === "Bearish" && confidence !== "Very Low") {
-        recommendations.push("TokenMetrics bearish signal suggests reducing position sizes or taking profits");
-        recommendations.push("Maintain cash reserves for potential buying opportunities");
+    // Based on market phase
+    if (strengthAssessment.phase === "Trending") {
+        recommendations.push("Consider trend-following strategies with appropriate risk management");
+    } else if (strengthAssessment.phase === "Consolidation") {
+        recommendations.push("Range-bound strategies may be more effective in current conditions");
+    } else {
+        recommendations.push("Exercise caution and wait for clearer market signals");
     }
     
-    // Confidence-based recommendations
-    if (confidence === "Low" || confidence === "Very Low") {
-        recommendations.push("Exercise caution due to low TokenMetrics signal confidence");
-        recommendations.push("Wait for stronger, more consistent signals before major portfolio moves");
+    // Based on volatility
+    if (strengthAssessment.volatility === "High") {
+        recommendations.push("High volatility requires smaller position sizes and tighter stops");
+    } else if (strengthAssessment.volatility === "Low") {
+        recommendations.push("Low volatility environment may favor larger position sizes");
     }
     
-    // Trend-based recommendations
-    if (trendAnalysis.trend_direction === "Improving") {
-        recommendations.push("Improving trend supports gradual position building strategies");
-    } else if (trendAnalysis.trend_direction === "Declining") {
-        recommendations.push("Declining trend suggests defensive positioning and profit-taking");
+    // Based on confidence
+    if (strengthAssessment.confidence > 0.7) {
+        recommendations.push("High confidence signals support more aggressive positioning");
+    } else if (strengthAssessment.confidence < 0.4) {
+        recommendations.push("Low confidence suggests conservative approach until clarity improves");
     }
     
-    // Universal recommendations
-    recommendations.push("Always maintain proper diversification across asset classes");
-    recommendations.push("Monitor TokenMetrics market indicators regularly for signal changes");
-    recommendations.push("Combine market metrics with individual token analysis for optimal results");
-    
-    return recommendations;
+    return recommendations.length > 0 ? recommendations : ["Monitor market conditions closely before making major decisions"];
 }
 
 /**
- * This function identifies potential risk factors in the current market environment.
- * Understanding risks helps inform position sizing and risk management decisions.
+ * Identifies potential risk factors
  */
 function identifyRiskFactors(trendAnalysis: any, signalAnalysis: any): string[] {
-    const risks = [];
+    const risks: string[] = [];
     
-    if (parseFloat(trendAnalysis.consistency) < 60) {
-        risks.push("Low trend consistency suggests unpredictable market behavior");
+    if (signalAnalysis.signal_consistency < 50) {
+        risks.push("Low signal consistency increases uncertainty");
     }
     
-    if (trendAnalysis.recent_changes >= 3) {
-        risks.push("Frequent recent signal changes indicate high market uncertainty");
+    if (trendAnalysis.momentum === "Decelerating") {
+        risks.push("Decelerating momentum may signal trend exhaustion");
     }
     
-    if (parseFloat(signalAnalysis.stability_score) < 50) {
-        risks.push("Low overall signal stability suggests choppy market conditions");
+    if (signalAnalysis.neutral_percentage > 40) {
+        risks.push("High neutral signals indicate market indecision");
     }
     
-    // Add general market risks
-    risks.push("Cryptocurrency markets remain highly volatile and speculative");
-    risks.push("External factors (regulation, macro events) can override technical signals");
-    risks.push("Market indicators are analytical tools, not guarantees of future performance");
-    
-    return risks;
+    return risks.length > 0 ? risks : ["No significant risk factors identified"];
 }
