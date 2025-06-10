@@ -78,8 +78,8 @@ const handler = async (
     message: Memory,
     state?: State,
     _options?: any,
-    callback?: any
-): Promise<any> => {
+    callback?: HandlerCallback
+): Promise<boolean> => {
     elizaLogger.info("🏢 Starting TokenMetrics Market Metrics Action");
     
     try {
@@ -101,7 +101,7 @@ const handler = async (
             end_date: extractedRequest.end_date,
             limit: extractedRequest.limit || 50,
             page: extractedRequest.page || 1,
-            analysis_focus: extractedRequest.analysis_focus || ["market_sentiment"]
+            analysis_focus: extractedRequest.analysis_focus || ["current_status"]
         };
         
         // Build API parameters
@@ -171,8 +171,10 @@ const handler = async (
         // Add key metrics summary
         responseText += `📋 **Key Metrics Summary**:\n`;
         responseText += `• Data Points Analyzed: ${marketMetrics.length}\n`;
-        responseText += `• Market Cap Trend: ${marketAnalysis.market_cap_trend || 'N/A'}\n`;
-        responseText += `• Volatility Level: ${marketAnalysis.volatility_level || 'N/A'}\n`;
+        responseText += `• Total Crypto Market Cap: ${formatCurrency(marketMetrics[0]?.TOTAL_CRYPTO_MCAP || 0)}\n`;
+        responseText += `• High-Grade Coins: ${formatPercentage(marketMetrics[0]?.TM_GRADE_PERC_HIGH_COINS || 0)}%\n`;
+        responseText += `• Current Signal: ${getSignalDescription(marketMetrics[0]?.TM_GRADE_SIGNAL || 0)}\n`;
+        responseText += `• Previous Signal: ${getSignalDescription(marketMetrics[0]?.LAST_TM_GRADE_SIGNAL || 0)}\n`;
         
         // Add recommendations
         if (marketAnalysis.recommendations && marketAnalysis.recommendations.length > 0) {
@@ -182,37 +184,61 @@ const handler = async (
             });
         }
         
-        return {
-            text: responseText,
-            success: true,
-            data: {
-                market_metrics: marketMetrics,
-                analysis: marketAnalysis,
-                current_status: currentStatus,
-                metadata: {
-                    endpoint: "/v2/market-metrics",
-                    data_points: marketMetrics.length,
-                    analysis_focus: processedRequest.analysis_focus,
-                    date_range: {
-                        start: processedRequest.start_date,
-                        end: processedRequest.end_date
+        // Use callback pattern
+        if (callback) {
+            callback({
+                text: responseText,
+                content: {
+                    success: true,
+                    data: {
+                        market_metrics: marketMetrics,
+                        analysis: marketAnalysis,
+                        current_status: currentStatus,
+                        metadata: {
+                            endpoint: "/v2/market-metrics",
+                            data_points: marketMetrics.length,
+                            analysis_focus: processedRequest.analysis_focus,
+                            date_range: {
+                                start: processedRequest.start_date,
+                                end: processedRequest.end_date
+                            }
+                        }
                     }
                 }
-            }
-        };
+            });
+        }
+        
+        return true;
         
     } catch (error) {
         elizaLogger.error("❌ Market Metrics Action Error:", error);
         
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        const errorText = `❌ **Error Getting Market Metrics**\n\n${errorMessage}\n\n💡 **Troubleshooting Tips**:\n• Check your TokenMetrics API key\n• Verify date format (YYYY-MM-DD)\n• Ensure you have access to market metrics endpoint`;
         
-        return {
-            text: `❌ **Error Getting Market Metrics**\n\n${errorMessage}\n\n💡 **Troubleshooting Tips**:\n• Check your TokenMetrics API key\n• Verify date format (YYYY-MM-DD)\n• Ensure you have access to market metrics endpoint`,
-            success: false,
-            error: errorMessage
-        };
+        if (callback) {
+            callback({
+                text: errorText,
+                content: {
+                    success: false,
+                    error: errorMessage
+                }
+            });
+        }
+        
+        return false;
     }
 };
+
+// Helper function to describe signals
+function getSignalDescription(signal: number): string {
+    switch (signal) {
+        case 1: return "🟢 Bullish";
+        case -1: return "🔴 Bearish";
+        case 0: return "🟡 Neutral";
+        default: return "❓ Unknown";
+    }
+}
 
 // Validation function
 const validate = async (runtime: IAgentRuntime): Promise<boolean> => {

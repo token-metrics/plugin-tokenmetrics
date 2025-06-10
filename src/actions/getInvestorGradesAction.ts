@@ -442,20 +442,27 @@ Try asking something like:
             let tokenInfo = null;
             if (finalRequest.cryptocurrency) {
                 elizaLogger.log(`🔍 Resolving token for: "${finalRequest.cryptocurrency}"`);
-                tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
-                
-                if (tokenInfo) {
-                    apiParams.token_id = tokenInfo.TOKEN_ID;
-                    elizaLogger.log(`✅ Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-                } else {
+                try {
+                    tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
+                    
+                    if (tokenInfo) {
+                        apiParams.token_id = tokenInfo.TOKEN_ID;
+                        elizaLogger.log(`✅ Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+                    } else {
+                        apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
+                        elizaLogger.log(`🔍 Using symbol: ${finalRequest.cryptocurrency}`);
+                    }
+                } catch (error) {
+                    elizaLogger.log(`⚠️ Token resolution failed, using symbol fallback: ${error}`);
+                    // Always set symbol parameter as fallback
                     apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
-                    elizaLogger.log(`🔍 Using symbol: ${finalRequest.cryptocurrency}`);
+                    elizaLogger.log(`🔍 Fallback to symbol parameter: ${finalRequest.cryptocurrency.toUpperCase()}`);
                 }
             }
 
             // Handle grade filtering
             if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
-                apiParams.grade = finalRequest.grade_filter;
+                elizaLogger.log(`🔍 Grade filter requested: ${finalRequest.grade_filter} (will filter results post-API)`);
             }
 
             // Handle category filtering
@@ -492,10 +499,121 @@ Please try again in a few moments or try with different criteria.`,
                 return false;
             }
 
-            // Handle the response data
-            const grades = Array.isArray(gradesData) ? gradesData : (gradesData.data || []);
+            // Handle the response data with smart token filtering for multiple tokens with same symbol
+            let grades = Array.isArray(gradesData) ? gradesData : (gradesData.data || []);
             
-            elizaLogger.log(`🔍 Received ${grades.length} investor grades`);
+            // Apply grade filtering if requested (post-API filtering) - MOVED BEFORE smart token filtering
+            if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
+                elizaLogger.log(`🔍 Applying grade filter: ${finalRequest.grade_filter}`);
+                
+                const gradeRanges = {
+                    'A': [90, 100],
+                    'B': [80, 89.99],
+                    'C': [70, 79.99],
+                    'D': [60, 69.99],
+                    'F': [0, 59.99]
+                };
+                
+                const [minGrade, maxGrade] = gradeRanges[finalRequest.grade_filter as keyof typeof gradeRanges] || [0, 100];
+                
+                const originalCount = grades.length;
+                grades = grades.filter((token: any) => {
+                    const numericGrade = token.TM_INVESTOR_GRADE || token.INVESTOR_GRADE || token.TA_GRADE || token.QUANT_GRADE || 0;
+                    return numericGrade >= minGrade && numericGrade <= maxGrade;
+                });
+                
+                elizaLogger.log(`🔍 Grade filtering: ${originalCount} → ${grades.length} tokens (${finalRequest.grade_filter}-grade: ${minGrade}-${maxGrade})`);
+                
+                if (grades.length === 0) {
+                    elizaLogger.log(`❌ No ${finalRequest.grade_filter}-grade tokens found`);
+                    
+                    if (callback) {
+                        callback({
+                            text: `📊 **No ${finalRequest.grade_filter}-Grade Tokens Found**
+
+I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
+
+**${finalRequest.grade_filter}-Grade Requirements:**
+• Grade range: ${minGrade} - ${maxGrade}
+• Current market conditions may not have tokens in this range
+
+**Suggestions:**
+• Try a different grade range (A, B, C, D, F)
+• Check general market grades: "Show me current investor grades"
+• Look for specific tokens: "Get investor grades for Bitcoin"
+
+📊 **Data Source**: TokenMetrics AI Investor Grades
+⏰ **Analysis Time**: ${new Date().toLocaleString()}`,
+                            content: { 
+                                error: "No tokens found for grade filter",
+                                grade_filter: finalRequest.grade_filter,
+                                grade_range: [minGrade, maxGrade],
+                                request_id: requestId
+                            }
+                        });
+                    }
+                    return false;
+                }
+            }
+            
+            // Apply smart token filtering if we have multiple tokens with same symbol (like BTC)
+            if (grades.length > 1 && apiParams.symbol) {
+                elizaLogger.log(`🔍 Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+                
+                // Priority selection logic for main tokens
+                const mainTokenSelectors = [
+                    // For Bitcoin - select the main Bitcoin, not wrapped versions
+                    (token: any) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+                    // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+                    (token: any) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+                    // For Ethereum - select the main Ethereum
+                    (token: any) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+                    // For Avalanche - select the main Avalanche, not wrapped versions
+                    (token: any) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
+                    // For other tokens - prefer exact name matches or shortest/simplest names
+                    (token: any) => {
+                        const name = token.TOKEN_NAME?.toLowerCase() || '';
+                        const symbol = token.TOKEN_SYMBOL?.toLowerCase() || '';
+                        
+                        // Avoid wrapped, bridged, or derivative tokens
+                        const avoidKeywords = ['wrapped', 'bridged', 'peg', 'department', 'binance', 'osmosis', 'wormhole', 'beam'];
+                        const hasAvoidKeywords = avoidKeywords.some(keyword => name.includes(keyword));
+                        
+                        if (hasAvoidKeywords) return false;
+                        
+                        // Prefer tokens where name matches the expected name for the symbol
+                        if (symbol === 'btc' && name.includes('bitcoin')) return true;
+                        if (symbol === 'eth' && name.includes('ethereum')) return true;
+                        if (symbol === 'doge' && name.includes('dogecoin')) return true;
+                        if (symbol === 'sol' && name.includes('solana')) return true;
+                        if (symbol === 'avax' && name.includes('avalanche')) return true;
+                        
+                        return false;
+                    }
+                ];
+                
+                // Try each selector until we find a match
+                let selectedToken = null;
+                for (const selector of mainTokenSelectors) {
+                    const match = grades.find(selector);
+                    if (match) {
+                        selectedToken = match;
+                        elizaLogger.log(`✅ Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+                        break;
+                    }
+                }
+                
+                // If we found a main token, use only that one
+                if (selectedToken) {
+                    grades = [selectedToken];
+                    elizaLogger.log(`🎯 Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+                } else {
+                    // Fallback: use the first token but log the issue
+                    elizaLogger.log(`⚠️ No main token identified for ${apiParams.symbol}, using first token: ${grades[0]?.TOKEN_NAME || 'unknown'}`);
+                }
+            }
+            
+            elizaLogger.log(`🔍 Final grades count: ${grades.length}`);
 
             // STEP 7: Format and present the results
             const responseText = formatInvestorGradesResponse(grades, tokenInfo);

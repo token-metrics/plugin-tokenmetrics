@@ -302,8 +302,10 @@ Try asking something like:
                         elizaLogger.log(`🔍 Using symbol parameter: ${signalsRequest.cryptocurrency}`);
                     }
                 } catch (error) {
-                    elizaLogger.log(`⚠️ Token resolution failed, proceeding with general signals: ${error}`);
-                    // Continue without token-specific filtering
+                    elizaLogger.log(`⚠️ Token resolution failed, using symbol fallback: ${error}`);
+                    // Always set symbol parameter as fallback
+                    apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
+                    elizaLogger.log(`🔍 Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
                 }
             }
 
@@ -355,10 +357,65 @@ Please try again in a few moments or try with different criteria.`,
                 return false;
             }
 
-            // Handle the response data
-            const signals = Array.isArray(signalsData) ? signalsData : (signalsData.data || []);
+            // Handle the response data with smart token filtering for multiple tokens with same symbol
+            let signals = Array.isArray(signalsData) ? signalsData : (signalsData.data || []);
             
-            elizaLogger.log(`🔍 Received ${signals.length} trading signals`);
+            // Apply smart token filtering if we have multiple tokens with same symbol (like BTC)
+            if (signals.length > 1 && apiParams.symbol) {
+                elizaLogger.log(`🔍 Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+                
+                // Priority selection logic for main tokens
+                const mainTokenSelectors = [
+                    // For Bitcoin - select the main Bitcoin, not wrapped versions
+                    (token: any) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+                    // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+                    (token: any) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+                    // For Ethereum - select the main Ethereum
+                    (token: any) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+                    // For other tokens - prefer exact name matches or shortest/simplest names
+                    (token: any) => {
+                        const name = token.TOKEN_NAME.toLowerCase();
+                        const symbol = token.TOKEN_SYMBOL.toLowerCase();
+                        
+                        // Avoid wrapped, bridged, or derivative tokens
+                        const avoidKeywords = ['wrapped', 'bridged', 'peg', 'department', 'binance', 'osmosis'];
+                        const hasAvoidKeywords = avoidKeywords.some(keyword => name.includes(keyword));
+                        
+                        if (hasAvoidKeywords) return false;
+                        
+                        // Prefer tokens where name matches the expected name for the symbol
+                        if (symbol === 'btc' && name.includes('bitcoin')) return true;
+                        if (symbol === 'eth' && name.includes('ethereum')) return true;
+                        if (symbol === 'doge' && name.includes('dogecoin')) return true;
+                        if (symbol === 'sol' && name.includes('solana')) return true;
+                        if (symbol === 'avax' && name.includes('avalanche')) return true;
+                        
+                        return false;
+                    }
+                ];
+                
+                // Try each selector until we find a match
+                let selectedToken = null;
+                for (const selector of mainTokenSelectors) {
+                    const match = signals.find(selector);
+                    if (match) {
+                        selectedToken = match;
+                        elizaLogger.log(`✅ Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+                        break;
+                    }
+                }
+                
+                // If we found a main token, use only that one
+                if (selectedToken) {
+                    signals = [selectedToken];
+                    elizaLogger.log(`🎯 Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+                } else {
+                    // Fallback: use the first token but log the issue
+                    elizaLogger.log(`⚠️ No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
+                }
+            }
+            
+            elizaLogger.log(`🔍 Final signals count: ${signals.length}`);
 
             // STEP 6: Format and present the results
             const responseText = formatTradingSignalsResponse(signals, tokenInfo);
