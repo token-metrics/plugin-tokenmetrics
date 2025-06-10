@@ -9,7 +9,7 @@
 
 ## 🌟 Overview
 
-The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **20 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
+The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **21 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
 
 **🎯 Perfect for**: Trading bots, portfolio management agents, research assistants, and crypto analysis tools.
 
@@ -23,17 +23,21 @@ npm install @elizaos-plugins/plugin-tokenmetrics
 
 # 2️⃣ Get your TokenMetrics API key from https://app.tokenmetrics.com/en/api?tab=api
 
-# 3️⃣ Add to your ElizaOS character config
+# 3️⃣ Set up environment variables
+# Create a .env file in your project root:
+echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
+
+# 4️⃣ Add to your ElizaOS character config
 {
   "plugins": ["@elizaos-plugins/plugin-tokenmetrics"],
   "settings": {
     "secrets": {
-      "TOKENMETRICS_API_KEY": "your_api_key_here"
+      "TOKENMETRICS_API_KEY": process.env.TOKENMETRICS_API_KEY
     }
   }
 }
 
-# 4️⃣ Start asking questions!
+# 5️⃣ Start asking questions!
 "What's Bitcoin's price and trading signals?"
 "Show me crypto indices data"
 "What are the holdings of index 1?"
@@ -47,7 +51,7 @@ npm install @elizaos-plugins/plugin-tokenmetrics
 
 | Feature | Benefit | Icon |
 |---------|---------|------|
-| **Most Comprehensive** | 20 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
+| **Most Comprehensive** | 21 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
 | **AI-Powered** | Natural language understanding + TokenMetrics AI integration | 🧠 |
 | **Professional Grade** | Investment-grade analysis, not just raw data | 📊 |
 | **Zero Learning Curve** | Natural language queries, no API knowledge needed | ⚡ |
@@ -142,16 +146,77 @@ Or add to package.json:
 }
 ```
 
-### 2️⃣ Configure your ElizaOS character
+### 2️⃣ Get TokenMetrics API Key
+1. 📝 **Sign up** at [TokenMetrics API Portal](https://app.tokenmetrics.com/en/api?tab=api)
+2. 💳 **Choose a plan** that fits your usage needs
+3. 🚀 **Navigate** to API section in your dashboard
+4. 🔑 **Generate** your API key
+5. 📋 **Copy** your API key for configuration
+
+### 3️⃣ Configure Environment Variables
+
+**Option A: Using .env file (Recommended)**
+```bash
+# Create .env file in your project root
+TOKENMETRICS_API_KEY=your_tokenmetrics_api_key
+```
+
+**Option B: Using system environment variables**
+```bash
+# Linux/Mac
+export TOKENMETRICS_API_KEY=your_tokenmetrics_api_key
+
+# Windows
+set TOKENMETRICS_API_KEY=your_tokenmetrics_api_key
+```
+
+### 4️⃣ Configure your ElizaOS character
+
+**Method 1: Using environment variables (Recommended)**
+```typescript
+// character.ts
+import { Character, ModelProviderName } from "@elizaos/core";
+
+export const character: Character = {
+  name: "CryptoAnalyst",
+  plugins: ["@elizaos-plugins/plugin-tokenmetrics"],
+  modelProvider: ModelProviderName.OPENAI,
+  settings: {
+    secrets: {
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      TOKENMETRICS_API_KEY: process.env.TOKENMETRICS_API_KEY, // 🔑 This loads from .env
+    }
+  },
+  system: "You are a crypto analysis assistant with access to real-time TokenMetrics data.",
+  // ... rest of your character config
+};
+```
+
+**Method 2: Direct configuration (Not recommended for production)**
+```typescript
+// character.ts - Only for development/testing
+export const character: Character = {
+  name: "CryptoAnalyst",
+  plugins: ["@elizaos-plugins/plugin-tokenmetrics"],
+  settings: {
+    secrets: {
+      TOKENMETRICS_API_KEY: "your_api_key_here", // ⚠️ Not secure for production
+    }
+  },
+  // ... rest of your character config
+};
+```
+
+**Method 3: JSON character file**
 ```json
 {
   "name": "CryptoAnalyst",
-  "plugins": [
-    "@elizaos-plugins/plugin-tokenmetrics"
-  ],
+  "plugins": ["@elizaos-plugins/plugin-tokenmetrics"],
+  "modelProvider": "openai",
   "settings": {
     "secrets": {
-      "TOKENMETRICS_API_KEY": "your_tokenmetrics_api_key"
+      "OPENAI_API_KEY": "your_openai_key",
+      "TOKENMETRICS_API_KEY": "your_tokenmetrics_key"
     },
     "tokenmetrics": {
       "defaultAnalysisDepth": "detailed",
@@ -159,8 +224,35 @@ Or add to package.json:
       "riskTolerance": "medium",
       "favoriteTokens": ["BTC", "ETH", "SOL"]
     }
-  }
+  },
+  "system": "You are a crypto analysis assistant with access to real-time TokenMetrics data."
 }
+```
+
+### 5️⃣ Verify Installation
+
+Create a simple test to verify the plugin is working:
+
+```typescript
+// test-tokenmetrics.ts
+import { createAgent } from "./src/index.ts";
+import { character } from "./src/character.ts";
+
+async function testTokenMetrics() {
+  console.log("🧪 Testing TokenMetrics plugin...");
+  
+  // Check if API key is configured
+  if (!character.settings?.secrets?.TOKENMETRICS_API_KEY) {
+    console.error("❌ TOKENMETRICS_API_KEY not configured!");
+    return;
+  }
+  
+  console.log("✅ API key configured");
+  console.log("🚀 Plugin should be ready to use!");
+  console.log("💬 Try asking: 'What's the price of Bitcoin?'");
+}
+
+testTokenMetrics();
 ```
 
 ### 3️⃣ Get TokenMetrics API Key
@@ -249,6 +341,7 @@ import { tokenmetricsPlugin } from "@elizaos-plugins/plugin-tokenmetrics";
 | 18 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
 | 19 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
 | 20 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
+| 21 | **getTMAI** | AI | TMAI AI insights | Advanced AI analysis | 🤖 |
 
 **🎯 Total: 21 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
 
@@ -258,14 +351,22 @@ import { tokenmetricsPlugin } from "@elizaos-plugins/plugin-tokenmetrics";
 
 ### 🔑 Required Environment Variables
 ```bash
+# Required for TokenMetrics plugin
 TOKENMETRICS_API_KEY=your_tokenmetrics_api_key
+
+# Required for AI model (choose one)
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
 ```
 
-### 🛠️ Optional Settings
+### 🛠️ Optional Plugin Settings
 Configure through your character settings:
-```json
+```typescript
 {
   "settings": {
+    "secrets": {
+      "TOKENMETRICS_API_KEY": process.env.TOKENMETRICS_API_KEY
+    },
     "tokenmetrics": {
       "defaultAnalysisDepth": "detailed",     // "basic" | "detailed" | "comprehensive"
       "preferredTimeframe": "daily",          // "hourly" | "daily" | "weekly"
@@ -278,6 +379,22 @@ Configure through your character settings:
       "cacheDuration": 300                    // Cache duration in seconds
     }
   }
+}
+```
+
+### 🔧 Plugin Loading Logic
+The plugin automatically loads when:
+1. ✅ **API Key Present**: `TOKENMETRICS_API_KEY` is configured in character settings
+2. ✅ **Plugin Listed**: Plugin is included in the character's plugins array
+3. ✅ **Dependencies Met**: All required dependencies are installed
+
+```typescript
+// The plugin loading logic (handled automatically)
+if (character.settings?.secrets?.TOKENMETRICS_API_KEY) {
+  plugins.push(tokenmetricsPlugin);
+  console.log("✅ TokenMetrics plugin loaded");
+} else {
+  console.log("⚠️ TokenMetrics plugin skipped (no API key)");
 }
 ```
 
@@ -301,7 +418,7 @@ Configure through your character settings:
 - 🔄 **Fallback Responses**: Alternative data sources when primary endpoints fail
 
 ### 🎨 Response Formatting & UX
-- 🎨 **Color-coded Grades**: 🟢 High Score (80-100%) 🟡 Medium Score (50-79%) �� Low Score (0-49%)
+- 🎨 **Color-coded Grades**: 🟢 High Score (80-100%) 🟡 Medium Score (50-79%) 🔴 Low Score (0-49%)
 - 📊 **Structured Data**: Clean tables, bullet points, and organized information
 - 💡 **Actionable Insights**: Professional analysis with clear recommendations
 - 📚 **Educational Content**: Explanations of metrics, grades, and market concepts
@@ -519,7 +636,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 - 📱 **Mobile optimization** for mobile ElizaOS clients
 
 ### 📅 Version History
-- **v1.0.0**: Initial release with 20 TokenMetrics endpoints
+- **v1.0.0**: Initial release with 21 TokenMetrics endpoints
 - **v0.9.0**: Beta release with core functionality
 - **v0.8.0**: Alpha release for testing
 
