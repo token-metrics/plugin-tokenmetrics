@@ -377,12 +377,19 @@ export async function resolveTokenSmart(input: string, runtime: IAgentRuntime): 
     
     try {
         const trimmedInput = input.trim();
-        elizaLogger.log(`🔍 Searching TokenMetrics database for: "${trimmedInput}"`);
+        
+        // Step 1: Apply symbol-to-name mapping first (like getPriceAction does)
+        const mappedName = mapSymbolToName(trimmedInput);
+        elizaLogger.log(`🔍 Symbol mapping: "${trimmedInput}" → "${mappedName}"`);
+        
+        // Use the mapped name for searching
+        const searchInput = mappedName;
+        elizaLogger.log(`🔍 Searching TokenMetrics database for: "${searchInput}"`);
         
         // Try searching by exact token name first (most reliable for full names)
-        elizaLogger.log(`🔍 Step 1: Searching by token name "${trimmedInput}"`);
+        elizaLogger.log(`🔍 Step 1: Searching by token name "${searchInput}"`);
         let searchResult = await callTokenMetricsAPI('/v2/tokens', { 
-            token_name: trimmedInput,
+            token_name: searchInput,
             limit: 5 
         }, runtime);
         
@@ -390,43 +397,38 @@ export async function resolveTokenSmart(input: string, runtime: IAgentRuntime): 
         let tokens = Array.isArray(searchResult) ? searchResult : (searchResult?.data || []);
         
         if (tokens.length > 0) {
-            // Look for exact name match first
-            let found = tokens.find((token: any) => 
-                token.TOKEN_NAME?.toLowerCase() === trimmedInput.toLowerCase()
-            );
-            
-            if (!found) {
-                // If no exact match, take the first result (best match from API)
-                found = tokens[0];
+            // Apply smart filtering for multiple tokens
+            const filteredToken = applySmartTokenFiltering(tokens, searchInput);
+            if (filteredToken) {
+                elizaLogger.log(`✅ Found token by name search: ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+                return filteredToken;
             }
-            
-            elizaLogger.log(`✅ Found token by name search: ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-            return found;
         }
         
         // Try searching by symbol if name search failed
-        elizaLogger.log(`🔍 Step 2: Searching by symbol "${trimmedInput}"`);
+        elizaLogger.log(`🔍 Step 2: Searching by symbol "${searchInput}"`);
         searchResult = await callTokenMetricsAPI('/v2/tokens', { 
-            symbol: trimmedInput,
-            limit: 5 
+            symbol: searchInput,
+            limit: 10 // Increase limit to get more options for filtering
         }, runtime);
         
         tokens = Array.isArray(searchResult) ? searchResult : (searchResult?.data || []);
         
         if (tokens.length > 0) {
-            // For symbol search, prioritize tokens with higher market cap or more exchanges
-            // The API typically returns the most important token first
-            const found = tokens[0];
-            elizaLogger.log(`✅ Found token by symbol search: ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-            return found;
+            // Apply smart filtering for multiple tokens with same symbol
+            const filteredToken = applySmartTokenFiltering(tokens, searchInput);
+            if (filteredToken) {
+                elizaLogger.log(`✅ Found token by symbol search: ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+                return filteredToken;
+            }
         }
         
         // Try case-insensitive variations
-        const upperInput = trimmedInput.toUpperCase();
-        const lowerInput = trimmedInput.toLowerCase();
+        const upperInput = searchInput.toUpperCase();
+        const lowerInput = searchInput.toLowerCase();
         
         for (const variation of [upperInput, lowerInput]) {
-            if (variation === trimmedInput) continue; // Skip if same as original
+            if (variation === searchInput) continue; // Skip if same as original
             
             elizaLogger.log(`🔍 Step 3: Trying variation "${variation}"`);
             
@@ -435,15 +437,17 @@ export async function resolveTokenSmart(input: string, runtime: IAgentRuntime): 
                 try {
                     searchResult = await callTokenMetricsAPI('/v2/tokens', { 
                         [searchType]: variation,
-                        limit: 3 
+                        limit: 10 
                     }, runtime);
                     
                     tokens = Array.isArray(searchResult) ? searchResult : (searchResult?.data || []);
                     
                     if (tokens.length > 0) {
-                        const found = tokens[0];
-                        elizaLogger.log(`✅ Found token by ${searchType} variation "${variation}": ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-                        return found;
+                        const filteredToken = applySmartTokenFiltering(tokens, variation);
+                        if (filteredToken) {
+                            elizaLogger.log(`✅ Found token by ${searchType} variation "${variation}": ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+                            return filteredToken;
+                        }
                     }
                 } catch (variationError) {
                     elizaLogger.log(`⚠️ Variation search failed for ${searchType}="${variation}", continuing...`);
@@ -462,28 +466,95 @@ export async function resolveTokenSmart(input: string, runtime: IAgentRuntime): 
             tokens = Array.isArray(searchResult) ? searchResult : (searchResult?.data || []);
             
             if (tokens.length > 0) {
-                const upperInput = trimmedInput.toUpperCase();
+                const upperInput = searchInput.toUpperCase();
                 
                 // Search for partial matches in the broader result set
-                const found = tokens.find((token: any) => 
+                const matches = tokens.filter((token: any) => 
                     token.TOKEN_NAME?.toUpperCase().includes(upperInput) ||
                     token.TOKEN_SYMBOL?.toUpperCase().includes(upperInput)
                 );
                 
-                if (found) {
-                    elizaLogger.log(`✅ Found token by partial match: ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-                    return found;
+                if (matches.length > 0) {
+                    const filteredToken = applySmartTokenFiltering(matches, searchInput);
+                    if (filteredToken) {
+                        elizaLogger.log(`✅ Found token by partial match: ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+                        return filteredToken;
+                    }
                 }
             }
         } catch (broadError) {
             elizaLogger.log(`⚠️ Broad search failed, skipping...`);
         }
         
-        elizaLogger.log(`❌ No token found for: "${trimmedInput}" after trying all search methods`);
+        elizaLogger.log(`❌ No token found for: "${input}" after trying all search methods`);
         return null;
         
     } catch (error) {
         elizaLogger.error(`❌ Error resolving token "${input}":`, error);
         return null;
     }
+}
+
+/**
+ * Apply smart token filtering to prioritize main tokens over wrapped/bridged versions
+ */
+function applySmartTokenFiltering(tokens: any[], searchInput: string): any | null {
+    if (!tokens || tokens.length === 0) return null;
+    if (tokens.length === 1) return tokens[0];
+    
+    elizaLogger.log(`🔍 Applying smart filtering for ${tokens.length} tokens with input: "${searchInput}"`);
+    
+    // Priority selection logic for main tokens
+    const mainTokenSelectors = [
+        // For Bitcoin - select the main Bitcoin, not wrapped versions
+        (token: any) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+        // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+        (token: any) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+        // For Ethereum - select the main Ethereum
+        (token: any) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+        // For Avalanche - select the main Avalanche, not wrapped versions
+        (token: any) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
+        // For Solana - select the main Solana
+        (token: any) => token.TOKEN_NAME === "Solana" && token.TOKEN_SYMBOL === "SOL",
+        // For Polygon - select the main Polygon
+        (token: any) => token.TOKEN_NAME === "Polygon" && token.TOKEN_SYMBOL === "MATIC",
+        // For other tokens - prefer exact name matches or shortest/simplest names
+        (token: any) => {
+            const name = token.TOKEN_NAME?.toLowerCase() || '';
+            const symbol = token.TOKEN_SYMBOL?.toLowerCase() || '';
+            const searchLower = searchInput.toLowerCase();
+            
+            // Avoid wrapped, bridged, or derivative tokens
+            const avoidKeywords = ['wrapped', 'bridged', 'peg', 'department', 'binance', 'osmosis', 'wormhole', 'beam'];
+            const hasAvoidKeywords = avoidKeywords.some(keyword => name.includes(keyword));
+            
+            if (hasAvoidKeywords) return false;
+            
+            // Prefer exact name matches
+            if (name === searchLower) return true;
+            
+            // Prefer tokens where name matches the expected name for the symbol
+            if (symbol === 'btc' && name.includes('bitcoin')) return true;
+            if (symbol === 'eth' && name.includes('ethereum')) return true;
+            if (symbol === 'doge' && name.includes('dogecoin')) return true;
+            if (symbol === 'sol' && name.includes('solana')) return true;
+            if (symbol === 'avax' && name.includes('avalanche')) return true;
+            if (symbol === 'matic' && name.includes('polygon')) return true;
+            
+            return false;
+        }
+    ];
+    
+    // Try each selector until we find a match
+    for (const selector of mainTokenSelectors) {
+        const match = tokens.find(selector);
+        if (match) {
+            elizaLogger.log(`✅ Smart filtering selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+            return match;
+        }
+    }
+    
+    // Fallback: use the first token but log the issue
+    elizaLogger.log(`⚠️ No main token identified for "${searchInput}", using first token: ${tokens[0].TOKEN_NAME} (${tokens[0].TOKEN_SYMBOL})`);
+    return tokens[0];
 } 
