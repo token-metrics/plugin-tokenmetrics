@@ -535,44 +535,127 @@ export const getResistanceSupportAction: Action = {
             } else {
                 responseText += `✅ **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)\n\n`;
                 
+                // Show current price reference if available
+                const currentPriceRef = levelsData[0]?.CURRENT_PRICE_REFERENCE;
+                if (currentPriceRef) {
+                    responseText += `💰 **Current Price Reference**: ${formatCurrency(currentPriceRef)}\n\n`;
+                }
+                
+                // Show key resistance levels (top 5 most significant)
+                if (resistanceLevels.length > 0) {
+                    responseText += `🔴 **Key Resistance Levels** (${resistanceLevels.length} total):\n`;
+                    const topResistance = resistanceLevels
+                        .sort((a: any, b: any) => (b.STRENGTH || 0) - (a.STRENGTH || 0))
+                        .slice(0, 5);
+                    
+                    topResistance.forEach((level: any, index: number) => {
+                        const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+                        const date = new Date(level.DATE).toLocaleDateString();
+                        const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
+                        const strengthIcon = strength > 80 ? "🔥" : strength > 60 ? "💪" : "📊";
+                        responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100\n`;
+                    });
+                    
+                    if (resistanceLevels.length > 5) {
+                        responseText += `   ... and ${resistanceLevels.length - 5} more resistance levels\n`;
+                    }
+                    responseText += `\n`;
+                }
+                
+                // Show key support levels (top 5 most significant)
+                if (supportLevels.length > 0) {
+                    responseText += `🟢 **Key Support Levels** (${supportLevels.length} total):\n`;
+                    const topSupport = supportLevels
+                        .sort((a: any, b: any) => (b.STRENGTH || 0) - (a.STRENGTH || 0))
+                        .slice(0, 5);
+                    
+                    topSupport.forEach((level: any, index: number) => {
+                        const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+                        const date = new Date(level.DATE).toLocaleDateString();
+                        const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
+                        const strengthIcon = strength > 80 ? "🔥" : strength > 60 ? "💪" : "📊";
+                        responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100\n`;
+                    });
+                    
+                    if (supportLevels.length > 5) {
+                        responseText += `   ... and ${supportLevels.length - 5} more support levels\n`;
+                    }
+                    responseText += `\n`;
+                }
+                
+                // Show historical timeline of key levels (most recent 5)
+                responseText += `📅 **Recent Historical Levels**:\n`;
+                const recentLevels = levelsData
+                    .sort((a: any, b: any) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime())
+                    .slice(0, 5);
+                
+                recentLevels.forEach((level: any) => {
+                    const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+                    const date = new Date(level.DATE).toLocaleDateString();
+                    const type = level.LEVEL_TYPE || level.TYPE;
+                    const typeIcon = type === 'RESISTANCE' ? '🔴' : '🟢';
+                    const daysAgo = level.DAYS_SINCE ? `(${level.DAYS_SINCE} days ago)` : '';
+                    responseText += `• ${typeIcon} **${price}** - ${date} ${daysAgo}\n`;
+                });
+                responseText += `\n`;
+                
                 // Analysis type specific summary
                 if (processedRequest.analysisType === "trading_levels") {
-                    responseText += `🎯 **Trading Levels Focus:**\n`;
-                    responseText += `• Key entry opportunities: ${supportLevels.length} support levels\n`;
-                    responseText += `• Key exit targets: ${resistanceLevels.length} resistance levels\n`;
+                    responseText += `🎯 **Trading Levels Analysis:**\n`;
+                    responseText += `• **Entry Opportunities**: ${supportLevels.length} support levels for potential long positions\n`;
+                    responseText += `• **Exit Targets**: ${resistanceLevels.length} resistance levels for profit-taking\n`;
+                    responseText += `• **Risk Management**: Use support levels for stop-loss placement\n\n`;
                 } else if (processedRequest.analysisType === "breakout_analysis") {
-                    responseText += `🚀 **Breakout Analysis Focus:**\n`;
-                    const strongResistance = resistanceLevels.filter((r: any) => (r.STRENGTH || 0) > 0.7);
-                    const weakSupport = supportLevels.filter((s: any) => (s.STRENGTH || 0) < 0.5);
-                    responseText += `• Breakout candidates: ${strongResistance.length} strong resistance levels\n`;
-                    responseText += `• Breakdown risks: ${weakSupport.length} weak support levels\n`;
+                    responseText += `🚀 **Breakout Analysis:**\n`;
+                    const strongResistance = resistanceLevels.filter((r: any) => (r.STRENGTH || 0) > 70);
+                    const nearestResistance = resistanceLevels
+                        .sort((a: any, b: any) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
+                    
+                    responseText += `• **Breakout Candidates**: ${strongResistance.length} strong resistance levels to watch\n`;
+                    if (nearestResistance) {
+                        responseText += `• **Next Key Level**: ${formatCurrency(nearestResistance.PRICE_LEVEL || 0)} resistance\n`;
+                    }
+                    responseText += `• **Breakout Strategy**: Monitor volume on approach to resistance levels\n\n`;
                 } else if (processedRequest.analysisType === "risk_management") {
-                    responseText += `🛡️ **Risk Management Focus:**\n`;
-                    responseText += `• Stop-loss levels: ${supportLevels.length} support zones\n`;
-                    responseText += `• Take-profit levels: ${resistanceLevels.length} resistance zones\n`;
+                    responseText += `🛡️ **Risk Management Guide:**\n`;
+                    const nearestSupport = supportLevels
+                        .sort((a: any, b: any) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
+                    
+                    responseText += `• **Stop-Loss Zones**: ${supportLevels.length} support levels for protection\n`;
+                    if (nearestSupport) {
+                        responseText += `• **Nearest Support**: ${formatCurrency(nearestSupport.PRICE_LEVEL || 0)} for stop placement\n`;
+                    }
+                    responseText += `• **Position Sizing**: Adjust based on distance to key support levels\n\n`;
                 } else {
                     responseText += `📈 **Comprehensive Analysis:**\n`;
-                    responseText += `• ${levelsAnalysis.summary}\n`;
+                    const priceRange = Math.max(...levelsData.map(l => l.PRICE_LEVEL || 0)) - Math.min(...levelsData.map(l => l.PRICE_LEVEL || 0));
+                    const avgStrength = levelsData.reduce((sum, l) => sum + (l.STRENGTH || 0), 0) / levelsData.length;
+                    
+                    responseText += `• **Price Range Covered**: ${formatCurrency(priceRange)} across all levels\n`;
+                    responseText += `• **Average Level Strength**: ${Math.round(avgStrength)}/100\n`;
+                    responseText += `• **Data Timeframe**: ${new Date(Math.min(...levelsData.map(l => new Date(l.DATE).getTime()))).getFullYear()} - ${new Date().getFullYear()}\n\n`;
                 }
                 
                 // Key insights
                 if (levelsAnalysis.insights && levelsAnalysis.insights.length > 0) {
-                    responseText += `\n💡 **Key Insights:**\n`;
+                    responseText += `💡 **Key Insights:**\n`;
                     levelsAnalysis.insights.slice(0, 3).forEach((insight: string) => {
                         responseText += `• ${insight}\n`;
                     });
+                    responseText += `\n`;
                 }
                 
                 // Technical outlook
                 if (levelsAnalysis.technical_outlook) {
-                    responseText += `\n🔮 **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || 'Neutral'}\n`;
+                    responseText += `🔮 **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || 'Neutral'}\n\n`;
                 }
                 
-                responseText += `\n📋 **Usage Guidelines:**\n`;
-                responseText += `• Use support levels as potential entry points for long positions\n`;
-                responseText += `• Use resistance levels as potential exit points or profit-taking levels\n`;
-                responseText += `• Monitor level breaks for trend continuation or reversal signals\n`;
-                responseText += `• Combine with volume analysis for confirmation of level significance\n`;
+                responseText += `📋 **Trading Guidelines:**\n`;
+                responseText += `• **Long Entries**: Consider positions near strong support levels\n`;
+                responseText += `• **Profit Targets**: Set take-profits near resistance levels\n`;
+                responseText += `• **Stop Losses**: Place stops below key support levels\n`;
+                responseText += `• **Breakout Plays**: Watch for volume confirmation on level breaks\n`;
+                responseText += `• **Risk Management**: Size positions based on distance to key levels\n`;
             }
             
             responseText += `\n🔗 **Data Source:** TokenMetrics Technical Analysis Engine (v2)`;
