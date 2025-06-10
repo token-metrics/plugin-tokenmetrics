@@ -4337,50 +4337,55 @@ async function resolveTokenSmart(input, runtime) {
   elizaLogger.log(`\u{1F50D} Resolving token: "${input}" (Pure API search approach)`);
   try {
     const trimmedInput = input.trim();
-    elizaLogger.log(`\u{1F50D} Searching TokenMetrics database for: "${trimmedInput}"`);
-    elizaLogger.log(`\u{1F50D} Step 1: Searching by token name "${trimmedInput}"`);
+    const mappedName = mapSymbolToName(trimmedInput);
+    elizaLogger.log(`\u{1F50D} Symbol mapping: "${trimmedInput}" \u2192 "${mappedName}"`);
+    const searchInput = mappedName;
+    elizaLogger.log(`\u{1F50D} Searching TokenMetrics database for: "${searchInput}"`);
+    elizaLogger.log(`\u{1F50D} Step 1: Searching by token name "${searchInput}"`);
     let searchResult = await callTokenMetricsAPI("/v2/tokens", {
-      token_name: trimmedInput,
+      token_name: searchInput,
       limit: 5
     }, runtime);
     let tokens = Array.isArray(searchResult) ? searchResult : searchResult?.data || [];
     if (tokens.length > 0) {
-      let found = tokens.find(
-        (token) => token.TOKEN_NAME?.toLowerCase() === trimmedInput.toLowerCase()
-      );
-      if (!found) {
-        found = tokens[0];
+      const filteredToken = applySmartTokenFiltering(tokens, searchInput);
+      if (filteredToken) {
+        elizaLogger.log(`\u2705 Found token by name search: ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+        return filteredToken;
       }
-      elizaLogger.log(`\u2705 Found token by name search: ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-      return found;
     }
-    elizaLogger.log(`\u{1F50D} Step 2: Searching by symbol "${trimmedInput}"`);
+    elizaLogger.log(`\u{1F50D} Step 2: Searching by symbol "${searchInput}"`);
     searchResult = await callTokenMetricsAPI("/v2/tokens", {
-      symbol: trimmedInput,
-      limit: 5
+      symbol: searchInput,
+      limit: 10
+      // Increase limit to get more options for filtering
     }, runtime);
     tokens = Array.isArray(searchResult) ? searchResult : searchResult?.data || [];
     if (tokens.length > 0) {
-      const found = tokens[0];
-      elizaLogger.log(`\u2705 Found token by symbol search: ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-      return found;
+      const filteredToken = applySmartTokenFiltering(tokens, searchInput);
+      if (filteredToken) {
+        elizaLogger.log(`\u2705 Found token by symbol search: ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+        return filteredToken;
+      }
     }
-    const upperInput = trimmedInput.toUpperCase();
-    const lowerInput = trimmedInput.toLowerCase();
+    const upperInput = searchInput.toUpperCase();
+    const lowerInput = searchInput.toLowerCase();
     for (const variation of [upperInput, lowerInput]) {
-      if (variation === trimmedInput) continue;
+      if (variation === searchInput) continue;
       elizaLogger.log(`\u{1F50D} Step 3: Trying variation "${variation}"`);
       for (const searchType of ["token_name", "symbol"]) {
         try {
           searchResult = await callTokenMetricsAPI("/v2/tokens", {
             [searchType]: variation,
-            limit: 3
+            limit: 10
           }, runtime);
           tokens = Array.isArray(searchResult) ? searchResult : searchResult?.data || [];
           if (tokens.length > 0) {
-            const found = tokens[0];
-            elizaLogger.log(`\u2705 Found token by ${searchType} variation "${variation}": ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-            return found;
+            const filteredToken = applySmartTokenFiltering(tokens, variation);
+            if (filteredToken) {
+              elizaLogger.log(`\u2705 Found token by ${searchType} variation "${variation}": ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+              return filteredToken;
+            }
           }
         } catch (variationError) {
           elizaLogger.log(`\u26A0\uFE0F Variation search failed for ${searchType}="${variation}", continuing...`);
@@ -4395,24 +4400,72 @@ async function resolveTokenSmart(input, runtime) {
       }, runtime);
       tokens = Array.isArray(searchResult) ? searchResult : searchResult?.data || [];
       if (tokens.length > 0) {
-        const upperInput2 = trimmedInput.toUpperCase();
-        const found = tokens.find(
+        const upperInput2 = searchInput.toUpperCase();
+        const matches = tokens.filter(
           (token) => token.TOKEN_NAME?.toUpperCase().includes(upperInput2) || token.TOKEN_SYMBOL?.toUpperCase().includes(upperInput2)
         );
-        if (found) {
-          elizaLogger.log(`\u2705 Found token by partial match: ${found.TOKEN_NAME} (${found.TOKEN_SYMBOL}) - ID: ${found.TOKEN_ID}`);
-          return found;
+        if (matches.length > 0) {
+          const filteredToken = applySmartTokenFiltering(matches, searchInput);
+          if (filteredToken) {
+            elizaLogger.log(`\u2705 Found token by partial match: ${filteredToken.TOKEN_NAME} (${filteredToken.TOKEN_SYMBOL}) - ID: ${filteredToken.TOKEN_ID}`);
+            return filteredToken;
+          }
         }
       }
     } catch (broadError) {
       elizaLogger.log(`\u26A0\uFE0F Broad search failed, skipping...`);
     }
-    elizaLogger.log(`\u274C No token found for: "${trimmedInput}" after trying all search methods`);
+    elizaLogger.log(`\u274C No token found for: "${input}" after trying all search methods`);
     return null;
   } catch (error) {
     elizaLogger.error(`\u274C Error resolving token "${input}":`, error);
     return null;
   }
+}
+function applySmartTokenFiltering(tokens, searchInput) {
+  if (!tokens || tokens.length === 0) return null;
+  if (tokens.length === 1) return tokens[0];
+  elizaLogger.log(`\u{1F50D} Applying smart filtering for ${tokens.length} tokens with input: "${searchInput}"`);
+  const mainTokenSelectors = [
+    // For Bitcoin - select the main Bitcoin, not wrapped versions
+    (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+    // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+    (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+    // For Ethereum - select the main Ethereum
+    (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+    // For Avalanche - select the main Avalanche, not wrapped versions
+    (token) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
+    // For Solana - select the main Solana
+    (token) => token.TOKEN_NAME === "Solana" && token.TOKEN_SYMBOL === "SOL",
+    // For Polygon - select the main Polygon
+    (token) => token.TOKEN_NAME === "Polygon" && token.TOKEN_SYMBOL === "MATIC",
+    // For other tokens - prefer exact name matches or shortest/simplest names
+    (token) => {
+      const name = token.TOKEN_NAME?.toLowerCase() || "";
+      const symbol = token.TOKEN_SYMBOL?.toLowerCase() || "";
+      const searchLower = searchInput.toLowerCase();
+      const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis", "wormhole", "beam"];
+      const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
+      if (hasAvoidKeywords) return false;
+      if (name === searchLower) return true;
+      if (symbol === "btc" && name.includes("bitcoin")) return true;
+      if (symbol === "eth" && name.includes("ethereum")) return true;
+      if (symbol === "doge" && name.includes("dogecoin")) return true;
+      if (symbol === "sol" && name.includes("solana")) return true;
+      if (symbol === "avax" && name.includes("avalanche")) return true;
+      if (symbol === "matic" && name.includes("polygon")) return true;
+      return false;
+    }
+  ];
+  for (const selector of mainTokenSelectors) {
+    const match = tokens.find(selector);
+    if (match) {
+      elizaLogger.log(`\u2705 Smart filtering selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+      return match;
+    }
+  }
+  elizaLogger.log(`\u26A0\uFE0F No main token identified for "${searchInput}", using first token: ${tokens[0].TOKEN_NAME} (${tokens[0].TOKEN_SYMBOL})`);
+  return tokens[0];
 }
 
 // src/actions/getPriceAction.ts
@@ -5729,17 +5782,23 @@ Try asking something like:
       let tokenInfo = null;
       if (finalRequest.cryptocurrency) {
         elizaLogger4.log(`\u{1F50D} Resolving token for: "${finalRequest.cryptocurrency}"`);
-        tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
-        if (tokenInfo) {
-          apiParams.token_id = tokenInfo.TOKEN_ID;
-          elizaLogger4.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-        } else {
+        try {
+          tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
+          if (tokenInfo) {
+            apiParams.token_id = tokenInfo.TOKEN_ID;
+            elizaLogger4.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+          } else {
+            apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
+            elizaLogger4.log(`\u{1F50D} Using symbol: ${finalRequest.cryptocurrency}`);
+          }
+        } catch (error) {
+          elizaLogger4.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
           apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
-          elizaLogger4.log(`\u{1F50D} Using symbol: ${finalRequest.cryptocurrency}`);
+          elizaLogger4.log(`\u{1F50D} Fallback to symbol parameter: ${finalRequest.cryptocurrency.toUpperCase()}`);
         }
       }
       if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
-        apiParams.grade = finalRequest.grade_filter;
+        elizaLogger4.log(`\u{1F50D} Grade filter requested: ${finalRequest.grade_filter} (will filter results post-API)`);
       }
       if (finalRequest.category) {
         apiParams.category = finalRequest.category;
@@ -5768,8 +5827,96 @@ Please try again in a few moments or try with different criteria.`,
         }
         return false;
       }
-      const grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
-      elizaLogger4.log(`\u{1F50D} Received ${grades.length} investor grades`);
+      let grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
+      if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
+        elizaLogger4.log(`\u{1F50D} Applying grade filter: ${finalRequest.grade_filter}`);
+        const gradeRanges = {
+          "A": [90, 100],
+          "B": [80, 89.99],
+          "C": [70, 79.99],
+          "D": [60, 69.99],
+          "F": [0, 59.99]
+        };
+        const [minGrade, maxGrade] = gradeRanges[finalRequest.grade_filter] || [0, 100];
+        const originalCount = grades.length;
+        grades = grades.filter((token) => {
+          const numericGrade = token.TM_INVESTOR_GRADE || token.INVESTOR_GRADE || token.TA_GRADE || token.QUANT_GRADE || 0;
+          return numericGrade >= minGrade && numericGrade <= maxGrade;
+        });
+        elizaLogger4.log(`\u{1F50D} Grade filtering: ${originalCount} \u2192 ${grades.length} tokens (${finalRequest.grade_filter}-grade: ${minGrade}-${maxGrade})`);
+        if (grades.length === 0) {
+          elizaLogger4.log(`\u274C No ${finalRequest.grade_filter}-grade tokens found`);
+          if (callback2) {
+            callback2({
+              text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
+
+I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
+
+**${finalRequest.grade_filter}-Grade Requirements:**
+\u2022 Grade range: ${minGrade} - ${maxGrade}
+\u2022 Current market conditions may not have tokens in this range
+
+**Suggestions:**
+\u2022 Try a different grade range (A, B, C, D, F)
+\u2022 Check general market grades: "Show me current investor grades"
+\u2022 Look for specific tokens: "Get investor grades for Bitcoin"
+
+\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
+\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+              content: {
+                error: "No tokens found for grade filter",
+                grade_filter: finalRequest.grade_filter,
+                grade_range: [minGrade, maxGrade],
+                request_id: requestId
+              }
+            });
+          }
+          return false;
+        }
+      }
+      if (grades.length > 1 && apiParams.symbol) {
+        elizaLogger4.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+        const mainTokenSelectors = [
+          // For Bitcoin - select the main Bitcoin, not wrapped versions
+          (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+          // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+          (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+          // For Ethereum - select the main Ethereum
+          (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+          // For Avalanche - select the main Avalanche, not wrapped versions
+          (token) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
+          // For other tokens - prefer exact name matches or shortest/simplest names
+          (token) => {
+            const name = token.TOKEN_NAME?.toLowerCase() || "";
+            const symbol = token.TOKEN_SYMBOL?.toLowerCase() || "";
+            const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis", "wormhole", "beam"];
+            const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
+            if (hasAvoidKeywords) return false;
+            if (symbol === "btc" && name.includes("bitcoin")) return true;
+            if (symbol === "eth" && name.includes("ethereum")) return true;
+            if (symbol === "doge" && name.includes("dogecoin")) return true;
+            if (symbol === "sol" && name.includes("solana")) return true;
+            if (symbol === "avax" && name.includes("avalanche")) return true;
+            return false;
+          }
+        ];
+        let selectedToken = null;
+        for (const selector of mainTokenSelectors) {
+          const match = grades.find(selector);
+          if (match) {
+            selectedToken = match;
+            elizaLogger4.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+            break;
+          }
+        }
+        if (selectedToken) {
+          grades = [selectedToken];
+          elizaLogger4.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+        } else {
+          elizaLogger4.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${grades[0]?.TOKEN_NAME || "unknown"}`);
+        }
+      }
+      elizaLogger4.log(`\u{1F50D} Final grades count: ${grades.length}`);
       const responseText2 = formatInvestorGradesResponse(grades, tokenInfo);
       const analysis = analyzeInvestorGrades(grades);
       elizaLogger4.success("\u2705 Successfully processed investor grades request");
@@ -6441,7 +6588,7 @@ var handler = async (runtime, message, state, _options, callback2) => {
       end_date: extractedRequest.end_date,
       limit: extractedRequest.limit || 50,
       page: extractedRequest.page || 1,
-      analysis_focus: extractedRequest.analysis_focus || ["market_sentiment"]
+      analysis_focus: extractedRequest.analysis_focus || ["current_status"]
     };
     const apiParams = {
       limit: processedRequest.limit,
@@ -6511,9 +6658,13 @@ var handler = async (runtime, message, state, _options, callback2) => {
 `;
     responseText2 += `\u2022 Data Points Analyzed: ${marketMetrics.length}
 `;
-    responseText2 += `\u2022 Market Cap Trend: ${marketAnalysis.market_cap_trend || "N/A"}
+    responseText2 += `\u2022 Total Crypto Market Cap: ${formatCurrency(marketMetrics[0]?.TOTAL_CRYPTO_MCAP || 0)}
 `;
-    responseText2 += `\u2022 Volatility Level: ${marketAnalysis.volatility_level || "N/A"}
+    responseText2 += `\u2022 High-Grade Coins: ${formatPercentage(marketMetrics[0]?.TM_GRADE_PERC_HIGH_COINS || 0)}%
+`;
+    responseText2 += `\u2022 Current Signal: ${getSignalDescription(marketMetrics[0]?.TM_GRADE_SIGNAL || 0)}
+`;
+    responseText2 += `\u2022 Previous Signal: ${getSignalDescription(marketMetrics[0]?.LAST_TM_GRADE_SIGNAL || 0)}
 `;
     if (marketAnalysis.recommendations && marketAnalysis.recommendations.length > 0) {
       responseText2 += `
@@ -6524,41 +6675,64 @@ var handler = async (runtime, message, state, _options, callback2) => {
 `;
       });
     }
-    return {
-      text: responseText2,
-      success: true,
-      data: {
-        market_metrics: marketMetrics,
-        analysis: marketAnalysis,
-        current_status: currentStatus,
-        metadata: {
-          endpoint: "/v2/market-metrics",
-          data_points: marketMetrics.length,
-          analysis_focus: processedRequest.analysis_focus,
-          date_range: {
-            start: processedRequest.start_date,
-            end: processedRequest.end_date
+    if (callback2) {
+      callback2({
+        text: responseText2,
+        content: {
+          success: true,
+          data: {
+            market_metrics: marketMetrics,
+            analysis: marketAnalysis,
+            current_status: currentStatus,
+            metadata: {
+              endpoint: "/v2/market-metrics",
+              data_points: marketMetrics.length,
+              analysis_focus: processedRequest.analysis_focus,
+              date_range: {
+                start: processedRequest.start_date,
+                end: processedRequest.end_date
+              }
+            }
           }
         }
-      }
-    };
+      });
+    }
+    return true;
   } catch (error) {
     elizaLogger5.error("\u274C Market Metrics Action Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    return {
-      text: `\u274C **Error Getting Market Metrics**
+    const errorText = `\u274C **Error Getting Market Metrics**
 
 ${errorMessage}
 
 \u{1F4A1} **Troubleshooting Tips**:
 \u2022 Check your TokenMetrics API key
 \u2022 Verify date format (YYYY-MM-DD)
-\u2022 Ensure you have access to market metrics endpoint`,
-      success: false,
-      error: errorMessage
-    };
+\u2022 Ensure you have access to market metrics endpoint`;
+    if (callback2) {
+      callback2({
+        text: errorText,
+        content: {
+          success: false,
+          error: errorMessage
+        }
+      });
+    }
+    return false;
   }
 };
+function getSignalDescription(signal) {
+  switch (signal) {
+    case 1:
+      return "\u{1F7E2} Bullish";
+    case -1:
+      return "\u{1F534} Bearish";
+    case 0:
+      return "\u{1F7E1} Neutral";
+    default:
+      return "\u2753 Unknown";
+  }
+}
 var validate = async (runtime) => {
   return validateAndGetApiKey(runtime) !== null;
 };
@@ -8545,7 +8719,9 @@ Try asking something like:
             elizaLogger6.log(`\u{1F50D} Using symbol parameter: ${signalsRequest.cryptocurrency}`);
           }
         } catch (error) {
-          elizaLogger6.log(`\u26A0\uFE0F Token resolution failed, proceeding with general signals: ${error}`);
+          elizaLogger6.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
+          apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
+          elizaLogger6.log(`\u{1F50D} Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
         }
       }
       if (signalsRequest.signal_type) {
@@ -8585,8 +8761,48 @@ Please try again in a few moments or try with different criteria.`,
         }
         return false;
       }
-      const signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
-      elizaLogger6.log(`\u{1F50D} Received ${signals.length} trading signals`);
+      let signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
+      if (signals.length > 1 && apiParams.symbol) {
+        elizaLogger6.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+        const mainTokenSelectors = [
+          // For Bitcoin - select the main Bitcoin, not wrapped versions
+          (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+          // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+          (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+          // For Ethereum - select the main Ethereum
+          (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+          // For other tokens - prefer exact name matches or shortest/simplest names
+          (token) => {
+            const name = token.TOKEN_NAME.toLowerCase();
+            const symbol = token.TOKEN_SYMBOL.toLowerCase();
+            const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis"];
+            const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
+            if (hasAvoidKeywords) return false;
+            if (symbol === "btc" && name.includes("bitcoin")) return true;
+            if (symbol === "eth" && name.includes("ethereum")) return true;
+            if (symbol === "doge" && name.includes("dogecoin")) return true;
+            if (symbol === "sol" && name.includes("solana")) return true;
+            if (symbol === "avax" && name.includes("avalanche")) return true;
+            return false;
+          }
+        ];
+        let selectedToken = null;
+        for (const selector of mainTokenSelectors) {
+          const match = signals.find(selector);
+          if (match) {
+            selectedToken = match;
+            elizaLogger6.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+            break;
+          }
+        }
+        if (selectedToken) {
+          signals = [selectedToken];
+          elizaLogger6.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+        } else {
+          elizaLogger6.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
+        }
+      }
+      elizaLogger6.log(`\u{1F50D} Final signals count: ${signals.length}`);
       const responseText2 = formatTradingSignalsResponse(signals, tokenInfo);
       const analysis = analyzeTradingSignals(signals);
       elizaLogger6.success("\u2705 Successfully processed trading signals request");
@@ -13328,59 +13544,140 @@ var getResistanceSupportAction = {
         responseText2 += `\u2705 **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)
 
 `;
+        const currentPriceRef = levelsData[0]?.CURRENT_PRICE_REFERENCE;
+        if (currentPriceRef) {
+          responseText2 += `\u{1F4B0} **Current Price Reference**: ${formatCurrency(currentPriceRef)}
+
+`;
+        }
+        if (resistanceLevels.length > 0) {
+          responseText2 += `\u{1F534} **Key Resistance Levels** (${resistanceLevels.length} total):
+`;
+          const topResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
+          topResistance.forEach((level, index) => {
+            const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+            const date = new Date(level.DATE).toLocaleDateString();
+            const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
+            const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
+            responseText2 += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
+`;
+          });
+          if (resistanceLevels.length > 5) {
+            responseText2 += `   ... and ${resistanceLevels.length - 5} more resistance levels
+`;
+          }
+          responseText2 += `
+`;
+        }
+        if (supportLevels.length > 0) {
+          responseText2 += `\u{1F7E2} **Key Support Levels** (${supportLevels.length} total):
+`;
+          const topSupport = supportLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
+          topSupport.forEach((level, index) => {
+            const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+            const date = new Date(level.DATE).toLocaleDateString();
+            const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
+            const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
+            responseText2 += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
+`;
+          });
+          if (supportLevels.length > 5) {
+            responseText2 += `   ... and ${supportLevels.length - 5} more support levels
+`;
+          }
+          responseText2 += `
+`;
+        }
+        responseText2 += `\u{1F4C5} **Recent Historical Levels**:
+`;
+        const recentLevels = levelsData.sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime()).slice(0, 5);
+        recentLevels.forEach((level) => {
+          const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+          const date = new Date(level.DATE).toLocaleDateString();
+          const type = level.LEVEL_TYPE || level.TYPE;
+          const typeIcon = type === "RESISTANCE" ? "\u{1F534}" : "\u{1F7E2}";
+          const daysAgo = level.DAYS_SINCE ? `(${level.DAYS_SINCE} days ago)` : "";
+          responseText2 += `\u2022 ${typeIcon} **${price}** - ${date} ${daysAgo}
+`;
+        });
+        responseText2 += `
+`;
         if (processedRequest.analysisType === "trading_levels") {
-          responseText2 += `\u{1F3AF} **Trading Levels Focus:**
+          responseText2 += `\u{1F3AF} **Trading Levels Analysis:**
 `;
-          responseText2 += `\u2022 Key entry opportunities: ${supportLevels.length} support levels
+          responseText2 += `\u2022 **Entry Opportunities**: ${supportLevels.length} support levels for potential long positions
 `;
-          responseText2 += `\u2022 Key exit targets: ${resistanceLevels.length} resistance levels
+          responseText2 += `\u2022 **Exit Targets**: ${resistanceLevels.length} resistance levels for profit-taking
+`;
+          responseText2 += `\u2022 **Risk Management**: Use support levels for stop-loss placement
+
 `;
         } else if (processedRequest.analysisType === "breakout_analysis") {
-          responseText2 += `\u{1F680} **Breakout Analysis Focus:**
+          responseText2 += `\u{1F680} **Breakout Analysis:**
 `;
-          const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || 0) > 0.7);
-          const weakSupport = supportLevels.filter((s) => (s.STRENGTH || 0) < 0.5);
-          responseText2 += `\u2022 Breakout candidates: ${strongResistance.length} strong resistance levels
+          const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || 0) > 70);
+          const nearestResistance = resistanceLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
+          responseText2 += `\u2022 **Breakout Candidates**: ${strongResistance.length} strong resistance levels to watch
 `;
-          responseText2 += `\u2022 Breakdown risks: ${weakSupport.length} weak support levels
+          if (nearestResistance) {
+            responseText2 += `\u2022 **Next Key Level**: ${formatCurrency(nearestResistance.PRICE_LEVEL || 0)} resistance
+`;
+          }
+          responseText2 += `\u2022 **Breakout Strategy**: Monitor volume on approach to resistance levels
+
 `;
         } else if (processedRequest.analysisType === "risk_management") {
-          responseText2 += `\u{1F6E1}\uFE0F **Risk Management Focus:**
+          responseText2 += `\u{1F6E1}\uFE0F **Risk Management Guide:**
 `;
-          responseText2 += `\u2022 Stop-loss levels: ${supportLevels.length} support zones
+          const nearestSupport = supportLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
+          responseText2 += `\u2022 **Stop-Loss Zones**: ${supportLevels.length} support levels for protection
 `;
-          responseText2 += `\u2022 Take-profit levels: ${resistanceLevels.length} resistance zones
+          if (nearestSupport) {
+            responseText2 += `\u2022 **Nearest Support**: ${formatCurrency(nearestSupport.PRICE_LEVEL || 0)} for stop placement
+`;
+          }
+          responseText2 += `\u2022 **Position Sizing**: Adjust based on distance to key support levels
+
 `;
         } else {
           responseText2 += `\u{1F4C8} **Comprehensive Analysis:**
 `;
-          responseText2 += `\u2022 ${levelsAnalysis.summary}
+          const priceRange = Math.max(...levelsData.map((l) => l.PRICE_LEVEL || 0)) - Math.min(...levelsData.map((l) => l.PRICE_LEVEL || 0));
+          const avgStrength = levelsData.reduce((sum, l) => sum + (l.STRENGTH || 0), 0) / levelsData.length;
+          responseText2 += `\u2022 **Price Range Covered**: ${formatCurrency(priceRange)} across all levels
+`;
+          responseText2 += `\u2022 **Average Level Strength**: ${Math.round(avgStrength)}/100
+`;
+          responseText2 += `\u2022 **Data Timeframe**: ${new Date(Math.min(...levelsData.map((l) => new Date(l.DATE).getTime()))).getFullYear()} - ${(/* @__PURE__ */ new Date()).getFullYear()}
+
 `;
         }
         if (levelsAnalysis.insights && levelsAnalysis.insights.length > 0) {
-          responseText2 += `
-\u{1F4A1} **Key Insights:**
+          responseText2 += `\u{1F4A1} **Key Insights:**
 `;
           levelsAnalysis.insights.slice(0, 3).forEach((insight) => {
             responseText2 += `\u2022 ${insight}
 `;
           });
+          responseText2 += `
+`;
         }
         if (levelsAnalysis.technical_outlook) {
-          responseText2 += `
-\u{1F52E} **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || "Neutral"}
+          responseText2 += `\u{1F52E} **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || "Neutral"}
+
 `;
         }
-        responseText2 += `
-\u{1F4CB} **Usage Guidelines:**
+        responseText2 += `\u{1F4CB} **Trading Guidelines:**
 `;
-        responseText2 += `\u2022 Use support levels as potential entry points for long positions
+        responseText2 += `\u2022 **Long Entries**: Consider positions near strong support levels
 `;
-        responseText2 += `\u2022 Use resistance levels as potential exit points or profit-taking levels
+        responseText2 += `\u2022 **Profit Targets**: Set take-profits near resistance levels
 `;
-        responseText2 += `\u2022 Monitor level breaks for trend continuation or reversal signals
+        responseText2 += `\u2022 **Stop Losses**: Place stops below key support levels
 `;
-        responseText2 += `\u2022 Combine with volume analysis for confirmation of level significance
+        responseText2 += `\u2022 **Breakout Plays**: Watch for volume confirmation on level breaks
+`;
+        responseText2 += `\u2022 **Risk Management**: Size positions based on distance to key levels
 `;
       }
       responseText2 += `
