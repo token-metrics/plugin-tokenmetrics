@@ -1,250 +1,495 @@
-import type { Action } from "@elizaos/core";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { TradingSignalsResponse, TradingSignalsRequest } from "../types";
+    type Action,
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    type ActionExample,
+    elizaLogger,
+    composeContext,
+    generateObject,
+    ModelClass
+} from "@elizaos/core";
+import { z } from "zod";
+import {
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
+
+// Template for extracting trading signals information from conversations
+const tradingSignalsTemplate = `# Task: Extract Trading Signals Request Information
+
+Based on the conversation context, identify what trading signals information the user is requesting.
+
+# Conversation Context:
+{{recentMessages}}
+
+# Instructions:
+Look for any mentions of:
+- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
+- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
+- Trading signal requests ("trading signals", "buy sell signals", "AI signals", "trading recommendations")
+- Signal types ("bullish", "bearish", "long", "short", "buy", "sell")
+- Time periods or date ranges
+- Market filters (category, exchange, market cap, volume)
+
+The user might say things like:
+- "Get trading signals for Bitcoin"
+- "Show me AI trading signals"
+- "What are the current buy/sell signals?"
+- "Get bullish signals for DeFi tokens"
+- "Show trading recommendations for Ethereum"
+- "Get signals for tokens with high volume"
+- "What tokens have buy signals today?"
+
+Extract the relevant information for the trading signals request.
+
+# Response Format:
+Return a structured object with the trading signals request information.`;
+
+// Schema for the extracted data
+const TradingSignalsRequestSchema = z.object({
+    cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
+    signal_type: z.enum(["bullish", "bearish", "long", "short", "buy", "sell", "any"]).nullable().describe("Type of signal requested"),
+    category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
+    exchange: z.string().nullable().describe("Exchange filter"),
+    time_period: z.string().nullable().describe("Time period or date range"),
+    market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
+    confidence: z.number().min(0).max(1).describe("Confidence in extraction")
+});
+
+type TradingSignalsRequest = z.infer<typeof TradingSignalsRequestSchema>;
 
 /**
- * CORRECTED Trading Signals Action - Based on actual TokenMetrics API documentation
- * Real Endpoint: GET https://api.tokenmetrics.com/v2/trading-signals
- * 
- * This action provides AI-generated trading signals for cryptocurrency positions.
- * According to the API docs, it uses specific signal values: 1 (bullish), -1 (bearish), 0 (no signal)
- * and supports extensive filtering capabilities including marketcap, volume, fdv thresholds.
+ * Fetch trading signals data from TokenMetrics API
  */
-export const getTradingSignalsAction: Action = {
-    name: "getTradingSignals",
-    description: "Get AI-generated trading signals for long and short positions from TokenMetrics with entry points and risk management levels",
-    similes: [
-        "get trading signals",
-        "get AI signals",
-        "check buy sell signals",
-        "get trading recommendations",
-        "AI trading signals",
-        "long short signals",
-        "get entry exit points"
-    ],
+async function fetchTradingSignals(params: Record<string, any>, runtime: IAgentRuntime): Promise<any> {
+    elizaLogger.log(`📡 Fetching trading signals with params:`, params);
     
-    async handler(_runtime, message, _state) {
-        try {
-            const messageContent = message.content as any;
-            
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // FIXED: Use only one token identifier to avoid conflicts
-            // Prefer SYMBOL over token_id for trading signals endpoint (more reliable)
-            let finalTokenId: number | undefined;
-            let finalSymbol: string | undefined;
-            
-            if (tokenIdentifier.symbol) {
-                finalSymbol = tokenIdentifier.symbol;
-                // Don't include token_id when we have symbol to avoid conflicts
-            } else if (tokenIdentifier.token_id) {
-                finalTokenId = tokenIdentifier.token_id;
-            } else if (typeof messageContent.symbol === 'string') {
-                finalSymbol = messageContent.symbol.toUpperCase();
-            } else if (typeof messageContent.token_id === 'number') {
-                finalTokenId = messageContent.token_id;
-            } else {
-                // Default to Bitcoin symbol for market overview queries
-                finalSymbol = "BTC";
-            }
-            
-            // CORRECTED: Signal filtering - API uses specific numeric values
-            // 1 = bullish/long signal, -1 = bearish/short signal, 0 = no signal
-            const signal = typeof messageContent.signal === 'number' ? messageContent.signal :
-                           typeof messageContent.signal_type === 'string' ? 
-                           (messageContent.signal_type.toLowerCase() === 'long' ? 1 :
-                            messageContent.signal_type.toLowerCase() === 'short' ? -1 : undefined) : undefined;
-            
-            // CORRECTED: Use startDate/endDate as shown in actual API docs  
-            const startDate = typeof messageContent.startDate === 'string' ? messageContent.startDate : 
-                              typeof messageContent.start_date === 'string' ? messageContent.start_date : undefined;
-            const endDate = typeof messageContent.endDate === 'string' ? messageContent.endDate :
-                            typeof messageContent.end_date === 'string' ? messageContent.end_date : undefined;
-            
-            // Extensive filtering options from API docs
-            const category = typeof messageContent.category === 'string' ? messageContent.category : undefined;
-            const exchange = typeof messageContent.exchange === 'string' ? messageContent.exchange : undefined;
-            const marketcap = typeof messageContent.marketcap === 'number' ? messageContent.marketcap : undefined;
-            const volume = typeof messageContent.volume === 'number' ? messageContent.volume : undefined;
-            const fdv = typeof messageContent.fdv === 'number' ? messageContent.fdv : undefined;
-            
-            // CORRECTED: Use page instead of offset for pagination
-            const limit = typeof messageContent.limit === 'number' ? messageContent.limit : 50;
-            const page = typeof messageContent.page === 'number' ? messageContent.page : 1;
-            
-            // CORRECTED: Build parameters based on actual API documentation
-            const requestParams: TradingSignalsRequest = {
-                // Token identification - use only one to avoid conflicts
-                token_id: finalTokenId,
-                symbol: finalSymbol,
-                
-                // CORRECTED: Signal filtering - API uses specific numeric values
-                // 1 = bullish/long signal, -1 = bearish/short signal, 0 = no signal
-                signal: signal,
-                
-                // CORRECTED: Use startDate/endDate as shown in actual API docs  
-                startDate: startDate,
-                endDate: endDate,
-                
-                // Extensive filtering options from API docs
-                category: category,
-                exchange: exchange,
-                marketcap: marketcap,
-                volume: volume,
-                fdv: fdv,
-                
-                // CORRECTED: Use page instead of offset for pagination
-                limit: limit,
-                page: page
-            };
-            
-            // Validate parameters according to actual API requirements
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            console.log("Trading signals request params:", JSON.stringify(apiParams, null, 2));
-            
-            // Make API call with corrected authentication (x-api-key header)
-            const response = await callTokenMetricsApi<TradingSignalsResponse>(
-                TOKENMETRICS_ENDPOINTS.tradingSignals,
-                apiParams,
-                "GET"
-            );
-            
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<TradingSignalsResponse>(response, "getTradingSignals");
-            const tradingSignals = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-            
-            // Analyze the trading signals
-            const signalsAnalysis = analyzeTradingSignals(tradingSignals);
-            
-            return {
-                success: true,
-                message: `Successfully retrieved ${tradingSignals.length} trading signals from TokenMetrics AI`,
-                trading_signals: tradingSignals,
-                analysis: signalsAnalysis,
-                metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.tradingSignals,
-                    requested_token: finalSymbol || finalTokenId,
-                    signal_filter: requestParams.signal,
-                    date_range: {
-                        start: requestParams.startDate,
-                        end: requestParams.endDate
-                    },
-                    filters_applied: {
-                        category: requestParams.category,
-                        exchange: requestParams.exchange,
-                        min_marketcap: requestParams.marketcap,
-                        min_volume: requestParams.volume,
-                        min_fdv: requestParams.fdv
-                    },
-                    pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
-                    },
-                    data_points: tradingSignals.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics AI Signals"
-                },
-                signals_explanation: {
-                    signal_values: {
-                        "1": "Bullish/Long signal - AI recommends buying or holding position",
-                        "-1": "Bearish/Short signal - AI recommends short position or selling",
-                        "0": "No signal - AI sees neutral conditions"
-                    },
-                    usage_guidelines: [
-                        "Focus on signals with higher confidence when available",
-                        "Consider market conditions and broader trends",
-                        "Use proper position sizing based on signal strength",
-                        "Monitor for signal updates as market conditions change"
-                    ]
-                }
-            };
-            
-        } catch (error) {
-            console.error("Error in getTradingSignalsAction:", error);
-            
-            // Provide more specific error information
-            let errorMessage = "Failed to retrieve trading signals from TokenMetrics API";
-            let troubleshootingInfo = {};
-            
-            if (error instanceof Error) {
-                if (error.message.includes("404")) {
-                    errorMessage = "Trading signals endpoint not found - this may indicate an API version issue";
-                    troubleshootingInfo = {
-                        endpoint_issue: "The /v2/trading-signals endpoint returned 404",
-                        possible_causes: [
-                            "API endpoint URL may have changed",
-                            "Your API subscription may not include trading signals",
-                            "Token parameters may be invalid"
-                        ],
-                        suggested_solutions: [
-                            "Verify your TokenMetrics subscription includes trading signals",
-                            "Check if the token_id or symbol exists in TokenMetrics database",
-                            "Try with a major token like BTC (token_id: 3375) or ETH (symbol: ETH)"
-                        ]
-                    };
-                } else if (error.message.includes("Data not found")) {
-                    errorMessage = "No trading signals found for the specified token";
-                    troubleshootingInfo = {
-                        data_issue: "TokenMetrics API returned 'Data not found'",
-                        possible_causes: [
-                            "Token may not have active trading signals",
-                            "Token_id and symbol parameters may be mismatched",
-                            "Token may not be supported for trading signals"
-                        ],
-                        suggested_solutions: [
-                            "Try with a different token that has active signals",
-                            "Use either token_id OR symbol, not both",
-                            "Check TokenMetrics platform for available tokens"
-                        ]
-                    };
-                }
-            }
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: errorMessage,
-                troubleshooting: troubleshootingInfo
-            };
+    try {
+        const data = await callTokenMetricsAPI('/v2/trading-signals', params, runtime);
+        
+        if (!data) {
+            throw new Error("No data received from trading signals API");
         }
-    },
+        
+        elizaLogger.log(`✅ Successfully fetched trading signals data`);
+        return data;
+        
+    } catch (error) {
+        elizaLogger.error("❌ Error fetching trading signals:", error);
+        throw error;
+    }
+}
+
+/**
+ * Format trading signals response for user
+ */
+function formatTradingSignalsResponse(data: any[], tokenInfo?: any): string {
+    if (!data || data.length === 0) {
+        return "❌ No trading signals found for the specified criteria.";
+    }
+
+    const signals = Array.isArray(data) ? data : [data];
+    const signalCount = signals.length;
     
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
+    // Analyze signal distribution
+    const bullishSignals = signals.filter(s => s.TRADING_SIGNAL === 1 || s.TRADING_SIGNAL === "1").length;
+    const bearishSignals = signals.filter(s => s.TRADING_SIGNAL === -1 || s.TRADING_SIGNAL === "-1").length;
+    const neutralSignals = signals.filter(s => s.TRADING_SIGNAL === 0 || s.TRADING_SIGNAL === "0").length;
+
+    let response = `📊 **TokenMetrics Trading Signals Analysis**\n\n`;
+    
+    if (tokenInfo) {
+        response += `🎯 **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})\n`;
+    }
+    
+    response += `📈 **Signal Summary**: ${signalCount} signals analyzed\n`;
+    response += `🟢 **Bullish**: ${bullishSignals} signals (${((bullishSignals/signalCount)*100).toFixed(1)}%)\n`;
+    response += `🔴 **Bearish**: ${bearishSignals} signals (${((bearishSignals/signalCount)*100).toFixed(1)}%)\n`;
+    response += `⚪ **Neutral**: ${neutralSignals} signals (${((neutralSignals/signalCount)*100).toFixed(1)}%)\n\n`;
+
+    // Show recent signals
+    const recentSignals = signals.slice(0, 5);
+    response += `🔍 **Recent Signals**:\n`;
+    
+    recentSignals.forEach((signal, index) => {
+        const signalEmoji = signal.TRADING_SIGNAL === 1 ? "🟢" : 
+                           signal.TRADING_SIGNAL === -1 ? "🔴" : "⚪";
+        const signalText = signal.TRADING_SIGNAL === 1 ? "BULLISH" : 
+                          signal.TRADING_SIGNAL === -1 ? "BEARISH" : "NEUTRAL";
+        
+        response += `${signalEmoji} **${signal.TOKEN_SYMBOL || signal.TOKEN_NAME}**: ${signalText}`;
+        if (signal.DATE) {
+            response += ` (${signal.DATE})`;
+        }
+        response += `\n`;
+    });
+
+    // Trading recommendations
+    response += `\n💡 **AI Recommendations**:\n`;
+    if (bullishSignals > bearishSignals) {
+        response += `• Market sentiment is predominantly bullish (${((bullishSignals/signalCount)*100).toFixed(1)}%)\n`;
+        response += `• Consider long positions on tokens with strong bullish signals\n`;
+        response += `• Monitor for entry opportunities on pullbacks\n`;
+    } else if (bearishSignals > bullishSignals) {
+        response += `• Market sentiment is predominantly bearish (${((bearishSignals/signalCount)*100).toFixed(1)}%)\n`;
+        response += `• Exercise caution with new long positions\n`;
+        response += `• Consider defensive strategies or short positions\n`;
+    } else {
+        response += `• Market sentiment is mixed - signals are balanced\n`;
+        response += `• Wait for clearer directional signals before major moves\n`;
+        response += `• Focus on risk management and position sizing\n`;
+    }
+
+    response += `\n📊 **Data Source**: TokenMetrics AI Trading Signals\n`;
+    response += `⏰ **Analysis Time**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
+}
+
+/**
+ * Analyze trading signals data
+ */
+function analyzeTradingSignals(data: any[]): any {
+    if (!data || data.length === 0) {
+        return { error: "No data to analyze" };
+    }
+
+    const signals = Array.isArray(data) ? data : [data];
+    
+    const analysis = {
+        total_signals: signals.length,
+        signal_distribution: {
+            bullish: signals.filter(s => s.TRADING_SIGNAL === 1 || s.TRADING_SIGNAL === "1").length,
+            bearish: signals.filter(s => s.TRADING_SIGNAL === -1 || s.TRADING_SIGNAL === "-1").length,
+            neutral: signals.filter(s => s.TRADING_SIGNAL === 0 || s.TRADING_SIGNAL === "0").length
+        },
+        top_tokens: signals.slice(0, 10).map(s => ({
+            symbol: s.TOKEN_SYMBOL,
+            name: s.TOKEN_NAME,
+            signal: s.TRADING_SIGNAL,
+            date: s.DATE
+        })),
+        market_sentiment: "neutral"
+    };
+
+    // Determine overall market sentiment
+    const { bullish, bearish, neutral } = analysis.signal_distribution;
+    if (bullish > bearish && bullish > neutral) {
+        analysis.market_sentiment = "bullish";
+    } else if (bearish > bullish && bearish > neutral) {
+        analysis.market_sentiment = "bearish";
+    }
+
+    return analysis;
+}
+
+export const getTradingSignalsAction: Action = {
+    name: "GET_TRADING_SIGNALS_TOKENMETRICS",
+    similes: [
+        "GET_TRADING_SIGNALS",
+        "GET_AI_SIGNALS", 
+        "GET_BUY_SELL_SIGNALS",
+        "GET_TRADING_RECOMMENDATIONS",
+        "TRADING_SIGNALS",
+        "AI_SIGNALS",
+        "MARKET_SIGNALS"
+    ],
+    description: "Get AI-generated trading signals and recommendations for cryptocurrencies from TokenMetrics",
+    
+    validate: async (runtime: IAgentRuntime, message: Memory) => {
+        elizaLogger.log("🔍 Validating getTradingSignalsAction");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
             return false;
         }
-        return true;
     },
-    
+
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
+        const requestId = generateRequestId();
+        
+        elizaLogger.log("🚀 Starting TokenMetrics trading signals handler");
+        elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
+        elizaLogger.log(`🆔 Request ID: ${requestId}`);
+
+        try {
+            // STEP 1: Validate API key early
+            validateAndGetApiKey(runtime);
+
+            // STEP 2: Extract trading signals request using AI
+            const signalsRequest = await extractTokenMetricsRequest(
+                runtime,
+                message,
+                state || await runtime.composeState(message),
+                tradingSignalsTemplate,
+                TradingSignalsRequestSchema,
+                requestId
+            );
+
+            elizaLogger.log("🎯 AI Extracted signals request:", signalsRequest);
+            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${signalsRequest.cryptocurrency || 'general market'}"`);
+
+            // STEP 3: Validate that we have sufficient information
+            // Allow general trading signals requests even without specific criteria
+            if (!signalsRequest.cryptocurrency && !signalsRequest.signal_type && !signalsRequest.category && signalsRequest.confidence < 0.2) {
+                elizaLogger.log("❌ AI extraction failed - very low confidence");
+                
+                if (callback) {
+                    callback({
+                        text: `❌ I couldn't identify specific trading signals criteria from your request.
+
+I can get AI trading signals for:
+• Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+• Signal types (bullish, bearish, buy, sell signals)
+• Token categories (DeFi, Layer-1, meme tokens)
+• Market filters (high volume, large cap, etc.)
+• General market signals
+
+Try asking something like:
+• "Get trading signals for Bitcoin"
+• "Show me bullish signals for DeFi tokens"
+• "What are the current buy signals?"
+• "Get AI trading recommendations"
+• "Show me trading signals"`,
+                        content: { 
+                            error: "Insufficient trading signals criteria",
+                            confidence: signalsRequest?.confidence || 0,
+                            request_id: requestId
+                        }
+                    });
+                }
+                return false;
+            }
+
+            elizaLogger.success("🎯 Final extraction result:", signalsRequest);
+
+            // STEP 4: Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: 50,
+                page: 1
+            };
+
+            // Handle token-specific requests - but don't fail if token resolution fails
+            let tokenInfo = null;
+            if (signalsRequest.cryptocurrency) {
+                elizaLogger.log(`🔍 Attempting to resolve token for: "${signalsRequest.cryptocurrency}"`);
+                try {
+                    tokenInfo = await resolveTokenSmart(signalsRequest.cryptocurrency, runtime);
+                    
+                    if (tokenInfo) {
+                        // Use the correct parameter name from API docs
+                        apiParams.token_id = tokenInfo.TOKEN_ID;
+                        elizaLogger.log(`✅ Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+                    } else {
+                        // Try using symbol parameter if token resolution fails
+                        apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
+                        elizaLogger.log(`🔍 Using symbol parameter: ${signalsRequest.cryptocurrency}`);
+                    }
+                } catch (error) {
+                    elizaLogger.log(`⚠️ Token resolution failed, using symbol fallback: ${error}`);
+                    // Always set symbol parameter as fallback
+                    apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
+                    elizaLogger.log(`🔍 Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
+                }
+            }
+
+            // Handle signal type filtering
+            if (signalsRequest.signal_type) {
+                if (signalsRequest.signal_type === "bullish" || signalsRequest.signal_type === "long" || signalsRequest.signal_type === "buy") {
+                    apiParams.signal = 1;
+                } else if (signalsRequest.signal_type === "bearish" || signalsRequest.signal_type === "short" || signalsRequest.signal_type === "sell") {
+                    apiParams.signal = -1;
+                }
+            }
+
+            // Handle category filtering
+            if (signalsRequest.category) {
+                apiParams.category = signalsRequest.category;
+            }
+
+            // Handle exchange filtering
+            if (signalsRequest.exchange) {
+                apiParams.exchange = signalsRequest.exchange;
+            }
+
+            elizaLogger.log(`📡 API parameters:`, apiParams);
+
+            // STEP 5: Fetch trading signals data
+            elizaLogger.log(`📡 Fetching trading signals data`);
+            const signalsData = await fetchTradingSignals(apiParams, runtime);
+            
+            if (!signalsData) {
+                elizaLogger.log("❌ Failed to fetch trading signals data");
+                
+                if (callback) {
+                    callback({
+                        text: `❌ Unable to fetch trading signals data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+• No signals available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+                        content: { 
+                            error: "API fetch failed",
+                            request_id: requestId
+                        }
+                    });
+                }
+                return false;
+            }
+
+            // Handle the response data with smart token filtering for multiple tokens with same symbol
+            let signals = Array.isArray(signalsData) ? signalsData : (signalsData.data || []);
+            
+            // Apply smart token filtering if we have multiple tokens with same symbol (like BTC)
+            if (signals.length > 1 && apiParams.symbol) {
+                elizaLogger.log(`🔍 Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+                
+                // Priority selection logic for main tokens
+                const mainTokenSelectors = [
+                    // For Bitcoin - select the main Bitcoin, not wrapped versions
+                    (token: any) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+                    // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+                    (token: any) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+                    // For Ethereum - select the main Ethereum
+                    (token: any) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+                    // For other tokens - prefer exact name matches or shortest/simplest names
+                    (token: any) => {
+                        const name = token.TOKEN_NAME.toLowerCase();
+                        const symbol = token.TOKEN_SYMBOL.toLowerCase();
+                        
+                        // Avoid wrapped, bridged, or derivative tokens
+                        const avoidKeywords = ['wrapped', 'bridged', 'peg', 'department', 'binance', 'osmosis'];
+                        const hasAvoidKeywords = avoidKeywords.some(keyword => name.includes(keyword));
+                        
+                        if (hasAvoidKeywords) return false;
+                        
+                        // Prefer tokens where name matches the expected name for the symbol
+                        if (symbol === 'btc' && name.includes('bitcoin')) return true;
+                        if (symbol === 'eth' && name.includes('ethereum')) return true;
+                        if (symbol === 'doge' && name.includes('dogecoin')) return true;
+                        if (symbol === 'sol' && name.includes('solana')) return true;
+                        if (symbol === 'avax' && name.includes('avalanche')) return true;
+                        
+                        return false;
+                    }
+                ];
+                
+                // Try each selector until we find a match
+                let selectedToken = null;
+                for (const selector of mainTokenSelectors) {
+                    const match = signals.find(selector);
+                    if (match) {
+                        selectedToken = match;
+                        elizaLogger.log(`✅ Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+                        break;
+                    }
+                }
+                
+                // If we found a main token, use only that one
+                if (selectedToken) {
+                    signals = [selectedToken];
+                    elizaLogger.log(`🎯 Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+                } else {
+                    // Fallback: use the first token but log the issue
+                    elizaLogger.log(`⚠️ No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
+                }
+            }
+            
+            elizaLogger.log(`🔍 Final signals count: ${signals.length}`);
+
+            // STEP 6: Format and present the results
+            const responseText = formatTradingSignalsResponse(signals, tokenInfo);
+            const analysis = analyzeTradingSignals(signals);
+
+            elizaLogger.success("✅ Successfully processed trading signals request");
+
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        signals_data: signals,
+                        analysis: analysis,
+                        source: "TokenMetrics AI Trading Signals",
+                        request_id: requestId,
+                        query_details: {
+                            original_request: signalsRequest.cryptocurrency || "general market",
+                            signal_type: signalsRequest.signal_type,
+                            category: signalsRequest.category,
+                            confidence: signalsRequest.confidence,
+                            data_freshness: "real-time",
+                            request_id: requestId,
+                            extraction_method: "ai_with_cache_busting"
+                        }
+                    }
+                });
+            }
+
+            return true;
+
+        } catch (error) {
+            elizaLogger.error("❌ Error in TokenMetrics trading signals handler:", error);
+            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
+            
+            if (callback) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                
+                callback({
+                    text: `❌ I encountered an error while fetching trading signals: ${errorMessage}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true,
+                        request_id: requestId
+                    }
+                });
+            }
+            
+            return false;
+        }
+    },
+
     examples: [
         [
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Get me AI trading signals for Bitcoin",
-                    symbol: "BTC"
+                    text: "Get trading signals for Bitcoin"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll retrieve the latest AI-generated trading signals for Bitcoin from TokenMetrics.",
-                    action: "GET_TRADING_SIGNALS"
+                    text: "I'll fetch the latest AI trading signals for Bitcoin from TokenMetrics.",
+                    action: "GET_TRADING_SIGNALS_TOKENMETRICS"
                 }
             }
         ],
@@ -252,16 +497,14 @@ export const getTradingSignalsAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Show me bullish signals for DeFi tokens",
-                    category: "defi",
-                    signal: 1
+                    text: "Show me bullish signals for DeFi tokens"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll get the bullish trading signals for DeFi tokens from TokenMetrics AI.",
-                    action: "GET_TRADING_SIGNALS"
+                    text: "I'll get bullish trading signals for DeFi category tokens from TokenMetrics AI.",
+                    action: "GET_TRADING_SIGNALS_TOKENMETRICS"
                 }
             }
         ],
@@ -269,321 +512,16 @@ export const getTradingSignalsAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Get trading signals for tokens with market cap over $1B",
-                    marketcap: 1000000000
+                    text: "What are the current AI trading recommendations?"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll fetch trading signals for large-cap cryptocurrencies.",
-                    action: "GET_TRADING_SIGNALS"
+                    text: "Let me fetch the latest AI trading signals and recommendations from TokenMetrics.",
+                    action: "GET_TRADING_SIGNALS_TOKENMETRICS"
                 }
             }
         ]
-    ],
+    ] as ActionExample[][],
 };
-
-/**
- * Comprehensive analysis function for trading signals from TokenMetrics.
- * This function processes the real API response data and provides actionable trading insights.
- * We focus on the signal distribution, quality assessment, and identifying the best opportunities.
- */
-function analyzeTradingSignals(signalsData: any[]): any {
-    if (!signalsData || signalsData.length === 0) {
-        return {
-            summary: "No trading signals available for analysis",
-            active_opportunities: 0,
-            signal_quality: "Unknown",
-            recommendations: []
-        };
-    }
-    
-    // Analyze signal distribution and market sentiment
-    const signalDistribution = analyzeSignalDistribution(signalsData);
-    
-    // Identify the best trading opportunities
-    const opportunityAnalysis = identifyBestOpportunities(signalsData);
-    
-    // Assess overall signal quality and reliability
-    const qualityAssessment = assessSignalQuality(signalsData);
-    
-    // Generate actionable insights
-    const actionableInsights = generateSignalInsights(signalsData, signalDistribution, opportunityAnalysis);
-    
-    return {
-        summary: `TokenMetrics AI analysis shows ${signalsData.length} signals with ${signalDistribution.market_bias} market sentiment`,
-        signal_distribution: signalDistribution,
-        opportunity_analysis: opportunityAnalysis,
-        quality_assessment: qualityAssessment,
-        actionable_insights: actionableInsights,
-        trading_recommendations: generateTradingRecommendations(signalDistribution, opportunityAnalysis, qualityAssessment),
-        risk_considerations: identifyRiskFactors(signalsData),
-        data_quality: {
-            source: "TokenMetrics AI Engine",
-            total_signals: signalsData.length,
-            signal_types: getAvailableSignalTypes(signalsData),
-            reliability: "High - AI-powered analysis"
-        }
-    };
-}
-
-/**
- * This function analyzes how the AI signals are distributed across bullish, bearish, and neutral positions.
- * Understanding signal distribution helps us gauge overall market sentiment from TokenMetrics' perspective.
- */
-function analyzeSignalDistribution(signalsData: any[]): any {
-    // Count different signal types (1 = bullish, -1 = bearish, 0 = neutral)
-    // Use TRADING_SIGNAL field (correct API field name)
-    const bullishSignals = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
-    const bearishSignals = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === -1).length;
-    const neutralSignals = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 0).length;
-    const totalSignals = signalsData.length;
-    
-    // Calculate percentages for better understanding
-    const bullishPercentage = (bullishSignals / totalSignals) * 100;
-    const bearishPercentage = (bearishSignals / totalSignals) * 100;
-    const neutralPercentage = (neutralSignals / totalSignals) * 100;
-    
-    // Determine overall market bias based on signal distribution
-    let marketBias;
-    if (bullishPercentage > 60) marketBias = "Strongly Bullish";
-    else if (bullishPercentage > 45) marketBias = "Bullish";
-    else if (bullishPercentage > 35) marketBias = "Neutral";
-    else if (bullishPercentage > 20) marketBias = "Bearish"; 
-    else marketBias = "Strongly Bearish";
-    
-    return {
-        bullish_signals: bullishSignals,
-        bearish_signals: bearishSignals,
-        neutral_signals: neutralSignals,
-        bullish_percentage: bullishPercentage.toFixed(1),
-        bearish_percentage: bearishPercentage.toFixed(1),
-        neutral_percentage: neutralPercentage.toFixed(1),
-        market_bias: marketBias,
-        sentiment_strength: Math.abs(bullishPercentage - bearishPercentage) > 30 ? "Strong" : "Moderate"
-    };
-}
-
-/**
- * This function identifies the most promising trading opportunities from the signals.
- * We focus on signals that have additional supporting data like entry prices or confidence scores.
- */
-function identifyBestOpportunities(signalsData: any[]): any {
-    // Filter for actionable signals (non-neutral with some supporting data)
-    const actionableSignals = signalsData.filter(s => {
-        const signalValue = s.TRADING_SIGNAL || s.SIGNAL; // Use correct field name
-        return signalValue !== 0 && // Not neutral
-               (s.ENTRY_PRICE || s.TARGET_PRICE || s.AI_CONFIDENCE); // Has some actionable data
-    });
-    
-    // Sort by various quality indicators
-    const sortedSignals = actionableSignals.sort((a, b) => {
-        // Prioritize signals with more complete data
-        const aScore = (a.AI_CONFIDENCE || 50) + (a.ENTRY_PRICE ? 10 : 0) + (a.TARGET_PRICE ? 10 : 0);
-        const bScore = (b.AI_CONFIDENCE || 50) + (b.ENTRY_PRICE ? 10 : 0) + (b.TARGET_PRICE ? 10 : 0);
-        return bScore - aScore;
-    });
-    
-    // Take top opportunities
-    const topOpportunities = sortedSignals.slice(0, 5).map(signal => {
-        const signalValue = signal.TRADING_SIGNAL || signal.SIGNAL; // Use correct field name
-        return {
-            token: `${signal.NAME || 'Unknown'} (${signal.SYMBOL || 'N/A'})`,
-            signal_type: signalValue === 1 ? "BULLISH" : "BEARISH",
-            entry_price: signal.ENTRY_PRICE ? formatTokenMetricsNumber(signal.ENTRY_PRICE, 'currency') : 'N/A',
-            target_price: signal.TARGET_PRICE ? formatTokenMetricsNumber(signal.TARGET_PRICE, 'currency') : 'N/A',
-            ai_confidence: signal.AI_CONFIDENCE ? `${signal.AI_CONFIDENCE}%` : 'N/A',
-            potential_return: calculatePotentialReturn(signal),
-            market_cap: signal.MARKET_CAP ? formatTokenMetricsNumber(signal.MARKET_CAP, 'currency') : 'N/A'
-        };
-    });
-    
-    return {
-        total_opportunities: actionableSignals.length,
-        top_opportunities: topOpportunities,
-        opportunity_quality: actionableSignals.length >= 5 ? "Abundant" : 
-                           actionableSignals.length >= 2 ? "Moderate" : "Limited"
-    };
-}
-
-/**
- * This function assesses the overall quality and reliability of the signals.
- * We look at factors like data completeness, signal freshness, and consistency.
- */
-function assessSignalQuality(signalsData: any[]): any {
-    // Count signals with complete data
-    const signalsWithPrices = signalsData.filter(s => s.ENTRY_PRICE && s.TARGET_PRICE).length;
-    const signalsWithConfidence = signalsData.filter(s => s.AI_CONFIDENCE).length;
-    const signalsWithDates = signalsData.filter(s => s.DATE).length;
-    
-    // Calculate completeness percentage
-    const completenessScore = ((signalsWithPrices + signalsWithConfidence + signalsWithDates) / (signalsData.length * 3)) * 100;
-    
-    // Assess signal freshness (if date information is available)
-    let freshnessAssessment = "Unknown";
-    if (signalsWithDates > 0) {
-        const recentSignals = signalsData.filter(s => {
-            if (!s.DATE) return false;
-            const signalDate = new Date(s.DATE);
-            const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-            return signalDate > threeDaysAgo;
-        }).length;
-        
-        const freshnessPercentage = (recentSignals / signalsWithDates) * 100;
-        if (freshnessPercentage > 70) freshnessAssessment = "Fresh";
-        else if (freshnessPercentage > 40) freshnessAssessment = "Moderate";
-        else freshnessAssessment = "Stale";
-    }
-    
-    // Overall quality rating
-    let qualityRating;
-    if (completenessScore > 80 && freshnessAssessment === "Fresh") qualityRating = "Excellent";
-    else if (completenessScore > 60) qualityRating = "Good";
-    else if (completenessScore > 40) qualityRating = "Fair";
-    else qualityRating = "Poor";
-    
-    return {
-        quality_rating: qualityRating,
-        completeness_score: completenessScore.toFixed(1),
-        data_availability: {
-            with_entry_prices: `${signalsWithPrices} signals`,
-            with_confidence: `${signalsWithConfidence} signals`,
-            with_dates: `${signalsWithDates} signals`
-        },
-        freshness_assessment: freshnessAssessment
-    };
-}
-
-/**
- * This function generates actionable insights based on the signal analysis.
- * These insights help traders understand what the signals mean for their strategy.
- */
-function generateSignalInsights(signalsData: any[], distribution: any, opportunities: any): string[] {
-    const insights = [];
-    
-    // Market sentiment insights based on signal distribution
-    if (distribution.market_bias === "Strongly Bullish") {
-        insights.push("TokenMetrics AI shows strong bullish sentiment across analyzed tokens - favorable conditions for long positions");
-    } else if (distribution.market_bias === "Strongly Bearish") {
-        insights.push("TokenMetrics AI indicates strong bearish sentiment - consider defensive positioning or short opportunities");
-    } else if (distribution.market_bias === "Neutral") {
-        insights.push("Mixed signals from TokenMetrics AI suggest selective approach - focus on highest conviction opportunities");
-    }
-    
-    // Opportunity-based insights
-    if (opportunities.opportunity_quality === "Abundant") {
-        insights.push(`${opportunities.total_opportunities} actionable trading opportunities identified - good market for active trading`);
-    } else if (opportunities.opportunity_quality === "Limited") {
-        insights.push("Limited trading opportunities available - patience and selectivity recommended");
-    }
-    
-    // Signal quality insights
-    const bullishCount = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
-    const bearishCount = signalsData.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === -1).length;
-    
-    if (bullishCount > bearishCount * 2) {
-        insights.push("Overwhelming bullish bias suggests considering increased crypto exposure");
-    } else if (bearishCount > bullishCount * 2) {
-        insights.push("Strong bearish bias indicates potential market correction ahead");
-    }
-    
-    return insights;
-}
-
-/**
- * This function generates specific trading recommendations based on the signal analysis.
- * These recommendations are designed to be actionable for different trading strategies.
- */
-function generateTradingRecommendations(distribution: any, opportunities: any, quality: any): string[] {
-    const recommendations = [];
-    
-    // Based on signal quality
-    if (quality.quality_rating === "Excellent" || quality.quality_rating === "Good") {
-        recommendations.push("High signal quality supports active trading with appropriate position sizing");
-    } else {
-        recommendations.push("Moderate signal quality suggests conservative approach and additional due diligence");
-    }
-    
-    // Based on market bias
-    const bullishPercentage = parseFloat(distribution.bullish_percentage);
-    if (bullishPercentage > 60) {
-        recommendations.push("Strong bullish signals favor long-biased strategies and crypto accumulation");
-        recommendations.push("Consider dollar-cost averaging into quality positions during any dips");
-    } else if (bullishPercentage < 30) {
-        recommendations.push("Bearish signals suggest defensive positioning and profit-taking on existing positions");
-        recommendations.push("Consider hedging strategies or increasing cash allocation");
-    }
-    
-    // Based on opportunities
-    if (opportunities.opportunity_quality === "Abundant") {
-        recommendations.push("Multiple opportunities allow for diversified approach across different tokens");
-    } else {
-        recommendations.push("Limited opportunities require high selectivity - focus only on highest conviction signals");
-    }
-    
-    // General recommendations
-    recommendations.push("Always use appropriate position sizing based on signal strength and market conditions");
-    recommendations.push("Monitor signals regularly for updates as TokenMetrics AI adapts to changing conditions");
-    recommendations.push("Combine signals with fundamental analysis and market context for best results");
-    
-    return recommendations;
-}
-
-/**
- * This function identifies potential risk factors in the current signal environment.
- * Understanding these risks helps traders make more informed decisions.
- */
-function identifyRiskFactors(signalsData: any[]): string[] {
-    const risks = [];
-    
-    // Check for signal concentration in specific categories or exchanges
-    const categories = new Set(signalsData.map(s => s.CATEGORY).filter(c => c));
-    const exchanges = new Set(signalsData.map(s => s.EXCHANGE).filter(e => e));
-    
-    if (categories.size < 3) {
-        risks.push("Signals concentrated in limited categories - diversification across sectors recommended");
-    }
-    
-    if (exchanges.size < 3) {
-        risks.push("Signals concentrated on few exchanges - consider liquidity and counterparty risks");
-    }
-    
-    // Check for missing risk management data
-    const signalsWithoutPrices = signalsData.filter(s => !s.ENTRY_PRICE || !s.TARGET_PRICE).length;
-    if (signalsWithoutPrices > signalsData.length * 0.5) {
-        risks.push("Many signals lack price targets - manual risk management and position sizing required");
-    }
-    
-    // General market risks
-    risks.push("Cryptocurrency markets remain highly volatile - use appropriate position sizing");
-    risks.push("External factors (regulation, macro events) can override technical signals");
-    risks.push("AI signals are probabilities, not guarantees - maintain proper risk management");
-    
-    return risks;
-}
-
-// Utility functions for signal analysis
-
-function calculatePotentialReturn(signal: any): string {
-    if (!signal.ENTRY_PRICE || !signal.TARGET_PRICE) return 'N/A';
-    
-    let returnPercentage;
-    if (signal.SIGNAL === 1) { // Bullish signal
-        returnPercentage = ((signal.TARGET_PRICE - signal.ENTRY_PRICE) / signal.ENTRY_PRICE) * 100;
-    } else { // Bearish signal  
-        returnPercentage = ((signal.ENTRY_PRICE - signal.TARGET_PRICE) / signal.ENTRY_PRICE) * 100;
-    }
-    
-    return `${returnPercentage.toFixed(1)}%`;
-}
-
-function getAvailableSignalTypes(signalsData: any[]): string[] {
-    const types = new Set<string>();
-    signalsData.forEach(signal => {
-        if (signal.SIGNAL === 1) types.add('BULLISH');
-        else if (signal.SIGNAL === -1) types.add('BEARISH'); 
-        else if (signal.SIGNAL === 0) types.add('NEUTRAL');
-    });
-    return Array.from(types);
-}
