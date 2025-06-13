@@ -1,13 +1,59 @@
 import type { Action } from "@elizaos/core";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { CryptoInvestorsResponse, CryptoInvestorsRequest } from "../types";
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    elizaLogger
+} from "@elizaos/core";
+import { z } from "zod";
+import {
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { CryptoInvestorsResponse } from "../types";
+
+// Zod schema for crypto investors request validation
+const CryptoInvestorsRequestSchema = z.object({
+    limit: z.number().min(1).max(1000).optional().describe("Number of investors to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["performance", "influence", "sentiment", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type CryptoInvestorsRequest = z.infer<typeof CryptoInvestorsRequestSchema>;
+
+// AI extraction template for natural language processing
+const CRYPTO_INVESTORS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting crypto investors data requests from natural language.
+
+The user wants to get information about crypto investors and their market activity. Extract the following information:
+
+1. **limit** (optional, default: 50): How many investors they want to see
+   - Look for numbers like "top 20 investors", "50 investors", "first 100"
+   - Common requests: "top 20" → 20, "50 investors" → 50, "all investors" → 100
+   - Maximum is 1000
+
+2. **page** (optional, default: 1): Which page of results (for pagination)
+   - Usually not mentioned unless they want specific pages
+
+3. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "performance" - focus on investor performance and returns
+   - "influence" - focus on market influence and following
+   - "sentiment" - focus on market sentiment and activity
+   - "all" - comprehensive analysis
+
+Examples:
+- "Show me crypto investors" → {limit: 50, page: 1, analysisType: "all"}
+- "Get top 20 crypto investors by performance" → {limit: 20, page: 1, analysisType: "performance"}
+- "List influential crypto investors" → {limit: 50, page: 1, analysisType: "influence"}
+- "Crypto investor sentiment analysis" → {limit: 50, page: 1, analysisType: "sentiment"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * CRYPTO INVESTORS ACTION - Based on actual TokenMetrics API documentation
@@ -17,7 +63,7 @@ import type { CryptoInvestorsResponse, CryptoInvestorsRequest } from "../types";
  * Essential for understanding investor sentiment and tracking influential market participants.
  */
 export const getCryptoInvestorsAction: Action = {
-    name: "getCryptoInvestors",
+    name: "GET_CRYPTO_INVESTORS_TOKENMETRICS",
     description: "Get the latest list of crypto investors and their scores from TokenMetrics for market sentiment analysis",
     similes: [
         "get crypto investors",
@@ -28,50 +74,121 @@ export const getCryptoInvestorsAction: Action = {
         "influential investors",
         "crypto investor analysis"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me the latest crypto investors data"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve the latest crypto investors list and their scores from TokenMetrics.",
+                    action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get top 20 crypto investors by performance"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get the top 20 crypto investors ranked by their performance scores.",
+                    action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Analyze influential crypto investors"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll analyze the most influential crypto investors and their market impact.",
+                    action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing crypto investors request...`);
             
-            // Build parameters based on actual API documentation
-            const requestParams: CryptoInvestorsRequest = {
-                // Pagination parameters
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<CryptoInvestorsResponse>(
-                TOKENMETRICS_ENDPOINTS.cryptoInvestors,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const investorsRequest = await extractTokenMetricsRequest<CryptoInvestorsRequest>(
+                runtime,
+                message,
+                state || await runtime.composeState(message),
+                CRYPTO_INVESTORS_EXTRACTION_TEMPLATE,
+                CryptoInvestorsRequestSchema,
+                requestId
             );
             
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<CryptoInvestorsResponse>(response, "getCryptoInvestors");
-            const investorsData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, investorsRequest);
             
-            // Analyze the investors data
-            const investorsAnalysis = analyzeCryptoInvestors(investorsData);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                limit: investorsRequest.limit || 50,
+                page: investorsRequest.page || 1,
+                analysisType: investorsRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/crypto-investors",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const investorsData = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the investors data based on requested analysis type
+            const investorsAnalysis = analyzeCryptoInvestors(investorsData, processedRequest.analysisType);
+            
+            // Format response text for user
+            const responseText = formatCryptoInvestorsResponse(investorsData, investorsAnalysis, processedRequest);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved ${investorsData.length} crypto investors data`,
+                request_id: requestId,
                 crypto_investors: investorsData,
                 analysis: investorsAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.cryptoInvestors,
+                    endpoint: "crypto-investors",
                     pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
+                        page: processedRequest.page,
+                        limit: processedRequest.limit
                     },
+                    analysis_focus: processedRequest.analysisType,
                     data_points: investorsData.length,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API"
@@ -94,10 +211,22 @@ export const getCryptoInvestorsAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] Crypto investors analysis completed successfully`);
+            console.log(`[${requestId}] Analysis completed successfully`);
+            
+            // Use callback to send response to user
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: result
+                });
+            }
+            
+            return true;
         } catch (error) {
             console.error("Error in getCryptoInvestorsAction:", error);
             
-            return {
+            const errorResult = {
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve crypto investors from TokenMetrics API",
@@ -114,57 +243,27 @@ export const getCryptoInvestorsAction: Action = {
                     ]
                 }
             };
-        }
-    },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
+            
+            // Use callback for error response too
+            if (callback) {
+                callback({
+                    text: "❌ Failed to retrieve crypto investors data. Please try again later.",
+                    content: errorResult
+                });
+            }
             return false;
         }
-        return true;
     },
     
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me the latest crypto investors data"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve the latest crypto investors list and their scores from TokenMetrics.",
-                    action: "GET_CRYPTO_INVESTORS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get top 20 crypto investors by score",
-                    limit: 20
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the top 20 crypto investors ranked by their TokenMetrics scores.",
-                    action: "GET_CRYPTO_INVESTORS"
-                }
-            }
-        ]
-    ],
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
- * Comprehensive analysis of crypto investors data
+ * Comprehensive analysis of crypto investors data based on analysis type
  */
-function analyzeCryptoInvestors(investorsData: any[]): any {
+function analyzeCryptoInvestors(investorsData: any[], analysisType: string = "all"): any {
     if (!investorsData || investorsData.length === 0) {
         return {
             summary: "No crypto investors data available for analysis",
@@ -173,22 +272,71 @@ function analyzeCryptoInvestors(investorsData: any[]): any {
         };
     }
     
-    // Analyze investor performance and distribution
+    // Base analysis
     const performanceAnalysis = analyzeInvestorPerformance(investorsData);
     const marketParticipation = analyzeMarketParticipation(investorsData);
     const influenceAnalysis = analyzeInvestorInfluence(investorsData);
     const sentimentAnalysis = analyzeInvestorSentiment(investorsData);
     
-    // Generate insights
+    // Generate base insights
     const insights = generateInvestorInsights(performanceAnalysis, marketParticipation, influenceAnalysis);
+    
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "performance":
+            focusedAnalysis = {
+                performance_focus: {
+                    top_performers: identifyTopPerformers(investorsData),
+                    performance_distribution: performanceAnalysis,
+                    performance_insights: [
+                        `📈 Average performance score: ${performanceAnalysis.average_score}`,
+                        `🏆 High performers: ${performanceAnalysis.high_performers} investors`,
+                        `📊 Performance quality: ${performanceAnalysis.overall_performance}`
+                    ]
+                }
+            };
+            break;
+            
+        case "influence":
+            focusedAnalysis = {
+                influence_focus: {
+                    market_leaders: identifyMarketLeaders(influenceAnalysis.top_influencers || []),
+                    influence_distribution: influenceAnalysis,
+                    influence_insights: [
+                        `🌟 Top influencers identified: ${influenceAnalysis.top_influencers?.length || 0}`,
+                        `📊 Influence distribution: ${influenceAnalysis.influence_distribution?.level || "Moderate"}`,
+                        `🎯 Market leadership: ${influenceAnalysis.market_leadership || "Distributed"}`
+                    ]
+                }
+            };
+            break;
+            
+        case "sentiment":
+            focusedAnalysis = {
+                sentiment_focus: {
+                    market_mood: determinMarketMood(sentimentAnalysis.sentiment, sentimentAnalysis.activity_rate),
+                    sentiment_indicators: sentimentAnalysis,
+                    sentiment_insights: [
+                        `😊 Market sentiment: ${sentimentAnalysis.sentiment}`,
+                        `📊 Activity rate: ${formatPercentage(sentimentAnalysis.activity_rate)}`,
+                        `🎯 Market outlook: ${determineMarketOutlook(performanceAnalysis, sentimentAnalysis)}`
+                    ]
+                }
+            };
+            break;
+    }
     
     return {
         summary: `Analysis of ${investorsData.length} crypto investors shows ${performanceAnalysis.overall_performance} performance with ${marketParticipation.participation_level} market participation`,
+        analysis_type: analysisType,
         performance_analysis: performanceAnalysis,
         market_participation: marketParticipation,
         influence_analysis: influenceAnalysis,
         sentiment_analysis: sentimentAnalysis,
         insights: insights,
+        ...focusedAnalysis,
         market_implications: generateMarketImplications(performanceAnalysis, sentimentAnalysis),
         top_performers: identifyTopPerformers(investorsData),
         data_quality: {
@@ -196,13 +344,16 @@ function analyzeCryptoInvestors(investorsData: any[]): any {
             investor_count: investorsData.length,
             data_completeness: assessDataCompleteness(investorsData),
             coverage_scope: assessCoverageScope(investorsData)
-        }
+        },
+        investment_strategy: suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis),
+        risk_considerations: identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis),
+        opportunities: identifyOpportunities(performanceAnalysis, sentimentAnalysis)
     };
 }
 
 function analyzeInvestorPerformance(investorsData: any[]): any {
     const scores = investorsData
-        .map(investor => investor.INVESTOR_SCORE)
+        .map(investor => investor.ROI_AVERAGE)
         .filter(score => score !== null && score !== undefined);
     
     if (scores.length === 0) {
@@ -213,24 +364,24 @@ function analyzeInvestorPerformance(investorsData: any[]): any {
     const maxScore = Math.max(...scores);
     const minScore = Math.min(...scores);
     
-    // Performance distribution
-    const highPerformers = scores.filter(s => s >= 80).length;
-    const goodPerformers = scores.filter(s => s >= 60 && s < 80).length;
-    const averagePerformers = scores.filter(s => s >= 40 && s < 60).length;
-    const poorPerformers = scores.filter(s => s < 40).length;
+    // Performance distribution (ROI-based)
+    const highPerformers = scores.filter(s => s >= 0.5).length; // 50%+ ROI
+    const goodPerformers = scores.filter(s => s >= 0.2 && s < 0.5).length; // 20-50% ROI
+    const averagePerformers = scores.filter(s => s >= 0 && s < 0.2).length; // 0-20% ROI
+    const poorPerformers = scores.filter(s => s < 0).length; // Negative ROI
     
     let overallPerformance;
-    if (averageScore >= 70) overallPerformance = "Excellent";
-    else if (averageScore >= 60) overallPerformance = "Good";
-    else if (averageScore >= 50) overallPerformance = "Average";
+    if (averageScore >= 0.5) overallPerformance = "Excellent";
+    else if (averageScore >= 0.2) overallPerformance = "Good";
+    else if (averageScore >= 0) overallPerformance = "Average";
     else overallPerformance = "Below Average";
     
     return {
         overall_performance: overallPerformance,
-        average_score: averageScore.toFixed(1),
-        max_score: maxScore,
-        min_score: minScore,
-        score_range: maxScore - minScore,
+        average_score: `${(averageScore * 100).toFixed(1)}%`,
+        max_score: `${(maxScore * 100).toFixed(1)}%`,
+        min_score: `${(minScore * 100).toFixed(1)}%`,
+        score_range: `${((maxScore - minScore) * 100).toFixed(1)}%`,
         performance_distribution: {
             high_performers: `${highPerformers} (${((highPerformers / scores.length) * 100).toFixed(1)}%)`,
             good_performers: `${goodPerformers} (${((goodPerformers / scores.length) * 100).toFixed(1)}%)`,
@@ -244,7 +395,7 @@ function analyzeInvestorPerformance(investorsData: any[]): any {
 function analyzeMarketParticipation(investorsData: any[]): any {
     const totalInvestors = investorsData.length;
     const activeInvestors = investorsData.filter(investor => 
-        investor.PORTFOLIO_VALUE && investor.PORTFOLIO_VALUE > 0
+        investor.ROUND_COUNT && parseInt(investor.ROUND_COUNT) > 0
     ).length;
     
     const participationRate = totalInvestors > 0 ? (activeInvestors / totalInvestors) * 100 : 0;
@@ -255,22 +406,22 @@ function analyzeMarketParticipation(investorsData: any[]): any {
     else if (participationRate >= 40) participationLevel = "Moderate";
     else participationLevel = "Low";
     
-    // Analyze portfolio sizes if available
-    const portfolioValues = investorsData
-        .map(investor => investor.PORTFOLIO_VALUE)
-        .filter(value => value && value > 0);
+    // Analyze investment rounds
+    const roundCounts = investorsData
+        .map(investor => parseInt(investor.ROUND_COUNT) || 0)
+        .filter(count => count > 0);
     
-    let portfolioAnalysis = {};
-    if (portfolioValues.length > 0) {
-        const totalValue = portfolioValues.reduce((sum, value) => sum + value, 0);
-        const averageValue = totalValue / portfolioValues.length;
-        const maxValue = Math.max(...portfolioValues);
+    let roundAnalysis = {};
+    if (roundCounts.length > 0) {
+        const totalRounds = roundCounts.reduce((sum, count) => sum + count, 0);
+        const averageRounds = totalRounds / roundCounts.length;
+        const maxRounds = Math.max(...roundCounts);
         
-        portfolioAnalysis = {
-            total_portfolio_value: formatTokenMetricsNumber(totalValue, 'currency'),
-            average_portfolio_value: formatTokenMetricsNumber(averageValue, 'currency'),
-            largest_portfolio: formatTokenMetricsNumber(maxValue, 'currency'),
-            portfolio_concentration: analyzePortfolioConcentration(portfolioValues)
+        roundAnalysis = {
+            total_investment_rounds: totalRounds,
+            average_rounds_per_investor: averageRounds.toFixed(1),
+            most_active_investor_rounds: maxRounds,
+            investment_activity: analyzeInvestmentActivity(roundCounts)
         };
     }
     
@@ -279,7 +430,7 @@ function analyzeMarketParticipation(investorsData: any[]): any {
         participation_rate: `${participationRate.toFixed(1)}%`,
         total_investors: totalInvestors,
         active_investors: activeInvestors,
-        portfolio_analysis: portfolioAnalysis,
+        round_analysis: roundAnalysis,
         market_coverage: assessMarketCoverage(investorsData)
     };
 }
@@ -287,10 +438,12 @@ function analyzeMarketParticipation(investorsData: any[]): any {
 function analyzeInvestorInfluence(investorsData: any[]): any {
     // Analyze influence based on available metrics
     const influenceMetrics = investorsData.map(investor => ({
-        name: investor.INVESTOR_NAME || investor.NAME || 'Unknown',
-        score: investor.INVESTOR_SCORE || 0,
-        portfolio_value: investor.PORTFOLIO_VALUE || 0,
-        follower_count: investor.FOLLOWER_COUNT || 0,
+        name: investor.INVESTOR_NAME || 'Unknown',
+        roi_average: investor.ROI_AVERAGE || 0,
+        roi_median: investor.ROI_MEDIAN || 0,
+        round_count: parseInt(investor.ROUND_COUNT) || 0,
+        has_website: !!investor.INVESTOR_WEBSITE,
+        has_twitter: !!investor.INVESTOR_TWITTER,
         influence_score: calculateInfluenceScore(investor)
     })).sort((a, b) => b.influence_score - a.influence_score);
     
@@ -301,8 +454,9 @@ function analyzeInvestorInfluence(investorsData: any[]): any {
         top_influencers: topInfluencers.slice(0, 5).map(inv => ({
             name: inv.name,
             influence_score: inv.influence_score.toFixed(1),
-            investor_score: inv.score,
-            portfolio_value: formatTokenMetricsNumber(inv.portfolio_value, 'currency')
+            roi_average: `${(inv.roi_average * 100).toFixed(1)}%`,
+            investment_rounds: inv.round_count,
+            online_presence: (inv.has_website ? "Website " : "") + (inv.has_twitter ? "Twitter" : "")
         })),
         average_influence: averageInfluence.toFixed(1),
         influence_distribution: analyzeInfluenceDistribution(influenceMetrics),
@@ -412,22 +566,22 @@ function generateMarketImplications(performanceAnalysis: any, sentimentAnalysis:
 
 function identifyTopPerformers(investorsData: any[]): any {
     const performers = investorsData
-        .filter(investor => investor.INVESTOR_SCORE)
-        .sort((a, b) => b.INVESTOR_SCORE - a.INVESTOR_SCORE)
+        .filter(investor => investor.ROI_AVERAGE !== null && investor.ROI_AVERAGE !== undefined)
+        .sort((a, b) => b.ROI_AVERAGE - a.ROI_AVERAGE)
         .slice(0, 10);
     
     return {
         top_10_performers: performers.map((investor, index) => ({
             rank: index + 1,
-            name: investor.INVESTOR_NAME || investor.NAME || `Investor ${index + 1}`,
-            score: investor.INVESTOR_SCORE,
-            portfolio_value: investor.PORTFOLIO_VALUE ? 
-                formatTokenMetricsNumber(investor.PORTFOLIO_VALUE, 'currency') : 'N/A',
-            performance_category: categorizePerformance(investor.INVESTOR_SCORE)
+            name: investor.INVESTOR_NAME || `Investor ${index + 1}`,
+            roi_average: `${(investor.ROI_AVERAGE * 100).toFixed(1)}%`,
+            roi_median: investor.ROI_MEDIAN ? `${(investor.ROI_MEDIAN * 100).toFixed(1)}%` : 'N/A',
+            round_count: investor.ROUND_COUNT || 'N/A',
+            performance_category: categorizePerformance(investor.ROI_AVERAGE)
         })),
         performance_gap: performers.length > 1 ? 
-            (performers[0].INVESTOR_SCORE - performers[performers.length - 1].INVESTOR_SCORE) : 0,
-        elite_threshold: performers.length > 0 ? performers[0].INVESTOR_SCORE : 0
+            `${((performers[0].ROI_AVERAGE - performers[performers.length - 1].ROI_AVERAGE) * 100).toFixed(1)}%` : '0%',
+        elite_threshold: performers.length > 0 ? `${(performers[0].ROI_AVERAGE * 100).toFixed(1)}%` : '0%'
     };
 }
 
@@ -436,25 +590,22 @@ function identifyTopPerformers(investorsData: any[]): any {
 function calculateInfluenceScore(investor: any): number {
     let score = 0;
     
-    // Base score from investor score
-    if (investor.INVESTOR_SCORE) score += investor.INVESTOR_SCORE * 0.4;
-    
-    // Portfolio value influence (normalized)
-    if (investor.PORTFOLIO_VALUE) {
-        const portfolioScore = Math.min(investor.PORTFOLIO_VALUE / 10000000, 50); // Cap at 50
-        score += portfolioScore * 0.3;
+    // Base score from ROI performance
+    if (investor.ROI_AVERAGE) {
+        // Convert ROI to positive influence score (higher ROI = higher influence)
+        const roiScore = Math.max(0, investor.ROI_AVERAGE * 100); // Convert to percentage
+        score += Math.min(roiScore, 50) * 0.4; // Cap at 50 points
     }
     
-    // Follower count influence
-    if (investor.FOLLOWER_COUNT) {
-        const followerScore = Math.min(investor.FOLLOWER_COUNT / 10000, 30); // Cap at 30
-        score += followerScore * 0.2;
+    // Investment activity influence
+    if (investor.ROUND_COUNT) {
+        const roundScore = Math.min(parseInt(investor.ROUND_COUNT), 20); // Cap at 20
+        score += roundScore * 0.3;
     }
     
-    // Activity influence
-    if (investor.LAST_ACTIVITY && isRecentActivity(investor.LAST_ACTIVITY)) {
-        score += 10 * 0.1;
-    }
+    // Online presence influence
+    if (investor.INVESTOR_WEBSITE) score += 10 * 0.15;
+    if (investor.INVESTOR_TWITTER) score += 10 * 0.15;
     
     return Math.min(score, 100); // Cap at 100
 }
@@ -464,56 +615,65 @@ function isRecentActivity(lastActivity: string): boolean {
     return new Date(lastActivity) > thirtyDaysAgo;
 }
 
+function analyzeInvestmentActivity(roundCounts: number[]): string {
+    const averageRounds = roundCounts.reduce((sum, count) => sum + count, 0) / roundCounts.length;
+    
+    if (averageRounds > 10) return "Very Active";
+    if (averageRounds > 5) return "Active";
+    if (averageRounds > 2) return "Moderate";
+    return "Limited";
+}
+
 function assessPerformanceQuality(averageScore: number, highPerformers: number, totalInvestors: number): string {
     const highPerformerRatio = highPerformers / totalInvestors;
     
-    if (averageScore > 70 && highPerformerRatio > 0.3) return "Exceptional";
-    if (averageScore > 60 && highPerformerRatio > 0.2) return "High Quality";
-    if (averageScore > 50 && highPerformerRatio > 0.1) return "Good Quality";
-    if (averageScore > 40) return "Average Quality";
+    if (averageScore > 0.3 && highPerformerRatio > 0.3) return "Exceptional";
+    if (averageScore > 0.1 && highPerformerRatio > 0.2) return "High Quality";
+    if (averageScore > 0 && highPerformerRatio > 0.1) return "Good Quality";
+    if (averageScore > -0.2) return "Average Quality";
     return "Below Average Quality";
 }
 
-function analyzePortfolioConcentration(portfolioValues: number[]): string {
-    const sortedValues = portfolioValues.sort((a, b) => b - a);
-    const totalValue = sortedValues.reduce((sum, value) => sum + value, 0);
-    const top10Percent = Math.ceil(sortedValues.length * 0.1);
-    const top10Value = sortedValues.slice(0, top10Percent).reduce((sum, value) => sum + value, 0);
-    
-    const concentrationRatio = (top10Value / totalValue) * 100;
-    
-    if (concentrationRatio > 80) return "Highly Concentrated";
-    if (concentrationRatio > 60) return "Concentrated";
-    if (concentrationRatio > 40) return "Moderately Concentrated";
-    return "Distributed";
+function categorizePerformance(score: number): string {
+    if (score >= 2.0) return "Elite";
+    if (score >= 1.0) return "Excellent";
+    if (score >= 0.5) return "Good";
+    if (score >= 0.2) return "Average";
+    if (score >= 0) return "Below Average";
+    return "Poor";
 }
 
-function assessMarketCoverage(investorsData: any[]): string {
-    const categories = new Set(investorsData.map(inv => inv.CATEGORY).filter(c => c));
-    const regions = new Set(investorsData.map(inv => inv.REGION).filter(r => r));
+function assessDataCompleteness(investorsData: any[]): string {
+    const requiredFields = ['INVESTOR_NAME', 'ROI_AVERAGE', 'ROUND_COUNT'];
+    let completeness = 0;
     
-    if (categories.size > 5 && regions.size > 8) return "Global and Diverse";
-    if (categories.size > 3 && regions.size > 5) return "Broad Coverage";
-    if (categories.size > 2 && regions.size > 3) return "Moderate Coverage";
-    return "Limited Coverage";
+    investorsData.forEach(investor => {
+        const presentFields = requiredFields.filter(field => 
+            investor[field] !== null && investor[field] !== undefined
+        );
+        completeness += presentFields.length / requiredFields.length;
+    });
+    
+    const avgCompleteness = (completeness / investorsData.length) * 100;
+    
+    if (avgCompleteness > 80) return "Very Complete";
+    if (avgCompleteness > 60) return "Complete";
+    if (avgCompleteness > 40) return "Moderate";
+    return "Limited";
 }
 
-function analyzeInfluenceDistribution(influenceMetrics: any[]): any {
-    const highInfluence = influenceMetrics.filter(inv => inv.influence_score >= 80).length;
-    const moderateInfluence = influenceMetrics.filter(inv => inv.influence_score >= 60 && inv.influence_score < 80).length;
-    const lowInfluence = influenceMetrics.filter(inv => inv.influence_score < 60).length;
+function assessCoverageScope(investorsData: any[]): string {
+    const investorCount = investorsData.length;
     
-    return {
-        high_influence: `${highInfluence} (${((highInfluence / influenceMetrics.length) * 100).toFixed(1)}%)`,
-        moderate_influence: `${moderateInfluence} (${((moderateInfluence / influenceMetrics.length) * 100).toFixed(1)}%)`,
-        low_influence: `${lowInfluence} (${((lowInfluence / influenceMetrics.length) * 100).toFixed(1)}%)`,
-        influence_concentration: highInfluence > influenceMetrics.length * 0.2 ? "Concentrated" : "Distributed"
-    };
+    if (investorCount > 100) return "Comprehensive";
+    if (investorCount > 50) return "Broad";
+    if (investorCount > 25) return "Moderate";
+    return "Limited";
 }
 
 function identifyMarketLeaders(topInfluencers: any[]): string[] {
     return topInfluencers.slice(0, 3).map(influencer => 
-        `${influencer.name} (Score: ${influencer.influence_score})`
+        `${influencer.name} (Influence: ${influencer.influence_score})`
     );
 }
 
@@ -590,39 +750,124 @@ function identifyOpportunities(performanceAnalysis: any, sentimentAnalysis: any)
     return opportunities;
 }
 
-function assessDataCompleteness(investorsData: any[]): string {
-    const requiredFields = ['INVESTOR_NAME', 'INVESTOR_SCORE', 'PORTFOLIO_VALUE'];
-    let completeness = 0;
+function analyzeInfluenceDistribution(influenceMetrics: any[]): any {
+    const highInfluence = influenceMetrics.filter(inv => inv.influence_score >= 80).length;
+    const moderateInfluence = influenceMetrics.filter(inv => inv.influence_score >= 60 && inv.influence_score < 80).length;
+    const lowInfluence = influenceMetrics.filter(inv => inv.influence_score < 60).length;
     
-    investorsData.forEach(investor => {
-        const presentFields = requiredFields.filter(field => 
-            investor[field] !== null && investor[field] !== undefined
-        );
-        completeness += presentFields.length / requiredFields.length;
-    });
-    
-    const avgCompleteness = (completeness / investorsData.length) * 100;
-    
-    if (avgCompleteness > 80) return "Very Complete";
-    if (avgCompleteness > 60) return "Complete";
-    if (avgCompleteness > 40) return "Moderate";
-    return "Limited";
+    return {
+        high_influence: `${highInfluence} (${((highInfluence / influenceMetrics.length) * 100).toFixed(1)}%)`,
+        moderate_influence: `${moderateInfluence} (${((moderateInfluence / influenceMetrics.length) * 100).toFixed(1)}%)`,
+        low_influence: `${lowInfluence} (${((lowInfluence / influenceMetrics.length) * 100).toFixed(1)}%)`,
+        influence_concentration: highInfluence > influenceMetrics.length * 0.2 ? "Concentrated" : "Distributed"
+    };
 }
 
-function assessCoverageScope(investorsData: any[]): string {
-    const investorCount = investorsData.length;
+function assessMarketCoverage(investorsData: any[]): string {
+    const websiteCount = investorsData.filter(inv => inv.INVESTOR_WEBSITE).length;
+    const twitterCount = investorsData.filter(inv => inv.INVESTOR_TWITTER).length;
     
-    if (investorCount > 100) return "Comprehensive";
-    if (investorCount > 50) return "Broad";
-    if (investorCount > 25) return "Moderate";
-    return "Limited";
+    const onlinePresence = (websiteCount + twitterCount) / (investorsData.length * 2) * 100;
+    
+    if (onlinePresence > 70) return "High Online Presence";
+    if (onlinePresence > 50) return "Moderate Online Presence";
+    if (onlinePresence > 30) return "Limited Online Presence";
+    return "Minimal Online Presence";
 }
 
-function categorizePerformance(score: number): string {
-    if (score >= 90) return "Elite";
-    if (score >= 80) return "Excellent";
-    if (score >= 70) return "Good";
-    if (score >= 60) return "Average";
-    if (score >= 50) return "Below Average";
-    return "Poor";
+/**
+ * Format crypto investors response for user display
+ */
+function formatCryptoInvestorsResponse(investorsData: any[], analysis: any, request: any): string {
+    if (!investorsData || investorsData.length === 0) {
+        return "❌ No crypto investors data available at the moment.";
+    }
+
+    const { limit, analysisType } = request;
+    
+    let response = `👥 **Crypto Investors Analysis** (${investorsData.length} investors)\n\n`;
+    
+    // Show top investors
+    const displayCount = Math.min(investorsData.length, 10);
+    response += `🏆 **Top ${displayCount} Investors by ROI:**\n`;
+    
+    // Sort by ROI_AVERAGE for display
+    const sortedInvestors = [...investorsData].sort((a, b) => (b.ROI_AVERAGE || 0) - (a.ROI_AVERAGE || 0));
+    
+    for (let i = 0; i < displayCount; i++) {
+        const investor = sortedInvestors[i];
+        const rank = i + 1;
+        const name = investor.INVESTOR_NAME || `Investor ${rank}`;
+        const roi = investor.ROI_AVERAGE !== null ? `${(investor.ROI_AVERAGE * 100).toFixed(1)}%` : 'N/A';
+        const rounds = investor.ROUND_COUNT || 'N/A';
+        
+        response += `${rank}. **${name}** - ROI: ${roi} (${rounds} rounds)\n`;
+    }
+    
+    if (investorsData.length > displayCount) {
+        response += `\n... and ${investorsData.length - displayCount} more investors\n`;
+    }
+    
+    // Add analysis insights
+    if (analysis?.insights && analysis.insights.length > 0) {
+        response += `\n📊 **Key Insights:**\n`;
+        analysis.insights.slice(0, 4).forEach((insight: string) => {
+            response += `• ${insight}\n`;
+        });
+    }
+    
+    // Add performance analysis
+    if (analysis?.performance_analysis) {
+        const perf = analysis.performance_analysis;
+        response += `\n📈 **Performance Overview:**\n`;
+        response += `• Average ROI: ${perf.average_score}\n`;
+        response += `• Overall Performance: ${perf.overall_performance}\n`;
+        if (perf.performance_distribution) {
+            response += `• High Performers (50%+ ROI): ${perf.performance_distribution.high_performers}\n`;
+            response += `• Poor Performers (Negative ROI): ${perf.performance_distribution.poor_performers}\n`;
+        }
+    }
+    
+    // Add market participation
+    if (analysis?.market_participation) {
+        const market = analysis.market_participation;
+        response += `\n🎯 **Market Participation:**\n`;
+        response += `• Participation Level: ${market.participation_level}\n`;
+        if (market.participation_rate) {
+            response += `• Active Rate: ${market.participation_rate}\n`;
+        }
+        if (market.round_analysis?.total_investment_rounds) {
+            response += `• Total Investment Rounds: ${market.round_analysis.total_investment_rounds}\n`;
+        }
+    }
+    
+    // Add analysis type specific insights
+    if (analysisType === "performance" && analysis?.performance_focus) {
+        response += `\n🏆 **Performance Focus:**\n`;
+        analysis.performance_focus.performance_insights?.slice(0, 3).forEach((insight: string) => {
+            response += `• ${insight}\n`;
+        });
+    } else if (analysisType === "influence" && analysis?.influence_focus) {
+        response += `\n🌟 **Influence Focus:**\n`;
+        analysis.influence_focus.influence_insights?.slice(0, 3).forEach((insight: string) => {
+            response += `• ${insight}\n`;
+        });
+    } else if (analysisType === "sentiment" && analysis?.sentiment_focus) {
+        response += `\n😊 **Sentiment Focus:**\n`;
+        analysis.sentiment_focus.sentiment_insights?.slice(0, 3).forEach((insight: string) => {
+            response += `• ${insight}\n`;
+        });
+    }
+    
+    // Add investment strategy if available
+    if (analysis?.investment_strategy && analysis.investment_strategy.length > 0) {
+        response += `\n💡 **Investment Strategy:**\n`;
+        analysis.investment_strategy.slice(0, 3).forEach((strategy: string) => {
+            response += `• ${strategy}\n`;
+        });
+    }
+    
+    response += `\n📚 **Note:** ROI scores are based on average returns from investment rounds. Negative values indicate losses.`;
+    
+    return response;
 }

@@ -1,6 +1,36 @@
+/**
+ * @deprecated This file is deprecated. Please use aiActionHelper.ts instead.
+ * 
+ * This file contains the original TokenMetrics helper functions that have been
+ * superseded by the new AI-powered helper functions in aiActionHelper.ts.
+ * 
+ * The new aiActionHelper.ts provides:
+ * - AI-powered natural language request extraction
+ * - Smart token resolution by name
+ * - Enhanced error handling and troubleshooting
+ * - Standardized response formatting
+ * - Request ID tracking for debugging
+ * - Cache busting for fresh data
+ * - Analysis type-specific insights
+ * 
+ * All new action files should use aiActionHelper.ts instead of this file.
+ * This file is maintained for backward compatibility only.
+ */
+
 // Based on ACTUAL API Documentation from developers.tokenmetrics.com
 
 import axios, { type AxiosRequestConfig } from "axios";
+
+// Re-export the new AI helper functions for easy migration
+export {
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart
+} from "./aiActionHelper";
 
 // Configuration values based on actual TokenMetrics API
 export const DEFAULT_BASE_URL = process.env.TOKENMETRICS_BASE_URL || "https://api.tokenmetrics.com";
@@ -8,8 +38,8 @@ export const DEFAULT_API_VERSION = process.env.TOKENMETRICS_API_VERSION || "v2";
 export const DEFAULT_TIMEOUT = 30000; // 30 seconds
 export const DEFAULT_PAGE_LIMIT = Number.parseInt(process.env.TOKENMETRICS_PAGE_LIMIT || "50", 10);
 
-// COMPLETE TokenMetrics API endpoints based on actual documentation
-export const TOKENMETRICS_ENDPOINTS = {
+// @deprecated Use TOKENMETRICS_ENDPOINTS from aiActionHelper.ts instead
+export const LEGACY_TOKENMETRICS_ENDPOINTS = {
     // Core endpoints
     tokens: "/v2/tokens",
     quantmetrics: "/v2/quantmetrics", 
@@ -43,6 +73,7 @@ export const TOKENMETRICS_ENDPOINTS = {
 } as const;
 
 /**
+ * @deprecated Use validateAndGetApiKey from aiActionHelper.ts instead
  * CORRECTED validation function based on actual TokenMetrics API requirements
  */
 export function validateTokenMetricsParams(params: Record<string, any>): void {
@@ -134,6 +165,7 @@ function isValidDateFormat(dateString: string): boolean {
 }
 
 /**
+ * @deprecated Use validateAndGetApiKey from aiActionHelper.ts instead
  * CORRECTED API key validation - returns the validated API key
  */
 export function validateApiKey(): string {
@@ -153,6 +185,7 @@ export function validateApiKey(): string {
 }
 
 /**
+ * @deprecated Use callTokenMetricsAPI from aiActionHelper.ts instead
  * CORRECTED API call function using the proper authentication method
  */
 export async function callTokenMetricsApi<T>(

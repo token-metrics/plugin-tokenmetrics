@@ -541,11 +541,18 @@ export class EnhancedTokenMetricsHandler {
                 break;
                 
             case 'getTopMarketCap':
-                if (actionResult.top_tokens?.length > 0) {
-                    let summary = `🏆 **Top Cryptocurrencies by Market Cap**\n\n`;
+            case 'GET_TOP_MARKET_CAP_TOKENMETRICS':
+                // Check if the action already provided a formatted text response
+                if (actionResult.text) {
+                    return actionResult.text;
+                }
+                
+                // Fallback formatting if no text response
+                const topTokens = actionResult.top_tokens || actionResult.data || [];
+                if (topTokens.length > 0) {
+                    let summary = `🏆 **Top Market Cap Cryptocurrencies**\n\n`;
                     
-                    const tokensToShow = actionResult.top_tokens.slice(0, 10);
-                    tokensToShow.forEach((token: any, index: number) => {
+                    topTokens.slice(0, 10).forEach((token: any, index: number) => {
                         const rank = index + 1;
                         const name = token.TOKEN_NAME || token.NAME || 'Unknown';
                         const symbol = token.TOKEN_SYMBOL || token.SYMBOL || 'N/A';
@@ -555,27 +562,12 @@ export class EnhancedTokenMetricsHandler {
                         if (token.EXCHANGE_LIST && token.EXCHANGE_LIST.length > 0) {
                             summary += `   📊 Available on ${token.EXCHANGE_LIST.length} exchanges\n`;
                         }
-                        
-                        if (token.CATEGORY_LIST && token.CATEGORY_LIST.length > 0) {
-                            const categoryNames = token.CATEGORY_LIST.slice(0, 2).map((cat: any) => {
-                                if (typeof cat === 'object' && cat.category_name) {
-                                    return cat.category_name;
-                                } else if (typeof cat === 'object' && cat.CATEGORY_NAME) {
-                                    return cat.CATEGORY_NAME;
-                                } else if (typeof cat === 'string') {
-                                    return cat;
-                                } else {
-                                    return 'Unknown Category';
-                                }
-                            });
-                            summary += `   🏷️ Categories: ${categoryNames.join(', ')}${token.CATEGORY_LIST.length > 2 ? '...' : ''}\n`;
-                        }
                         summary += '\n';
                     });
                     
                     return summary;
                 }
-                break;
+                return "No top market cap data available.";
                 
             case 'getTradingSignals':
                 const signalsData = actionResult.trading_signals || actionResult.data || [];
@@ -607,6 +599,31 @@ export class EnhancedTokenMetricsHandler {
                 } else {
                     return `🎯 **Trading Signals**: No signals available for the specified criteria.`;
                 }
+
+            case 'GET_TRADING_SIGNALS_TOKENMETRICS':
+                if (actionResult.text) {
+                    return actionResult.text;
+                }
+                
+                if (actionResult.trading_signals?.length > 0) {
+                    const signals = actionResult.trading_signals;
+                    let summary = `📊 **Trading Signals Analysis**\n\n`;
+                    
+                    signals.slice(0, 5).forEach((signal: any) => {
+                        const token = signal.TOKEN_NAME || signal.TOKEN_SYMBOL || 'Unknown';
+                        const action = signal.ACTION || signal.SIGNAL || 'Hold';
+                        const confidence = signal.CONFIDENCE || signal.SCORE || 'N/A';
+                        
+                        summary += `**${token}**: ${action} (Confidence: ${confidence})\n`;
+                        if (signal.REASON) {
+                            summary += `   💡 ${signal.REASON}\n`;
+                        }
+                        summary += '\n';
+                    });
+                    
+                    return summary;
+                }
+                return "No trading signals data available.";
                 
             case 'getMarketMetrics':
                 const marketData = actionResult.market_metrics || actionResult.data || [];
@@ -638,6 +655,42 @@ export class EnhancedTokenMetricsHandler {
                 } else {
                     return `📊 **Market Overview**: Market data retrieved successfully.`;
                 }
+                
+            case 'GET_MARKET_METRICS_TOKENMETRICS':
+                // Check if the action already provided a formatted text response
+                if (actionResult.text) {
+                    return actionResult.text;
+                }
+                
+                // Fallback formatting if no text response
+                const marketMetricsData = actionResult.market_metrics || actionResult.data || [];
+                if (marketMetricsData.length > 0) {
+                    const metric = marketMetricsData[0];
+                    let summary = `📊 **Market Metrics Analysis**\n\n`;
+                    
+                    if (metric.TOTAL_CRYPTO_MCAP) {
+                        const mcapInTrillions = (metric.TOTAL_CRYPTO_MCAP / 1e12).toFixed(2);
+                        summary += `💰 **Total Market Cap**: $${mcapInTrillions}T\n`;
+                    }
+                    if (metric.TM_GRADE_PERC_HIGH_COINS) {
+                        summary += `📈 **High-Grade Coins**: ${metric.TM_GRADE_PERC_HIGH_COINS.toFixed(1)}%\n`;
+                    }
+                    if (metric.TM_GRADE_SIGNAL !== undefined) {
+                        const signalText = metric.TM_GRADE_SIGNAL > 0 ? '🟢 BULLISH' : 
+                                         metric.TM_GRADE_SIGNAL < 0 ? '🔴 BEARISH' : '🟡 NEUTRAL';
+                        summary += `🎯 **Market Signal**: ${signalText} (${metric.TM_GRADE_SIGNAL})\n`;
+                    }
+                    if (metric.BITCOIN_DOMINANCE) {
+                        summary += `₿ **Bitcoin Dominance**: ${metric.BITCOIN_DOMINANCE.toFixed(1)}%\n`;
+                    }
+                    if (metric.TOTAL_VOLUME_24H) {
+                        const volumeInBillions = (metric.TOTAL_VOLUME_24H / 1e9).toFixed(2);
+                        summary += `📊 **24h Volume**: $${volumeInBillions}B\n`;
+                    }
+                    
+                    return summary;
+                }
+                return "No market metrics data available.";
                 
             case 'getQuantmetrics':
                 const quantData = actionResult.quantmetrics || actionResult.data || [];
@@ -671,6 +724,46 @@ export class EnhancedTokenMetricsHandler {
                     return summary;
                 } else {
                     return `⚡ **Risk Analysis**: Risk analysis data retrieved successfully.`;
+                }
+                
+            case 'GET_QUANTMETRICS_TOKENMETRICS':
+                // Check if there's already a formatted text response
+                if (actionResult.text && typeof actionResult.text === 'string') {
+                    return actionResult.text;
+                }
+                
+                // Fallback formatting if no text response
+                const quantMetricsData = actionResult.quantmetrics || actionResult.data || [];
+                if (quantMetricsData.length > 0) {
+                    const risk = quantMetricsData[0];
+                    let summary = `⚡ **Quantitative Metrics Analysis**\n\n`;
+                    
+                    if (risk.TOKEN_NAME || risk.TOKEN_SYMBOL) {
+                        summary += `🪙 **Token**: ${risk.TOKEN_NAME || risk.TOKEN_SYMBOL}\n\n`;
+                    }
+                    if (risk.VOLATILITY !== undefined) {
+                        summary += `📊 **Volatility**: ${risk.VOLATILITY.toFixed(2)}%\n`;
+                    }
+                    if (risk.SHARPE !== undefined) {
+                        summary += `📈 **Sharpe Ratio**: ${risk.SHARPE.toFixed(3)}\n`;
+                    }
+                    if (risk.MAX_DRAWDOWN !== undefined) {
+                        summary += `📉 **Max Drawdown**: ${risk.MAX_DRAWDOWN.toFixed(2)}%\n`;
+                    }
+                    if (risk.CAGR !== undefined) {
+                        summary += `💹 **CAGR**: ${risk.CAGR.toFixed(2)}%\n`;
+                    }
+                    if (risk.ALL_TIME_RETURN !== undefined) {
+                        summary += `🚀 **All-Time Return**: ${risk.ALL_TIME_RETURN.toFixed(2)}%\n`;
+                    }
+                    
+                    if (actionResult.analysis?.summary) {
+                        summary += `\n🧠 **Analysis**: ${actionResult.analysis.summary}`;
+                    }
+                    
+                    return summary;
+                } else {
+                    return `⚡ **Quantitative Metrics**: Analysis completed successfully.`;
                 }
                 
             case 'getTraderGrades':
