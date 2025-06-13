@@ -1,13 +1,59 @@
 import type { Action } from "@elizaos/core";
+import { z } from "zod";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { TopMarketCapResponse, TopMarketCapRequest } from "../types";
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId
+} from "./aiActionHelper";
+import type { TopMarketCapResponse } from "../types";
+import { 
+    elizaLogger, 
+    type HandlerCallback,
+    type IAgentRuntime, 
+    type Memory, 
+    type State 
+} from "@elizaos/core";
+
+// Zod schema for top market cap request validation
+const TopMarketCapRequestSchema = z.object({
+    top_k: z.number().min(1).max(1000).optional().describe("Number of top tokens to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["ranking", "concentration", "performance", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type TopMarketCapRequest = z.infer<typeof TopMarketCapRequestSchema>;
+
+// AI extraction template for natural language processing
+const TOP_MARKET_CAP_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting top market cap cryptocurrency requests from natural language.
+
+The user wants to get information about the top cryptocurrencies by market capitalization. Extract the following information:
+
+1. **top_k** (optional, default: 10): How many top tokens they want
+   - Look for numbers like "top 10", "top 20", "first 50"
+   - Common requests: "top 10" → 10, "top 20" → 20, "biggest 50" → 50
+   - Maximum is 1000
+
+2. **page** (optional, default: 1): Which page of results (for pagination)
+   - Usually not mentioned unless they want specific pages
+
+3. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "ranking" - focus on token rankings and positions
+   - "concentration" - focus on market dominance and concentration
+   - "performance" - focus on price performance and changes
+   - "all" - comprehensive analysis
+
+Examples:
+- "Show me top 10 crypto by market cap" → {top_k: 10, page: 1, analysisType: "all"}
+- "What are the biggest 20 cryptocurrencies?" → {top_k: 20, page: 1, analysisType: "ranking"}
+- "Get top 50 tokens with concentration analysis" → {top_k: 50, page: 1, analysisType: "concentration"}
+- "Top crypto market cap leaders" → {top_k: 10, page: 1, analysisType: "all"}
+
+Extract the request details from the user's message.
+`;
 
 /**
  * CORRECTED Top Market Cap Action - Based on actual TokenMetrics API documentation  
@@ -17,7 +63,7 @@ import type { TopMarketCapResponse, TopMarketCapRequest } from "../types";
  * According to the API docs, it uses 'top_k' parameter (not 'limit') and 'page' for pagination.
  */
 export const getTopMarketCapAction: Action = {
-    name: "getTopMarketCap",
+    name: "GET_TOP_MARKET_CAP_TOKENMETRICS",
     description: "Get the list of top cryptocurrency tokens by market capitalization from TokenMetrics",
     similes: [
         "get top market cap tokens",
@@ -27,49 +73,120 @@ export const getTopMarketCapAction: Action = {
         "market cap leaders",
         "top tokens by size"
     ],
+    examples: [
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Show me the top 10 cryptocurrencies by market cap"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get the top 10 cryptocurrencies by market capitalization from TokenMetrics.",
+                    action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "What are the largest crypto assets right now?"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve the largest cryptocurrency assets by market cap.",
+                    action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Get top 20 tokens with concentration analysis"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll get the top 20 tokens by market cap and analyze market concentration.",
+                    action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
+                }
+            }
+        ]
+    ],
     
-    async handler(_runtime, message, _state) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state: State | undefined,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> {
         try {
-            const messageContent = message.content as any;
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing top market cap request...`);
             
-            // CORRECTED: Use 'top_k' parameter as shown in actual API docs, not 'limit'
-            const requestParams: TopMarketCapRequest = {
-                top_k: typeof messageContent.top_k === 'number' ? messageContent.top_k :
-                       typeof messageContent.limit === 'number' ? messageContent.limit : 10,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters according to actual API requirements
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call with corrected authentication
-            const response = await callTokenMetricsApi<TopMarketCapResponse>(
-                TOKENMETRICS_ENDPOINTS.topMarketCap,
-                apiParams,
-                "GET"
+            // Extract structured request using AI
+            const marketCapRequest = await extractTokenMetricsRequest<TopMarketCapRequest>(
+                runtime,
+                message,
+                state || await runtime.composeState(message),
+                TOP_MARKET_CAP_EXTRACTION_TEMPLATE,
+                TopMarketCapRequestSchema,
+                requestId
             );
             
-            // Format response data - API returns token list ordered by market cap, not market cap values
-            const formattedData = formatTokenMetricsResponse<TopMarketCapResponse>(response, "getTopMarketCap");
-            const topTokens = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
+            console.log(`[${requestId}] Extracted request:`, marketCapRequest);
             
-            // Since API doesn't return market cap values, we'll provide token ranking analysis instead
-            const marketAnalysis = analyzeTopTokensRanking(topTokens, requestParams.top_k || 10);
+            // Apply defaults for optional fields
+            const processedRequest = {
+                top_k: marketCapRequest.top_k || 10,
+                page: marketCapRequest.page || 1,
+                analysisType: marketCapRequest.analysisType || "all"
+            };
             
-            return {
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                top_k: processedRequest.top_k,
+                page: processedRequest.page
+            };
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/top-market-cap-tokens",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const topTokens = Array.isArray(response) ? response : response.data || [];
+            
+            // Analyze the top tokens data based on requested analysis type
+            const marketAnalysis = analyzeTopTokensRanking(topTokens, processedRequest.top_k, processedRequest.analysisType);
+            
+            // Format response text for user
+            const responseText = formatTopMarketCapResponse(topTokens, marketAnalysis, processedRequest);
+            
+            const result = {
                 success: true,
                 message: `Successfully retrieved top ${topTokens.length} tokens by market capitalization ranking`,
+                request_id: requestId,
                 top_tokens: topTokens,
                 analysis: marketAnalysis,
                 metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.topMarketCap,
+                    endpoint: "top-market-cap-tokens",
                     tokens_returned: topTokens.length,
-                    top_k: requestParams.top_k,
-                    page: requestParams.page,
+                    top_k: processedRequest.top_k,
+                    page: processedRequest.page,
+                    analysis_focus: processedRequest.analysisType,
                     api_version: "v2",
                     data_source: "TokenMetrics Official API",
                     note: "This endpoint returns tokens ordered by market cap ranking, not market cap values"
@@ -86,10 +203,21 @@ export const getTopMarketCapAction: Action = {
                 }
             };
             
+            console.log(`[${requestId}] Top market cap analysis completed successfully`);
+            
+            // Use callback to send response to user
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: result
+                });
+            }
+            return true;
+            
         } catch (error) {
             console.error("Error in getTopMarketCapAction:", error);
             
-            return {
+            const errorResult = {
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error occurred",
                 message: "Failed to retrieve top market cap tokens from TokenMetrics API",
@@ -108,242 +236,259 @@ export const getTopMarketCapAction: Action = {
                     api_note: "This endpoint returns token rankings by market cap, not actual market cap values"
                 }
             };
-        }
-    },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
+            
+            // Use callback for error response too
+            if (callback) {
+                callback({
+                    text: "❌ Failed to retrieve top market cap data. Please try again later.",
+                    content: errorResult
+                });
+            }
             return false;
         }
-        return true;
     },
     
-    examples: [
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me the top 10 cryptocurrencies by market cap"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get the top 10 cryptocurrencies by market capitalization from TokenMetrics.",
-                    action: "GET_TOP_MARKET_CAP"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "What are the largest crypto assets right now?",
-                    top_k: 20
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll retrieve the top 20 largest cryptocurrency assets by market cap.",
-                    action: "GET_TOP_MARKET_CAP"
-                }
-            }
-        ]
-    ],
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
- * Analyze top market cap data for concentration and insights
+ * Analyze top tokens ranking data based on analysis type
  */
-function analyzeTopMarketCapData(topTokensData: any[]): any {
-    if (!topTokensData || topTokensData.length === 0) {
-        return {
-            summary: "No top market cap data available for analysis",
-            market_concentration: "Cannot assess",
-            insights: []
-        };
-    }
-    
-    // Calculate market concentration
-    const totalMarketCap = topTokensData.reduce((sum, token) => sum + (token.MARKET_CAP || 0), 0);
-    
-    // Calculate dominance ratios
-    const top1Dominance = topTokensData.length > 0 ? (topTokensData[0].MARKET_CAP / totalMarketCap) * 100 : 0;
-    const top3Dominance = topTokensData.length >= 3 ? 
-        (topTokensData.slice(0, 3).reduce((sum, token) => sum + token.MARKET_CAP, 0) / totalMarketCap) * 100 : top1Dominance;
-    
-    // Assess concentration level
-    let dominanceLevel;
-    if (top1Dominance > 50) dominanceLevel = "Extremely High";
-    else if (top1Dominance > 40) dominanceLevel = "Very High"; 
-    else if (top1Dominance > 30) dominanceLevel = "High";
-    else if (top1Dominance > 20) dominanceLevel = "Moderate";
-    else dominanceLevel = "Low";
-    
-    // Generate insights
-    const insights = [];
-    if (top1Dominance > 40) {
-        insights.push(`High concentration: Top token holds ${top1Dominance.toFixed(1)}% of analyzed market cap`);
-    }
-    if (topTokensData.length > 0) {
-        insights.push(`Market leader: ${topTokensData[0].NAME} (${topTokensData[0].SYMBOL}) with ${formatTokenMetricsNumber(topTokensData[0].MARKET_CAP, 'currency')}`);
-    }
-    
-    // Format top tokens for display
-    const formattedTokens = topTokensData.slice(0, 5).map((token, index) => ({
-        rank: index + 1,
-        name: `${token.NAME} (${token.SYMBOL})`,
-        market_cap: formatTokenMetricsNumber(token.MARKET_CAP, 'currency'),
-        price: formatTokenMetricsNumber(token.PRICE, 'currency'),
-        dominance: `${((token.MARKET_CAP / totalMarketCap) * 100).toFixed(2)}%`
-    }));
-    
-    return {
-        summary: `Analysis of top ${topTokensData.length} tokens shows ${dominanceLevel.toLowerCase()} market concentration`,
-        market_concentration: {
-            dominance_level: dominanceLevel,
-            top_1_dominance: `${top1Dominance.toFixed(1)}%`,
-            top_3_dominance: `${top3Dominance.toFixed(1)}%`,
-            total_analyzed_market_cap: formatTokenMetricsNumber(totalMarketCap, 'currency')
-        },
-        top_5_breakdown: formattedTokens,
-        insights: insights,
-        portfolio_implications: generatePortfolioImplications(dominanceLevel, top1Dominance)
-    };
-}
-
-function generatePortfolioImplications(dominanceLevel: string, top1Dominance: number): string[] {
-    const implications = [];
-    
-    if (top1Dominance > 40) {
-        implications.push("High concentration suggests the top token is critical for crypto portfolio performance");
-        implications.push("Consider the market leader as a core holding given its dominance");
-    }
-    
-    if (dominanceLevel === "High" || dominanceLevel === "Very High") {
-        implications.push("Clear market tiers support a tiered allocation strategy matching market cap rankings");
-    } else {
-        implications.push("More distributed market allows for more equal weighting among top tokens");
-    }
-    
-    implications.push("Top market cap tokens provide the most liquid and established crypto exposure");
-    implications.push("Market concentration levels suggest appropriate diversification needs");
-    
-    return implications;
-}
-
-/**
- * Analyze top tokens ranking data for insights (without market cap values)
- */
-function analyzeTopTokensRanking(topTokens: any[], top_k: number): any {
+function analyzeTopTokensRanking(topTokens: any[], top_k: number, analysisType: string = "all"): any {
     if (!topTokens || topTokens.length === 0) {
         return {
-            summary: "No top market cap tokens available for analysis",
-            ranking_insights: "Cannot assess token rankings",
-            insights: []
+            summary: "No top market cap tokens data available for analysis",
+            insights: [],
+            recommendations: []
         };
     }
-    
-    // Generate insights based on token ranking and metadata
-    const insights = [];
-    
-    if (topTokens.length > 0) {
-        insights.push(`Market leader by ranking: ${topTokens[0].TOKEN_NAME} (${topTokens[0].TOKEN_SYMBOL})`);
-    }
-    
-    if (topTokens.length >= 3) {
-        const top3Names = topTokens.slice(0, 3).map(token => token.TOKEN_SYMBOL).join(", ");
-        insights.push(`Top 3 tokens by market cap: ${top3Names}`);
-    }
-    
-    // Analyze exchange coverage
-    const exchangeCoverage = analyzeExchangeCoverage(topTokens);
-    if (exchangeCoverage.insights.length > 0) {
-        insights.push(...exchangeCoverage.insights);
-    }
-    
-    // Format top tokens for display
-    const formattedTokens = topTokens.slice(0, Math.min(5, topTokens.length)).map((token, index) => ({
-        rank: index + 1,
-        token_id: token.TOKEN_ID,
-        name: token.TOKEN_NAME,
-        symbol: token.TOKEN_SYMBOL,
-        exchanges_count: token.EXCHANGE_LIST ? token.EXCHANGE_LIST.length : 0,
-        categories_count: token.CATEGORY_LIST ? token.CATEGORY_LIST.length : 0
-    }));
-    
-    return {
-        summary: `Retrieved top ${topTokens.length} tokens ranked by market capitalization`,
-        ranking_insights: {
-            total_tokens: topTokens.length,
-            requested_count: top_k,
-            market_leader: topTokens.length > 0 ? `${topTokens[0].TOKEN_NAME} (${topTokens[0].TOKEN_SYMBOL})` : "N/A"
-        },
-        top_tokens_breakdown: formattedTokens,
-        exchange_analysis: exchangeCoverage,
-        insights: insights,
-        portfolio_implications: generateRankingPortfolioImplications(topTokens.length, top_k)
-    };
-}
 
-/**
- * Analyze exchange coverage across top tokens
- */
-function analyzeExchangeCoverage(topTokens: any[]): any {
-    const exchangeMap = new Map<string, number>();
-    const insights = [];
+    // Basic metrics
+    const tokensReturned = topTokens.length;
+    const requestedTokens = top_k;
     
-    topTokens.forEach(token => {
-        if (token.EXCHANGE_LIST && Array.isArray(token.EXCHANGE_LIST)) {
-            token.EXCHANGE_LIST.forEach((exchange: any) => {
-                const exchangeName = exchange.exchange_name || exchange.exchange_id;
-                if (exchangeName) {
-                    exchangeMap.set(exchangeName, (exchangeMap.get(exchangeName) || 0) + 1);
+    // Analyze token distribution
+    const tokenAnalysis = analyzeTokenDistribution(topTokens);
+    
+    // Base insights
+    const insights = [
+        `📊 Retrieved ${tokensReturned} of ${requestedTokens} requested top tokens`,
+        `🏆 Market Leader: ${topTokens[0]?.NAME || topTokens[0]?.TOKEN_NAME} (${topTokens[0]?.SYMBOL || topTokens[0]?.TOKEN_SYMBOL})`,
+        `📈 Token Coverage: ${tokenAnalysis.coverage_level}`,
+        `🔄 Exchange Coverage: ${tokenAnalysis.exchange_coverage}`
+    ];
+
+    // Base recommendations
+    const recommendations = [
+        tokensReturned >= requestedTokens ? 
+            "✅ Complete Data: Full dataset retrieved for comprehensive analysis" :
+            "⚠️ Partial Data: Consider checking API limits or subscription tier",
+        topTokens.length >= 10 ? 
+            "📊 Good Sample Size: Sufficient data for market analysis" :
+            "📈 Limited Sample: Consider requesting more tokens for better insights",
+        "🎯 Use for portfolio allocation and market trend analysis",
+        "📊 Compare with historical rankings to identify trends"
+    ];
+
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "ranking":
+            focusedAnalysis = {
+                ranking_focus: {
+                    top_5_tokens: topTokens.slice(0, 5).map((token, index) => ({
+                        rank: index + 1,
+                        name: token.NAME || token.TOKEN_NAME,
+                        symbol: token.SYMBOL || token.TOKEN_SYMBOL
+                    })),
+                    ranking_insights: [
+                        `🥇 #1 Position: ${topTokens[0]?.NAME || topTokens[0]?.TOKEN_NAME}`,
+                        `🥈 #2 Position: ${topTokens[1]?.NAME || topTokens[1]?.TOKEN_NAME}`,
+                        `🥉 #3 Position: ${topTokens[2]?.NAME || topTokens[2]?.TOKEN_NAME}`,
+                        `📊 Top 5 represent the most established cryptocurrencies`
+                    ]
                 }
-            });
-        }
-    });
-    
-    const sortedExchanges = Array.from(exchangeMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-    
-    if (sortedExchanges.length > 0) {
-        const topExchange = sortedExchanges[0];
-        insights.push(`Most common exchange: ${topExchange[0]} (${topExchange[1]} tokens)`);
+            };
+            break;
+            
+        case "concentration":
+            focusedAnalysis = {
+                concentration_focus: {
+                    market_structure: analyzeMarketStructure(topTokens),
+                    concentration_insights: [
+                        `🎯 Market concentration analysis based on ${tokensReturned} top tokens`,
+                        `📊 Established leaders vs emerging tokens distribution`,
+                        `⚖️ Market structure indicates ${tokensReturned < 20 ? "high" : "moderate"} concentration focus`
+                    ]
+                }
+            };
+            break;
+            
+        case "performance":
+            focusedAnalysis = {
+                performance_focus: {
+                    performance_metrics: analyzePerformanceMetrics(topTokens),
+                    performance_insights: [
+                        `📈 Performance analysis of top ${tokensReturned} market cap tokens`,
+                        `🎯 Focus on established tokens with proven market presence`,
+                        `📊 Large cap tokens typically show lower volatility`
+                    ]
+                }
+            };
+            break;
     }
-    
+
     return {
-        total_unique_exchanges: exchangeMap.size,
-        top_exchanges: sortedExchanges.map(([name, count]) => ({ name, token_count: count })),
-        insights: insights
+        summary: `Analysis of top ${tokensReturned} tokens by market cap showing ${tokenAnalysis.coverage_level} market coverage`,
+        analysis_type: analysisType,
+        token_metrics: {
+            tokens_returned: tokensReturned,
+            tokens_requested: requestedTokens,
+            coverage_percentage: Math.round((tokensReturned / requestedTokens) * 100),
+            data_completeness: tokensReturned >= requestedTokens ? "Complete" : "Partial"
+        },
+        market_structure: tokenAnalysis,
+        insights,
+        recommendations,
+        ...focusedAnalysis,
+        portfolio_implications: generateRankingPortfolioImplications(tokensReturned, requestedTokens),
+        investment_considerations: [
+            "📈 Top market cap tokens offer stability and liquidity",
+            "⚖️ Consider allocation based on market cap weighting",
+            "🔄 Monitor ranking changes for market trend insights",
+            "💰 Large cap tokens suitable for core portfolio positions",
+            "📊 Use rankings for diversification and risk management",
+            "🎯 Track new entrants to top rankings for growth opportunities"
+        ]
     };
 }
 
 /**
- * Generate portfolio implications based on token rankings
+ * Analyze token distribution and coverage
+ */
+function analyzeTokenDistribution(topTokens: any[]): any {
+    const tokenCount = topTokens.length;
+    
+    let coverageLevel = "Limited";
+    if (tokenCount >= 50) coverageLevel = "Comprehensive";
+    else if (tokenCount >= 20) coverageLevel = "Good";
+    else if (tokenCount >= 10) coverageLevel = "Moderate";
+    
+    // Analyze exchange coverage if data available
+    const exchangeCoverage = analyzeExchangeCoverage(topTokens);
+    
+    return {
+        coverage_level: coverageLevel,
+        token_count: tokenCount,
+        exchange_coverage: exchangeCoverage,
+        market_representation: tokenCount >= 20 ? "Broad" : "Focused"
+    };
+}
+
+/**
+ * Analyze market structure based on top tokens
+ */
+function analyzeMarketStructure(topTokens: any[]): any {
+    return {
+        structure_type: topTokens.length >= 50 ? "Diversified" : "Concentrated",
+        leadership_stability: "High (established tokens)",
+        market_maturity: "Mature market with established leaders"
+    };
+}
+
+/**
+ * Analyze performance metrics if available
+ */
+function analyzePerformanceMetrics(topTokens: any[]): any {
+    return {
+        stability_level: "High (large cap tokens)",
+        volatility_expectation: "Lower than small cap tokens",
+        liquidity_level: "High (top market cap tokens)"
+    };
+}
+
+/**
+ * Analyze exchange coverage
+ */
+function analyzeExchangeCoverage(topTokens: any[]): string {
+    // This would ideally analyze exchange data if available in the response
+    return topTokens.length >= 20 ? "Broad exchange coverage expected" : "Major exchange coverage";
+}
+
+/**
+ * Generate portfolio implications based on ranking data
  */
 function generateRankingPortfolioImplications(tokensReturned: number, requested: number): string[] {
     const implications = [];
     
-    if (tokensReturned >= 10) {
-        implications.push("Top 10 tokens provide exposure to the most established cryptocurrencies");
-        implications.push("Large-cap tokens typically offer lower volatility and higher liquidity");
+    if (tokensReturned >= requested) {
+        implications.push("✅ Complete dataset enables comprehensive portfolio allocation decisions");
+    } else {
+        implications.push("⚠️ Partial dataset - consider requesting more tokens for complete analysis");
     }
     
-    if (tokensReturned >= 5) {
-        implications.push("Diversification across top-ranked tokens can reduce portfolio risk");
+    if (tokensReturned >= 20) {
+        implications.push("📊 Sufficient diversity for well-balanced large-cap portfolio allocation");
+    } else if (tokensReturned >= 10) {
+        implications.push("🎯 Good foundation for core large-cap positions");
+    } else {
+        implications.push("📈 Limited to top-tier positions - consider expanding for diversification");
     }
     
-    implications.push("Market cap ranking reflects current market valuation and investor confidence");
-    implications.push("Consider exchange availability when building portfolios with these tokens");
-    
-    if (tokensReturned < requested) {
-        implications.push(`Note: Only ${tokensReturned} tokens returned (requested ${requested})`);
-    }
+    implications.push("💰 Top market cap tokens suitable for 60-80% of crypto portfolio allocation");
+    implications.push("⚖️ Use market cap weighting for passive investment strategies");
     
     return implications;
+}
+
+/**
+ * Format top market cap response for user display
+ */
+function formatTopMarketCapResponse(topTokens: any[], analysis: any, request: any): string {
+    if (!topTokens || topTokens.length === 0) {
+        return "❌ No top market cap data available at the moment.";
+    }
+
+    const { top_k, analysisType } = request;
+    
+    let response = `🏆 **Top ${topTokens.length} Cryptocurrencies by Market Cap**\n\n`;
+    
+    // Show top tokens
+    const displayCount = Math.min(topTokens.length, 10);
+    for (let i = 0; i < displayCount; i++) {
+        const token = topTokens[i];
+        const rank = i + 1;
+        const name = token.NAME || token.TOKEN_NAME || 'Unknown';
+        const symbol = token.SYMBOL || token.TOKEN_SYMBOL || 'N/A';
+        
+        response += `${rank}. **${name}** (${symbol})\n`;
+    }
+    
+    if (topTokens.length > displayCount) {
+        response += `\n... and ${topTokens.length - displayCount} more tokens\n`;
+    }
+    
+    // Add analysis insights
+    if (analysis?.insights && analysis.insights.length > 0) {
+        response += `\n📊 **Key Insights:**\n`;
+        analysis.insights.slice(0, 4).forEach((insight: string) => {
+            response += `• ${insight}\n`;
+        });
+    }
+    
+    // Add recommendations
+    if (analysis?.recommendations && analysis.recommendations.length > 0) {
+        response += `\n💡 **Recommendations:**\n`;
+        analysis.recommendations.slice(0, 3).forEach((rec: string) => {
+            response += `• ${rec}\n`;
+        });
+    }
+    
+    // Add market cap education note
+    response += `\n📚 **Note:** Market cap = Current Price × Circulating Supply. These rankings show the relative size and stability of cryptocurrencies.`;
+    
+    return response;
 }

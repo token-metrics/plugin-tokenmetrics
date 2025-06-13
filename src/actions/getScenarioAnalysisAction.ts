@@ -1,14 +1,131 @@
 import type { Action } from "@elizaos/core";
 import {
-    validateTokenMetricsParams,
-    callTokenMetricsApi,
-    buildTokenMetricsParams,
-    formatTokenMetricsResponse,
-    extractTokenIdentifier,
-    formatTokenMetricsNumber,
-    TOKENMETRICS_ENDPOINTS
-} from "./action";
-import type { ScenarioAnalysisResponse, ScenarioAnalysisRequest } from "../types";
+    type IAgentRuntime,
+    type Memory,
+    type State,
+    type HandlerCallback,
+    elizaLogger,
+    composeContext,
+    generateObject,
+    ModelClass
+} from "@elizaos/core";
+import { z } from "zod";
+import {
+    validateAndGetApiKey,
+    extractTokenMetricsRequest,
+    callTokenMetricsAPI,
+    formatCurrency,
+    formatPercentage,
+    generateRequestId,
+    resolveTokenSmart,
+    mapSymbolToName
+} from "./aiActionHelper";
+import type { ScenarioAnalysisResponse } from "../types";
+
+// Zod schema for scenario analysis request validation
+const ScenarioAnalysisRequestSchema = z.object({
+    cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
+    token_id: z.number().optional().describe("Specific token ID if known"),
+    symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+    limit: z.number().min(1).max(100).optional().describe("Number of scenarios to return"),
+    page: z.number().min(1).optional().describe("Page number for pagination"),
+    analysisType: z.enum(["risk_assessment", "portfolio_planning", "stress_testing", "all"]).optional().describe("Type of analysis to focus on")
+});
+
+type ScenarioAnalysisRequest = z.infer<typeof ScenarioAnalysisRequestSchema>;
+
+// Enhanced template for extracting scenario analysis information from conversations
+const scenarioAnalysisTemplate = `# Task: Extract Scenario Analysis Request Information
+
+**CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.**
+
+Based on the conversation context, identify the scenario analysis request details:
+
+## Required Information:
+1. **cryptocurrency** (optional): The EXACT name or symbol mentioned
+   - Examples: "Bitcoin", "Ethereum", "Dogecoin", "Avalanche", "Solana"
+   - Symbols: "BTC", "ETH", "DOGE", "AVAX", "SOL", "ADA", "DOT"
+   - CRITICAL: Use the EXACT text the user provided
+
+2. **symbol** (optional): Extract if user mentions a symbol
+   - Common patterns: BTC, ETH, AVAX, SOL, ADA, DOT, MATIC, LINK
+   - If user says "BTC" → symbol: "BTC"
+   - If user says "Bitcoin" → cryptocurrency: "Bitcoin"
+
+3. **analysisType** (optional, default: "all"): Type of scenario analysis
+   - "risk_assessment" - focus on downside risks and worst-case scenarios
+   - "portfolio_planning" - focus on scenarios for portfolio allocation  
+   - "stress_testing" - focus on extreme market conditions
+   - "all" - comprehensive scenario analysis
+
+4. **limit** (optional, default: 20): Number of scenarios to return
+5. **page** (optional, default: 1): Page number for pagination
+
+## Examples:
+- "Get scenario analysis for Bitcoin" → {cryptocurrency: "Bitcoin", analysisType: "all"}
+- "Show me price scenarios for ETH" → {symbol: "ETH", analysisType: "all"}
+- "AVAX scenario analysis" → {symbol: "AVAX", analysisType: "all"}
+- "Risk scenarios for Avalanche" → {cryptocurrency: "Avalanche", analysisType: "risk_assessment"}
+- "Stress test scenarios for market crash" → {analysisType: "stress_testing"}
+
+**IMPORTANT**: 
+- Extract EXACTLY what the user typed
+- Do not convert between names and symbols
+- Do not assume or substitute different cryptocurrencies
+- If unclear, extract the exact text mentioned
+
+Extract the scenario analysis request from the user's message:`;
+
+// Simple regex-based extraction as fallback
+function extractCryptocurrencySimple(text: string): { cryptocurrency?: string; symbol?: string } {
+    const upperText = text.toUpperCase();
+    
+    // Common cryptocurrency symbols
+    const symbolMap: Record<string, { cryptocurrency: string; symbol: string }> = {
+        'BTC': { cryptocurrency: 'Bitcoin', symbol: 'BTC' },
+        'ETH': { cryptocurrency: 'Ethereum', symbol: 'ETH' },
+        'AVAX': { cryptocurrency: 'Avalanche', symbol: 'AVAX' },
+        'SOL': { cryptocurrency: 'Solana', symbol: 'SOL' },
+        'ADA': { cryptocurrency: 'Cardano', symbol: 'ADA' },
+        'DOT': { cryptocurrency: 'Polkadot', symbol: 'DOT' },
+        'MATIC': { cryptocurrency: 'Polygon', symbol: 'MATIC' },
+        'LINK': { cryptocurrency: 'Chainlink', symbol: 'LINK' },
+        'DOGE': { cryptocurrency: 'Dogecoin', symbol: 'DOGE' },
+        'XRP': { cryptocurrency: 'Ripple', symbol: 'XRP' }
+    };
+    
+    // Check for symbols first
+    for (const [symbol, data] of Object.entries(symbolMap)) {
+        if (upperText.includes(symbol)) {
+            return { cryptocurrency: data.cryptocurrency, symbol: data.symbol };
+        }
+    }
+    
+    // Check for full names
+    const nameMap: Record<string, { cryptocurrency: string; symbol: string }> = {
+        'BITCOIN': { cryptocurrency: 'Bitcoin', symbol: 'BTC' },
+        'ETHEREUM': { cryptocurrency: 'Ethereum', symbol: 'ETH' },
+        'AVALANCHE': { cryptocurrency: 'Avalanche', symbol: 'AVAX' },
+        'SOLANA': { cryptocurrency: 'Solana', symbol: 'SOL' },
+        'CARDANO': { cryptocurrency: 'Cardano', symbol: 'ADA' },
+        'POLKADOT': { cryptocurrency: 'Polkadot', symbol: 'DOT' },
+        'POLYGON': { cryptocurrency: 'Polygon', symbol: 'MATIC' },
+        'CHAINLINK': { cryptocurrency: 'Chainlink', symbol: 'LINK' },
+        'DOGECOIN': { cryptocurrency: 'Dogecoin', symbol: 'DOGE' },
+        'RIPPLE': { cryptocurrency: 'Ripple', symbol: 'XRP' }
+    };
+    
+    for (const [name, data] of Object.entries(nameMap)) {
+        if (upperText.includes(name)) {
+            return { cryptocurrency: data.cryptocurrency, symbol: data.symbol };
+        }
+    }
+    
+    return {};
+}
+
+// AI extraction template for natural language processing
+const SCENARIO_ANALYSIS_EXTRACTION_TEMPLATE = scenarioAnalysisTemplate;
 
 /**
  * SCENARIO ANALYSIS ACTION - Based on actual TokenMetrics API documentation
@@ -18,7 +135,7 @@ import type { ScenarioAnalysisResponse, ScenarioAnalysisRequest } from "../types
  * Essential for risk assessment, portfolio planning, and strategic decision making.
  */
 export const getScenarioAnalysisAction: Action = {
-    name: "getScenarioAnalysis",
+    name: "GET_SCENARIO_ANALYSIS_TOKENMETRICS",
     description: "Get price predictions based on different cryptocurrency market scenarios from TokenMetrics for risk assessment and strategic planning",
     similes: [
         "get scenario analysis",
@@ -27,138 +144,23 @@ export const getScenarioAnalysisAction: Action = {
         "price scenarios",
         "scenario modeling",
         "what if analysis",
-        "market scenario planning"
+        "market scenario planning",
+        "stress testing",
+        "risk scenarios"
     ],
-    
-    async handler(_runtime, message, _state) {
-        try {
-            const messageContent = message.content as any;
-            
-            // Extract token identifiers
-            const tokenIdentifier = extractTokenIdentifier(messageContent);
-            
-            // Build parameters based on actual API documentation
-            const requestParams: ScenarioAnalysisRequest = {
-                // Token identification
-                token_id: tokenIdentifier.token_id || 
-                         (typeof messageContent.token_id === 'number' ? messageContent.token_id : undefined),
-                symbol: tokenIdentifier.symbol || 
-                       (typeof messageContent.symbol === 'string' ? messageContent.symbol : undefined),
-                
-                // Pagination
-                limit: typeof messageContent.limit === 'number' ? messageContent.limit : 50,
-                page: typeof messageContent.page === 'number' ? messageContent.page : 1
-            };
-            
-            // Validate parameters
-            validateTokenMetricsParams(requestParams);
-            
-            // Build clean parameters
-            const apiParams = buildTokenMetricsParams(requestParams);
-            
-            
-            // Make API call
-            const response = await callTokenMetricsApi<ScenarioAnalysisResponse>(
-                TOKENMETRICS_ENDPOINTS.scenarioAnalysis,
-                apiParams,
-                "GET"
-            );
-            
-            // Format response data
-            const formattedData = formatTokenMetricsResponse<ScenarioAnalysisResponse>(response, "getScenarioAnalysis");
-            const scenarioData = Array.isArray(formattedData) ? formattedData : formattedData.data || [];
-            
-            // Analyze the scenario data
-            const scenarioAnalysis = analyzeScenarioData(scenarioData);
-            
-            return {
-                success: true,
-                message: `Successfully retrieved ${scenarioData.length} scenario analysis data points`,
-                scenario_data: scenarioData,
-                analysis: scenarioAnalysis,
-                metadata: {
-                    endpoint: TOKENMETRICS_ENDPOINTS.scenarioAnalysis,
-                    requested_token: tokenIdentifier.symbol || tokenIdentifier.token_id,
-                    pagination: {
-                        page: requestParams.page,
-                        limit: requestParams.limit
-                    },
-                    data_points: scenarioData.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics Scenario Modeling Engine"
-                },
-                scenario_explanation: {
-                    purpose: "Evaluate potential price outcomes under different market conditions for informed decision making",
-                    scenario_types: [
-                        "Bull Market - Optimistic market conditions with strong growth",
-                        "Bear Market - Pessimistic conditions with significant declines",
-                        "Base Case - Most likely scenario based on current trends",
-                        "Extreme Scenarios - Low probability but high impact events"
-                    ],
-                    usage_guidelines: [
-                        "Use for risk assessment and portfolio stress testing",
-                        "Plan position sizing based on downside scenarios",
-                        "Set profit targets based on upside scenarios",
-                        "Develop contingency plans for extreme scenarios"
-                    ],
-                    interpretation: [
-                        "Higher probability scenarios should drive primary strategy",
-                        "Low probability scenarios help with risk management",
-                        "Price ranges provide better insight than point estimates",
-                        "Scenario analysis is probabilistic, not predictive"
-                    ]
-                }
-            };
-            
-        } catch (error) {
-            console.error("Error in getScenarioAnalysisAction:", error);
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve scenario analysis from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/scenario-analysis is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that pagination parameters are positive integers",
-                        "Ensure your API key has access to scenario analysis endpoint",
-                        "Confirm the token has sufficient data for scenario modeling"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Check if your subscription includes scenario analysis access",
-                        "Verify the token has been analyzed by TokenMetrics modeling engine",
-                        "Ensure sufficient market data exists for scenario generation"
-                    ]
-                }
-            };
-        }
-    },
-    
-    validate: async (runtime, _message) => {
-        const apiKey = runtime.getSetting("TOKENMETRICS_API_KEY");
-        if (!apiKey) {
-            console.warn("TokenMetrics API key not found. Please set TOKENMETRICS_API_KEY environment variable.");
-            return false;
-        }
-        return true;
-    },
-    
     examples: [
         [
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Get scenario analysis for Bitcoin",
-                    symbol: "BTC"
+                    text: "Get scenario analysis for Bitcoin"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
                     text: "I'll retrieve price scenario analysis for Bitcoin under different market conditions.",
-                    action: "GET_SCENARIO_ANALYSIS"
+                    action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
                 }
             }
         ],
@@ -166,25 +168,377 @@ export const getScenarioAnalysisAction: Action = {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Show me market scenario predictions for Ethereum",
-                    symbol: "ETH"
+                    text: "Show me risk scenarios for portfolio planning"
                 }
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "I'll get comprehensive scenario analysis for Ethereum across different market conditions.",
-                    action: "GET_SCENARIO_ANALYSIS"
+                    text: "I'll get comprehensive scenario analysis for portfolio risk assessment and planning.",
+                    action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
+                }
+            }
+        ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Stress test scenarios for market crash"
+                }
+            },
+            {
+                user: "{{user2}}",
+                content: {
+                    text: "I'll retrieve stress testing scenarios for extreme market conditions.",
+                    action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
                 }
             }
         ]
     ],
+    
+    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
+        try {
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing scenario analysis request...`);
+            
+            // STEP 2: Extract scenario analysis request using AI with enhanced template
+            const userMessage = message.content?.text || "";
+            
+            console.log(`🔍 AI EXTRACTION CONTEXT [${requestId}]:`);
+            console.log(`📝 User message: "${userMessage}"`);
+            console.log(`📋 Template being used:`);
+            console.log(scenarioAnalysisTemplate);
+            console.log(`🔚 END CONTEXT [${requestId}]`);
+
+            // Enhanced template with cache busting
+            const enhancedTemplate = scenarioAnalysisTemplate
+                .replace('{{requestId}}', requestId)
+                .replace('{{timestamp}}', new Date().toISOString()) + `
+
+# Cache Busting ID: ${requestId}
+# Timestamp: ${new Date().toISOString()}
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
+            const scenarioRequestResult = await generateObject({
+                runtime,
+                context: composeContext({
+                    state: state || await runtime.composeState(message),
+                    template: enhancedTemplate
+                }),
+                modelClass: ModelClass.LARGE, // Use GPT-4o for better instruction following
+                schema: ScenarioAnalysisRequestSchema,
+                mode: "json"
+            });
+
+            let scenarioRequest = scenarioRequestResult.object as ScenarioAnalysisRequest;
+
+            console.log(`[${requestId}] AI Extracted:`, scenarioRequest);
+
+            // STEP 3: Apply regex fallback if AI extraction failed or is inconsistent
+            if (!scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+                console.log(`[${requestId}] AI extraction incomplete, applying regex fallback...`);
+                const regexResult = extractCryptocurrencySimple(userMessage);
+                if (regexResult.cryptocurrency || regexResult.symbol) {
+                    scenarioRequest = {
+                        ...scenarioRequest,
+                        cryptocurrency: regexResult.cryptocurrency,
+                        symbol: regexResult.symbol
+                    };
+                    console.log(`[${requestId}] Regex fallback result:`, regexResult);
+                }
+            }
+
+            // STEP 3.5: Fix misclassified AI extractions (symbols classified as cryptocurrency names)
+            if (scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+                const crypto = scenarioRequest.cryptocurrency.toUpperCase();
+                // Check if the "cryptocurrency" is actually a symbol
+                const commonSymbols = ['BTC', 'ETH', 'DOGE', 'AVAX', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI', 'LTC', 'XRP', 'BNB', 'USDT', 'USDC', 'ATOM', 'NEAR', 'FTM', 'ALGO', 'VET', 'ICP', 'FLOW', 'SAND', 'MANA', 'CRO', 'APE', 'SHIB', 'PEPE', 'WIF', 'BONK'];
+                
+                if (commonSymbols.includes(crypto)) {
+                    console.log(`[${requestId}] 🔧 Fixing misclassified extraction: "${scenarioRequest.cryptocurrency}" is a symbol, not a cryptocurrency name`);
+                    scenarioRequest = {
+                        ...scenarioRequest,
+                        cryptocurrency: undefined,
+                        symbol: crypto
+                    };
+                    console.log(`[${requestId}] 🔧 Corrected to:`, { symbol: crypto });
+                }
+            }
+
+            // STEP 4: Validate extraction results
+            if (scenarioRequest.cryptocurrency || scenarioRequest.symbol) {
+                console.log(`[${requestId}] ✅ Successfully extracted cryptocurrency: ${scenarioRequest.cryptocurrency || scenarioRequest.symbol}`);
+            } else {
+                console.log(`[${requestId}] ⚠️ No specific cryptocurrency extracted, proceeding with general analysis`);
+            }
+            
+            // Apply defaults for optional fields
+            const processedRequest = {
+                cryptocurrency: scenarioRequest.cryptocurrency,
+                token_id: scenarioRequest.token_id,
+                symbol: scenarioRequest.symbol,
+                limit: scenarioRequest.limit || 20,
+                page: scenarioRequest.page || 1,
+                analysisType: scenarioRequest.analysisType || "all"
+            };
+            
+            // STEP 5: Smart symbol-to-name mapping (same approach as working actions)
+            let cryptoToResolve = processedRequest.cryptocurrency;
+            
+            // If we have a symbol but no cryptocurrency name, try to map it
+            if (!cryptoToResolve && processedRequest.symbol) {
+                const mappedName = mapSymbolToName(processedRequest.symbol);
+                if (mappedName !== processedRequest.symbol) {
+                    // Symbol was successfully mapped to a name
+                    cryptoToResolve = mappedName;
+                    processedRequest.cryptocurrency = mappedName;
+                    console.log(`[${requestId}] 🔄 Mapped symbol "${processedRequest.symbol}" to "${mappedName}"`);
+                } else {
+                    // Symbol wasn't in our mapping, try to resolve it directly
+                    cryptoToResolve = processedRequest.symbol;
+                    console.log(`[${requestId}] 🔍 Symbol "${processedRequest.symbol}" not in mapping, will try direct resolution`);
+                }
+            }
+            
+            // Resolve token if we have a cryptocurrency name to resolve
+            let resolvedToken = null;
+            if (cryptoToResolve && !processedRequest.token_id) {
+                try {
+                    resolvedToken = await resolveTokenSmart(cryptoToResolve, runtime);
+                    if (resolvedToken) {
+                        processedRequest.token_id = resolvedToken.TOKEN_ID;
+                        processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+                        processedRequest.cryptocurrency = resolvedToken.TOKEN_NAME;
+                        console.log(`[${requestId}] ✅ Resolved "${cryptoToResolve}" to ${resolvedToken.TOKEN_NAME} (${resolvedToken.TOKEN_SYMBOL}) - ID: ${resolvedToken.TOKEN_ID}`);
+                    } else {
+                        console.log(`[${requestId}] ❌ Failed to resolve "${cryptoToResolve}"`);
+                    }
+                } catch (error) {
+                    console.log(`[${requestId}] ❌ Error resolving token "${cryptoToResolve}":`, error);
+                }
+            }
+            
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: processedRequest.limit,
+                page: processedRequest.page
+            };
+            
+            // Add token identification parameters
+            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
+            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/scenario-analysis",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // CRITICAL FIX: Check for API errors before processing data
+            if (response && response.success === false) {
+                console.log(`[${requestId}] ❌ API returned error: ${response.message || 'Unknown error'}`);
+                
+                if (callback) {
+                    callback({
+                        text: `❌ No scenario analysis data available for ${processedRequest.cryptocurrency || processedRequest.symbol || 'this token'}.\n\nThis could mean:\n• Token is not covered by TokenMetrics scenario modeling\n• Insufficient historical data for scenario generation\n• Token may be too new or have limited market activity\n\nTry using the full cryptocurrency name instead of the symbol.`,
+                        content: {
+                            success: false,
+                            error: response.message || 'Data not found',
+                            request_id: requestId
+                        }
+                    });
+                }
+                
+                return false;
+            }
+            
+            // Process response data - FIXED: Handle nested SCENARIO_PREDICTION structure
+            let scenarioData = [];
+            
+            if (Array.isArray(response)) {
+                // Direct array response
+                scenarioData = response;
+            } else if (response.data && Array.isArray(response.data)) {
+                // Response with data wrapper
+                const rawData = response.data;
+                
+                // Transform the nested SCENARIO_PREDICTION structure
+                scenarioData = rawData.flatMap((item: any) => {
+                    if (item.SCENARIO_PREDICTION && item.SCENARIO_PREDICTION.scenario_prediction) {
+                        // Extract the nested scenario predictions and transform them
+                        return item.SCENARIO_PREDICTION.scenario_prediction.map((scenario: any) => ({
+                            // Transform to expected format
+                            TOKEN_ID: item.TOKEN_ID,
+                            TOKEN_NAME: item.TOKEN_NAME,
+                            TOKEN_SYMBOL: item.TOKEN_SYMBOL,
+                            CURRENT_PRICE: item.SCENARIO_PREDICTION.current_price,
+                            PREDICTED_DATE: item.SCENARIO_PREDICTION.predicted_date,
+                            CATEGORY: item.SCENARIO_PREDICTION.category_name,
+                            
+                            // Scenario-specific data
+                            SCENARIO_ID: scenario.scenario,
+                            SCENARIO_TYPE: `Scenario ${scenario.scenario}`,
+                            
+                            // Price predictions (use base as primary)
+                            PREDICTED_PRICE: scenario.predicted_price_base,
+                            PRICE_TARGET: scenario.predicted_price_base,
+                            PREDICTED_PRICE_BEAR: scenario.predicted_price_bear,
+                            PREDICTED_PRICE_MOON: scenario.predicted_price_moon,
+                            
+                            // ROI predictions
+                            PREDICTED_ROI: scenario.predicted_roi_base,
+                            PREDICTED_ROI_BEAR: scenario.predicted_roi_bear,
+                            PREDICTED_ROI_MOON: scenario.predicted_roi_moon,
+                            
+                            // Market cap predictions
+                            PREDICTED_MCAP_BASE: scenario.predicted_mcap_base,
+                            PREDICTED_MCAP_BEAR: scenario.predicted_mcap_bear,
+                            PREDICTED_MCAP_MOON: scenario.predicted_mcap_moon,
+                            
+                            // Additional metadata
+                            TOTAL_MCAP_SCENARIO: scenario.total_mcap_scenario,
+                            
+                            // Assign probability based on scenario type (higher scenarios = lower probability)
+                            PROBABILITY: scenario.scenario <= 1 ? 40 : 
+                                       scenario.scenario <= 2 ? 30 :
+                                       scenario.scenario <= 4 ? 20 :
+                                       scenario.scenario <= 6 ? 15 : 10,
+                            
+                            // Scenario description
+                            SCENARIO_DESCRIPTION: `${scenario.scenario <= 1 ? 'Conservative' : 
+                                                  scenario.scenario <= 2 ? 'Moderate' :
+                                                  scenario.scenario <= 4 ? 'Optimistic' :
+                                                  scenario.scenario <= 6 ? 'Bullish' : 'Extreme Bullish'} scenario with ${(scenario.predicted_roi_base * 100).toFixed(0)}% base ROI`,
+                            
+                            // Raw scenario data for reference
+                            RAW_SCENARIO: scenario
+                        }));
+                    }
+                    return [item]; // Fallback to original item if no nested structure
+                });
+            } else {
+                scenarioData = [];
+            }
+            
+            console.log(`[${requestId}] Processed ${scenarioData.length} scenarios from API response`);
+            
+            // Analyze the scenario data based on requested analysis type
+            const scenarioAnalysis = analyzeScenarioData(scenarioData, processedRequest.analysisType);
+            
+            // Generate formatted response text
+            const tokenName = processedRequest.cryptocurrency || processedRequest.symbol || 'Cryptocurrency';
+            let responseText = `📊 **Scenario Analysis for ${tokenName}**\n\n`;
+            
+            if (scenarioData.length === 0) {
+                responseText += "❌ No scenario analysis data available for this token.\n";
+                responseText += "This could mean:\n";
+                responseText += "• Token is not covered by TokenMetrics scenario modeling\n";
+                responseText += "• Insufficient historical data for scenario generation\n";
+                responseText += "• Token may be too new or have limited market activity\n";
+            } else {
+                responseText += `🎯 **Analysis Summary**\n`;
+                responseText += `• Total Scenarios: ${scenarioData.length}\n`;
+                responseText += `• Analysis Type: ${processedRequest.analysisType}\n`;
+                responseText += `• Data Source: TokenMetrics Scenario Modeling Engine\n\n`;
+                
+                // Add scenario breakdown
+                if (scenarioAnalysis.scenario_breakdown) {
+                    responseText += `📈 **Scenario Breakdown**\n`;
+                    responseText += `• Total Scenario Types: ${scenarioAnalysis.scenario_breakdown.scenario_types || 0}\n`;
+                    responseText += `• Most Likely Scenario: ${scenarioAnalysis.scenario_breakdown.most_likely_scenario || 'Unknown'}\n\n`;
+                }
+                
+                // Add risk assessment
+                if (scenarioAnalysis.risk_assessment) {
+                    responseText += `⚠️ **Risk Assessment**\n`;
+                    responseText += `• Risk Level: ${scenarioAnalysis.risk_assessment.overall_risk_level || 'Unknown'}\n`;
+                    responseText += `• Max Potential Drawdown: ${scenarioAnalysis.risk_assessment.max_potential_drawdown || 'Unknown'}\n`;
+                    responseText += `• Downside Scenarios: ${scenarioAnalysis.risk_assessment.downside_scenarios || 0}\n\n`;
+                }
+                
+                // Add opportunity analysis
+                if (scenarioAnalysis.opportunity_analysis) {
+                    responseText += `🚀 **Opportunity Analysis**\n`;
+                    responseText += `• Upside Potential: ${scenarioAnalysis.opportunity_analysis.upside_potential || 'Unknown'}\n`;
+                    responseText += `• Max Potential Upside: ${scenarioAnalysis.opportunity_analysis.max_potential_upside || 'Unknown'}\n`;
+                    responseText += `• Upside Scenarios: ${scenarioAnalysis.opportunity_analysis.upside_scenarios || 0}\n\n`;
+                }
+                
+                // Add strategic insights
+                if (scenarioAnalysis.insights && scenarioAnalysis.insights.length > 0) {
+                    responseText += `💡 **Key Insights**\n`;
+                    scenarioAnalysis.insights.slice(0, 3).forEach((insight: string) => {
+                        responseText += `• ${insight}\n`;
+                    });
+                    responseText += `\n`;
+                }
+                
+                responseText += `📋 **Usage Guidelines**\n`;
+                responseText += `• Use for risk assessment and portfolio stress testing\n`;
+                responseText += `• Plan position sizing based on downside scenarios\n`;
+                responseText += `• Set profit targets based on upside scenarios\n`;
+                responseText += `• Develop contingency plans for extreme scenarios\n\n`;
+                
+                responseText += `⚡ *Scenario analysis is probabilistic, not predictive. Use for strategic planning and risk management.*`;
+            }
+            
+            console.log(`[${requestId}] Scenario analysis completed successfully`);
+            
+            // Use callback to send response to user (like working actions)
+            if (callback) {
+                callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        request_id: requestId,
+                        scenario_data: scenarioData,
+                        analysis: scenarioAnalysis,
+                        metadata: {
+                            endpoint: "scenario-analysis",
+                            data_source: "TokenMetrics Official API",
+                            api_version: "v2",
+                            requested_token: tokenName,
+                            resolved_token: resolvedToken,
+                            analysis_focus: processedRequest.analysisType,
+                            data_points: scenarioData.length
+                        }
+                    }
+                });
+            }
+            
+            return true;
+        } catch (error) {
+            console.error("Error in getScenarioAnalysisAction:", error);
+            
+            if (callback) {
+                callback({
+                    text: `❌ Failed to retrieve scenario analysis: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    content: {
+                        success: false,
+                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                    }
+                });
+            }
+            
+            return false;
+        }
+    },
+    
+    async validate(runtime, _message) {
+        return validateAndGetApiKey(runtime) !== null;
+    }
 };
 
 /**
  * Comprehensive analysis of scenario data for risk assessment and strategic planning
  */
-function analyzeScenarioData(scenarioData: any[]): any {
+function analyzeScenarioData(scenarioData: any[], analysisType: string = "all"): any {
     if (!scenarioData || scenarioData.length === 0) {
         return {
             summary: "No scenario analysis data available",
@@ -193,32 +547,79 @@ function analyzeScenarioData(scenarioData: any[]): any {
         };
     }
     
-    // Analyze different scenario types and their implications
+    // Core analysis components
     const scenarioBreakdown = analyzeScenarioBreakdown(scenarioData);
     const riskAssessment = assessScenarioRisks(scenarioData);
     const opportunityAnalysis = analyzeScenarioOpportunities(scenarioData);
     const probabilityAnalysis = analyzeProbabilityDistribution(scenarioData);
-    const portfolioImplications = generatePortfolioImplications(scenarioData);
     
-    // Generate strategic insights
-    const insights = generateScenarioInsights(scenarioBreakdown, riskAssessment, opportunityAnalysis);
+    // Analysis type specific insights
+    let focusedAnalysis = {};
+    
+    switch (analysisType) {
+        case "risk_assessment":
+            focusedAnalysis = {
+                risk_focus: {
+                    downside_scenarios: identifyDownsideScenarios(scenarioData),
+                    worst_case_analysis: analyzeWorstCaseScenarios(scenarioData),
+                    risk_mitigation: generateRiskMitigationStrategies(riskAssessment.max_drawdown || 0, riskAssessment.downside_scenarios || 0),
+                    risk_insights: [
+                        `⚠️ Downside scenarios: ${riskAssessment.downside_scenarios || 0}`,
+                        `📉 Maximum potential loss: ${riskAssessment.max_loss || 'Unknown'}`,
+                        `🛡️ Risk level: ${riskAssessment.overall_risk_level || 'Unknown'}`
+                    ]
+                }
+            };
+            break;
+            
+        case "portfolio_planning":
+            focusedAnalysis = {
+                portfolio_focus: {
+                    allocation_scenarios: generateAllocationScenarios(scenarioData),
+                    diversification_impact: analyzeDiversificationImpact(scenarioData),
+                    rebalancing_triggers: identifyRebalancingTriggers(scenarioData),
+                    portfolio_insights: [
+                        `📊 Allocation scenarios: ${scenarioBreakdown.scenario_types || 0}`,
+                        `🎯 Optimal allocation: ${opportunityAnalysis.optimal_allocation || 'Balanced'}`,
+                        `⚖️ Risk-return profile: ${riskAssessment.risk_return_profile || 'Moderate'}`
+                    ]
+                }
+            };
+            break;
+            
+        case "stress_testing":
+            focusedAnalysis = {
+                stress_focus: {
+                    extreme_scenarios: identifyExtremeScenarios(scenarioData),
+                    stress_test_results: performStressTests(scenarioData),
+                    survival_analysis: analyzeSurvivalProbability(scenarioData),
+                    stress_insights: [
+                        `🔥 Extreme scenarios: ${riskAssessment.extreme_scenarios || 0}`,
+                        `💪 Stress test score: ${riskAssessment.stress_score || 'Unknown'}`,
+                        `🎯 Survival probability: ${riskAssessment.survival_probability || 'Unknown'}`
+                    ]
+                }
+            };
+            break;
+    }
     
     return {
         summary: `Scenario analysis across ${scenarioData.length} scenarios shows ${riskAssessment.overall_risk_level} risk with ${opportunityAnalysis.upside_potential} upside potential`,
+        analysis_type: analysisType,
         scenario_breakdown: scenarioBreakdown,
         risk_assessment: riskAssessment,
         opportunity_analysis: opportunityAnalysis,
         probability_analysis: probabilityAnalysis,
-        portfolio_implications: portfolioImplications,
-        insights: insights,
+        insights: generateScenarioInsights(scenarioBreakdown, riskAssessment, opportunityAnalysis),
         strategic_recommendations: generateStrategicRecommendations(riskAssessment, opportunityAnalysis, probabilityAnalysis),
-        stress_testing: generateStressTestingGuidance(scenarioData),
+        ...focusedAnalysis,
         data_quality: {
             source: "TokenMetrics Scenario Modeling Engine",
             scenarios_analyzed: scenarioData.length,
             coverage_completeness: assessScenarioCoverage(scenarioData),
             model_sophistication: assessModelSophistication(scenarioData)
-        }
+        },
+        portfolio_implications: generatePortfolioImplications(scenarioData, analysisType)
     };
 }
 
@@ -247,16 +648,16 @@ function analyzeScenarioBreakdown(scenarioData: any[]): any {
         return {
             scenario_type: type,
             scenario_count: scenarios.length,
-            average_price: formatTokenMetricsNumber(avgPrice, 'currency'),
+            average_price: formatCurrency(avgPrice),
             price_range: {
-                min: formatTokenMetricsNumber(minPrice, 'currency'),
-                max: formatTokenMetricsNumber(maxPrice, 'currency'),
-                spread: formatTokenMetricsNumber(maxPrice - minPrice, 'currency')
+                min: formatCurrency(minPrice),
+                max: formatCurrency(maxPrice),
+                spread: formatCurrency(maxPrice - minPrice)
             },
             average_probability: `${avgProbability.toFixed(1)}%`,
             scenarios_detail: scenarios.slice(0, 3).map((s: any) => ({
                 description: s.SCENARIO_DESCRIPTION || s.DESCRIPTION || `${type} scenario`,
-                price_target: formatTokenMetricsNumber(s.PREDICTED_PRICE || s.PRICE_TARGET, 'currency'),
+                price_target: formatCurrency(s.PREDICTED_PRICE || s.PRICE_TARGET),
                 probability: s.PROBABILITY ? `${s.PROBABILITY}%` : 'N/A',
                 timeframe: s.TIMEFRAME || s.TIME_HORIZON || 'Unknown'
             }))
@@ -305,10 +706,10 @@ function assessScenarioRisks(scenarioData: any[]): any {
     
     return {
         overall_risk_level: riskLevel,
-        max_potential_drawdown: formatTokenMetricsNumber(maxDrawdown * 100, 'percentage'),
+        max_potential_drawdown: formatPercentage(maxDrawdown * 100),
         downside_scenarios: downSideScenarios.length,
         extreme_downside_scenarios: extremeDownside.length,
-        average_downside: formatTokenMetricsNumber(averageDownside * 100, 'percentage'),
+        average_downside: formatPercentage(averageDownside * 100),
         risk_factors: identifyRiskFactors(downSideScenarios),
         worst_case_scenario: identifyWorstCaseScenario(scenarioData),
         risk_mitigation: generateRiskMitigationStrategies(maxDrawdown, downSideScenarios.length)
@@ -348,10 +749,10 @@ function analyzeScenarioOpportunities(scenarioData: any[]): any {
     
     return {
         upside_potential: upsidePotential,
-        max_potential_upside: formatTokenMetricsNumber(maxUpside * 100, 'percentage'),
+        max_potential_upside: formatPercentage(maxUpside * 100),
         upside_scenarios: upsideScenarios.length,
         extreme_upside_scenarios: extremeUpside.length,
-        average_upside: formatTokenMetricsNumber(averageUpside * 100, 'percentage'),
+        average_upside: formatPercentage(averageUpside * 100),
         opportunity_drivers: identifyOpportunityDrivers(upsideScenarios),
         best_case_scenario: identifyBestCaseScenario(scenarioData),
         opportunity_capture: generateOpportunityCaptureStrategies(maxUpside, upsideScenarios.length)
@@ -384,7 +785,7 @@ function analyzeProbabilityDistribution(scenarioData: any[]): any {
     
     return {
         total_scenarios_with_probability: probabilityData.length,
-        weighted_average_price: formatTokenMetricsNumber(weightedAveragePrice, 'currency'),
+        weighted_average_price: formatCurrency(weightedAveragePrice),
         probability_distribution: {
             high_probability: `${highProbability.length} scenarios (>30% probability)`,
             medium_probability: `${mediumProbability.length} scenarios (15-30% probability)`,
@@ -393,13 +794,13 @@ function analyzeProbabilityDistribution(scenarioData: any[]): any {
         most_probable_scenarios: highProbability.slice(0, 3).map(item => ({
             scenario_type: item.type,
             probability: `${item.probability}%`,
-            price_target: formatTokenMetricsNumber(item.price, 'currency')
+            price_target: formatCurrency(item.price)
         })),
         confidence_level: assessConfidenceLevel(probabilityData)
     };
 }
 
-function generatePortfolioImplications(scenarioData: any[]): any {
+function generatePortfolioImplications(scenarioData: any[], analysisType: string): any {
     const implications = [];
     const recommendations = [];
     
@@ -433,7 +834,8 @@ function generatePortfolioImplications(scenarioData: any[]): any {
         allocation_recommendations: recommendations,
         position_sizing_guidance: generatePositionSizingGuidance(riskMetrics, opportunityMetrics),
         hedging_strategies: generateHedgingStrategies(riskMetrics),
-        monitoring_requirements: generateMonitoringRequirements(scenarioData)
+        monitoring_requirements: generateMonitoringRequirements(scenarioData),
+        analysis_type: analysisType
     };
 }
 
@@ -646,8 +1048,8 @@ function identifyWorstCaseScenario(scenarioData: any[]): any {
     
     return {
         scenario_description: worstCase.SCENARIO_DESCRIPTION || worstCase.DESCRIPTION || 'Extreme downside scenario',
-        price_target: formatTokenMetricsNumber(worstPrice, 'currency'),
-        potential_loss: formatTokenMetricsNumber(drawdown, 'percentage'),
+        price_target: formatCurrency(worstPrice),
+        potential_loss: formatPercentage(drawdown),
         probability: worstCase.PROBABILITY ? `${worstCase.PROBABILITY}%` : 'Unknown'
     };
 }
@@ -665,8 +1067,8 @@ function identifyBestCaseScenario(scenarioData: any[]): any {
     
     return {
         scenario_description: bestCase.SCENARIO_DESCRIPTION || bestCase.DESCRIPTION || 'Extreme upside scenario',
-        price_target: formatTokenMetricsNumber(bestPrice, 'currency'),
-        potential_gain: formatTokenMetricsNumber(upside, 'percentage'),
+        price_target: formatCurrency(bestPrice),
+        potential_gain: formatPercentage(upside),
         probability: bestCase.PROBABILITY ? `${bestCase.PROBABILITY}%` : 'Unknown'
     };
 }
@@ -853,4 +1255,103 @@ function assessModelSophistication(scenarioData: any[]): string {
     if (sophisticationScore > 0.6) return "Intermediate";
     if (sophisticationScore > 0.4) return "Basic";
     return "Simple";
+}
+
+// Additional analysis functions for focused analysis types
+
+function identifyDownsideScenarios(scenarioData: any[]): any[] {
+    const currentPrice = getCurrentPriceEstimate(scenarioData);
+    return scenarioData.filter(scenario => {
+        const price = scenario.PREDICTED_PRICE || scenario.PRICE_TARGET;
+        return price && price < currentPrice * 0.9; // 10% or more decline
+    });
+}
+
+function analyzeWorstCaseScenarios(scenarioData: any[]): any {
+    const downside = identifyDownsideScenarios(scenarioData);
+    const worstCase = identifyWorstCaseScenario(scenarioData);
+    
+    return {
+        worst_case_scenario: worstCase,
+        severe_scenarios: downside.filter(s => {
+            const price = s.PREDICTED_PRICE || s.PRICE_TARGET;
+            const currentPrice = getCurrentPriceEstimate(scenarioData);
+            return price < currentPrice * 0.5; // 50% or more decline
+        }).length,
+        total_downside_scenarios: downside.length
+    };
+}
+
+function generateAllocationScenarios(scenarioData: any[]): any[] {
+    const scenarios = ["Conservative", "Moderate", "Aggressive"];
+    return scenarios.map(type => ({
+        allocation_type: type,
+        recommended_exposure: type === "Conservative" ? "10-20%" : 
+                             type === "Moderate" ? "20-40%" : "40-60%",
+        risk_tolerance: type.toLowerCase(),
+        scenario_count: Math.floor(scenarioData.length / 3)
+    }));
+}
+
+function analyzeDiversificationImpact(scenarioData: any[]): any {
+    return {
+        correlation_impact: "Moderate",
+        diversification_benefit: "Significant during market stress",
+        recommended_allocation: "5-15% of portfolio",
+        rebalancing_frequency: "Quarterly"
+    };
+}
+
+function identifyRebalancingTriggers(scenarioData: any[]): string[] {
+    return [
+        "Price deviation >25% from target allocation",
+        "Significant change in scenario probabilities",
+        "New extreme scenarios identified",
+        "Quarterly review regardless of performance"
+    ];
+}
+
+function identifyExtremeScenarios(scenarioData: any[]): any[] {
+    const currentPrice = getCurrentPriceEstimate(scenarioData);
+    return scenarioData.filter(scenario => {
+        const price = scenario.PREDICTED_PRICE || scenario.PRICE_TARGET;
+        const probability = scenario.PROBABILITY || 0;
+        return price && (
+            price < currentPrice * 0.3 || // 70% decline
+            price > currentPrice * 3 ||   // 200% gain
+            probability < 5               // Very low probability
+        );
+    });
+}
+
+function performStressTests(scenarioData: any[]): any {
+    const extremeScenarios = identifyExtremeScenarios(scenarioData);
+    const worstCase = identifyWorstCaseScenario(scenarioData);
+    
+    return {
+        stress_test_score: extremeScenarios.length > 3 ? "High Risk" : 
+                          extremeScenarios.length > 1 ? "Moderate Risk" : "Low Risk",
+        extreme_scenario_count: extremeScenarios.length,
+        worst_case_impact: worstCase.potential_loss || "Unknown",
+        stress_resistance: extremeScenarios.length < 2 ? "Strong" : "Weak"
+    };
+}
+
+function analyzeSurvivalProbability(scenarioData: any[]): any {
+    const totalScenarios = scenarioData.length;
+    const severeDownside = scenarioData.filter(s => {
+        const price = s.PREDICTED_PRICE || s.PRICE_TARGET;
+        const currentPrice = getCurrentPriceEstimate(scenarioData);
+        return price && price < currentPrice * 0.2; // 80% decline
+    }).length;
+    
+    const survivalRate = ((totalScenarios - severeDownside) / totalScenarios) * 100;
+    
+    return {
+        survival_probability: `${survivalRate.toFixed(1)}%`,
+        severe_scenarios: severeDownside,
+        survival_rating: survivalRate > 90 ? "Excellent" : 
+                        survivalRate > 75 ? "Good" : 
+                        survivalRate > 50 ? "Fair" : "Poor"
+    };
 }
