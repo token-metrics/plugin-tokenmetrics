@@ -16,7 +16,7 @@ import {
     getAiReportsAction,
     getCryptoInvestorsAction,
     getResistanceSupportAction,
-    getTMAIAction,
+    getTmaiAction,
     getSentimentAction,
     getScenarioAnalysisAction,
     getCorrelationAction,
@@ -47,7 +47,7 @@ export class EnhancedTokenMetricsHandler {
         this.registerAction(getAiReportsAction);
         this.registerAction(getCryptoInvestorsAction);
         this.registerAction(getResistanceSupportAction);
-        this.registerAction(getTMAIAction);
+        this.registerAction(getTmaiAction);
         this.registerAction(getSentimentAction);
         this.registerAction(getScenarioAnalysisAction);
         this.registerAction(getCorrelationAction);

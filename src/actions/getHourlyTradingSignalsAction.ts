@@ -301,24 +301,20 @@ export const getHourlyTradingSignalsAction: Action = {
             console.log(`[${requestId}] Hourly trading signals analysis completed successfully`);
             console.log(`[${requestId}] Analysis completed successfully`);
             
-            // Use callback to send response to user (like working actions)
-            if (callback) {
-                callback({
-                    text: responseText,
-                    content: {
-                        success: true,
-                        request_id: requestId,
-                        data: result,
-                        metadata: {
-                            endpoint: "hourlytradingsignals",
-                            data_source: "TokenMetrics Official API",
-                            api_version: "v2"
-                        }
+            // Return the response directly (like working actions)
+            return {
+                text: response,
+                content: {
+                    success: true,
+                    request_id: requestId,
+                    data: result,
+                    metadata: {
+                        endpoint: "hourly-trading-signals",
+                        data_source: "TokenMetrics Official API",
+                        api_version: "v2"
                     }
-                });
-            }
-            
-            return true;
+                }
+            };
         } catch (error) {
             console.error("Error in getHourlyTradingSignalsAction:", error);
             

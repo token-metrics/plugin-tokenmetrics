@@ -17,6 +17,13 @@ test_*.js
 secrets/
 config/secrets.json
 
+# Testing and development folders (not part of plugin)
+eliza-starter/
+debug_*.js
+debug-*.js
+test-*.js
+batch-fix-*.cjs
+
 # OS generated files
 .DS_Store
 .DS_Store?

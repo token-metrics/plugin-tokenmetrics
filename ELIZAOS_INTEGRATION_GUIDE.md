@@ -9,7 +9,7 @@ The TokenMetrics plugin provides comprehensive cryptocurrency market data, AI-po
 ```json
 {
   "dependencies": {
-    "@elizaos-plugins/plugin-tokenmetrics": "github:your-username/plugin-tokenmetrics"
+    "@elizaos/plugin-tokenmetrics": "latest"
   }
 }
 ```
@@ -19,7 +19,7 @@ The TokenMetrics plugin provides comprehensive cryptocurrency market data, AI-po
 {
   "name": "CryptoAnalyst",
   "plugins": [
-    "@elizaos-plugins/plugin-tokenmetrics"
+    "@elizaos/plugin-tokenmetrics"
   ],
   "settings": {
     "secrets": {

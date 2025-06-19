@@ -19,7 +19,7 @@ The TokenMetrics plugin provides complete integration with the TokenMetrics API,
 
 ```bash
 # 1️⃣ Install the plugin
-npm install @elizaos-plugins/plugin-tokenmetrics
+npm install @elizaos/plugin-tokenmetrics
 
 # 2️⃣ Get your TokenMetrics API key from https://app.tokenmetrics.com/en/api?tab=api
 
@@ -29,7 +29,7 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 
 # 4️⃣ Add to your ElizaOS character config
 {
-  "plugins": ["@elizaos-plugins/plugin-tokenmetrics"],
+  "plugins": ["@elizaos/plugin-tokenmetrics"],
   "settings": {
     "secrets": {
       "TOKENMETRICS_API_KEY": process.env.TOKENMETRICS_API_KEY
@@ -101,6 +101,62 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 
 ---
 
+## 🔌 API Endpoints Coverage
+
+### 📊 Complete TokenMetrics Integration (21 Endpoints)
+
+| Category | Endpoint | Action | Description |
+|----------|----------|---------|-------------|
+| **💰 Core Market Data** | `/price` | `getPriceAction` | Real-time cryptocurrency prices |
+| | `/tokens` | `getTokensAction` | Token database and search |
+| | `/top-market-cap` | `getTopMarketCapAction` | Top cryptocurrencies by market cap |
+| **📈 Trading & Signals** | `/trading-signals` | `getTradingSignalsAction` | AI-powered buy/sell/hold recommendations |
+| | `/hourly-trading-signals` | `getHourlyTradingSignalsAction` | Frequent trading signals for active trading |
+| | `/trader-grades` | `getTraderGradesAction` | Short-term trading grades (A-F scale) |
+| **🎯 Investment Analysis** | `/investor-grades` | `getInvestorGradesAction` | Long-term investment grades |
+| | `/quantmetrics` | `getQuantmetricsAction` | Risk metrics (Sharpe ratio, volatility, drawdown) |
+| **📊 Technical Analysis** | `/daily-ohlcv` | `getDailyOhlcvAction` | Daily OHLCV price data |
+| | `/hourly-ohlcv` | `getHourlyOhlcvAction` | Hourly OHLCV price data |
+| | `/resistance-support` | `getResistanceSupportAction` | Technical support/resistance levels |
+| **🏦 Market & Indices** | `/market-metrics` | `getMarketMetricsAction` | Overall market sentiment and metrics |
+| | `/indices` | `getIndicesAction` | Crypto market indices |
+| | `/indices-holdings` | `getIndicesHoldingsAction` | Index composition and holdings |
+| | `/indices-performance` | `getIndicesPerformanceAction` | Historical index performance |
+| **🤖 AI & Analytics** | `/ai-reports` | `getAiReportsAction` | AI-generated comprehensive reports |
+| | `/tmai` | `getTmaiAction` | TokenMetrics AI assistant |
+| | `/scenario-analysis` | `getScenarioAnalysisAction` | Price prediction scenarios |
+| **📰 Market Intelligence** | `/sentiment` | `getSentimentAction` | Social media and news sentiment |
+| | `/crypto-investors` | `getCryptoInvestorsAction` | Influential crypto investors data |
+| **🔗 Portfolio Analysis** | `/correlation` | `getCorrelationAction` | Token correlation for diversification |
+
+### 🎯 Natural Language Query Examples
+
+Each endpoint supports intelligent natural language processing:
+
+```typescript
+// Price Queries
+"What's Bitcoin's current price?"
+"Show me ETH price with 24h change"
+
+// Trading Signals
+"Should I buy Solana? Show me trading signals"
+"Get hourly signals for BTC"
+
+// Investment Analysis
+"What are the investment grades for top DeFi tokens?"
+"Show me risk metrics for my portfolio tokens"
+
+// Technical Analysis
+"Show me Bitcoin's support and resistance levels"
+"Get daily OHLCV data for Ethereum"
+
+// Market Intelligence
+"What's the overall crypto market sentiment?"
+"Show me AI analysis for the current market"
+```
+
+---
+
 ## 💰 Pricing & Requirements
 
 ### TokenMetrics API Costs
@@ -134,14 +190,14 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 
 ### 1️⃣ Add to your project
 ```bash
-npm install @elizaos-plugins/plugin-tokenmetrics
+npm install @elizaos/plugin-tokenmetrics
 ```
 
 Or add to package.json:
 ```json
 {
   "dependencies": {
-    "@elizaos-plugins/plugin-tokenmetrics": "latest"
+    "@elizaos/plugin-tokenmetrics": "latest"
   }
 }
 ```
@@ -179,7 +235,7 @@ import { Character, ModelProviderName } from "@elizaos/core";
 
 export const character: Character = {
   name: "CryptoAnalyst",
-  plugins: ["@elizaos-plugins/plugin-tokenmetrics"],
+  plugins: ["@elizaos/plugin-tokenmetrics"],
   modelProvider: ModelProviderName.OPENAI,
   settings: {
     secrets: {
@@ -197,7 +253,7 @@ export const character: Character = {
 // character.ts - Only for development/testing
 export const character: Character = {
   name: "CryptoAnalyst",
-  plugins: ["@elizaos-plugins/plugin-tokenmetrics"],
+  plugins: ["@elizaos/plugin-tokenmetrics"],
   settings: {
     secrets: {
       TOKENMETRICS_API_KEY: "your_api_key_here", // ⚠️ Not secure for production
@@ -211,7 +267,7 @@ export const character: Character = {
 ```json
 {
   "name": "CryptoAnalyst",
-  "plugins": ["@elizaos-plugins/plugin-tokenmetrics"],
+  "plugins": ["@elizaos/plugin-tokenmetrics"],
   "modelProvider": "openai",
   "settings": {
     "secrets": {
@@ -253,6 +309,42 @@ async function testTokenMetrics() {
 }
 
 testTokenMetrics();
+```
+
+### 🔧 Developer Troubleshooting
+
+#### ❌ Common Setup Issues
+
+**Plugin not loading in ElizaOS:**
+```typescript
+// Check if plugin is properly exported
+import { tokenmetricsPlugin } from "@elizaos/plugin-tokenmetrics";
+console.log("Plugin:", tokenmetricsPlugin);
+console.log("Actions:", Object.keys(tokenmetricsPlugin.actions || {}));
+```
+
+**TypeScript compilation errors:**
+```bash
+# Check TypeScript configuration
+npx tsc --showConfig
+
+# Verify ElizaOS types are installed
+npm list @elizaos/core
+```
+
+**API key not being recognized:**
+```typescript
+// Debug environment variables
+console.log("API Key present:", !!process.env.TOKENMETRICS_API_KEY);
+console.log("Character secrets:", character.settings?.secrets);
+```
+
+**Build failures:**
+```bash
+# Clear build cache and rebuild
+rm -rf dist/ node_modules/
+npm install
+npm run build
 ```
 
 ### 3️⃣ Get TokenMetrics API Key
@@ -304,7 +396,7 @@ Your ElizaOS agent can now understand and respond to queries like:
 
 ### 💻 Programmatic Usage
 ```typescript
-import { tokenmetricsPlugin } from "@elizaos-plugins/plugin-tokenmetrics";
+import { tokenmetricsPlugin } from "@elizaos/plugin-tokenmetrics";
 
 // The plugin automatically handles:
 // - Intent recognition from natural language
@@ -429,29 +521,89 @@ if (character.settings?.secrets?.TOKENMETRICS_API_KEY) {
 
 ## 🧪 Testing & Quality Assurance
 
-### 🔬 Automated Testing
+### 🔬 Build & Test Commands
 ```bash
-# Run complete test suite
-npm run test:all
+# Install dependencies
+npm install
 
-# Test individual components
-npm run test:connection      # API connectivity
-npm run test:endpoints       # All 21 endpoints
-npm run test:elizaos        # ElizaOS integration
-npm run test:nlp            # Natural language processing
-npm run test:memory         # Context and memory management
+# Build the plugin (required for development)
+npm run build
 
-# Interactive testing
-npm run chat                # Live chat interface
+# Verify build output
+ls -la dist/
+# Should show: index.js and index.d.ts
+
+# Test plugin loading (create this test file)
+node -e "
+const plugin = require('./dist/index.js');
+console.log('✅ Plugin loaded successfully');
+console.log('📊 Available actions:', Object.keys(plugin.default?.actions || {}));
+"
 ```
 
-### 🔍 Manual Testing
-Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 21 endpoints with real queries.
+### 🔍 Development Workflow
+```bash
+# 1. Fork and clone the repository
+git clone https://github.com/[your-username]/plugin-tokenmetrics
+cd plugin-tokenmetrics
 
-### 📊 Quality Metrics
-- ✅ **Test Coverage**: 95%+ code coverage
-- 🚀 **API Reliability**: 99.5% uptime (depends on TokenMetrics API)
-- 🎯 **Response Accuracy**: Validated against TokenMetrics web interface
+# 2. Install dependencies
+npm install
+
+# 3. Set up environment variables
+cp .env.example .env
+echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
+
+# 4. Build the plugin
+npm run build
+
+# 5. Test integration with ElizaOS
+# Create a test ElizaOS project and add this plugin
+mkdir test-eliza && cd test-eliza
+npm init -y
+npm install @elizaos/core @elizaos/agent
+# Copy your built plugin: cp -r ../dist ./node_modules/@elizaos/plugin-tokenmetrics/
+
+# 6. Create test character and verify plugin loads
+```
+
+### 🧪 Manual Testing Procedures
+Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 21 endpoints:
+
+```bash
+# Test basic functionality
+"What's Bitcoin's price?"
+"Show me trading signals for Ethereum"
+"Get market sentiment data"
+
+# Test advanced features  
+"Compare BTC and ETH correlation"
+"Show me crypto indices performance"
+"Generate AI report for Solana"
+```
+
+### 📊 Plugin Verification Checklist
+- ✅ **Build Success**: `npm run build` completes without errors
+- ✅ **Plugin Loading**: Plugin loads in ElizaOS without errors
+- ✅ **API Connectivity**: Can make successful TokenMetrics API calls
+- ✅ **Natural Language**: Understands and responds to crypto queries
+- ✅ **Error Handling**: Gracefully handles invalid queries and API errors
+- ✅ **Memory Management**: Maintains conversation context properly
+
+### 🔧 Development Tips
+```bash
+# Watch mode for development (if you add this script to package.json)
+npm run dev
+
+# Check TypeScript types
+npx tsc --noEmit
+
+# Lint code (if you add ESLint)
+npm run lint
+
+# Format code (if you add Prettier)
+npm run format
+```
 
 ---
 
@@ -555,7 +707,7 @@ curl -I https://api.tokenmetrics.com/v2/health
 ```bash
 # Error: "Plugin not found"
 # Solution: Ensure plugin is properly installed and configured
-npm list @elizaos-plugins/plugin-tokenmetrics
+npm list @elizaos/plugin-tokenmetrics
 ```
 
 ### ⚡ Performance Optimization
@@ -652,3 +804,85 @@ MIT License - see [LICENSE](./LICENSE) file for details.
   
   **⭐ Star this repo if it helps your crypto analysis! ⭐**
 </div>
+
+---
+
+## 📁 Project Structure
+
+```
+plugin-tokenmetrics/
+├── 📄 README.md                    # Comprehensive documentation
+├── 📄 LICENSE                      # MIT License
+├── 📄 package.json                 # Package configuration & dependencies
+├── 📄 tsconfig.json                # TypeScript configuration
+├── 📄 .gitignore                   # Git ignore rules
+├── 📄 ELIZAOS_INTEGRATION_GUIDE.md # ElizaOS integration guide
+├── 📄 TOKENMETRICS_TEST_PROMPTS.md # Testing prompts and examples
+├── 📄 manual-endpoint-tests.md     # Manual testing procedures
+│
+├── 📂 src/                         # Source code
+│   ├── 📄 index.ts                 # Main plugin entry point
+│   ├── 📄 types.ts                 # TypeScript type definitions
+│   │
+│   ├── 📂 actions/                 # Action implementations (21 endpoints)
+│   │   ├── 📄 aiActionHelper.ts    # Shared AI helper functions
+│   │   ├── 📄 getPriceAction.ts    # Real-time price data
+│   │   ├── 📄 getTradingSignalsAction.ts      # Trading signals
+│   │   ├── 📄 getTraderGradesAction.ts        # Short-term grades
+│   │   ├── 📄 getInvestorGradesAction.ts      # Long-term grades
+│   │   ├── 📄 getQuantmetricsAction.ts        # Risk metrics
+│   │   ├── 📄 getMarketMetricsAction.ts       # Market overview
+│   │   ├── 📄 getIndicesAction.ts             # Market indices
+│   │   ├── 📄 getIndicesHoldingsAction.ts     # Index holdings
+│   │   ├── 📄 getIndicesPerformanceAction.ts  # Index performance
+│   │   ├── 📄 getAiReportsAction.ts           # AI-generated reports
+│   │   ├── 📄 getSentimentAction.ts           # Sentiment analysis
+│   │   ├── 📄 getCorrelationAction.ts         # Correlation analysis
+│   │   ├── 📄 getDailyOhlcvAction.ts          # Daily OHLCV data
+│   │   ├── 📄 getHourlyOhlcvAction.ts         # Hourly OHLCV data
+│   │   ├── 📄 getHourlyTradingSignalsAction.ts # Hourly signals
+│   │   ├── 📄 getResistanceSupportAction.ts   # Technical levels
+│   │   ├── 📄 getScenarioAnalysisAction.ts    # Price scenarios
+│   │   ├── 📄 getCryptoInvestorsAction.ts     # Investor data
+│   │   ├── 📄 getTmaiAction.ts                # TokenMetrics AI
+│   │   ├── 📄 getTokensAction.ts              # Token database
+│   │   └── 📄 getTopMarketCapAction.ts        # Top tokens
+│   │
+│   ├── 📂 core/                    # Core functionality
+│   │   ├── 📄 enhanced-action-handler.ts  # Advanced action handling
+│   │   ├── 📄 memory-manager.ts           # Context & memory management
+│   │   └── 📄 nlp-processor.ts            # Natural language processing
+│   │
+│   └── 📂 tests/                   # Test suites
+│       ├── 📂 manual/              # Manual testing scripts
+│       └── 📂 ui/                  # UI testing components
+│
+├── 📂 dist/                        # Compiled output (generated)
+│   ├── 📄 index.js                 # Compiled JavaScript
+│   └── 📄 index.d.ts               # TypeScript declarations
+│
+└── 📂 node_modules/                # Dependencies (generated)
+```
+
+### 🏗️ Architecture Overview
+
+#### **Core Components**
+- **`src/index.ts`**: Main plugin export with all 21 actions
+- **`src/types.ts`**: Comprehensive TypeScript definitions
+- **`src/actions/`**: Individual action implementations for each TokenMetrics endpoint
+- **`src/core/`**: Advanced features like NLP processing and memory management
+
+#### **Action System**
+Each action follows a consistent pattern:
+- **Natural Language Processing**: Understands user queries in plain English
+- **Smart Token Resolution**: Resolves token names/symbols intelligently
+- **API Integration**: Calls TokenMetrics API with proper error handling
+- **Response Formatting**: Returns structured, user-friendly responses
+
+#### **Key Features**
+- 🧠 **AI-Powered**: Uses shared `aiActionHelper.ts` for intelligent request processing
+- 🔄 **Context Aware**: Memory management system tracks conversation context
+- 🛡️ **Error Resilient**: Comprehensive error handling with retry mechanisms
+- 📊 **Type Safe**: Full TypeScript coverage with detailed type definitions
+
+---
