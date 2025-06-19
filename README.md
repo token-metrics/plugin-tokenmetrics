@@ -157,6 +157,86 @@ Each endpoint supports intelligent natural language processing:
 
 ---
 
+## 📁 Project Structure
+
+```
+plugin-tokenmetrics/
+├── 📄 README.md                    # Comprehensive documentation
+├── 📄 LICENSE                      # MIT License
+├── 📄 package.json                 # Package configuration & dependencies
+├── 📄 tsconfig.json                # TypeScript configuration
+├── 📄 .gitignore                   # Git ignore rules
+├── 📄 ELIZAOS_INTEGRATION_GUIDE.md # ElizaOS integration guide
+├── 📄 TOKENMETRICS_TEST_PROMPTS.md # Testing prompts and examples
+├── 📄 manual-endpoint-tests.md     # Manual testing procedures
+│
+├── 📂 src/                         # Source code
+│   ├── 📄 index.ts                 # Main plugin entry point
+│   ├── 📄 types.ts                 # TypeScript type definitions
+│   │
+│   ├── 📂 actions/                 # Action implementations (21 endpoints)
+│   │   ├── 📄 aiActionHelper.ts    # Shared AI helper functions
+│   │   ├── 📄 getPriceAction.ts    # Real-time price data
+│   │   ├── 📄 getTradingSignalsAction.ts      # Trading signals
+│   │   ├── 📄 getTraderGradesAction.ts        # Short-term grades
+│   │   ├── 📄 getInvestorGradesAction.ts      # Long-term grades
+│   │   ├── 📄 getQuantmetricsAction.ts        # Risk metrics
+│   │   ├── 📄 getMarketMetricsAction.ts       # Market overview
+│   │   ├── 📄 getIndicesAction.ts             # Market indices
+│   │   ├── 📄 getIndicesHoldingsAction.ts     # Index holdings
+│   │   ├── 📄 getIndicesPerformanceAction.ts  # Index performance
+│   │   ├── 📄 getAiReportsAction.ts           # AI-generated reports
+│   │   ├── 📄 getSentimentAction.ts           # Sentiment analysis
+│   │   ├── 📄 getCorrelationAction.ts         # Correlation analysis
+│   │   ├── 📄 getDailyOhlcvAction.ts          # Daily OHLCV data
+│   │   ├── 📄 getHourlyOhlcvAction.ts         # Hourly OHLCV data
+│   │   ├── 📄 getHourlyTradingSignalsAction.ts # Hourly signals
+│   │   ├── 📄 getResistanceSupportAction.ts   # Technical levels
+│   │   ├── 📄 getScenarioAnalysisAction.ts    # Price scenarios
+│   │   ├── 📄 getCryptoInvestorsAction.ts     # Investor data
+│   │   ├── 📄 getTmaiAction.ts                # TokenMetrics AI
+│   │   ├── 📄 getTokensAction.ts              # Token database
+│   │   └── 📄 getTopMarketCapAction.ts        # Top tokens
+│   │
+│   ├── 📂 core/                    # Core functionality
+│   │   ├── 📄 enhanced-action-handler.ts  # Advanced action handling
+│   │   ├── 📄 memory-manager.ts           # Context & memory management
+│   │   └── 📄 nlp-processor.ts            # Natural language processing
+│   │
+│   └── 📂 tests/                   # Test suites
+│       ├── 📂 manual/              # Manual testing scripts
+│       └── 📂 ui/                  # UI testing components
+│
+├── 📂 dist/                        # Compiled output (generated)
+│   ├── 📄 index.js                 # Compiled JavaScript
+│   └── 📄 index.d.ts               # TypeScript declarations
+│
+└── 📂 node_modules/                # Dependencies (generated)
+```
+
+### 🏗️ Architecture Overview
+
+#### **Core Components**
+- **`src/index.ts`**: Main plugin export with all 21 actions
+- **`src/types.ts`**: Comprehensive TypeScript definitions
+- **`src/actions/`**: Individual action implementations for each TokenMetrics endpoint
+- **`src/core/`**: Advanced features like NLP processing and memory management
+
+#### **Action System**
+Each action follows a consistent pattern:
+- **Natural Language Processing**: Understands user queries in plain English
+- **Smart Token Resolution**: Resolves token names/symbols intelligently
+- **API Integration**: Calls TokenMetrics API with proper error handling
+- **Response Formatting**: Returns structured, user-friendly responses
+
+#### **Key Features**
+- 🧠 **AI-Powered**: Uses shared `aiActionHelper.ts` for intelligent request processing
+- 🔄 **Context Aware**: Memory management system tracks conversation context
+- 🛡️ **Error Resilient**: Comprehensive error handling with retry mechanisms
+- 📊 **Type Safe**: Full TypeScript coverage with detailed type definitions
+
+---
+
 ## 💰 Pricing & Requirements
 
 ### TokenMetrics API Costs
@@ -677,17 +757,17 @@ npm run format
 ### 🤝 Getting Help
 1. 📖 **Check the [Integration Guide](./ELIZAOS_INTEGRATION_GUIDE.md)** for setup issues
 2. 🔍 **Review [Manual Testing Guide](./manual-endpoint-tests.md)** for functionality verification
-3. 🔧 **Run diagnostic tests**: `npm run test:connection` to verify API connectivity
+3. 🔧 **Run diagnostic tests**: `npm run verify` to verify API connectivity
 4. 🌐 **Check TokenMetrics status** at their official status page
 5. 🐛 **Open an issue on GitHub** with detailed error information
 
 ### 🔧 Common Issues & Solutions
 
-#### 🔑 API Key Problems
+#### 🔑 Invalid API Key
 ```bash
 # Error: "Invalid API key"
 # Solution: Verify your API key is correct and active
-npm run test:connection
+npm run verify
 ```
 
 #### 🚦 Rate Limiting
@@ -804,85 +884,5 @@ MIT License - see [LICENSE](./LICENSE) file for details.
   
   **⭐ Star this repo if it helps your crypto analysis! ⭐**
 </div>
-
----
-
-## 📁 Project Structure
-
-```
-plugin-tokenmetrics/
-├── 📄 README.md                    # Comprehensive documentation
-├── 📄 LICENSE                      # MIT License
-├── 📄 package.json                 # Package configuration & dependencies
-├── 📄 tsconfig.json                # TypeScript configuration
-├── 📄 .gitignore                   # Git ignore rules
-├── 📄 ELIZAOS_INTEGRATION_GUIDE.md # ElizaOS integration guide
-├── 📄 TOKENMETRICS_TEST_PROMPTS.md # Testing prompts and examples
-├── 📄 manual-endpoint-tests.md     # Manual testing procedures
-│
-├── 📂 src/                         # Source code
-│   ├── 📄 index.ts                 # Main plugin entry point
-│   ├── 📄 types.ts                 # TypeScript type definitions
-│   │
-│   ├── 📂 actions/                 # Action implementations (21 endpoints)
-│   │   ├── 📄 aiActionHelper.ts    # Shared AI helper functions
-│   │   ├── 📄 getPriceAction.ts    # Real-time price data
-│   │   ├── 📄 getTradingSignalsAction.ts      # Trading signals
-│   │   ├── 📄 getTraderGradesAction.ts        # Short-term grades
-│   │   ├── 📄 getInvestorGradesAction.ts      # Long-term grades
-│   │   ├── 📄 getQuantmetricsAction.ts        # Risk metrics
-│   │   ├── 📄 getMarketMetricsAction.ts       # Market overview
-│   │   ├── 📄 getIndicesAction.ts             # Market indices
-│   │   ├── 📄 getIndicesHoldingsAction.ts     # Index holdings
-│   │   ├── 📄 getIndicesPerformanceAction.ts  # Index performance
-│   │   ├── 📄 getAiReportsAction.ts           # AI-generated reports
-│   │   ├── 📄 getSentimentAction.ts           # Sentiment analysis
-│   │   ├── 📄 getCorrelationAction.ts         # Correlation analysis
-│   │   ├── 📄 getDailyOhlcvAction.ts          # Daily OHLCV data
-│   │   ├── 📄 getHourlyOhlcvAction.ts         # Hourly OHLCV data
-│   │   ├── 📄 getHourlyTradingSignalsAction.ts # Hourly signals
-│   │   ├── 📄 getResistanceSupportAction.ts   # Technical levels
-│   │   ├── 📄 getScenarioAnalysisAction.ts    # Price scenarios
-│   │   ├── 📄 getCryptoInvestorsAction.ts     # Investor data
-│   │   ├── 📄 getTmaiAction.ts                # TokenMetrics AI
-│   │   ├── 📄 getTokensAction.ts              # Token database
-│   │   └── 📄 getTopMarketCapAction.ts        # Top tokens
-│   │
-│   ├── 📂 core/                    # Core functionality
-│   │   ├── 📄 enhanced-action-handler.ts  # Advanced action handling
-│   │   ├── 📄 memory-manager.ts           # Context & memory management
-│   │   └── 📄 nlp-processor.ts            # Natural language processing
-│   │
-│   └── 📂 tests/                   # Test suites
-│       ├── 📂 manual/              # Manual testing scripts
-│       └── 📂 ui/                  # UI testing components
-│
-├── 📂 dist/                        # Compiled output (generated)
-│   ├── 📄 index.js                 # Compiled JavaScript
-│   └── 📄 index.d.ts               # TypeScript declarations
-│
-└── 📂 node_modules/                # Dependencies (generated)
-```
-
-### 🏗️ Architecture Overview
-
-#### **Core Components**
-- **`src/index.ts`**: Main plugin export with all 21 actions
-- **`src/types.ts`**: Comprehensive TypeScript definitions
-- **`src/actions/`**: Individual action implementations for each TokenMetrics endpoint
-- **`src/core/`**: Advanced features like NLP processing and memory management
-
-#### **Action System**
-Each action follows a consistent pattern:
-- **Natural Language Processing**: Understands user queries in plain English
-- **Smart Token Resolution**: Resolves token names/symbols intelligently
-- **API Integration**: Calls TokenMetrics API with proper error handling
-- **Response Formatting**: Returns structured, user-friendly responses
-
-#### **Key Features**
-- 🧠 **AI-Powered**: Uses shared `aiActionHelper.ts` for intelligent request processing
-- 🔄 **Context Aware**: Memory management system tracks conversation context
-- 🛡️ **Error Resilient**: Comprehensive error handling with retry mechanisms
-- 📊 **Type Safe**: Full TypeScript coverage with detailed type definitions
 
 ---
