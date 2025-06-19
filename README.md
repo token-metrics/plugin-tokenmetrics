@@ -766,7 +766,7 @@ npm run format
 #### 🔑 Invalid API Key
 ```bash
 # Error: "Invalid API key"
-# Solution: Verify your API key is correct and active
+# Solution: Verify your API key is correct and active.
 npm run verify
 ```
 
