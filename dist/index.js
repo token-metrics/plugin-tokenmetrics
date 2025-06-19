@@ -4088,7 +4088,7 @@ function validateAndGetApiKey(runtime) {
   if (!apiKey || apiKey === "" || apiKey === "undefined") {
     elizaLogger.warn("\u274C TOKENMETRICS_API_KEY not found or empty in runtime settings");
     elizaLogger.log("\u{1F4A1} Falling back to hardcoded API key for testing...");
-    const HARDCODED_API_KEY = "REDACTED_API_KEY";
+    const HARDCODED_API_KEY = "process.env.TOKENMETRICS_API_KEY";
     apiKey = HARDCODED_API_KEY;
     elizaLogger.log("\u2705 Using hardcoded API key for testing");
   } else {
@@ -4117,8 +4117,8 @@ async function fetchWithRetry(url, options, maxRetries = MAX_RETRIES) {
       if (response.ok) {
         return response;
       }
-      const responseText2 = await response.text();
-      elizaLogger.error(`\u274C API Error ${response.status}: ${responseText2}`);
+      const responseText = await response.text();
+      elizaLogger.error(`\u274C API Error ${response.status}: ${responseText}`);
       if (response.status === 401) {
         throw new Error("Invalid API key - check your TOKENMETRICS_API_KEY");
       } else if (response.status === 429) {
@@ -4804,7 +4804,7 @@ var getPriceAction = {
       return false;
     }
   },
-  handler: async (runtime, message, state, _options, callback2) => {
+  handler: async (runtime, message, state, _options, callback) => {
     try {
       const requestId = generateRequestId();
       elizaLogger2.log(`[${requestId}] Processing price request...`);
@@ -4838,8 +4838,8 @@ var getPriceAction = {
       if (!cryptoToResolve) {
         elizaLogger2.log(`[${requestId}] \u274C DEBUG: No cryptocurrency identified from extraction`);
         console.log(`\u274C No cryptocurrency identified from extraction`);
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C I couldn't identify which cryptocurrency you're asking about.
 
 I can get price data for any cryptocurrency supported by TokenMetrics including:
@@ -4876,8 +4876,8 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
 `);
       if (!tokenInfo) {
         elizaLogger2.log(`[${requestId}] \u274C DEBUG: Token resolution failed for: "${cryptoToResolve}"`);
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C I couldn't find information for "${cryptoToResolve}".
 
 This might be:
@@ -4908,8 +4908,8 @@ Try using the official name, such as:
       elizaLogger2.log(`[${requestId}] API response received`);
       const priceData = Array.isArray(response) ? response[0] : response.data?.[0] || response;
       if (!priceData) {
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C No price data available for ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} at the moment.
 
 This could be due to:
@@ -4929,11 +4929,11 @@ Please try again in a few moments.`,
       }
       const analysisType = priceRequest.analysisType || "current";
       const analysis = analyzePriceData(priceData, analysisType);
-      const responseText2 = formatPriceResponse(priceData, tokenInfo, analysisType);
+      const responseText = formatPriceResponse(priceData, tokenInfo, analysisType);
       elizaLogger2.log(`[${requestId}] Successfully processed price request`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -4952,8 +4952,8 @@ Please try again in a few moments.`,
       return true;
     } catch (error) {
       elizaLogger2.error("\u274C Error in price action:", error);
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: `\u274C I encountered an error while fetching price data: ${error instanceof Error ? error.message : "Unknown error"}
 
 This could be due to:
@@ -5219,7 +5219,7 @@ var getTraderGradesAction = {
       return false;
     }
   },
-  handler: async (runtime, message, state, _options, callback2) => {
+  handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
     elizaLogger3.log("\u{1F680} Starting TokenMetrics trader grades handler");
     elizaLogger3.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
@@ -5238,8 +5238,8 @@ var getTraderGradesAction = {
       elizaLogger3.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || "general market"}"`);
       if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
         elizaLogger3.log("\u274C AI extraction failed or insufficient information");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C I couldn't identify specific trader grades criteria from your request.
 
 I can get AI trader grades for:
@@ -5293,8 +5293,8 @@ Try asking something like:
       const gradesData = await fetchTraderGrades(apiParams, runtime);
       if (!gradesData) {
         elizaLogger3.log("\u274C Failed to fetch trader grades data");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C Unable to fetch trader grades data at the moment.
 
 This could be due to:
@@ -5314,12 +5314,12 @@ Please try again in a few moments or try with different criteria.`,
       }
       const grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
       elizaLogger3.log(`\u{1F50D} Received ${grades.length} trader grades`);
-      const responseText2 = formatTraderGradesResponse(grades, tokenInfo);
+      const responseText = formatTraderGradesResponse(grades, tokenInfo);
       const analysis = analyzeTraderGrades(grades);
       elizaLogger3.success("\u2705 Successfully processed trader grades request");
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             grades_data: grades,
@@ -5342,9 +5342,9 @@ Please try again in a few moments or try with different criteria.`,
     } catch (error) {
       elizaLogger3.error("\u274C Error in TokenMetrics trader grades handler:", error);
       elizaLogger3.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback2) {
+      if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback2({
+        callback({
           text: `\u274C I encountered an error while fetching trader grades: ${errorMessage}
 
 This could be due to:
@@ -5705,7 +5705,7 @@ var getInvestorGradesAction = {
       return false;
     }
   },
-  handler: async (runtime, message, state, _options, callback2) => {
+  handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
     elizaLogger4.log("\u{1F680} Starting TokenMetrics investor grades handler");
     elizaLogger4.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
@@ -5750,8 +5750,8 @@ var getInvestorGradesAction = {
       }
       if (!finalRequest.cryptocurrency && !finalRequest.grade_filter && !finalRequest.category && finalRequest.confidence < 0.3) {
         elizaLogger4.log("\u274C AI extraction failed or insufficient information");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C I couldn't identify specific investor grades criteria from your request.
 
 I can get AI investor grades for:
@@ -5808,8 +5808,8 @@ Try asking something like:
       const gradesData = await fetchInvestorGrades(apiParams, runtime);
       if (!gradesData) {
         elizaLogger4.log("\u274C Failed to fetch investor grades data");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C Unable to fetch investor grades data at the moment.
 
 This could be due to:
@@ -5846,8 +5846,8 @@ Please try again in a few moments or try with different criteria.`,
         elizaLogger4.log(`\u{1F50D} Grade filtering: ${originalCount} \u2192 ${grades.length} tokens (${finalRequest.grade_filter}-grade: ${minGrade}-${maxGrade})`);
         if (grades.length === 0) {
           elizaLogger4.log(`\u274C No ${finalRequest.grade_filter}-grade tokens found`);
-          if (callback2) {
-            callback2({
+          if (callback) {
+            callback({
               text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
 
 I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
@@ -5917,12 +5917,12 @@ I searched through the available tokens but couldn't find any with ${finalReques
         }
       }
       elizaLogger4.log(`\u{1F50D} Final grades count: ${grades.length}`);
-      const responseText2 = formatInvestorGradesResponse(grades, tokenInfo);
+      const responseText = formatInvestorGradesResponse(grades, tokenInfo);
       const analysis = analyzeInvestorGrades(grades);
       elizaLogger4.success("\u2705 Successfully processed investor grades request");
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             grades_data: grades,
@@ -5945,9 +5945,9 @@ I searched through the available tokens but couldn't find any with ${finalReques
     } catch (error) {
       elizaLogger4.error("\u274C Error in TokenMetrics investor grades handler:", error);
       elizaLogger4.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback2) {
+      if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback2({
+        callback({
           text: `\u274C I encountered an error while fetching investor grades: ${errorMessage}
 
 This could be due to:
@@ -6138,7 +6138,7 @@ var getQuantmetricsAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback2) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing quantmetrics request...`);
@@ -6196,91 +6196,91 @@ var getQuantmetricsAction = {
       console.log(`[${requestId}] API response received, processing data...`);
       const quantmetrics = Array.isArray(response) ? response : response.data || [];
       const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics, processedRequest.analysisType);
-      let responseText2 = `\u26A1 **Quantitative Metrics Analysis**
+      let responseText = `\u26A1 **Quantitative Metrics Analysis**
 
 `;
       if (processedRequest.cryptocurrency || processedRequest.symbol) {
-        responseText2 += `\u{1F3AF} **Token**: ${processedRequest.cryptocurrency || processedRequest.symbol}
+        responseText += `\u{1F3AF} **Token**: ${processedRequest.cryptocurrency || processedRequest.symbol}
 `;
       }
-      responseText2 += `\u{1F4CA} **Data Points**: ${quantmetrics.length} metrics analyzed
+      responseText += `\u{1F4CA} **Data Points**: ${quantmetrics.length} metrics analyzed
 
 `;
       if (quantmetrics.length > 0) {
         const firstMetric = quantmetrics[0];
-        responseText2 += `\u{1F4C8} **Key Metrics**:
+        responseText += `\u{1F4C8} **Key Metrics**:
 `;
         if (firstMetric.VOLATILITY !== void 0) {
-          responseText2 += `\u2022 **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%
+          responseText += `\u2022 **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%
 `;
         }
         if (firstMetric.SHARPE !== void 0) {
-          responseText2 += `\u2022 **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}
+          responseText += `\u2022 **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}
 `;
         }
         if (firstMetric.MAX_DRAWDOWN !== void 0) {
-          responseText2 += `\u2022 **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%
+          responseText += `\u2022 **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%
 `;
         }
         if (firstMetric.CAGR !== void 0) {
-          responseText2 += `\u2022 **CAGR**: ${firstMetric.CAGR.toFixed(2)}%
+          responseText += `\u2022 **CAGR**: ${firstMetric.CAGR.toFixed(2)}%
 `;
         }
         if (firstMetric.ALL_TIME_RETURN !== void 0) {
-          responseText2 += `\u2022 **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%
+          responseText += `\u2022 **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%
 `;
         }
-        responseText2 += `
+        responseText += `
 `;
         if (quantAnalysis.summary) {
-          responseText2 += `\u{1F9E0} **Analysis**: ${quantAnalysis.summary}
+          responseText += `\u{1F9E0} **Analysis**: ${quantAnalysis.summary}
 
 `;
         }
         if (quantAnalysis.risk_analysis?.risk_assessment) {
-          responseText2 += `\u26A0\uFE0F **Risk Assessment**: ${quantAnalysis.risk_analysis.risk_assessment}
+          responseText += `\u26A0\uFE0F **Risk Assessment**: ${quantAnalysis.risk_analysis.risk_assessment}
 
 `;
         }
         if (quantAnalysis.portfolio_implications && quantAnalysis.portfolio_implications.length > 0) {
-          responseText2 += `\u{1F4BC} **Portfolio Implications**:
+          responseText += `\u{1F4BC} **Portfolio Implications**:
 `;
           quantAnalysis.portfolio_implications.slice(0, 3).forEach((implication, index) => {
-            responseText2 += `${index + 1}. ${implication}
+            responseText += `${index + 1}. ${implication}
 `;
           });
-          responseText2 += `
+          responseText += `
 `;
         }
         if (quantAnalysis.insights && quantAnalysis.insights.length > 0) {
-          responseText2 += `\u{1F4A1} **Key Insights**:
+          responseText += `\u{1F4A1} **Key Insights**:
 `;
           quantAnalysis.insights.slice(0, 3).forEach((insight, index) => {
-            responseText2 += `${index + 1}. ${insight}
+            responseText += `${index + 1}. ${insight}
 `;
           });
         }
       } else {
-        responseText2 += `\u274C No quantitative metrics data available for the specified criteria.
+        responseText += `\u274C No quantitative metrics data available for the specified criteria.
 
 `;
-        responseText2 += `\u{1F4A1} **Try**:
+        responseText += `\u{1F4A1} **Try**:
 `;
-        responseText2 += `\u2022 Using a major cryptocurrency (Bitcoin, Ethereum)
+        responseText += `\u2022 Using a major cryptocurrency (Bitcoin, Ethereum)
 `;
-        responseText2 += `\u2022 Checking if the token has sufficient historical data
+        responseText += `\u2022 Checking if the token has sufficient historical data
 `;
-        responseText2 += `\u2022 Verifying your TokenMetrics subscription includes quantmetrics access`;
+        responseText += `\u2022 Verifying your TokenMetrics subscription includes quantmetrics access`;
       }
-      responseText2 += `
+      responseText += `
 
 \u{1F4CA} **Data Source**: TokenMetrics Quantmetrics API
 `;
-      responseText2 += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`;
+      responseText += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`;
       console.log(`[${requestId}] Quantmetrics analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -6320,9 +6320,9 @@ var getQuantmetricsAction = {
       return true;
     } catch (error) {
       console.error("Error in getQuantmetricsAction:", error);
-      if (callback2) {
+      if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback2({
+        callback({
           text: `\u274C I encountered an error while fetching quantitative metrics: ${errorMessage}
 
 This could be due to:
@@ -6571,7 +6571,7 @@ var MarketMetricsRequestSchema = z.object({
     "current_status"
   ])).optional().describe("Types of analysis to focus on")
 });
-var handler = async (runtime, message, state, _options, callback2) => {
+var handler = async (runtime, message, state, _options, callback) => {
   elizaLogger5.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
   try {
     const extractedRequest = await extractTokenMetricsRequest(
@@ -6611,73 +6611,73 @@ var handler = async (runtime, message, state, _options, callback2) => {
     const marketMetrics = Array.isArray(response) ? response : response.data || [];
     const marketAnalysis = analyzeMarketMetrics(marketMetrics);
     const currentStatus = getCurrentMarketStatus(marketMetrics);
-    let responseText2 = "\u{1F4CA} **TokenMetrics Market Analytics**\n\n";
+    let responseText = "\u{1F4CA} **TokenMetrics Market Analytics**\n\n";
     if (processedRequest.analysis_focus.includes("current_status")) {
-      responseText2 += `\u{1F3AF} **Current Market Status**: ${currentStatus.sentiment_description}
+      responseText += `\u{1F3AF} **Current Market Status**: ${currentStatus.sentiment_description}
 `;
-      responseText2 += `\u{1F4C8} **Market Direction**: ${currentStatus.direction}
+      responseText += `\u{1F4C8} **Market Direction**: ${currentStatus.direction}
 `;
-      responseText2 += `\u{1F4AA} **Signal Strength**: ${currentStatus.strength}/10
+      responseText += `\u{1F4AA} **Signal Strength**: ${currentStatus.strength}/10
 
 `;
     }
     if (processedRequest.analysis_focus.includes("market_sentiment")) {
-      responseText2 += `\u{1F50D} **Market Sentiment Analysis**:
+      responseText += `\u{1F50D} **Market Sentiment Analysis**:
 `;
-      responseText2 += `\u2022 Bullish/Bearish Indicator: ${marketAnalysis.overall_sentiment}
+      responseText += `\u2022 Bullish/Bearish Indicator: ${marketAnalysis.overall_sentiment}
 `;
-      responseText2 += `\u2022 Confidence Level: ${marketAnalysis.confidence_level}%
+      responseText += `\u2022 Confidence Level: ${marketAnalysis.confidence_level}%
 `;
-      responseText2 += `\u2022 Market Phase: ${marketAnalysis.market_phase}
+      responseText += `\u2022 Market Phase: ${marketAnalysis.market_phase}
 
 `;
     }
     if (processedRequest.analysis_focus.includes("trend_analysis")) {
-      responseText2 += `\u{1F4C8} **Trend Analysis**:
+      responseText += `\u{1F4C8} **Trend Analysis**:
 `;
-      responseText2 += `\u2022 Primary Trend: ${marketAnalysis.trend_direction}
+      responseText += `\u2022 Primary Trend: ${marketAnalysis.trend_direction}
 `;
-      responseText2 += `\u2022 Trend Strength: ${marketAnalysis.trend_strength}
+      responseText += `\u2022 Trend Strength: ${marketAnalysis.trend_strength}
 `;
-      responseText2 += `\u2022 Momentum: ${marketAnalysis.momentum}
+      responseText += `\u2022 Momentum: ${marketAnalysis.momentum}
 
 `;
     }
     if (processedRequest.analysis_focus.includes("strategic_insights")) {
-      responseText2 += `\u{1F4A1} **Strategic Insights**:
+      responseText += `\u{1F4A1} **Strategic Insights**:
 `;
       if (marketAnalysis.strategic_implications) {
         marketAnalysis.strategic_implications.forEach((insight, index) => {
-          responseText2 += `${index + 1}. ${insight}
+          responseText += `${index + 1}. ${insight}
 `;
         });
       }
-      responseText2 += "\n";
+      responseText += "\n";
     }
-    responseText2 += `\u{1F4CB} **Key Metrics Summary**:
+    responseText += `\u{1F4CB} **Key Metrics Summary**:
 `;
-    responseText2 += `\u2022 Data Points Analyzed: ${marketMetrics.length}
+    responseText += `\u2022 Data Points Analyzed: ${marketMetrics.length}
 `;
-    responseText2 += `\u2022 Total Crypto Market Cap: ${formatCurrency(marketMetrics[0]?.TOTAL_CRYPTO_MCAP || 0)}
+    responseText += `\u2022 Total Crypto Market Cap: ${formatCurrency(marketMetrics[0]?.TOTAL_CRYPTO_MCAP || 0)}
 `;
-    responseText2 += `\u2022 High-Grade Coins: ${formatPercentage(marketMetrics[0]?.TM_GRADE_PERC_HIGH_COINS || 0)}%
+    responseText += `\u2022 High-Grade Coins: ${formatPercentage(marketMetrics[0]?.TM_GRADE_PERC_HIGH_COINS || 0)}%
 `;
-    responseText2 += `\u2022 Current Signal: ${getSignalDescription(marketMetrics[0]?.TM_GRADE_SIGNAL || 0)}
+    responseText += `\u2022 Current Signal: ${getSignalDescription(marketMetrics[0]?.TM_GRADE_SIGNAL || 0)}
 `;
-    responseText2 += `\u2022 Previous Signal: ${getSignalDescription(marketMetrics[0]?.LAST_TM_GRADE_SIGNAL || 0)}
+    responseText += `\u2022 Previous Signal: ${getSignalDescription(marketMetrics[0]?.LAST_TM_GRADE_SIGNAL || 0)}
 `;
     if (marketAnalysis.recommendations && marketAnalysis.recommendations.length > 0) {
-      responseText2 += `
+      responseText += `
 \u{1F3AF} **Recommendations**:
 `;
       marketAnalysis.recommendations.forEach((rec, index) => {
-        responseText2 += `${index + 1}. ${rec}
+        responseText += `${index + 1}. ${rec}
 `;
       });
     }
-    if (callback2) {
-      callback2({
-        text: responseText2,
+    if (callback) {
+      callback({
+        text: responseText,
         content: {
           success: true,
           data: {
@@ -6709,8 +6709,8 @@ ${errorMessage}
 \u2022 Check your TokenMetrics API key
 \u2022 Verify date format (YYYY-MM-DD)
 \u2022 Ensure you have access to market metrics endpoint`;
-    if (callback2) {
-      callback2({
+    if (callback) {
+      callback({
         text: errorText,
         content: {
           success: false,
@@ -7109,7 +7109,7 @@ var getIndicesAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback2) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices request...`);
@@ -7191,11 +7191,11 @@ var getIndicesAction = {
         }
       };
       console.log(`[${requestId}] Indices analysis completed successfully`);
-      const responseText2 = formatIndicesResponse(result, processedRequest.limit);
+      const responseText = formatIndicesResponse(result, processedRequest.limit);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -7211,8 +7211,8 @@ var getIndicesAction = {
       return true;
     } catch (error) {
       console.error("Error in getIndices action:", error);
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: `\u274C Failed to retrieve indices data: ${error instanceof Error ? error.message : "Unknown error"}`,
           content: {
             success: false,
@@ -7550,7 +7550,7 @@ var getAiReportsAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state, _params, callback2) {
+  async handler(runtime, message, _state, _params, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing AI reports request...`);
@@ -7623,168 +7623,168 @@ var getAiReportsAction = {
         }
       };
       const tokenName = processedRequest.symbol || processedRequest.token_id || "various tokens";
-      let responseText2 = `\u{1F916} **AI Reports Analysis${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}**
+      let responseText = `\u{1F916} **AI Reports Analysis${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}**
 
 `;
       if (aiReports.length === 0) {
-        responseText2 += `\u274C No AI reports found${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}. This could mean:
+        responseText += `\u274C No AI reports found${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}. This could mean:
 `;
-        responseText2 += `\u2022 TokenMetrics AI hasn't analyzed this token yet
+        responseText += `\u2022 TokenMetrics AI hasn't analyzed this token yet
 `;
-        responseText2 += `\u2022 The token may not meet criteria for AI analysis
+        responseText += `\u2022 The token may not meet criteria for AI analysis
 `;
-        responseText2 += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+        responseText += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
 
 `;
       } else {
-        responseText2 += `\u2705 **Found ${aiReports.length} comprehensive AI-generated reports**
+        responseText += `\u2705 **Found ${aiReports.length} comprehensive AI-generated reports**
 
 `;
         const reportTypes = reportsAnalysis.report_coverage.report_types;
         if (reportTypes && reportTypes.length > 0) {
-          responseText2 += `\u{1F4CA} **Available Report Types:**
+          responseText += `\u{1F4CA} **Available Report Types:**
 `;
           reportTypes.forEach((type) => {
-            responseText2 += `\u2022 ${type.type}: ${type.count} reports (${type.percentage}%)
+            responseText += `\u2022 ${type.type}: ${type.count} reports (${type.percentage}%)
 `;
           });
-          responseText2 += `
+          responseText += `
 `;
         }
         if (processedRequest.analysisType === "investment" && reportsAnalysis.investment_focus) {
-          responseText2 += `\u{1F4B0} **Investment Analysis Focus:**
+          responseText += `\u{1F4B0} **Investment Analysis Focus:**
 `;
-          responseText2 += `\u2022 Investment analyses available: ${reportsAnalysis.investment_focus.investment_reports}
+          responseText += `\u2022 Investment analyses available: ${reportsAnalysis.investment_focus.investment_reports}
 `;
           if (reportsAnalysis.investment_focus.key_investment_points && reportsAnalysis.investment_focus.key_investment_points.length > 0) {
-            responseText2 += `
+            responseText += `
 \u{1F4A1} **Key Investment Insights:**
 `;
             reportsAnalysis.investment_focus.key_investment_points.slice(0, 3).forEach((point) => {
-              responseText2 += `\u2022 ${point}
+              responseText += `\u2022 ${point}
 `;
             });
           }
         } else if (processedRequest.analysisType === "technical" && reportsAnalysis.technical_focus) {
-          responseText2 += `\u{1F527} **Technical Analysis Focus:**
+          responseText += `\u{1F527} **Technical Analysis Focus:**
 `;
-          responseText2 += `\u2022 Code reviews available: ${reportsAnalysis.technical_focus.code_reviews}
+          responseText += `\u2022 Code reviews available: ${reportsAnalysis.technical_focus.code_reviews}
 `;
           if (reportsAnalysis.technical_focus.technical_highlights && reportsAnalysis.technical_focus.technical_highlights.length > 0) {
-            responseText2 += `
+            responseText += `
 \u{1F50D} **Technical Highlights:**
 `;
             reportsAnalysis.technical_focus.technical_highlights.slice(0, 3).forEach((highlight) => {
-              responseText2 += `\u2022 ${highlight}
+              responseText += `\u2022 ${highlight}
 `;
             });
           }
         } else if (processedRequest.analysisType === "comprehensive" && reportsAnalysis.comprehensive_focus) {
-          responseText2 += `\u{1F4DA} **Comprehensive Analysis Focus:**
+          responseText += `\u{1F4DA} **Comprehensive Analysis Focus:**
 `;
-          responseText2 += `\u2022 Deep dive reports: ${reportsAnalysis.comprehensive_focus.deep_dive_reports}
+          responseText += `\u2022 Deep dive reports: ${reportsAnalysis.comprehensive_focus.deep_dive_reports}
 `;
           if (reportsAnalysis.comprehensive_focus.comprehensive_highlights && reportsAnalysis.comprehensive_focus.comprehensive_highlights.length > 0) {
-            responseText2 += `
+            responseText += `
 \u{1F4D6} **Comprehensive Highlights:**
 `;
             reportsAnalysis.comprehensive_focus.comprehensive_highlights.slice(0, 3).forEach((highlight) => {
-              responseText2 += `\u2022 ${highlight}
+              responseText += `\u2022 ${highlight}
 `;
             });
           }
         } else {
-          responseText2 += `\u{1F4CA} **Comprehensive AI Analysis:**
+          responseText += `\u{1F4CA} **Comprehensive AI Analysis:**
 `;
-          responseText2 += `\u2022 ${reportsAnalysis.summary}
+          responseText += `\u2022 ${reportsAnalysis.summary}
 `;
           if (reportsAnalysis.report_content) {
             const content = reportsAnalysis.report_content;
             if (content.investment_analyses && content.investment_analyses.length > 0) {
-              responseText2 += `
+              responseText += `
 \u{1F4B0} **Investment Analysis Available** (${content.investment_analyses.length} reports)
 `;
               const firstAnalysis = content.investment_analyses[0];
               if (firstAnalysis.content && firstAnalysis.content.length > 100) {
                 const preview = firstAnalysis.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+                responseText += `\u{1F4DD} Preview: "${preview}..."
 `;
               }
             }
             if (content.deep_dive_reports && content.deep_dive_reports.length > 0) {
-              responseText2 += `
+              responseText += `
 \u{1F4DA} **Deep Dive Reports Available** (${content.deep_dive_reports.length} reports)
 `;
               const firstDeepDive = content.deep_dive_reports[0];
               if (firstDeepDive.content && firstDeepDive.content.length > 100) {
                 const preview = firstDeepDive.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+                responseText += `\u{1F4DD} Preview: "${preview}..."
 `;
               }
             }
             if (content.code_reviews && content.code_reviews.length > 0) {
-              responseText2 += `
+              responseText += `
 \u{1F527} **Code Reviews Available** (${content.code_reviews.length} reports)
 `;
               const firstCodeReview = content.code_reviews[0];
               if (firstCodeReview.content && firstCodeReview.content.length > 100) {
                 const preview = firstCodeReview.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+                responseText += `\u{1F4DD} Preview: "${preview}..."
 `;
               }
             }
             if (content.executive_summaries && content.executive_summaries.length > 0) {
-              responseText2 += `
+              responseText += `
 \u{1F4CB} **Executive Summaries Available** (${content.executive_summaries.length} reports)
 `;
               const firstSummary = content.executive_summaries[0];
               if (firstSummary.content && firstSummary.content.length > 100) {
                 const preview = firstSummary.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText2 += `\u{1F4DD} Preview: "${preview}..."
+                responseText += `\u{1F4DD} Preview: "${preview}..."
 `;
               }
             }
           }
         }
         if (reportsAnalysis.research_themes && reportsAnalysis.research_themes.length > 0) {
-          responseText2 += `
+          responseText += `
 \u{1F50D} **Key Research Themes:**
 `;
           reportsAnalysis.research_themes.slice(0, 4).forEach((theme) => {
-            responseText2 += `\u2022 ${theme}
+            responseText += `\u2022 ${theme}
 `;
           });
         }
         if (reportsAnalysis.data_quality) {
-          responseText2 += `
+          responseText += `
 \u{1F4C8} **Data Quality Assessment:**
 `;
-          responseText2 += `\u2022 Coverage: ${reportsAnalysis.data_quality.coverage_breadth}
+          responseText += `\u2022 Coverage: ${reportsAnalysis.data_quality.coverage_breadth}
 `;
-          responseText2 += `\u2022 Completeness: ${reportsAnalysis.data_quality.completeness}
+          responseText += `\u2022 Completeness: ${reportsAnalysis.data_quality.completeness}
 `;
-          responseText2 += `\u2022 Freshness: ${reportsAnalysis.data_quality.freshness}
+          responseText += `\u2022 Freshness: ${reportsAnalysis.data_quality.freshness}
 `;
         }
-        responseText2 += `
+        responseText += `
 \u{1F4CB} **Usage Guidelines:**
 `;
-        responseText2 += `\u2022 Use for due diligence and investment research
+        responseText += `\u2022 Use for due diligence and investment research
 `;
-        responseText2 += `\u2022 Combine with quantitative metrics for complete picture
+        responseText += `\u2022 Combine with quantitative metrics for complete picture
 `;
-        responseText2 += `\u2022 Review report generation date for relevance
+        responseText += `\u2022 Review report generation date for relevance
 `;
-        responseText2 += `\u2022 Consider reports as one input in investment decision process
+        responseText += `\u2022 Consider reports as one input in investment decision process
 `;
       }
-      responseText2 += `
+      responseText += `
 \u{1F517} **Data Source:** TokenMetrics AI Engine (v2)`;
       console.log(`[${requestId}] AI reports analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -7814,8 +7814,8 @@ var getAiReportsAction = {
 \u2022 Use full token names or symbols (e.g., "Bitcoin" or "BTC")
 \u2022 Check if TokenMetrics has generated reports for the requested token
 \u2022 Ensure your API key has access to the ai-reports endpoint`;
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: errorMessage,
           content: {
             success: false,
@@ -8656,7 +8656,7 @@ var getTradingSignalsAction = {
       return false;
     }
   },
-  handler: async (runtime, message, state, _options, callback2) => {
+  handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
     elizaLogger6.log("\u{1F680} Starting TokenMetrics trading signals handler");
     elizaLogger6.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
@@ -8675,8 +8675,8 @@ var getTradingSignalsAction = {
       elizaLogger6.log(`\u{1F194} Request ${requestId}: AI Processing "${signalsRequest.cryptocurrency || "general market"}"`);
       if (!signalsRequest.cryptocurrency && !signalsRequest.signal_type && !signalsRequest.category && signalsRequest.confidence < 0.2) {
         elizaLogger6.log("\u274C AI extraction failed - very low confidence");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C I couldn't identify specific trading signals criteria from your request.
 
 I can get AI trading signals for:
@@ -8742,8 +8742,8 @@ Try asking something like:
       const signalsData = await fetchTradingSignals(apiParams, runtime);
       if (!signalsData) {
         elizaLogger6.log("\u274C Failed to fetch trading signals data");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C Unable to fetch trading signals data at the moment.
 
 This could be due to:
@@ -8803,12 +8803,12 @@ Please try again in a few moments or try with different criteria.`,
         }
       }
       elizaLogger6.log(`\u{1F50D} Final signals count: ${signals.length}`);
-      const responseText2 = formatTradingSignalsResponse(signals, tokenInfo);
+      const responseText = formatTradingSignalsResponse(signals, tokenInfo);
       const analysis = analyzeTradingSignals(signals);
       elizaLogger6.success("\u2705 Successfully processed trading signals request");
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             signals_data: signals,
@@ -8831,9 +8831,9 @@ Please try again in a few moments or try with different criteria.`,
     } catch (error) {
       elizaLogger6.error("\u274C Error in TokenMetrics trading signals handler:", error);
       elizaLogger6.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback2) {
+      if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback2({
+        callback({
           text: `\u274C I encountered an error while fetching trading signals: ${errorMessage}
 
 This could be due to:
@@ -8992,7 +8992,7 @@ var getIndicesHoldingsAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback2) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices holdings request...`);
@@ -9059,11 +9059,11 @@ var getIndicesHoldingsAction = {
         }
       };
       console.log(`[${requestId}] Holdings analysis completed successfully`);
-      const responseText2 = formatIndicesHoldingsResponse(result);
+      const responseText = formatIndicesHoldingsResponse(result);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -9079,8 +9079,8 @@ var getIndicesHoldingsAction = {
       return true;
     } catch (error) {
       console.error("Error in getIndicesHoldings action:", error);
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: `\u274C Failed to retrieve indices holdings data: ${error instanceof Error ? error.message : "Unknown error"}`,
           content: {
             success: false,
@@ -9536,22 +9536,19 @@ var getCorrelationAction = {
       };
       console.log(`[${requestId}] Correlation analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "correlation",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
+      return {
+        text: response,
+        content: {
+          success: true,
+          request_id: requestId,
+          data: result,
+          metadata: {
+            endpoint: "correlation",
+            data_source: "TokenMetrics Official API",
+            api_version: "v2"
           }
-        });
-      }
-      return true;
+        }
+      };
     } catch (error) {
       console.error("Error in getCorrelation action:", error);
       return {
@@ -10361,7 +10358,7 @@ var getDailyOhlcvAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback2) {
+  async handler(runtime, message, state, _params, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing daily OHLCV request...`);
@@ -10532,62 +10529,62 @@ var getDailyOhlcvAction = {
       const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
       const ohlcvAnalysis = analyzeDailyOhlcvData(sortedData, processedRequest.analysisType);
       const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
-      let responseText2 = `\u{1F4CA} **Daily OHLCV Data for ${tokenName}**
+      let responseText = `\u{1F4CA} **Daily OHLCV Data for ${tokenName}**
 
 `;
       if (sortedData.length === 0) {
-        responseText2 += `\u274C No valid daily OHLCV data found for ${tokenName}. This could mean:
+        responseText += `\u274C No valid daily OHLCV data found for ${tokenName}. This could mean:
 `;
-        responseText2 += `\u2022 The token may not have sufficient trading history
+        responseText += `\u2022 The token may not have sufficient trading history
 `;
-        responseText2 += `\u2022 TokenMetrics may not have daily data for this token
+        responseText += `\u2022 TokenMetrics may not have daily data for this token
 `;
-        responseText2 += `\u2022 All data points were filtered out due to quality issues
+        responseText += `\u2022 All data points were filtered out due to quality issues
 `;
-        responseText2 += `\u2022 Try using a different token name or symbol
+        responseText += `\u2022 Try using a different token name or symbol
 
 `;
-        responseText2 += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
+        responseText += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
       } else {
         if (ohlcvData.length > sortedData.length) {
           const tokenFiltered = ohlcvData.length - filteredByToken.length;
           const qualityFiltered = filteredByToken.length - sortedData.length;
           if (tokenFiltered > 0 && qualityFiltered > 0) {
-            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
+            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
 
 `;
           } else if (tokenFiltered > 0) {
-            responseText2 += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
+            responseText += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
 
 `;
           } else if (qualityFiltered > 0) {
-            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
 
 `;
           }
         }
         const recentData = sortedData.slice(-5).reverse();
-        responseText2 += `\u{1F4C8} **Recent Daily Data (Last ${recentData.length} days):**
+        responseText += `\u{1F4C8} **Recent Daily Data (Last ${recentData.length} days):**
 `;
         recentData.forEach((item, index) => {
           const date = new Date(item.DATE || item.TIMESTAMP);
           const dateStr = date.toLocaleDateString();
-          responseText2 += `
+          responseText += `
 **Day ${index + 1}** (${dateStr}):
 `;
-          responseText2 += `\u2022 Open: ${formatCurrency(item.OPEN)}
+          responseText += `\u2022 Open: ${formatCurrency(item.OPEN)}
 `;
-          responseText2 += `\u2022 High: ${formatCurrency(item.HIGH)}
+          responseText += `\u2022 High: ${formatCurrency(item.HIGH)}
 `;
-          responseText2 += `\u2022 Low: ${formatCurrency(item.LOW)}
+          responseText += `\u2022 Low: ${formatCurrency(item.LOW)}
 `;
-          responseText2 += `\u2022 Close: ${formatCurrency(item.CLOSE)}
+          responseText += `\u2022 Close: ${formatCurrency(item.CLOSE)}
 `;
-          responseText2 += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
+          responseText += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
 `;
         });
         if (ohlcvAnalysis && ohlcvAnalysis.summary) {
-          responseText2 += `
+          responseText += `
 
 \u{1F4CA} **Analysis Summary:**
 ${ohlcvAnalysis.summary}
@@ -10595,85 +10592,85 @@ ${ohlcvAnalysis.summary}
         }
         if (ohlcvAnalysis?.price_analysis) {
           const priceAnalysis = ohlcvAnalysis.price_analysis;
-          responseText2 += `
+          responseText += `
 \u{1F4B0} **Price Movement:**
 `;
-          responseText2 += `\u2022 Direction: ${priceAnalysis.direction || "Unknown"}
+          responseText += `\u2022 Direction: ${priceAnalysis.direction || "Unknown"}
 `;
-          responseText2 += `\u2022 Change: ${priceAnalysis.price_change || "N/A"} (${priceAnalysis.change_percent || "N/A"})
+          responseText += `\u2022 Change: ${priceAnalysis.price_change || "N/A"} (${priceAnalysis.change_percent || "N/A"})
 `;
-          responseText2 += `\u2022 Range: ${priceAnalysis.lowest_price || "N/A"} - ${priceAnalysis.highest_price || "N/A"}
+          responseText += `\u2022 Range: ${priceAnalysis.lowest_price || "N/A"} - ${priceAnalysis.highest_price || "N/A"}
 `;
         }
         if (ohlcvAnalysis?.trend_analysis) {
           const trendAnalysis = ohlcvAnalysis.trend_analysis;
-          responseText2 += `
+          responseText += `
 \u{1F4C8} **Trend Analysis:**
 `;
-          responseText2 += `\u2022 Primary Trend: ${trendAnalysis.primary_trend}
+          responseText += `\u2022 Primary Trend: ${trendAnalysis.primary_trend}
 `;
-          responseText2 += `\u2022 Trend Strength: ${trendAnalysis.trend_strength}
+          responseText += `\u2022 Trend Strength: ${trendAnalysis.trend_strength}
 `;
-          responseText2 += `\u2022 Momentum: ${trendAnalysis.momentum}
+          responseText += `\u2022 Momentum: ${trendAnalysis.momentum}
 `;
         }
         if (ohlcvAnalysis?.volume_analysis) {
           const volumeAnalysis = ohlcvAnalysis.volume_analysis;
-          responseText2 += `
+          responseText += `
 \u{1F4CA} **Volume Analysis:**
 `;
-          responseText2 += `\u2022 Average Volume: ${volumeAnalysis.average_volume || "N/A"}
+          responseText += `\u2022 Average Volume: ${volumeAnalysis.average_volume || "N/A"}
 `;
-          responseText2 += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend || "Unknown"}
+          responseText += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend || "Unknown"}
 `;
-          responseText2 += `\u2022 Volume Pattern: ${volumeAnalysis.volume_pattern || "Unknown"}
+          responseText += `\u2022 Volume Pattern: ${volumeAnalysis.volume_pattern || "Unknown"}
 `;
         }
         if (ohlcvAnalysis?.trading_recommendations?.primary_recommendations?.length > 0) {
-          responseText2 += `
+          responseText += `
 \u{1F3AF} **Trading Recommendations:**
 `;
           ohlcvAnalysis.trading_recommendations.primary_recommendations.forEach((rec) => {
-            responseText2 += `\u2022 ${rec}
+            responseText += `\u2022 ${rec}
 `;
           });
         }
         if (processedRequest.analysisType === "swing_trading" && ohlcvAnalysis?.swing_trading_focus) {
-          responseText2 += `
+          responseText += `
 \u26A1 **Swing Trading Insights:**
 `;
           ohlcvAnalysis.swing_trading_focus.insights?.forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
         } else if (processedRequest.analysisType === "trend_analysis" && ohlcvAnalysis?.trend_focus) {
-          responseText2 += `
+          responseText += `
 \u{1F4C8} **Trend Analysis Insights:**
 `;
           ohlcvAnalysis.trend_focus.insights?.forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
         } else if (processedRequest.analysisType === "technical_indicators" && ohlcvAnalysis?.technical_focus) {
-          responseText2 += `
+          responseText += `
 \u{1F50D} **Technical Analysis:**
 `;
           ohlcvAnalysis.technical_focus.insights?.forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
         }
-        responseText2 += `
+        responseText += `
 
 \u{1F4CB} **Data Summary:**
 `;
-        responseText2 += `\u2022 Total Data Points: ${sortedData.length}
+        responseText += `\u2022 Total Data Points: ${sortedData.length}
 `;
-        responseText2 += `\u2022 Timeframe: 1 day intervals
+        responseText += `\u2022 Timeframe: 1 day intervals
 `;
-        responseText2 += `\u2022 Analysis Type: ${processedRequest.analysisType}
+        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
 `;
-        responseText2 += `\u2022 Data Source: TokenMetrics Official API
+        responseText += `\u2022 Data Source: TokenMetrics Official API
 `;
       }
       const result = {
@@ -10714,9 +10711,9 @@ ${ohlcvAnalysis.summary}
       };
       console.log(`[${requestId}] Daily OHLCV analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -11390,7 +11387,7 @@ var getHourlyOhlcvAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback2) {
+  async handler(runtime, message, state, _params, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing hourly OHLCV request...`);
@@ -11559,60 +11556,60 @@ var getHourlyOhlcvAction = {
       const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
       const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
       const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
-      let responseText2 = `\u{1F4CA} **Hourly OHLCV Data for ${tokenName}**
+      let responseText = `\u{1F4CA} **Hourly OHLCV Data for ${tokenName}**
 
 `;
       if (ohlcvData.length === 0) {
-        responseText2 += `\u274C No hourly OHLCV data found for ${tokenName}. This could mean:
+        responseText += `\u274C No hourly OHLCV data found for ${tokenName}. This could mean:
 `;
-        responseText2 += `\u2022 The token may not have sufficient trading history
+        responseText += `\u2022 The token may not have sufficient trading history
 `;
-        responseText2 += `\u2022 TokenMetrics may not have hourly data for this token
+        responseText += `\u2022 TokenMetrics may not have hourly data for this token
 `;
-        responseText2 += `\u2022 Try using a different token name or symbol
+        responseText += `\u2022 Try using a different token name or symbol
 
 `;
-        responseText2 += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
+        responseText += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
       } else {
         if (ohlcvData.length > sortedData.length) {
           const tokenFiltered = ohlcvData.length - filteredByToken.length;
           const qualityFiltered = filteredByToken.length - sortedData.length;
           if (tokenFiltered > 0 && qualityFiltered > 0) {
-            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
+            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
 
 `;
           } else if (tokenFiltered > 0) {
-            responseText2 += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
+            responseText += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
 
 `;
           } else if (qualityFiltered > 0) {
-            responseText2 += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
 
 `;
           }
         }
         const recentData = sortedData.slice(-5).reverse();
-        responseText2 += `\u{1F4C8} **Recent Hourly Data (Last ${recentData.length} hours):**
+        responseText += `\u{1F4C8} **Recent Hourly Data (Last ${recentData.length} hours):**
 `;
         recentData.forEach((item, index) => {
           const date = new Date(item.DATE || item.TIMESTAMP);
           const timeStr = date.toLocaleString();
-          responseText2 += `
+          responseText += `
 **Hour ${index + 1}** (${timeStr}):
 `;
-          responseText2 += `\u2022 Open: ${formatCurrency(item.OPEN)}
+          responseText += `\u2022 Open: ${formatCurrency(item.OPEN)}
 `;
-          responseText2 += `\u2022 High: ${formatCurrency(item.HIGH)}
+          responseText += `\u2022 High: ${formatCurrency(item.HIGH)}
 `;
-          responseText2 += `\u2022 Low: ${formatCurrency(item.LOW)}
+          responseText += `\u2022 Low: ${formatCurrency(item.LOW)}
 `;
-          responseText2 += `\u2022 Close: ${formatCurrency(item.CLOSE)}
+          responseText += `\u2022 Close: ${formatCurrency(item.CLOSE)}
 `;
-          responseText2 += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
+          responseText += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
 `;
         });
         if (ohlcvAnalysis && ohlcvAnalysis.summary) {
-          responseText2 += `
+          responseText += `
 
 \u{1F4CA} **Analysis Summary:**
 ${ohlcvAnalysis.summary}
@@ -11620,73 +11617,73 @@ ${ohlcvAnalysis.summary}
         }
         if (ohlcvAnalysis?.price_analysis) {
           const priceAnalysis = ohlcvAnalysis.price_analysis;
-          responseText2 += `
+          responseText += `
 \u{1F4B0} **Price Movement:**
 `;
-          responseText2 += `\u2022 Direction: ${priceAnalysis.direction}
+          responseText += `\u2022 Direction: ${priceAnalysis.direction}
 `;
-          responseText2 += `\u2022 Change: ${priceAnalysis.price_change} (${priceAnalysis.change_percent})
+          responseText += `\u2022 Change: ${priceAnalysis.price_change} (${priceAnalysis.change_percent})
 `;
-          responseText2 += `\u2022 Range: ${priceAnalysis.lowest_price} - ${priceAnalysis.highest_price}
+          responseText += `\u2022 Range: ${priceAnalysis.lowest_price} - ${priceAnalysis.highest_price}
 `;
         }
         if (ohlcvAnalysis?.volume_analysis) {
           const volumeAnalysis = ohlcvAnalysis.volume_analysis;
-          responseText2 += `
+          responseText += `
 \u{1F4CA} **Volume Analysis:**
 `;
-          responseText2 += `\u2022 Average Volume: ${volumeAnalysis.average_volume}
+          responseText += `\u2022 Average Volume: ${volumeAnalysis.average_volume}
 `;
-          responseText2 += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend}
+          responseText += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend}
 `;
-          responseText2 += `\u2022 Consistency: ${volumeAnalysis.volume_consistency}
+          responseText += `\u2022 Consistency: ${volumeAnalysis.volume_consistency}
 `;
         }
         if (ohlcvAnalysis?.trading_signals?.signals?.length > 0) {
-          responseText2 += `
+          responseText += `
 \u{1F3AF} **Trading Signals:**
 `;
           ohlcvAnalysis.trading_signals.signals.forEach((signal) => {
-            responseText2 += `\u2022 ${signal.type}: ${signal.signal}
+            responseText += `\u2022 ${signal.type}: ${signal.signal}
 `;
           });
         }
         if (processedRequest.analysisType === "scalping" && ohlcvAnalysis?.scalping_focus) {
-          responseText2 += `
+          responseText += `
 \u26A1 **Scalping Insights:**
 `;
           ohlcvAnalysis.scalping_focus.scalping_insights?.forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
         } else if (processedRequest.analysisType === "intraday" && ohlcvAnalysis?.intraday_focus) {
-          responseText2 += `
+          responseText += `
 \u{1F4C8} **Intraday Insights:**
 `;
           ohlcvAnalysis.intraday_focus.intraday_insights?.forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
         } else if (processedRequest.analysisType === "technical_patterns" && ohlcvAnalysis?.technical_focus) {
-          responseText2 += `
+          responseText += `
 \u{1F50D} **Technical Analysis:**
 `;
           ohlcvAnalysis.technical_focus.technical_insights?.forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
         }
-        responseText2 += `
+        responseText += `
 
 \u{1F4CB} **Data Summary:**
 `;
-        responseText2 += `\u2022 Total Data Points: ${sortedData.length}
+        responseText += `\u2022 Total Data Points: ${sortedData.length}
 `;
-        responseText2 += `\u2022 Timeframe: 1 hour intervals
+        responseText += `\u2022 Timeframe: 1 hour intervals
 `;
-        responseText2 += `\u2022 Analysis Type: ${processedRequest.analysisType}
+        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
 `;
-        responseText2 += `\u2022 Data Source: TokenMetrics Official API
+        responseText += `\u2022 Data Source: TokenMetrics Official API
 `;
       }
       const result = {
@@ -11728,9 +11725,9 @@ ${ohlcvAnalysis.summary}
         }
       };
       console.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: result
         });
       }
@@ -11772,8 +11769,8 @@ ${ohlcvAnalysis.summary}
           ]
         }
       };
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: errorText,
           content: errorResult
         });
@@ -12612,22 +12609,19 @@ var getHourlyTradingSignalsAction = {
       };
       console.log(`[${requestId}] Hourly trading signals analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "hourlytradingsignals",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
+      return {
+        text: response,
+        content: {
+          success: true,
+          request_id: requestId,
+          data: result,
+          metadata: {
+            endpoint: "hourly-trading-signals",
+            data_source: "TokenMetrics Official API",
+            api_version: "v2"
           }
-        });
-      }
-      return true;
+        }
+      };
     } catch (error) {
       console.error("Error in getHourlyTradingSignalsAction:", error);
       return {
@@ -13270,7 +13264,7 @@ var getResistanceSupportAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback2) {
+  async handler(runtime, message, state, _params, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing resistance and support levels request...`);
@@ -13527,31 +13521,31 @@ var getResistanceSupportAction = {
       const supportLevels = levelsData.filter(
         (level) => level.LEVEL_TYPE === "SUPPORT" || level.TYPE === "SUPPORT"
       );
-      let responseText2 = `\u{1F4CA} **Resistance & Support Analysis for ${tokenName}**
+      let responseText = `\u{1F4CA} **Resistance & Support Analysis for ${tokenName}**
 
 `;
       if (levelsData.length === 0) {
-        responseText2 += `\u274C No resistance and support levels found for ${tokenName}. This could mean:
+        responseText += `\u274C No resistance and support levels found for ${tokenName}. This could mean:
 `;
-        responseText2 += `\u2022 The token may not have sufficient price history
+        responseText += `\u2022 The token may not have sufficient price history
 `;
-        responseText2 += `\u2022 TokenMetrics may not have performed technical analysis on this token yet
+        responseText += `\u2022 TokenMetrics may not have performed technical analysis on this token yet
 `;
-        responseText2 += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+        responseText += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
 
 `;
       } else {
-        responseText2 += `\u2705 **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)
+        responseText += `\u2705 **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)
 
 `;
         const currentPriceRef = levelsData[0]?.CURRENT_PRICE_REFERENCE;
         if (currentPriceRef) {
-          responseText2 += `\u{1F4B0} **Current Price Reference**: ${formatCurrency(currentPriceRef)}
+          responseText += `\u{1F4B0} **Current Price Reference**: ${formatCurrency(currentPriceRef)}
 
 `;
         }
         if (resistanceLevels.length > 0) {
-          responseText2 += `\u{1F534} **Key Resistance Levels** (${resistanceLevels.length} total):
+          responseText += `\u{1F534} **Key Resistance Levels** (${resistanceLevels.length} total):
 `;
           const topResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
           topResistance.forEach((level, index) => {
@@ -13559,18 +13553,18 @@ var getResistanceSupportAction = {
             const date = new Date(level.DATE).toLocaleDateString();
             const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
             const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
-            responseText2 += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
+            responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
 `;
           });
           if (resistanceLevels.length > 5) {
-            responseText2 += `   ... and ${resistanceLevels.length - 5} more resistance levels
+            responseText += `   ... and ${resistanceLevels.length - 5} more resistance levels
 `;
           }
-          responseText2 += `
+          responseText += `
 `;
         }
         if (supportLevels.length > 0) {
-          responseText2 += `\u{1F7E2} **Key Support Levels** (${supportLevels.length} total):
+          responseText += `\u{1F7E2} **Key Support Levels** (${supportLevels.length} total):
 `;
           const topSupport = supportLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
           topSupport.forEach((level, index) => {
@@ -13578,17 +13572,17 @@ var getResistanceSupportAction = {
             const date = new Date(level.DATE).toLocaleDateString();
             const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
             const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
-            responseText2 += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
+            responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
 `;
           });
           if (supportLevels.length > 5) {
-            responseText2 += `   ... and ${supportLevels.length - 5} more support levels
+            responseText += `   ... and ${supportLevels.length - 5} more support levels
 `;
           }
-          responseText2 += `
+          responseText += `
 `;
         }
-        responseText2 += `\u{1F4C5} **Recent Historical Levels**:
+        responseText += `\u{1F4C5} **Recent Historical Levels**:
 `;
         const recentLevels = levelsData.sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime()).slice(0, 5);
         recentLevels.forEach((level) => {
@@ -13597,96 +13591,96 @@ var getResistanceSupportAction = {
           const type = level.LEVEL_TYPE || level.TYPE;
           const typeIcon = type === "RESISTANCE" ? "\u{1F534}" : "\u{1F7E2}";
           const daysAgo = level.DAYS_SINCE ? `(${level.DAYS_SINCE} days ago)` : "";
-          responseText2 += `\u2022 ${typeIcon} **${price}** - ${date} ${daysAgo}
+          responseText += `\u2022 ${typeIcon} **${price}** - ${date} ${daysAgo}
 `;
         });
-        responseText2 += `
+        responseText += `
 `;
         if (processedRequest.analysisType === "trading_levels") {
-          responseText2 += `\u{1F3AF} **Trading Levels Analysis:**
+          responseText += `\u{1F3AF} **Trading Levels Analysis:**
 `;
-          responseText2 += `\u2022 **Entry Opportunities**: ${supportLevels.length} support levels for potential long positions
+          responseText += `\u2022 **Entry Opportunities**: ${supportLevels.length} support levels for potential long positions
 `;
-          responseText2 += `\u2022 **Exit Targets**: ${resistanceLevels.length} resistance levels for profit-taking
+          responseText += `\u2022 **Exit Targets**: ${resistanceLevels.length} resistance levels for profit-taking
 `;
-          responseText2 += `\u2022 **Risk Management**: Use support levels for stop-loss placement
+          responseText += `\u2022 **Risk Management**: Use support levels for stop-loss placement
 
 `;
         } else if (processedRequest.analysisType === "breakout_analysis") {
-          responseText2 += `\u{1F680} **Breakout Analysis:**
+          responseText += `\u{1F680} **Breakout Analysis:**
 `;
           const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || 0) > 70);
           const nearestResistance = resistanceLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
-          responseText2 += `\u2022 **Breakout Candidates**: ${strongResistance.length} strong resistance levels to watch
+          responseText += `\u2022 **Breakout Candidates**: ${strongResistance.length} strong resistance levels to watch
 `;
           if (nearestResistance) {
-            responseText2 += `\u2022 **Next Key Level**: ${formatCurrency(nearestResistance.PRICE_LEVEL || 0)} resistance
+            responseText += `\u2022 **Next Key Level**: ${formatCurrency(nearestResistance.PRICE_LEVEL || 0)} resistance
 `;
           }
-          responseText2 += `\u2022 **Breakout Strategy**: Monitor volume on approach to resistance levels
+          responseText += `\u2022 **Breakout Strategy**: Monitor volume on approach to resistance levels
 
 `;
         } else if (processedRequest.analysisType === "risk_management") {
-          responseText2 += `\u{1F6E1}\uFE0F **Risk Management Guide:**
+          responseText += `\u{1F6E1}\uFE0F **Risk Management Guide:**
 `;
           const nearestSupport = supportLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
-          responseText2 += `\u2022 **Stop-Loss Zones**: ${supportLevels.length} support levels for protection
+          responseText += `\u2022 **Stop-Loss Zones**: ${supportLevels.length} support levels for protection
 `;
           if (nearestSupport) {
-            responseText2 += `\u2022 **Nearest Support**: ${formatCurrency(nearestSupport.PRICE_LEVEL || 0)} for stop placement
+            responseText += `\u2022 **Nearest Support**: ${formatCurrency(nearestSupport.PRICE_LEVEL || 0)} for stop placement
 `;
           }
-          responseText2 += `\u2022 **Position Sizing**: Adjust based on distance to key support levels
+          responseText += `\u2022 **Position Sizing**: Adjust based on distance to key support levels
 
 `;
         } else {
-          responseText2 += `\u{1F4C8} **Comprehensive Analysis:**
+          responseText += `\u{1F4C8} **Comprehensive Analysis:**
 `;
           const priceRange = Math.max(...levelsData.map((l) => l.PRICE_LEVEL || 0)) - Math.min(...levelsData.map((l) => l.PRICE_LEVEL || 0));
           const avgStrength = levelsData.reduce((sum, l) => sum + (l.STRENGTH || 0), 0) / levelsData.length;
-          responseText2 += `\u2022 **Price Range Covered**: ${formatCurrency(priceRange)} across all levels
+          responseText += `\u2022 **Price Range Covered**: ${formatCurrency(priceRange)} across all levels
 `;
-          responseText2 += `\u2022 **Average Level Strength**: ${Math.round(avgStrength)}/100
+          responseText += `\u2022 **Average Level Strength**: ${Math.round(avgStrength)}/100
 `;
-          responseText2 += `\u2022 **Data Timeframe**: ${new Date(Math.min(...levelsData.map((l) => new Date(l.DATE).getTime()))).getFullYear()} - ${(/* @__PURE__ */ new Date()).getFullYear()}
+          responseText += `\u2022 **Data Timeframe**: ${new Date(Math.min(...levelsData.map((l) => new Date(l.DATE).getTime()))).getFullYear()} - ${(/* @__PURE__ */ new Date()).getFullYear()}
 
 `;
         }
         if (levelsAnalysis.insights && levelsAnalysis.insights.length > 0) {
-          responseText2 += `\u{1F4A1} **Key Insights:**
+          responseText += `\u{1F4A1} **Key Insights:**
 `;
           levelsAnalysis.insights.slice(0, 3).forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
-          responseText2 += `
+          responseText += `
 `;
         }
         if (levelsAnalysis.technical_outlook) {
-          responseText2 += `\u{1F52E} **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || "Neutral"}
+          responseText += `\u{1F52E} **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || "Neutral"}
 
 `;
         }
-        responseText2 += `\u{1F4CB} **Trading Guidelines:**
+        responseText += `\u{1F4CB} **Trading Guidelines:**
 `;
-        responseText2 += `\u2022 **Long Entries**: Consider positions near strong support levels
+        responseText += `\u2022 **Long Entries**: Consider positions near strong support levels
 `;
-        responseText2 += `\u2022 **Profit Targets**: Set take-profits near resistance levels
+        responseText += `\u2022 **Profit Targets**: Set take-profits near resistance levels
 `;
-        responseText2 += `\u2022 **Stop Losses**: Place stops below key support levels
+        responseText += `\u2022 **Stop Losses**: Place stops below key support levels
 `;
-        responseText2 += `\u2022 **Breakout Plays**: Watch for volume confirmation on level breaks
+        responseText += `\u2022 **Breakout Plays**: Watch for volume confirmation on level breaks
 `;
-        responseText2 += `\u2022 **Risk Management**: Size positions based on distance to key levels
+        responseText += `\u2022 **Risk Management**: Size positions based on distance to key levels
 `;
       }
-      responseText2 += `
+      responseText += `
 \u{1F517} **Data Source:** TokenMetrics Technical Analysis Engine (v2)`;
       console.log(`[${requestId}] Resistance and support analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -13716,8 +13710,8 @@ var getResistanceSupportAction = {
 \u2022 Use full token names instead of symbols (e.g., "Bitcoin" instead of "BTC")
 \u2022 Check if TokenMetrics has performed technical analysis on the requested token
 \u2022 Ensure your API key has access to the resistance-support endpoint`;
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: errorMessage,
           content: {
             success: false,
@@ -14405,7 +14399,7 @@ var getScenarioAnalysisAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback2) {
+  async handler(runtime, message, state, _params, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing scenario analysis request...`);
@@ -14516,8 +14510,8 @@ Please analyze the CURRENT user message above and extract the relevant informati
       console.log(`[${requestId}] API response received, processing data...`);
       if (response && response.success === false) {
         console.log(`[${requestId}] \u274C API returned error: ${response.message || "Unknown error"}`);
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C No scenario analysis data available for ${processedRequest.cryptocurrency || processedRequest.symbol || "this token"}.
 
 This could mean:
@@ -14584,83 +14578,83 @@ Try using the full cryptocurrency name instead of the symbol.`,
       console.log(`[${requestId}] Processed ${scenarioData.length} scenarios from API response`);
       const scenarioAnalysis = analyzeScenarioData(scenarioData, processedRequest.analysisType);
       const tokenName = processedRequest.cryptocurrency || processedRequest.symbol || "Cryptocurrency";
-      let responseText2 = `\u{1F4CA} **Scenario Analysis for ${tokenName}**
+      let responseText = `\u{1F4CA} **Scenario Analysis for ${tokenName}**
 
 `;
       if (scenarioData.length === 0) {
-        responseText2 += "\u274C No scenario analysis data available for this token.\n";
-        responseText2 += "This could mean:\n";
-        responseText2 += "\u2022 Token is not covered by TokenMetrics scenario modeling\n";
-        responseText2 += "\u2022 Insufficient historical data for scenario generation\n";
-        responseText2 += "\u2022 Token may be too new or have limited market activity\n";
+        responseText += "\u274C No scenario analysis data available for this token.\n";
+        responseText += "This could mean:\n";
+        responseText += "\u2022 Token is not covered by TokenMetrics scenario modeling\n";
+        responseText += "\u2022 Insufficient historical data for scenario generation\n";
+        responseText += "\u2022 Token may be too new or have limited market activity\n";
       } else {
-        responseText2 += `\u{1F3AF} **Analysis Summary**
+        responseText += `\u{1F3AF} **Analysis Summary**
 `;
-        responseText2 += `\u2022 Total Scenarios: ${scenarioData.length}
+        responseText += `\u2022 Total Scenarios: ${scenarioData.length}
 `;
-        responseText2 += `\u2022 Analysis Type: ${processedRequest.analysisType}
+        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
 `;
-        responseText2 += `\u2022 Data Source: TokenMetrics Scenario Modeling Engine
+        responseText += `\u2022 Data Source: TokenMetrics Scenario Modeling Engine
 
 `;
         if (scenarioAnalysis.scenario_breakdown) {
-          responseText2 += `\u{1F4C8} **Scenario Breakdown**
+          responseText += `\u{1F4C8} **Scenario Breakdown**
 `;
-          responseText2 += `\u2022 Total Scenario Types: ${scenarioAnalysis.scenario_breakdown.scenario_types || 0}
+          responseText += `\u2022 Total Scenario Types: ${scenarioAnalysis.scenario_breakdown.scenario_types || 0}
 `;
-          responseText2 += `\u2022 Most Likely Scenario: ${scenarioAnalysis.scenario_breakdown.most_likely_scenario || "Unknown"}
+          responseText += `\u2022 Most Likely Scenario: ${scenarioAnalysis.scenario_breakdown.most_likely_scenario || "Unknown"}
 
 `;
         }
         if (scenarioAnalysis.risk_assessment) {
-          responseText2 += `\u26A0\uFE0F **Risk Assessment**
+          responseText += `\u26A0\uFE0F **Risk Assessment**
 `;
-          responseText2 += `\u2022 Risk Level: ${scenarioAnalysis.risk_assessment.overall_risk_level || "Unknown"}
+          responseText += `\u2022 Risk Level: ${scenarioAnalysis.risk_assessment.overall_risk_level || "Unknown"}
 `;
-          responseText2 += `\u2022 Max Potential Drawdown: ${scenarioAnalysis.risk_assessment.max_potential_drawdown || "Unknown"}
+          responseText += `\u2022 Max Potential Drawdown: ${scenarioAnalysis.risk_assessment.max_potential_drawdown || "Unknown"}
 `;
-          responseText2 += `\u2022 Downside Scenarios: ${scenarioAnalysis.risk_assessment.downside_scenarios || 0}
+          responseText += `\u2022 Downside Scenarios: ${scenarioAnalysis.risk_assessment.downside_scenarios || 0}
 
 `;
         }
         if (scenarioAnalysis.opportunity_analysis) {
-          responseText2 += `\u{1F680} **Opportunity Analysis**
+          responseText += `\u{1F680} **Opportunity Analysis**
 `;
-          responseText2 += `\u2022 Upside Potential: ${scenarioAnalysis.opportunity_analysis.upside_potential || "Unknown"}
+          responseText += `\u2022 Upside Potential: ${scenarioAnalysis.opportunity_analysis.upside_potential || "Unknown"}
 `;
-          responseText2 += `\u2022 Max Potential Upside: ${scenarioAnalysis.opportunity_analysis.max_potential_upside || "Unknown"}
+          responseText += `\u2022 Max Potential Upside: ${scenarioAnalysis.opportunity_analysis.max_potential_upside || "Unknown"}
 `;
-          responseText2 += `\u2022 Upside Scenarios: ${scenarioAnalysis.opportunity_analysis.upside_scenarios || 0}
+          responseText += `\u2022 Upside Scenarios: ${scenarioAnalysis.opportunity_analysis.upside_scenarios || 0}
 
 `;
         }
         if (scenarioAnalysis.insights && scenarioAnalysis.insights.length > 0) {
-          responseText2 += `\u{1F4A1} **Key Insights**
+          responseText += `\u{1F4A1} **Key Insights**
 `;
           scenarioAnalysis.insights.slice(0, 3).forEach((insight) => {
-            responseText2 += `\u2022 ${insight}
+            responseText += `\u2022 ${insight}
 `;
           });
-          responseText2 += `
+          responseText += `
 `;
         }
-        responseText2 += `\u{1F4CB} **Usage Guidelines**
+        responseText += `\u{1F4CB} **Usage Guidelines**
 `;
-        responseText2 += `\u2022 Use for risk assessment and portfolio stress testing
+        responseText += `\u2022 Use for risk assessment and portfolio stress testing
 `;
-        responseText2 += `\u2022 Plan position sizing based on downside scenarios
+        responseText += `\u2022 Plan position sizing based on downside scenarios
 `;
-        responseText2 += `\u2022 Set profit targets based on upside scenarios
+        responseText += `\u2022 Set profit targets based on upside scenarios
 `;
-        responseText2 += `\u2022 Develop contingency plans for extreme scenarios
+        responseText += `\u2022 Develop contingency plans for extreme scenarios
 
 `;
-        responseText2 += `\u26A1 *Scenario analysis is probabilistic, not predictive. Use for strategic planning and risk management.*`;
+        responseText += `\u26A1 *Scenario analysis is probabilistic, not predictive. Use for strategic planning and risk management.*`;
       }
       console.log(`[${requestId}] Scenario analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -14681,8 +14675,8 @@ Try using the full cryptocurrency name instead of the symbol.`,
       return true;
     } catch (error) {
       console.error("Error in getScenarioAnalysisAction:", error);
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: `\u274C Failed to retrieve scenario analysis: ${error instanceof Error ? error.message : "Unknown error"}`,
           content: {
             success: false,
@@ -15431,7 +15425,7 @@ var getSentimentAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback2) {
+  async handler(runtime, message, state, _params, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing sentiment analysis request...`);
@@ -15503,86 +15497,86 @@ var getSentimentAction = {
           ]
         }
       };
-      let responseText2 = "";
+      let responseText = "";
       if (processedRequest.analysisType === "news_impact") {
-        responseText2 = `\u{1F4F0} **Crypto Market News & Sentiment Analysis**
+        responseText = `\u{1F4F0} **Crypto Market News & Sentiment Analysis**
 
 `;
-        responseText2 += `\u2139\uFE0F *Note: This provides general crypto market news sentiment that affects all cryptocurrencies, not token-specific news.*
+        responseText += `\u2139\uFE0F *Note: This provides general crypto market news sentiment that affects all cryptocurrencies, not token-specific news.*
 
 `;
       } else {
-        responseText2 = `\u{1F4CA} **Crypto Market Sentiment Analysis**
+        responseText = `\u{1F4CA} **Crypto Market Sentiment Analysis**
 
 `;
       }
       if (sentimentData.length === 0) {
-        responseText2 += `\u274C No sentiment data available at the moment.
+        responseText += `\u274C No sentiment data available at the moment.
 
 `;
       } else {
         const latest = sentimentData[0];
         const marketGrade = latest.MARKET_SENTIMENT_GRADE || 0;
         const marketLabel = latest.MARKET_SENTIMENT_LABEL || "Unknown";
-        responseText2 += `\u{1F3AF} **Current Market Sentiment**: ${marketLabel} (${marketGrade})
+        responseText += `\u{1F3AF} **Current Market Sentiment**: ${marketLabel} (${marketGrade})
 
 `;
         if (latest.TWITTER_SENTIMENT_GRADE !== void 0) {
-          responseText2 += `\u{1F426} **Twitter**: ${latest.TWITTER_SENTIMENT_LABEL || "Unknown"} (${latest.TWITTER_SENTIMENT_GRADE})
+          responseText += `\u{1F426} **Twitter**: ${latest.TWITTER_SENTIMENT_LABEL || "Unknown"} (${latest.TWITTER_SENTIMENT_GRADE})
 `;
         }
         if (latest.REDDIT_SENTIMENT_GRADE !== void 0) {
-          responseText2 += `\u{1F4F1} **Reddit**: ${latest.REDDIT_SENTIMENT_LABEL || "Unknown"} (${latest.REDDIT_SENTIMENT_GRADE})
+          responseText += `\u{1F4F1} **Reddit**: ${latest.REDDIT_SENTIMENT_LABEL || "Unknown"} (${latest.REDDIT_SENTIMENT_GRADE})
 `;
         }
         if (latest.NEWS_SENTIMENT_GRADE !== void 0) {
-          responseText2 += `\u{1F4F0} **News**: ${latest.NEWS_SENTIMENT_LABEL || "Unknown"} (${latest.NEWS_SENTIMENT_GRADE})
+          responseText += `\u{1F4F0} **News**: ${latest.NEWS_SENTIMENT_LABEL || "Unknown"} (${latest.NEWS_SENTIMENT_GRADE})
 
 `;
         }
         if (latest.NEWS_SUMMARY) {
-          responseText2 += `\u{1F4F0} **News Summary**: ${latest.NEWS_SUMMARY}
+          responseText += `\u{1F4F0} **News Summary**: ${latest.NEWS_SUMMARY}
 
 `;
         }
         if (latest.TWITTER_SUMMARY) {
-          responseText2 += `\u{1F426} **Twitter Summary**: ${latest.TWITTER_SUMMARY}
+          responseText += `\u{1F426} **Twitter Summary**: ${latest.TWITTER_SUMMARY}
 
 `;
         }
         if (latest.REDDIT_SUMMARY) {
-          responseText2 += `\u{1F4F1} **Reddit Summary**: ${latest.REDDIT_SUMMARY}
+          responseText += `\u{1F4F1} **Reddit Summary**: ${latest.REDDIT_SUMMARY}
 
 `;
         }
         if (sentimentAnalysis.insights && sentimentAnalysis.insights.length > 0) {
-          responseText2 += `\u{1F4A1} **Key Insights**:
+          responseText += `\u{1F4A1} **Key Insights**:
 `;
           sentimentAnalysis.insights.slice(0, 3).forEach((insight, index) => {
-            responseText2 += `${index + 1}. ${insight}
+            responseText += `${index + 1}. ${insight}
 `;
           });
-          responseText2 += `
+          responseText += `
 `;
         }
         if (sentimentAnalysis.trading_implications) {
-          responseText2 += `\u{1F4C8} **Trading Implications**: ${sentimentAnalysis.trading_implications.recommendation}
+          responseText += `\u{1F4C8} **Trading Implications**: ${sentimentAnalysis.trading_implications.recommendation}
 `;
-          responseText2 += `\u26A0\uFE0F **Risk Level**: ${sentimentAnalysis.trading_implications.risk_level}
+          responseText += `\u26A0\uFE0F **Risk Level**: ${sentimentAnalysis.trading_implications.risk_level}
 
 `;
         }
       }
-      responseText2 += `\u{1F4CA} Retrieved ${sentimentData.length} sentiment data points from TokenMetrics
+      responseText += `\u{1F4CA} Retrieved ${sentimentData.length} sentiment data points from TokenMetrics
 `;
-      responseText2 += `\u{1F550} Analysis focus: ${processedRequest.analysisType}
+      responseText += `\u{1F550} Analysis focus: ${processedRequest.analysisType}
 `;
-      responseText2 += `\u{1F4C4} Page ${processedRequest.page} (limit: ${processedRequest.limit})`;
+      responseText += `\u{1F4C4} Page ${processedRequest.page} (limit: ${processedRequest.limit})`;
       console.log(`[${requestId}] Sentiment analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -16293,22 +16287,19 @@ var getTmaiAction = {
       };
       console.log(`[${requestId}] TMAI analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "tmai",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
+      return {
+        text: response,
+        content: {
+          success: true,
+          request_id: requestId,
+          data: result,
+          metadata: {
+            endpoint: "tmai",
+            data_source: "TokenMetrics Official API",
+            api_version: "v2"
           }
-        });
-      }
-      return true;
+        }
+      };
     } catch (error) {
       console.error("Error in getTmaiAction:", error);
       return {
@@ -16818,7 +16809,7 @@ var getTokensAction = {
       return false;
     }
   },
-  handler: async (runtime, message, state, _options, callback2) => {
+  handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
     elizaLogger8.log("\u{1F680} Starting TokenMetrics tokens handler");
     elizaLogger8.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
@@ -16837,8 +16828,8 @@ var getTokensAction = {
       elizaLogger8.log(`\u{1F194} Request ${requestId}: AI Processing "${tokensRequest.cryptocurrency || tokensRequest.search_type}"`);
       if (tokensRequest.confidence < 0.2) {
         elizaLogger8.log("\u274C AI extraction failed or insufficient information");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C I couldn't identify specific token search criteria from your request.
 
 I can help you find tokens by:
@@ -16893,8 +16884,8 @@ Try asking something like:
       const tokensData = await fetchTokens(apiParams, runtime);
       if (!tokensData) {
         elizaLogger8.log("\u274C Failed to fetch tokens data");
-        if (callback2) {
-          callback2({
+        if (callback) {
+          callback({
             text: `\u274C Unable to fetch tokens data at the moment.
 
 This could be due to:
@@ -16914,16 +16905,16 @@ Please try again in a few moments or try with different criteria.`,
       }
       const tokens = Array.isArray(tokensData) ? tokensData : tokensData.data || [];
       elizaLogger8.log(`\u{1F50D} Received ${tokens.length} tokens`);
-      const responseText2 = formatTokensResponse(tokens, tokensRequest.search_type, {
+      const responseText = formatTokensResponse(tokens, tokensRequest.search_type, {
         cryptocurrency: tokensRequest.cryptocurrency,
         category: tokensRequest.category,
         exchange: tokensRequest.exchange
       });
       const analysis = analyzeTokens(tokens);
       elizaLogger8.success("\u2705 Successfully processed tokens request");
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             tokens_data: tokens,
@@ -16947,9 +16938,9 @@ Please try again in a few moments or try with different criteria.`,
     } catch (error) {
       elizaLogger8.error("\u274C Error in TokenMetrics tokens handler:", error);
       elizaLogger8.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback2) {
+      if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback2({
+        callback({
           text: `\u274C I encountered an error while fetching tokens: ${errorMessage}
 
 This could be due to:
@@ -17155,7 +17146,7 @@ var getTopMarketCapAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback2) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing top market cap request...`);
@@ -17185,7 +17176,7 @@ var getTopMarketCapAction = {
       console.log(`[${requestId}] API response received, processing data...`);
       const topTokens = Array.isArray(response) ? response : response.data || [];
       const marketAnalysis = analyzeTopTokensRanking(topTokens, processedRequest.top_k, processedRequest.analysisType);
-      const responseText2 = formatTopMarketCapResponse(topTokens, marketAnalysis, processedRequest);
+      const responseText = formatTopMarketCapResponse(topTokens, marketAnalysis, processedRequest);
       const result = {
         success: true,
         message: `Successfully retrieved top ${topTokens.length} tokens by market capitalization ranking`,
@@ -17214,9 +17205,9 @@ var getTopMarketCapAction = {
         }
       };
       console.log(`[${requestId}] Top market cap analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: result
         });
       }
@@ -17242,8 +17233,8 @@ var getTopMarketCapAction = {
           api_note: "This endpoint returns token rankings by market cap, not actual market cap values"
         }
       };
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: "\u274C Failed to retrieve top market cap data. Please try again later.",
           content: errorResult
         });
@@ -17532,7 +17523,7 @@ var getCryptoInvestorsAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback2) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing crypto investors request...`);
@@ -17562,7 +17553,7 @@ var getCryptoInvestorsAction = {
       console.log(`[${requestId}] API response received, processing data...`);
       const investorsData = Array.isArray(response) ? response : response.data || [];
       const investorsAnalysis = analyzeCryptoInvestors(investorsData, processedRequest.analysisType);
-      const responseText2 = formatCryptoInvestorsResponse(investorsData, investorsAnalysis, processedRequest);
+      const responseText = formatCryptoInvestorsResponse(investorsData, investorsAnalysis, processedRequest);
       const result = {
         success: true,
         message: `Successfully retrieved ${investorsData.length} crypto investors data`,
@@ -17599,9 +17590,9 @@ var getCryptoInvestorsAction = {
       };
       console.log(`[${requestId}] Crypto investors analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: result
         });
       }
@@ -17625,8 +17616,8 @@ var getCryptoInvestorsAction = {
           ]
         }
       };
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: "\u274C Failed to retrieve crypto investors data. Please try again later.",
           content: errorResult
         });
@@ -18252,7 +18243,7 @@ var getIndicesPerformanceAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback2) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices performance request...`);
@@ -18339,11 +18330,11 @@ var getIndicesPerformanceAction = {
         }
       };
       console.log(`[${requestId}] Indices performance analysis completed successfully`);
-      const responseText2 = formatIndicesPerformanceResponse(result);
+      const responseText = formatIndicesPerformanceResponse(result);
       console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback2) {
-        callback2({
-          text: responseText2,
+      if (callback) {
+        callback({
+          text: responseText,
           content: {
             success: true,
             request_id: requestId,
@@ -18359,8 +18350,8 @@ var getIndicesPerformanceAction = {
       return true;
     } catch (error) {
       console.error("Error in getIndicesPerformance action:", error);
-      if (callback2) {
-        callback2({
+      if (callback) {
+        callback({
           text: `\u274C Failed to retrieve indices performance data: ${error instanceof Error ? error.message : "Unknown error"}`,
           content: {
             success: false,

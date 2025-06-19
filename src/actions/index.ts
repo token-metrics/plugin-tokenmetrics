@@ -22,7 +22,7 @@ export { getScenarioAnalysisAction } from "./getScenarioAnalysisAction";
 export { getCorrelationAction } from "./getCorrelationAction";
 
 // ===== AI ENDPOINT =====
-export { getTMAIAction } from "./getTmaiAction";
+export { getTmaiAction } from "./getTmaiAction";
 
 // ===== INDICES ENDPOINTS =====
 export { getIndicesAction } from "./getIndicesAction";
@@ -30,7 +30,7 @@ export { getIndicesHoldingsAction } from "./getIndicesHoldingsAction";
 export { getIndicesPerformanceAction } from "./getIndicesPerformanceAction";
 
 // Export utility functions from action.ts
-export { callTokenMetricsApi, TOKENMETRICS_ENDPOINTS, validateApiKey } from './action';
+export { callTokenMetricsApi, LEGACY_TOKENMETRICS_ENDPOINTS, validateApiKey } from './action';
 
 // ===== ENHANCED TOKENMETRICS ACTIONS ARRAY =====
 import { getTokensAction } from "./getTokensAction";
@@ -50,7 +50,7 @@ import { getResistanceSupportAction } from "./getResistanceSupportAction";
 import { getSentimentAction } from "./getSentimentAction";
 import { getScenarioAnalysisAction } from "./getScenarioAnalysisAction";
 import { getCorrelationAction } from "./getCorrelationAction";
-import { getTMAIAction } from "./getTmaiAction";
+import { getTmaiAction } from "./getTmaiAction";
 import { getIndicesAction } from "./getIndicesAction";
 import { getIndicesHoldingsAction } from "./getIndicesHoldingsAction";
 import { getIndicesPerformanceAction } from "./getIndicesPerformanceAction";
@@ -73,7 +73,7 @@ export const enhancedTokenmetricsActions = [
     getSentimentAction,
     getScenarioAnalysisAction,
     getCorrelationAction,
-    getTMAIAction,
+    getTmaiAction,
     getIndicesAction,
     getIndicesHoldingsAction,
     getIndicesPerformanceAction,

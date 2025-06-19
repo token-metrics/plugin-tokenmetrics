@@ -1,5 +1,5 @@
 {
-  "name": "@elizaos-plugins/plugin-tokenmetrics",
+  "name": "@elizaos/plugin-tokenmetrics",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
@@ -18,6 +18,25 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elizaos/eliza.git",
+    "directory": "packages/plugin-tokenmetrics"
+  },
+  "keywords": [
+    "elizaos",
+    "crypto",
+    "cryptocurrency",
+    "tokenmetrics",
+    "trading",
+    "blockchain",
+    "ai",
+    "plugin",
+    "market-data",
+    "trading-signals"
+  ],
+  "author": "ElizaOS Contributors",
+  "license": "MIT",
   "dependencies": {
     "@elizaos/core": "^0.25.9",
     "axios": "^1.6.0",
@@ -34,14 +53,11 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --tsconfig ./tsconfig.json",
     "dev": "tsup src/index.ts --format esm --dts --watch --tsconfig ./tsconfig.json",
-    "test": "npx elizaos test",
-    "test:connection": "npx tsx -r dotenv/config src/tests/manual/01-basic-connection.js",
-    "test:endpoints": "npx tsx -r dotenv/config src/tests/manual/02-endpoint-testing.js",
-    "test:elizaos": "npx tsx -r dotenv/config src/tests/manual/03-elizaos-integration-testing.js",
-    "test:ui": "node -r dotenv/config src/tests/ui/start-server.js",
-    "test:all": "npm run test:connection && npm run test:endpoints && npm run test:elizaos",
-    "start:test-server": "node -r dotenv/config src/tests/ui/start-server.js",
-    "chat": "npx tsx -r dotenv/config src/tests/manual/04-interactive-ai-agent.js"
+    "clean": "rm -rf dist/",
+    "rebuild": "npm run clean && npm run build",
+    "typecheck": "npx tsc --noEmit",
+    "test:build": "npm run build && node -e \"import('./dist/index.js').then(plugin => { console.log('✅ Plugin loaded successfully'); console.log('📊 Available actions:', Object.keys(plugin.default?.actions || {})); }).catch(err => { console.error('❌ Plugin load failed:', err.message); process.exit(1); })\"",
+    "verify": "npm run typecheck && npm run test:build"
   },
   "agentConfig": {
     "pluginType": "elizaos:plugin:1.0.0",
