@@ -324,8 +324,8 @@ export const getInvestorGradesAction: Action = {
     ],
     description: "Get AI-generated investor grades and ratings for long-term cryptocurrency investments from TokenMetrics",
     
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.log("🔍 Validating getInvestorGradesAction");
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getInvestorGradesAction (1.x)");
         
         try {
             validateAndGetApiKey(runtime);
@@ -339,13 +339,13 @@ export const getInvestorGradesAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
         const requestId = generateRequestId();
         
-        elizaLogger.log("🚀 Starting TokenMetrics investor grades handler");
+        elizaLogger.log("🚀 Starting TokenMetrics investor grades handler (1.x)");
         elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
         elizaLogger.log(`🆔 Request ID: ${requestId}`);
 
@@ -353,34 +353,20 @@ export const getInvestorGradesAction: Action = {
             // STEP 1: Validate API key early
             validateAndGetApiKey(runtime);
 
-            // STEP 2: Extract investor grades request using AI with enhanced template
-            const timestamp = new Date().toISOString();
-            const userMessage = message.content?.text || "";
-            
-            console.log(`🔍 AI EXTRACTION CONTEXT [${requestId}]:`);
-            console.log(`📝 User message: "${userMessage}"`);
-            console.log(`📋 Template being used:`);
-            console.log(investorGradesTemplate);
-            console.log(`🔚 END CONTEXT [${requestId}]`);
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
 
-            // Enhanced template with cache busting
-            const enhancedTemplate = investorGradesTemplate
-                .replace('{{requestId}}', requestId)
-                .replace('{{timestamp}}', timestamp)
-                .replace('{{userMessage}}', userMessage);
-
-            const gradesRequestResult = await generateObject({
+            // STEP 2: Extract investor grades request using AI
+            const gradesRequest = await extractTokenMetricsRequest(
                 runtime,
-                context: composeContext({
-                    state: state || await runtime.composeState(message),
-                    template: enhancedTemplate
-                }),
-                modelClass: ModelClass.LARGE, // Use GPT-4o for better instruction following
-                schema: InvestorGradesRequestSchema,
-                mode: "json"
-            });
-
-            const gradesRequest = gradesRequestResult.object as InvestorGradesRequest;
+                message,
+                state,
+                investorGradesTemplate,
+                InvestorGradesRequestSchema,
+                requestId
+            );
 
             elizaLogger.log("🎯 AI Extracted grades request:", gradesRequest);
             elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || 'general market'}"`);
@@ -389,7 +375,7 @@ export const getInvestorGradesAction: Action = {
             let finalRequest = gradesRequest;
             if (!gradesRequest.cryptocurrency || gradesRequest.confidence < 0.5) {
                 elizaLogger.log("🔄 Applying regex fallback for cryptocurrency extraction");
-                const regexResult = extractCryptocurrencySimple(userMessage);
+                const regexResult = extractCryptocurrencySimple(message.content?.text || "");
                 if (regexResult) {
                     finalRequest = {
                         ...gradesRequest,
@@ -406,7 +392,7 @@ export const getInvestorGradesAction: Action = {
                 elizaLogger.log("❌ AI extraction failed or insufficient information");
                 
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ I couldn't identify specific investor grades criteria from your request.
 
 I can get AI investor grades for:
@@ -480,7 +466,7 @@ Try asking something like:
                 elizaLogger.log("❌ Failed to fetch investor grades data");
                 
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ Unable to fetch investor grades data at the moment.
 
 This could be due to:
@@ -528,7 +514,7 @@ Please try again in a few moments or try with different criteria.`,
                     elizaLogger.log(`❌ No ${finalRequest.grade_filter}-grade tokens found`);
                     
                     if (callback) {
-                        callback({
+                        await callback({
                             text: `📊 **No ${finalRequest.grade_filter}-Grade Tokens Found**
 
 I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
@@ -622,7 +608,7 @@ I searched through the available tokens but couldn't find any with ${finalReques
             elizaLogger.success("✅ Successfully processed investor grades request");
 
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -652,7 +638,7 @@ I searched through the available tokens but couldn't find any with ${finalReques
             if (callback) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
                 
-                callback({
+                await callback({
                     text: `❌ I encountered an error while fetching investor grades: ${errorMessage}
 
 This could be due to:

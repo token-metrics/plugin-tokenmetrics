@@ -141,7 +141,7 @@ export const getIndicesPerformanceAction: Action = {
     async handler(
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> {
@@ -290,8 +290,16 @@ export const getIndicesPerformanceAction: Action = {
         }
     },
 
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getIndicesPerformanceAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
     }
 };
 
@@ -572,16 +580,18 @@ function formatIndicesPerformanceResponse(result: any): string {
             });
         }
     } else {
-        response += `❌ No performance data found for index ${metadata.index_id}.\n\n`;
-        response += `This could be due to:\n`;
-        response += `• Invalid index ID\n`;
-        response += `• No performance history available\n`;
-        response += `• Date range outside available data\n`;
-        response += `• API connectivity issues\n`;
+        response += `❌ No performance data found for index ${metadata.index_id}.
+
+This could be due to:
+• Invalid index ID
+• No performance history available
+• Date range outside available data
+• API connectivity issues
+`;
     }
     
     response += `\n📊 **Data Source**: TokenMetrics Indices Engine\n`;
     response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
     
     return response;
-} 
+}

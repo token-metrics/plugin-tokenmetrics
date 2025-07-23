@@ -273,8 +273,8 @@ export const getTraderGradesAction: Action = {
     ],
     description: "Get AI-generated trader grades and ratings for cryptocurrencies from TokenMetrics",
     
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.log("🔍 Validating getTraderGradesAction");
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getTraderGradesAction (1.x)");
         
         try {
             validateAndGetApiKey(runtime);
@@ -288,13 +288,13 @@ export const getTraderGradesAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
         const requestId = generateRequestId();
         
-        elizaLogger.log("🚀 Starting TokenMetrics trader grades handler");
+        elizaLogger.log("🚀 Starting TokenMetrics trader grades handler (1.x)");
         elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
         elizaLogger.log(`🆔 Request ID: ${requestId}`);
 
@@ -302,11 +302,16 @@ export const getTraderGradesAction: Action = {
             // STEP 1: Validate API key early
             validateAndGetApiKey(runtime);
 
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
+
             // STEP 2: Extract trader grades request using AI
             const gradesRequest = await extractTokenMetricsRequest(
                 runtime,
                 message,
-                state || await runtime.composeState(message),
+                state,
                 traderGradesTemplate,
                 TraderGradesRequestSchema,
                 requestId
@@ -320,7 +325,7 @@ export const getTraderGradesAction: Action = {
                 elizaLogger.log("❌ AI extraction failed or insufficient information");
                 
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ I couldn't identify specific trader grades criteria from your request.
 
 I can get AI trader grades for:
@@ -392,7 +397,7 @@ Try asking something like:
                 elizaLogger.log("❌ Failed to fetch trader grades data");
                 
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ Unable to fetch trader grades data at the moment.
 
 This could be due to:
@@ -423,7 +428,7 @@ Please try again in a few moments or try with different criteria.`,
             elizaLogger.success("✅ Successfully processed trader grades request");
 
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -453,7 +458,7 @@ Please try again in a few moments or try with different criteria.`,
             if (callback) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
                 
-                callback({
+                await callback({
                     text: `❌ I encountered an error while fetching trader grades: ${errorMessage}
 
 This could be due to:

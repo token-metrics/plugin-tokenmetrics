@@ -203,8 +203,8 @@ export const getTradingSignalsAction: Action = {
     ],
     description: "Get AI-generated trading signals and recommendations for cryptocurrencies from TokenMetrics",
     
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.log("🔍 Validating getTradingSignalsAction");
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getTradingSignalsAction (1.x)");
         
         try {
             validateAndGetApiKey(runtime);
@@ -218,7 +218,7 @@ export const getTradingSignalsAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {

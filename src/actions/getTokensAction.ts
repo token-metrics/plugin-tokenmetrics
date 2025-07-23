@@ -299,8 +299,8 @@ export const getTokensAction: Action = {
     ],
     description: "Get list of supported cryptocurrencies and tokens from TokenMetrics database - for searching token information, not prices",
     
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
-        elizaLogger.log("🔍 Validating getTokensAction");
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getTokensAction (1.x)");
         
         try {
             validateAndGetApiKey(runtime);
@@ -314,13 +314,13 @@ export const getTokensAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
         const requestId = generateRequestId();
         
-        elizaLogger.log("🚀 Starting TokenMetrics tokens handler");
+        elizaLogger.log("🚀 Starting TokenMetrics tokens handler (1.x)");
         elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
         elizaLogger.log(`🆔 Request ID: ${requestId}`);
 
@@ -328,58 +328,100 @@ export const getTokensAction: Action = {
             // STEP 1: Validate API key early
             validateAndGetApiKey(runtime);
 
-            // STEP 2: Extract tokens request using AI
-            const tokensRequest = await extractTokenMetricsRequest(
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
+
+            // STEP 2: Extract request using AI helper
+            const tokensRequest: any = await extractTokenMetricsRequest(
                 runtime,
                 message,
-                state || await runtime.composeState(message),
+                state,
                 tokensTemplate,
                 TokensRequestSchema,
                 requestId
             );
 
-            elizaLogger.log("🎯 AI Extracted tokens request:", tokensRequest);
-            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${tokensRequest.cryptocurrency || tokensRequest.search_type}"`);
+            elizaLogger.log(`🎯 AI extracted request: ${JSON.stringify(tokensRequest, null, 2)}`);
+            elizaLogger.log(`🆔 Request ${requestId}: Extracted - ${JSON.stringify(tokensRequest)}`);
 
-            // STEP 3: Validate that we have sufficient information
-            if (tokensRequest.confidence < 0.2) {
-                elizaLogger.log("❌ AI extraction failed or insufficient information");
+            // Handle case where AI couldn't extract meaningful request
+            const hasValidCriteria = tokensRequest && (
+                tokensRequest.cryptocurrency || 
+                tokensRequest.category || 
+                tokensRequest.exchange || 
+                tokensRequest.search_type === "specific"
+            );
+
+            if (!hasValidCriteria) {
+                elizaLogger.log(`🔄 No specific search criteria found, treating as general tokens list request`);
+                elizaLogger.log(`🆔 Request ${requestId}: FALLBACK - General token list request`);
                 
+                // Default to general tokens list with reasonable defaults
+                const fallbackRequest = {
+                    list_request: true,
+                    limit: 20,
+                    page: 1,
+                    confidence: 0.8
+                };
+
                 if (callback) {
-                    callback({
-                        text: `❌ I couldn't identify specific token search criteria from your request.
+                    // For general token list requests, provide a comprehensive overview
+                    const response = await callTokenMetricsAPI('/v2/tokens', {
+                        limit: fallbackRequest.limit,
+                        page: fallbackRequest.page
+                    }, runtime);
 
-I can help you find tokens by:
-• Listing all available tokens
-• Searching by specific cryptocurrency (Bitcoin, Ethereum, etc.)
-• Filtering by category (DeFi, Layer-1, gaming, meme tokens)
-• Filtering by exchange (Binance, Coinbase, Uniswap)
-• Market filters (high market cap, volume, etc.)
+                    const tokens = Array.isArray(response) ? response : (response?.data || []);
 
-Try asking something like:
-• "List all available tokens"
-• "Show me DeFi tokens"
-• "Find tokens on Binance"
-• "Get supported cryptocurrencies"`,
-                        content: { 
-                            error: "Insufficient token search criteria",
-                            confidence: tokensRequest?.confidence || 0,
-                            request_id: requestId
+                    if (tokens.length === 0) {
+                        await callback({
+                            text: `❌ Unable to fetch tokens data at the moment.
+
+This could be due to:
+• Temporary API service unavailability
+• Network connectivity issues  
+• API rate limiting
+
+Please try again in a few moments.`,
+                            content: { 
+                                error: "No tokens data available",
+                                request_id: requestId
+                            }
+                        });
+                        return false;
+                    }
+
+                    const responseText = formatTokensResponse(tokens, "all", requestId);
+
+                    await callback({
+                        text: responseText,
+                        content: {
+                            success: true,
+                            request_id: requestId,
+                            tokens_data: tokens,
+                            search_criteria: fallbackRequest,
+                            metadata: {
+                                endpoint: "tokens",
+                                data_source: "TokenMetrics API",
+                                timestamp: new Date().toISOString(),
+                                total_tokens: tokens.length
+                            }
                         }
                     });
                 }
-                return false;
+
+                return true;
             }
 
-            elizaLogger.success("🎯 Final extraction result:", tokensRequest);
-
-            // STEP 4: Build API parameters
-            const apiParams: Record<string, any> = {
-                limit: 50,
-                page: 1
+            // Use the extracted request for API call
+            const apiParams: any = {
+                limit: tokensRequest.limit || 20,
+                page: tokensRequest.page || 1
             };
 
-            // Handle specific token search
+            // Add specific search parameters if provided
             if (tokensRequest.cryptocurrency) {
                 // Use token_name parameter for more precise searches
                 // This should return the actual token (e.g., Solana, Dogecoin) instead of multiple unrelated tokens
@@ -423,7 +465,7 @@ Try asking something like:
                 elizaLogger.log("❌ Failed to fetch tokens data");
                 
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ Unable to fetch tokens data at the moment.
 
 This could be due to:
@@ -458,7 +500,7 @@ Please try again in a few moments or try with different criteria.`,
             elizaLogger.success("✅ Successfully processed tokens request");
 
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -489,7 +531,7 @@ Please try again in a few moments or try with different criteria.`,
             if (callback) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
                 
-                callback({
+                await callback({
                     text: `❌ I encountered an error while fetching tokens: ${errorMessage}
 
 This could be due to:

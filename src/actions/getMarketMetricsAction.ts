@@ -241,8 +241,16 @@ function getSignalDescription(signal: number): string {
 }
 
 // Validation function
-const validate = async (runtime: IAgentRuntime): Promise<boolean> => {
-    return validateAndGetApiKey(runtime) !== null;
+const validate = async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+    elizaLogger.log("🔍 Validating getMarketMetricsAction (1.x)");
+    
+    try {
+        validateAndGetApiKey(runtime);
+        return true;
+    } catch (error) {
+        elizaLogger.error("❌ Validation failed:", error);
+        return false;
+    }
 };
 
 // Action examples for training
