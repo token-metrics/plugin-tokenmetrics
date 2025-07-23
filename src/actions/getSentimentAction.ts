@@ -148,16 +148,27 @@ export const getSentimentAction: Action = {
         ]
     ],
     
-    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing sentiment analysis request...`);
+            
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
             
             // Extract structured request using AI
             const sentimentRequest = await extractTokenMetricsRequest<SentimentRequest>(
                 runtime,
                 message,
-                state || await runtime.composeState(message),
+                state,
                 SENTIMENT_EXTRACTION_TEMPLATE,
                 SentimentRequestSchema,
                 requestId
@@ -302,7 +313,7 @@ export const getSentimentAction: Action = {
             
             // Use callback to send response to user (like working actions)
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -321,30 +332,39 @@ export const getSentimentAction: Action = {
         } catch (error) {
             console.error("Error in getSentimentAction:", error);
             
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve sentiment data from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/sentiments is accessible",
-                    parameter_validation: [
-                        "Check that pagination parameters are positive integers",
-                        "Ensure your API key has access to sentiment data",
-                        "Verify the sentiment engine is operational"
-                    ],
-                    common_solutions: [
-                        "Try reducing the limit if requesting too much data",
-                        "Check if your subscription includes sentiment analysis access",
-                        "Verify the sentiment data is available for the requested timeframe",
-                        "Ensure sufficient social media and news data exists"
-                    ]
-                }
-            };
+            if (callback) {
+                await callback({
+                    text: `❌ I encountered an error while fetching sentiment data: ${error instanceof Error ? error.message : 'Unknown error'}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true
+                    }
+                });
+            }
+            
+            return false;
         }
     },
     
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getSentimentAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
     }
 };
 

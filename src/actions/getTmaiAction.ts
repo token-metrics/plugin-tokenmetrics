@@ -134,16 +134,27 @@ export const getTmaiAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing TMAI analysis request...`);
+            
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
             
             // Extract structured request using AI
             const tmaiRequest = await extractTokenMetricsRequest<TmaiRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
+                state,
                 TMAI_EXTRACTION_TEMPLATE,
                 TmaiRequestSchema,
                 requestId
@@ -248,48 +259,59 @@ export const getTmaiAction: Action = {
             console.log(`[${requestId}] TMAI analysis completed successfully`);
             console.log(`[${requestId}] Analysis completed successfully`);
             
-            // Return the response directly (like working actions)
-            return {
-                text: response,
-                content: {
-                    success: true,
-                    request_id: requestId,
-                    data: result,
-                    metadata: {
-                        endpoint: "tmai",
-                        data_source: "TokenMetrics Official API",
-                        api_version: "v2"
+            // Use callback to send response to user (like working actions)
+            if (callback) {
+                await callback({
+                    text: response,
+                    content: {
+                        success: true,
+                        request_id: requestId,
+                        data: result,
+                        metadata: {
+                            endpoint: "tmai",
+                            data_source: "TokenMetrics Official API",
+                            api_version: "v2"
+                        }
                     }
-                }
-            };
+                });
+            }
+            return true;
         } catch (error) {
             console.error("Error in getTmaiAction:", error);
             
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve TMAI analysis from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/tmai is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that pagination parameters are positive integers",
-                        "Ensure your API key has access to TMAI endpoint",
-                        "Confirm the token has sufficient data for AI analysis"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Check if your subscription includes TMAI access",
-                        "Verify the token has been analyzed by TokenMetrics AI engine",
-                        "Ensure sufficient historical data exists for AI modeling"
-                    ]
-                }
-            };
+            if (callback) {
+                await callback({
+                    text: `❌ I encountered an error while fetching TMAI analysis: ${error instanceof Error ? error.message : 'Unknown error'}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: error instanceof Error ? error.message : 'Unknown error',
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true
+                    }
+                });
+            }
+            
+            return false;
         }
     },
     
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getTmaiAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
     }
 };
 
