@@ -152,249 +152,172 @@ export const getQuantmetricsAction: Action = {
         ]
     ],
     
-    async handler(
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getQuantmetricsAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
+    },
+
+    handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> {
+    ): Promise<boolean> => {
+        const requestId = generateRequestId();
+        
+        elizaLogger.log("🚀 Starting TokenMetrics quantmetrics handler (1.x)");
+        elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
+        elizaLogger.log(`🆔 Request ID: ${requestId}`);
+
         try {
-            const requestId = generateRequestId();
-            console.log(`[${requestId}] Processing quantmetrics request...`);
-            
-            // Extract structured request using AI
-            const quantRequest = await extractTokenMetricsRequest<QuantmetricsRequest>(
-                runtime,
-                message,
-                state || await runtime.composeState(message),
-                QUANTMETRICS_EXTRACTION_TEMPLATE,
-                QuantmetricsRequestSchema,
-                requestId
-            );
-            
-            console.log(`[${requestId}] Extracted request:`, quantRequest);
-            
-            // Apply defaults for optional fields
-            const processedRequest = {
-                cryptocurrency: quantRequest.cryptocurrency,
-                token_id: quantRequest.token_id,
-                symbol: quantRequest.symbol,
-                category: quantRequest.category,
-                exchange: quantRequest.exchange,
-                marketcap: quantRequest.marketcap,
-                volume: quantRequest.volume,
-                fdv: quantRequest.fdv,
-                limit: quantRequest.limit || 50,
-                page: quantRequest.page || 1,
-                analysisType: quantRequest.analysisType || "all"
-            };
-            
-            // Resolve token if cryptocurrency name is provided
-            let resolvedToken = null;
-            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-                try {
-                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-                    if (resolvedToken) {
-                        processedRequest.token_id = resolvedToken.token_id;
-                        processedRequest.symbol = resolvedToken.symbol;
-                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-                    }
-                } catch (error) {
-                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
-                }
+            // STEP 1: Validate API key early
+            validateAndGetApiKey(runtime);
+
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
             }
-            
-            // Build API parameters
-            const apiParams: Record<string, any> = {
-                limit: processedRequest.limit,
-                page: processedRequest.page
+
+            // STEP 2: Build API parameters
+            const apiParams: any = {
+                limit: 20,
+                page: 1
             };
+
+            // STEP 3: Fetch quantmetrics data
+            elizaLogger.log(`📡 Fetching quantmetrics data`);
+            const quantData = await callTokenMetricsAPI('/v2/quantmetrics', apiParams, runtime);
             
-            // Add optional parameters if provided
-            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
-            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
-            if (processedRequest.category) apiParams.category = processedRequest.category;
-            if (processedRequest.exchange) apiParams.exchange = processedRequest.exchange;
-            if (processedRequest.marketcap) apiParams.marketcap = processedRequest.marketcap;
-            if (processedRequest.volume) apiParams.volume = processedRequest.volume;
-            if (processedRequest.fdv) apiParams.fdv = processedRequest.fdv;
-            
-            // Make API call
-            const response = await callTokenMetricsAPI(
-                "/v2/quantmetrics",
-                apiParams,
-                runtime
-            );
-            
-            console.log(`[${requestId}] API response received, processing data...`);
-            
-            // Process response data
-            const quantmetrics = Array.isArray(response) ? response : response.data || [];
-            
-            // Analyze the quantitative data based on requested analysis type
-            const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics, processedRequest.analysisType);
-            
-            // Format user-friendly response
-            let responseText = `⚡ **Quantitative Metrics Analysis**\n\n`;
-            
-            if (processedRequest.cryptocurrency || processedRequest.symbol) {
-                responseText += `🎯 **Token**: ${processedRequest.cryptocurrency || processedRequest.symbol}\n`;
-            }
-            
-            responseText += `📊 **Data Points**: ${quantmetrics.length} metrics analyzed\n\n`;
-            
-            if (quantmetrics.length > 0) {
-                const firstMetric = quantmetrics[0];
+            if (!quantData) {
+                elizaLogger.log("❌ Failed to fetch quantmetrics data");
                 
-                responseText += `📈 **Key Metrics**:\n`;
-                if (firstMetric.VOLATILITY !== undefined) {
-                    responseText += `• **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%\n`;
-                }
-                if (firstMetric.SHARPE !== undefined) {
-                    responseText += `• **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}\n`;
-                }
-                if (firstMetric.MAX_DRAWDOWN !== undefined) {
-                    responseText += `• **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%\n`;
-                }
-                if (firstMetric.CAGR !== undefined) {
-                    responseText += `• **CAGR**: ${firstMetric.CAGR.toFixed(2)}%\n`;
-                }
-                if (firstMetric.ALL_TIME_RETURN !== undefined) {
-                    responseText += `• **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%\n`;
-                }
-                
-                responseText += `\n`;
-                
-                // Add analysis summary
-                if (quantAnalysis.summary) {
-                    responseText += `🧠 **Analysis**: ${quantAnalysis.summary}\n\n`;
-                }
-                
-                // Add risk assessment
-                if (quantAnalysis.risk_analysis?.risk_assessment) {
-                    responseText += `⚠️ **Risk Assessment**: ${quantAnalysis.risk_analysis.risk_assessment}\n\n`;
-                }
-                
-                // Add portfolio implications
-                if (quantAnalysis.portfolio_implications && quantAnalysis.portfolio_implications.length > 0) {
-                    responseText += `💼 **Portfolio Implications**:\n`;
-                    quantAnalysis.portfolio_implications.slice(0, 3).forEach((implication: string, index: number) => {
-                        responseText += `${index + 1}. ${implication}\n`;
-                    });
-                    responseText += `\n`;
-                }
-                
-                // Add insights
-                if (quantAnalysis.insights && quantAnalysis.insights.length > 0) {
-                    responseText += `💡 **Key Insights**:\n`;
-                    quantAnalysis.insights.slice(0, 3).forEach((insight: string, index: number) => {
-                        responseText += `${index + 1}. ${insight}\n`;
+                if (callback) {
+                    await callback({
+                        text: `❌ Unable to fetch quantitative metrics data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+
+Please try again in a few moments.`,
+                        content: { 
+                            error: "API fetch failed",
+                            request_id: requestId
+                        }
                     });
                 }
-            } else {
-                responseText += `❌ No quantitative metrics data available for the specified criteria.\n\n`;
-                responseText += `💡 **Try**:\n`;
-                responseText += `• Using a major cryptocurrency (Bitcoin, Ethereum)\n`;
-                responseText += `• Checking if the token has sufficient historical data\n`;
-                responseText += `• Verifying your TokenMetrics subscription includes quantmetrics access`;
+                return false;
             }
+
+            // Handle the response data
+            const metrics = Array.isArray(quantData) ? quantData : (quantData.data || []);
             
-            responseText += `\n\n📊 **Data Source**: TokenMetrics Quantmetrics API\n`;
-            responseText += `⏰ **Updated**: ${new Date().toLocaleString()}`;
-            
-            console.log(`[${requestId}] Quantmetrics analysis completed successfully`);
-            
-            // Use callback to send response to user (like working actions)
+            elizaLogger.log(`🔍 Received ${metrics.length} quantmetrics`);
+
+            // STEP 4: Format and present the results
+            const responseText = formatQuantmetricsResponse(metrics);
+            const analysis = analyzeQuantitativeMetrics(metrics, "comprehensive");
+
+            elizaLogger.success("✅ Successfully processed quantmetrics request");
+
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
+                        quantmetrics_data: metrics,
+                        analysis: analysis,
+                        source: "TokenMetrics Quantmetrics API",
                         request_id: requestId,
-                        quantmetrics: quantmetrics,
-                        analysis: quantAnalysis,
                         metadata: {
                             endpoint: "quantmetrics",
-                            requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-                            resolved_token: resolvedToken,
-                            filters_applied: {
-                                category: processedRequest.category,
-                                exchange: processedRequest.exchange,
-                                min_marketcap: processedRequest.marketcap,
-                                min_volume: processedRequest.volume,
-                                min_fdv: processedRequest.fdv
-                            },
-                            pagination: {
-                                page: processedRequest.page,
-                                limit: processedRequest.limit
-                            },
-                            analysis_focus: processedRequest.analysisType,
-                            data_points: quantmetrics.length,
-                            api_version: "v2",
-                            data_source: "TokenMetrics Official API"
-                        },
-                        metrics_explanation: {
-                            VOLATILITY: "Price volatility measurement - higher values indicate more volatile assets",
-                            SHARPE: "Risk-adjusted return metric - higher values indicate better risk-adjusted performance",
-                            SORTINO: "Downside risk-adjusted return - focuses only on negative volatility",
-                            MAX_DRAWDOWN: "Largest peak-to-trough decline - indicates worst-case scenario losses",
-                            CAGR: "Compound Annual Growth Rate - annualized return over the investment period",
-                            ALL_TIME_RETURN: "Cumulative return since the token's inception"
+                            data_source: "TokenMetrics API",
+                            timestamp: new Date().toISOString(),
+                            total_metrics: metrics.length
                         }
                     }
                 });
             }
-            
+
             return true;
-            
+
         } catch (error) {
-            console.error("Error in getQuantmetricsAction:", error);
+            elizaLogger.error("❌ Error in TokenMetrics quantmetrics handler:", error);
+            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
             
             if (callback) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
                 
-                callback({
+                await callback({
                     text: `❌ I encountered an error while fetching quantitative metrics: ${errorMessage}
 
 This could be due to:
 • Network connectivity issues
 • TokenMetrics API service problems
 • Invalid API key or authentication issues
-• Insufficient subscription access to quantmetrics endpoint
-• Token not found or insufficient historical data
+• Temporary system overload
 
 Please check your TokenMetrics API key configuration and try again.`,
                     content: { 
                         error: errorMessage,
                         error_type: error instanceof Error ? error.constructor.name : 'Unknown',
-                        troubleshooting: {
-                            endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/quantmetrics is accessible",
-                            parameter_validation: [
-                                "Verify the token symbol or ID is correct and supported by TokenMetrics",
-                                "Check that numeric filters (marketcap, volume, fdv) are positive numbers",
-                                "Ensure your API key has access to quantmetrics endpoint",
-                                "Verify the token has sufficient historical data for analysis"
-                            ],
-                            common_solutions: [
-                                "Try using a major token (BTC, ETH) to test functionality",
-                                "Use the tokens endpoint first to verify correct TOKEN_ID",
-                                "Check if your subscription includes quantitative metrics access",
-                                "Remove filters to get broader results"
-                            ]
-                        }
+                        troubleshooting: true,
+                        request_id: requestId
                     }
                 });
             }
             
             return false;
         }
-    },
-    
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
     }
 };
+
+/**
+ * Format quantmetrics response for user
+ */
+function formatQuantmetricsResponse(metrics: any[]): string {
+    if (!metrics || metrics.length === 0) {
+        return "❌ No quantitative metrics data available.";
+    }
+
+    let response = `⚡ **Quantitative Metrics Analysis**\n\n`;
+    response += `📊 **Data Points**: ${metrics.length} metrics analyzed\n\n`;
+
+    if (metrics.length > 0) {
+        const firstMetric = metrics[0];
+        
+        response += `📈 **Key Metrics**:\n`;
+        if (firstMetric.VOLATILITY !== undefined) {
+            response += `• **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%\n`;
+        }
+        if (firstMetric.SHARPE !== undefined) {
+            response += `• **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}\n`;
+        }
+        if (firstMetric.MAX_DRAWDOWN !== undefined) {
+            response += `• **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%\n`;
+        }
+        if (firstMetric.CAGR !== undefined) {
+            response += `• **CAGR**: ${firstMetric.CAGR.toFixed(2)}%\n`;
+        }
+        if (firstMetric.ALL_TIME_RETURN !== undefined) {
+            response += `• **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%\n`;
+        }
+    }
+
+    response += `\n📊 **Data Source**: TokenMetrics Quantmetrics API\n`;
+    response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
+}
 
 /**
  * Analyze quantitative metrics to provide investment insights

@@ -12,7 +12,7 @@ import {
 } from "./aiActionHelper";
 
 /**
- * TokenMetrics Price Action - Updated with standardized AI helper pattern
+ * TokenMetrics Price Action - Updated for 1.x with new callback pattern
  */
 
 /**
@@ -331,7 +331,7 @@ export const getPriceAction: Action = {
         ]
     ] as ActionExample[][],
 
-    validate: async (runtime: IAgentRuntime, message: Memory) => {
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
         try {
             validateAndGetApiKey(runtime);
             return true;
@@ -344,7 +344,7 @@ export const getPriceAction: Action = {
     handler: async (
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
@@ -357,11 +357,16 @@ export const getPriceAction: Action = {
             console.log(`\n🔍 PRICE ACTION DEBUG [${requestId}]:`);
             console.log(`📝 User message: "${message.content.text}"`);
 
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
+
             // Extract request using standardized AI helper
-            const priceRequest = await extractTokenMetricsRequest(
+            let priceRequest: any = await extractTokenMetricsRequest(
                 runtime,
                 message,
-                state || await runtime.composeState(message),
+                state,
                 PRICE_EXTRACTION_TEMPLATE,
                 PriceRequestSchema,
                 requestId
@@ -370,33 +375,61 @@ export const getPriceAction: Action = {
             elizaLogger.log(`[${requestId}] 🎯 DEBUG: AI Extracted request:`, JSON.stringify(priceRequest, null, 2));
             
             // FORCE VISIBLE LOGGING
-            console.log(`🎯 AI Extracted:`, JSON.stringify(priceRequest, null, 2));
+            console.log(`🎯 Extracted request:`, priceRequest);
 
-            // Determine the cryptocurrency to look up
-            let cryptoToResolve = priceRequest.cryptocurrency || priceRequest.symbol;
-            
-            // FALLBACK: Use regex-based extraction if AI extraction seems wrong
-            const regexExtracted = extractCryptocurrencySimple(message.content.text);
-            if (regexExtracted && cryptoToResolve && cryptoToResolve.toLowerCase() !== regexExtracted.toLowerCase()) {
-                elizaLogger.log(`[${requestId}] 🔄 DEBUG: AI extracted "${cryptoToResolve}" but regex found "${regexExtracted}" - using regex result`);
-                console.log(`🔄 AI vs Regex mismatch: AI="${cryptoToResolve}", Regex="${regexExtracted}" - using Regex`);
-                cryptoToResolve = regexExtracted;
-            } else if (!cryptoToResolve && regexExtracted) {
-                elizaLogger.log(`[${requestId}] 🔄 DEBUG: AI extraction failed, using regex result: "${regexExtracted}"`);
-                console.log(`🔄 AI extraction failed, using regex result: "${regexExtracted}"`);
-                cryptoToResolve = regexExtracted;
+            if (!priceRequest) {
+                elizaLogger.log(`[${requestId}] ❌ DEBUG: AI extraction returned null - analyzing with fallback...`);
+                console.log(`❌ AI extraction failed, trying fallback...`);
+                
+                // Try fallback extraction if AI fails
+                const cryptoFromText = extractCryptocurrencySimple(message.content.text);
+                
+                if (!cryptoFromText) {
+                    elizaLogger.log(`[${requestId}] ❌ DEBUG: Fallback extraction also failed`);
+                    console.log(`❌ Fallback extraction failed too`);
+                    console.log(`🔚 END DEBUG [${requestId}]\n`);
+                    
+                    if (callback) {
+                        await callback({
+                            text: `❌ I couldn't identify which cryptocurrency you're asking about.
+
+I can get price data for any cryptocurrency supported by TokenMetrics including:
+• Bitcoin (BTC), Ethereum (ETH), Solana (SOL)
+• Cardano (ADA), Polygon (MATIC), Chainlink (LINK)
+• Uniswap (UNI), Avalanche (AVAX), Polkadot (DOT)
+• Dogecoin (DOGE), XRP, Litecoin (LTC)
+• And many more!
+
+Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
+                            content: { 
+                                error: "No cryptocurrency identified",
+                                request_id: requestId,
+                                debug_extraction: priceRequest
+                            }
+                        });
+                    }
+                    return false;
+                }
+                
+                // Use fallback data
+                priceRequest = {
+                    cryptocurrency: cryptoFromText,
+                    analysisType: "current"
+                };
+                elizaLogger.log(`[${requestId}] ✅ DEBUG: Fallback extraction successful: "${cryptoFromText}"`);
+                console.log(`✅ Fallback found: "${cryptoFromText}"`);
             }
-            
-            elizaLogger.log(`[${requestId}] 🔍 DEBUG: Crypto to resolve: "${cryptoToResolve}"`);
-            
-            // FORCE VISIBLE LOGGING
-            console.log(`🔍 Crypto to resolve: "${cryptoToResolve}"`);
+
+            // Determine which cryptocurrency to resolve
+            const cryptoToResolve = priceRequest.cryptocurrency || priceRequest.symbol;
             
             if (!cryptoToResolve) {
-                elizaLogger.log(`[${requestId}] ❌ DEBUG: No cryptocurrency identified from extraction`);
-                console.log(`❌ No cryptocurrency identified from extraction`);
+                elizaLogger.log(`[${requestId}] ❌ DEBUG: No cryptocurrency to resolve after extraction`);
+                console.log(`❌ No cryptocurrency found after all extraction attempts`);
+                console.log(`🔚 END DEBUG [${requestId}]\n`);
+                
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ I couldn't identify which cryptocurrency you're asking about.
 
 I can get price data for any cryptocurrency supported by TokenMetrics including:
@@ -439,7 +472,7 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
             if (!tokenInfo) {
                 elizaLogger.log(`[${requestId}] ❌ DEBUG: Token resolution failed for: "${cryptoToResolve}"`);
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ I couldn't find information for "${cryptoToResolve}".
 
 This might be:
@@ -478,7 +511,7 @@ Try using the official name, such as:
             
             if (!priceData) {
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ No price data available for ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} at the moment.
 
 This could be due to:
@@ -505,7 +538,7 @@ Please try again in a few moments.`,
             elizaLogger.log(`[${requestId}] Successfully processed price request`);
 
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -529,7 +562,7 @@ Please try again in a few moments.`,
             elizaLogger.error("❌ Error in price action:", error);
             
             if (callback) {
-                callback({
+                await callback({
                     text: `❌ I encountered an error while fetching price data: ${error instanceof Error ? error.message : 'Unknown error'}
 
 This could be due to:

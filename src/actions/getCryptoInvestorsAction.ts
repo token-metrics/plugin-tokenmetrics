@@ -255,8 +255,16 @@ export const getCryptoInvestorsAction: Action = {
         }
     },
     
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getCryptoInvestorsAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
     }
 };
 

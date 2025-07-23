@@ -183,7 +183,13 @@ export const getResistanceSupportAction: Action = {
         ]
     ],
     
-    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing resistance and support levels request...`);
@@ -711,8 +717,16 @@ export const getResistanceSupportAction: Action = {
         }
     },
     
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getResistanceSupportAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
     }
 };
 

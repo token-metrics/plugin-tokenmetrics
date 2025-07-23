@@ -1,5 +1,5 @@
 // src/index.ts
-import { elizaLogger as elizaLogger9 } from "@elizaos/core";
+import { elizaLogger as elizaLogger23 } from "@elizaos/core";
 
 // src/actions/getPriceAction.ts
 import { elizaLogger as elizaLogger2 } from "@elizaos/core";
@@ -4795,7 +4795,7 @@ var getPriceAction = {
       }
     ]
   ],
-  validate: async (runtime, message) => {
+  validate: async (runtime, message, state) => {
     try {
       validateAndGetApiKey(runtime);
       return true;
@@ -4812,34 +4812,64 @@ var getPriceAction = {
       console.log(`
 \u{1F50D} PRICE ACTION DEBUG [${requestId}]:`);
       console.log(`\u{1F4DD} User message: "${message.content.text}"`);
-      const priceRequest = await extractTokenMetricsRequest(
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      let priceRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state || await runtime.composeState(message),
+        state,
         PRICE_EXTRACTION_TEMPLATE,
         PriceRequestSchema,
         requestId
       );
       elizaLogger2.log(`[${requestId}] \u{1F3AF} DEBUG: AI Extracted request:`, JSON.stringify(priceRequest, null, 2));
-      console.log(`\u{1F3AF} AI Extracted:`, JSON.stringify(priceRequest, null, 2));
-      let cryptoToResolve = priceRequest.cryptocurrency || priceRequest.symbol;
-      const regexExtracted = extractCryptocurrencySimple(message.content.text);
-      if (regexExtracted && cryptoToResolve && cryptoToResolve.toLowerCase() !== regexExtracted.toLowerCase()) {
-        elizaLogger2.log(`[${requestId}] \u{1F504} DEBUG: AI extracted "${cryptoToResolve}" but regex found "${regexExtracted}" - using regex result`);
-        console.log(`\u{1F504} AI vs Regex mismatch: AI="${cryptoToResolve}", Regex="${regexExtracted}" - using Regex`);
-        cryptoToResolve = regexExtracted;
-      } else if (!cryptoToResolve && regexExtracted) {
-        elizaLogger2.log(`[${requestId}] \u{1F504} DEBUG: AI extraction failed, using regex result: "${regexExtracted}"`);
-        console.log(`\u{1F504} AI extraction failed, using regex result: "${regexExtracted}"`);
-        cryptoToResolve = regexExtracted;
+      console.log(`\u{1F3AF} Extracted request:`, priceRequest);
+      if (!priceRequest) {
+        elizaLogger2.log(`[${requestId}] \u274C DEBUG: AI extraction returned null - analyzing with fallback...`);
+        console.log(`\u274C AI extraction failed, trying fallback...`);
+        const cryptoFromText = extractCryptocurrencySimple(message.content.text);
+        if (!cryptoFromText) {
+          elizaLogger2.log(`[${requestId}] \u274C DEBUG: Fallback extraction also failed`);
+          console.log(`\u274C Fallback extraction failed too`);
+          console.log(`\u{1F51A} END DEBUG [${requestId}]
+`);
+          if (callback) {
+            await callback({
+              text: `\u274C I couldn't identify which cryptocurrency you're asking about.
+
+I can get price data for any cryptocurrency supported by TokenMetrics including:
+\u2022 Bitcoin (BTC), Ethereum (ETH), Solana (SOL)
+\u2022 Cardano (ADA), Polygon (MATIC), Chainlink (LINK)
+\u2022 Uniswap (UNI), Avalanche (AVAX), Polkadot (DOT)
+\u2022 Dogecoin (DOGE), XRP, Litecoin (LTC)
+\u2022 And many more!
+
+Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
+              content: {
+                error: "No cryptocurrency identified",
+                request_id: requestId,
+                debug_extraction: priceRequest
+              }
+            });
+          }
+          return false;
+        }
+        priceRequest = {
+          cryptocurrency: cryptoFromText,
+          analysisType: "current"
+        };
+        elizaLogger2.log(`[${requestId}] \u2705 DEBUG: Fallback extraction successful: "${cryptoFromText}"`);
+        console.log(`\u2705 Fallback found: "${cryptoFromText}"`);
       }
-      elizaLogger2.log(`[${requestId}] \u{1F50D} DEBUG: Crypto to resolve: "${cryptoToResolve}"`);
-      console.log(`\u{1F50D} Crypto to resolve: "${cryptoToResolve}"`);
+      const cryptoToResolve = priceRequest.cryptocurrency || priceRequest.symbol;
       if (!cryptoToResolve) {
-        elizaLogger2.log(`[${requestId}] \u274C DEBUG: No cryptocurrency identified from extraction`);
-        console.log(`\u274C No cryptocurrency identified from extraction`);
+        elizaLogger2.log(`[${requestId}] \u274C DEBUG: No cryptocurrency to resolve after extraction`);
+        console.log(`\u274C No cryptocurrency found after all extraction attempts`);
+        console.log(`\u{1F51A} END DEBUG [${requestId}]
+`);
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C I couldn't identify which cryptocurrency you're asking about.
 
 I can get price data for any cryptocurrency supported by TokenMetrics including:
@@ -4877,7 +4907,7 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
       if (!tokenInfo) {
         elizaLogger2.log(`[${requestId}] \u274C DEBUG: Token resolution failed for: "${cryptoToResolve}"`);
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C I couldn't find information for "${cryptoToResolve}".
 
 This might be:
@@ -4909,7 +4939,7 @@ Try using the official name, such as:
       const priceData = Array.isArray(response) ? response[0] : response.data?.[0] || response;
       if (!priceData) {
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C No price data available for ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} at the moment.
 
 This could be due to:
@@ -4932,7 +4962,7 @@ Please try again in a few moments.`,
       const responseText = formatPriceResponse(priceData, tokenInfo, analysisType);
       elizaLogger2.log(`[${requestId}] Successfully processed price request`);
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -4953,7 +4983,7 @@ Please try again in a few moments.`,
     } catch (error) {
       elizaLogger2.error("\u274C Error in price action:", error);
       if (callback) {
-        callback({
+        await callback({
           text: `\u274C I encountered an error while fetching price data: ${error instanceof Error ? error.message : "Unknown error"}
 
 This could be due to:
@@ -5209,8 +5239,8 @@ var getTraderGradesAction = {
     "TOKEN_RATINGS"
   ],
   description: "Get AI-generated trader grades and ratings for cryptocurrencies from TokenMetrics",
-  validate: async (runtime, message) => {
-    elizaLogger3.log("\u{1F50D} Validating getTraderGradesAction");
+  validate: async (runtime, message, state) => {
+    elizaLogger3.log("\u{1F50D} Validating getTraderGradesAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
@@ -5221,15 +5251,18 @@ var getTraderGradesAction = {
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger3.log("\u{1F680} Starting TokenMetrics trader grades handler");
+    elizaLogger3.log("\u{1F680} Starting TokenMetrics trader grades handler (1.x)");
     elizaLogger3.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
     elizaLogger3.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
       const gradesRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state || await runtime.composeState(message),
+        state,
         traderGradesTemplate,
         TraderGradesRequestSchema,
         requestId
@@ -5239,7 +5272,7 @@ var getTraderGradesAction = {
       if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
         elizaLogger3.log("\u274C AI extraction failed or insufficient information");
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C I couldn't identify specific trader grades criteria from your request.
 
 I can get AI trader grades for:
@@ -5294,7 +5327,7 @@ Try asking something like:
       if (!gradesData) {
         elizaLogger3.log("\u274C Failed to fetch trader grades data");
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C Unable to fetch trader grades data at the moment.
 
 This could be due to:
@@ -5318,7 +5351,7 @@ Please try again in a few moments or try with different criteria.`,
       const analysis = analyzeTraderGrades(grades);
       elizaLogger3.success("\u2705 Successfully processed trader grades request");
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -5344,7 +5377,7 @@ Please try again in a few moments or try with different criteria.`,
       elizaLogger3.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
       if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback({
+        await callback({
           text: `\u274C I encountered an error while fetching trader grades: ${errorMessage}
 
 This could be due to:
@@ -5416,10 +5449,7 @@ Please check your TokenMetrics API key configuration and try again.`,
 
 // src/actions/getInvestorGradesAction.ts
 import {
-  elizaLogger as elizaLogger4,
-  composeContext as composeContext3,
-  generateObject as generateObject3,
-  ModelClass as ModelClass3
+  elizaLogger as elizaLogger4
 } from "@elizaos/core";
 var investorGradesTemplate = `# Task: Extract Investor Grades Request Information
 
@@ -5695,8 +5725,8 @@ var getInvestorGradesAction = {
     "LONG_TERM_RATINGS"
   ],
   description: "Get AI-generated investor grades and ratings for long-term cryptocurrency investments from TokenMetrics",
-  validate: async (runtime, message) => {
-    elizaLogger4.log("\u{1F50D} Validating getInvestorGradesAction");
+  validate: async (runtime, message, state) => {
+    elizaLogger4.log("\u{1F50D} Validating getInvestorGradesAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
@@ -5707,37 +5737,28 @@ var getInvestorGradesAction = {
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger4.log("\u{1F680} Starting TokenMetrics investor grades handler");
+    elizaLogger4.log("\u{1F680} Starting TokenMetrics investor grades handler (1.x)");
     elizaLogger4.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
     elizaLogger4.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
-      const timestamp = (/* @__PURE__ */ new Date()).toISOString();
-      const userMessage = message.content?.text || "";
-      console.log(`\u{1F50D} AI EXTRACTION CONTEXT [${requestId}]:`);
-      console.log(`\u{1F4DD} User message: "${userMessage}"`);
-      console.log(`\u{1F4CB} Template being used:`);
-      console.log(investorGradesTemplate);
-      console.log(`\u{1F51A} END CONTEXT [${requestId}]`);
-      const enhancedTemplate = investorGradesTemplate.replace("{{requestId}}", requestId).replace("{{timestamp}}", timestamp).replace("{{userMessage}}", userMessage);
-      const gradesRequestResult = await generateObject3({
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const gradesRequest = await extractTokenMetricsRequest(
         runtime,
-        context: composeContext3({
-          state: state || await runtime.composeState(message),
-          template: enhancedTemplate
-        }),
-        modelClass: ModelClass3.LARGE,
-        // Use GPT-4o for better instruction following
-        schema: InvestorGradesRequestSchema,
-        mode: "json"
-      });
-      const gradesRequest = gradesRequestResult.object;
+        message,
+        state,
+        investorGradesTemplate,
+        InvestorGradesRequestSchema,
+        requestId
+      );
       elizaLogger4.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
       elizaLogger4.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || "general market"}"`);
       let finalRequest = gradesRequest;
       if (!gradesRequest.cryptocurrency || gradesRequest.confidence < 0.5) {
         elizaLogger4.log("\u{1F504} Applying regex fallback for cryptocurrency extraction");
-        const regexResult = extractCryptocurrencySimple2(userMessage);
+        const regexResult = extractCryptocurrencySimple2(message.content?.text || "");
         if (regexResult) {
           finalRequest = {
             ...gradesRequest,
@@ -5751,7 +5772,7 @@ var getInvestorGradesAction = {
       if (!finalRequest.cryptocurrency && !finalRequest.grade_filter && !finalRequest.category && finalRequest.confidence < 0.3) {
         elizaLogger4.log("\u274C AI extraction failed or insufficient information");
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C I couldn't identify specific investor grades criteria from your request.
 
 I can get AI investor grades for:
@@ -5809,7 +5830,7 @@ Try asking something like:
       if (!gradesData) {
         elizaLogger4.log("\u274C Failed to fetch investor grades data");
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C Unable to fetch investor grades data at the moment.
 
 This could be due to:
@@ -5847,7 +5868,7 @@ Please try again in a few moments or try with different criteria.`,
         if (grades.length === 0) {
           elizaLogger4.log(`\u274C No ${finalRequest.grade_filter}-grade tokens found`);
           if (callback) {
-            callback({
+            await callback({
               text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
 
 I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
@@ -5921,7 +5942,7 @@ I searched through the available tokens but couldn't find any with ${finalReques
       const analysis = analyzeInvestorGrades(grades);
       elizaLogger4.success("\u2705 Successfully processed investor grades request");
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -5947,7 +5968,7 @@ I searched through the available tokens but couldn't find any with ${finalReques
       elizaLogger4.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
       if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback({
+        await callback({
           text: `\u274C I encountered an error while fetching investor grades: ${errorMessage}
 
 This could be due to:
@@ -6018,6 +6039,9 @@ Please check your TokenMetrics API key configuration and try again.`,
 };
 
 // src/actions/getQuantmetricsAction.ts
+import {
+  elizaLogger as elizaLogger5
+} from "@elizaos/core";
 var QuantmetricsRequestSchema = z.object({
   cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
   token_id: z.number().optional().describe("Specific token ID if known"),
@@ -6031,54 +6055,6 @@ var QuantmetricsRequestSchema = z.object({
   page: z.number().min(1).optional().describe("Page number for pagination"),
   analysisType: z.enum(["risk", "returns", "performance", "all"]).optional().describe("Type of analysis to focus on")
 });
-var QUANTMETRICS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting quantitative metrics requests from natural language.
-
-The user wants to get comprehensive quantitative metrics for cryptocurrency analysis. Extract the following information:
-
-1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
-   - Can be a specific token or general request
-
-2. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
-
-3. **symbol** (optional): Token symbol
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
-
-4. **category** (optional): Token category filter
-   - Look for categories like "defi", "layer1", "gaming", "nft"
-
-5. **exchange** (optional): Exchange filter
-   - Exchange names like "binance", "coinbase", "uniswap"
-
-6. **marketcap** (optional): Minimum market cap filter
-   - Look for phrases like "market cap over $500M", "large cap tokens"
-   - Convert to numbers (e.g., "$500M" \u2192 500000000)
-
-7. **volume** (optional): Minimum volume filter
-   - Look for volume requirements
-
-8. **fdv** (optional): Minimum fully diluted valuation filter
-
-9. **limit** (optional, default: 50): Number of results to return
-
-10. **page** (optional, default: 1): Page number for pagination
-
-11. **analysisType** (optional, default: "all"): What type of analysis they want
-    - "risk" - focus on risk metrics (volatility, drawdown, VaR)
-    - "returns" - focus on return metrics (CAGR, Sharpe, Sortino)
-    - "performance" - focus on performance analysis
-    - "all" - comprehensive analysis
-
-Examples:
-- "Get quantitative metrics for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Risk metrics for DeFi tokens with market cap over $500M" \u2192 {category: "defi", marketcap: 500000000, analysisType: "risk"}
-- "Show me Sharpe ratio and returns for ETH" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "returns"}
-- "Quantitative analysis for large cap tokens" \u2192 {marketcap: 1000000000, analysisType: "all"}
-
-Extract the request details from the user's message.
-`;
 var getQuantmetricsAction = {
   name: "GET_QUANTMETRICS_TOKENMETRICS",
   description: "Get comprehensive quantitative metrics including volatility, Sharpe ratio, CAGR, and risk measurements from TokenMetrics",
@@ -6138,229 +6114,145 @@ var getQuantmetricsAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _options, callback) {
+  validate: async (runtime, message, state) => {
+    elizaLogger5.log("\u{1F50D} Validating getQuantmetricsAction (1.x)");
     try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing quantmetrics request...`);
-      const quantRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state || await runtime.composeState(message),
-        QUANTMETRICS_EXTRACTION_TEMPLATE,
-        QuantmetricsRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, quantRequest);
-      const processedRequest = {
-        cryptocurrency: quantRequest.cryptocurrency,
-        token_id: quantRequest.token_id,
-        symbol: quantRequest.symbol,
-        category: quantRequest.category,
-        exchange: quantRequest.exchange,
-        marketcap: quantRequest.marketcap,
-        volume: quantRequest.volume,
-        fdv: quantRequest.fdv,
-        limit: quantRequest.limit || 50,
-        page: quantRequest.page || 1,
-        analysisType: quantRequest.analysisType || "all"
-      };
-      let resolvedToken = null;
-      if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-        try {
-          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-          if (resolvedToken) {
-            processedRequest.token_id = resolvedToken.token_id;
-            processedRequest.symbol = resolvedToken.symbol;
-            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-          }
-        } catch (error) {
-          console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
-        }
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger5.error("\u274C Validation failed:", error);
+      return false;
+    }
+  },
+  handler: async (runtime, message, state, _options, callback) => {
+    const requestId = generateRequestId();
+    elizaLogger5.log("\u{1F680} Starting TokenMetrics quantmetrics handler (1.x)");
+    elizaLogger5.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger5.log(`\u{1F194} Request ID: ${requestId}`);
+    try {
+      validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
       }
       const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
+        limit: 20,
+        page: 1
       };
-      if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
-      if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
-      if (processedRequest.category) apiParams.category = processedRequest.category;
-      if (processedRequest.exchange) apiParams.exchange = processedRequest.exchange;
-      if (processedRequest.marketcap) apiParams.marketcap = processedRequest.marketcap;
-      if (processedRequest.volume) apiParams.volume = processedRequest.volume;
-      if (processedRequest.fdv) apiParams.fdv = processedRequest.fdv;
-      const response = await callTokenMetricsAPI(
-        "/v2/quantmetrics",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing data...`);
-      const quantmetrics = Array.isArray(response) ? response : response.data || [];
-      const quantAnalysis = analyzeQuantitativeMetrics(quantmetrics, processedRequest.analysisType);
-      let responseText = `\u26A1 **Quantitative Metrics Analysis**
+      elizaLogger5.log(`\u{1F4E1} Fetching quantmetrics data`);
+      const quantData = await callTokenMetricsAPI("/v2/quantmetrics", apiParams, runtime);
+      if (!quantData) {
+        elizaLogger5.log("\u274C Failed to fetch quantmetrics data");
+        if (callback) {
+          await callback({
+            text: `\u274C Unable to fetch quantitative metrics data at the moment.
 
-`;
-      if (processedRequest.cryptocurrency || processedRequest.symbol) {
-        responseText += `\u{1F3AF} **Token**: ${processedRequest.cryptocurrency || processedRequest.symbol}
-`;
-      }
-      responseText += `\u{1F4CA} **Data Points**: ${quantmetrics.length} metrics analyzed
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
 
-`;
-      if (quantmetrics.length > 0) {
-        const firstMetric = quantmetrics[0];
-        responseText += `\u{1F4C8} **Key Metrics**:
-`;
-        if (firstMetric.VOLATILITY !== void 0) {
-          responseText += `\u2022 **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%
-`;
-        }
-        if (firstMetric.SHARPE !== void 0) {
-          responseText += `\u2022 **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}
-`;
-        }
-        if (firstMetric.MAX_DRAWDOWN !== void 0) {
-          responseText += `\u2022 **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%
-`;
-        }
-        if (firstMetric.CAGR !== void 0) {
-          responseText += `\u2022 **CAGR**: ${firstMetric.CAGR.toFixed(2)}%
-`;
-        }
-        if (firstMetric.ALL_TIME_RETURN !== void 0) {
-          responseText += `\u2022 **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%
-`;
-        }
-        responseText += `
-`;
-        if (quantAnalysis.summary) {
-          responseText += `\u{1F9E0} **Analysis**: ${quantAnalysis.summary}
-
-`;
-        }
-        if (quantAnalysis.risk_analysis?.risk_assessment) {
-          responseText += `\u26A0\uFE0F **Risk Assessment**: ${quantAnalysis.risk_analysis.risk_assessment}
-
-`;
-        }
-        if (quantAnalysis.portfolio_implications && quantAnalysis.portfolio_implications.length > 0) {
-          responseText += `\u{1F4BC} **Portfolio Implications**:
-`;
-          quantAnalysis.portfolio_implications.slice(0, 3).forEach((implication, index) => {
-            responseText += `${index + 1}. ${implication}
-`;
-          });
-          responseText += `
-`;
-        }
-        if (quantAnalysis.insights && quantAnalysis.insights.length > 0) {
-          responseText += `\u{1F4A1} **Key Insights**:
-`;
-          quantAnalysis.insights.slice(0, 3).forEach((insight, index) => {
-            responseText += `${index + 1}. ${insight}
-`;
+Please try again in a few moments.`,
+            content: {
+              error: "API fetch failed",
+              request_id: requestId
+            }
           });
         }
-      } else {
-        responseText += `\u274C No quantitative metrics data available for the specified criteria.
-
-`;
-        responseText += `\u{1F4A1} **Try**:
-`;
-        responseText += `\u2022 Using a major cryptocurrency (Bitcoin, Ethereum)
-`;
-        responseText += `\u2022 Checking if the token has sufficient historical data
-`;
-        responseText += `\u2022 Verifying your TokenMetrics subscription includes quantmetrics access`;
+        return false;
       }
-      responseText += `
-
-\u{1F4CA} **Data Source**: TokenMetrics Quantmetrics API
-`;
-      responseText += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`;
-      console.log(`[${requestId}] Quantmetrics analysis completed successfully`);
+      const metrics = Array.isArray(quantData) ? quantData : quantData.data || [];
+      elizaLogger5.log(`\u{1F50D} Received ${metrics.length} quantmetrics`);
+      const responseText = formatQuantmetricsResponse(metrics);
+      const analysis = analyzeQuantitativeMetrics(metrics, "comprehensive");
+      elizaLogger5.success("\u2705 Successfully processed quantmetrics request");
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
+            quantmetrics_data: metrics,
+            analysis,
+            source: "TokenMetrics Quantmetrics API",
             request_id: requestId,
-            quantmetrics,
-            analysis: quantAnalysis,
             metadata: {
               endpoint: "quantmetrics",
-              requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-              resolved_token: resolvedToken,
-              filters_applied: {
-                category: processedRequest.category,
-                exchange: processedRequest.exchange,
-                min_marketcap: processedRequest.marketcap,
-                min_volume: processedRequest.volume,
-                min_fdv: processedRequest.fdv
-              },
-              pagination: {
-                page: processedRequest.page,
-                limit: processedRequest.limit
-              },
-              analysis_focus: processedRequest.analysisType,
-              data_points: quantmetrics.length,
-              api_version: "v2",
-              data_source: "TokenMetrics Official API"
-            },
-            metrics_explanation: {
-              VOLATILITY: "Price volatility measurement - higher values indicate more volatile assets",
-              SHARPE: "Risk-adjusted return metric - higher values indicate better risk-adjusted performance",
-              SORTINO: "Downside risk-adjusted return - focuses only on negative volatility",
-              MAX_DRAWDOWN: "Largest peak-to-trough decline - indicates worst-case scenario losses",
-              CAGR: "Compound Annual Growth Rate - annualized return over the investment period",
-              ALL_TIME_RETURN: "Cumulative return since the token's inception"
+              data_source: "TokenMetrics API",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              total_metrics: metrics.length
             }
           }
         });
       }
       return true;
     } catch (error) {
-      console.error("Error in getQuantmetricsAction:", error);
+      elizaLogger5.error("\u274C Error in TokenMetrics quantmetrics handler:", error);
+      elizaLogger5.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
       if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback({
+        await callback({
           text: `\u274C I encountered an error while fetching quantitative metrics: ${errorMessage}
 
 This could be due to:
 \u2022 Network connectivity issues
 \u2022 TokenMetrics API service problems
 \u2022 Invalid API key or authentication issues
-\u2022 Insufficient subscription access to quantmetrics endpoint
-\u2022 Token not found or insufficient historical data
+\u2022 Temporary system overload
 
 Please check your TokenMetrics API key configuration and try again.`,
           content: {
             error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: {
-              endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/quantmetrics is accessible",
-              parameter_validation: [
-                "Verify the token symbol or ID is correct and supported by TokenMetrics",
-                "Check that numeric filters (marketcap, volume, fdv) are positive numbers",
-                "Ensure your API key has access to quantmetrics endpoint",
-                "Verify the token has sufficient historical data for analysis"
-              ],
-              common_solutions: [
-                "Try using a major token (BTC, ETH) to test functionality",
-                "Use the tokens endpoint first to verify correct TOKEN_ID",
-                "Check if your subscription includes quantitative metrics access",
-                "Remove filters to get broader results"
-              ]
-            }
+            troubleshooting: true,
+            request_id: requestId
           }
         });
       }
       return false;
     }
-  },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
   }
 };
+function formatQuantmetricsResponse(metrics) {
+  if (!metrics || metrics.length === 0) {
+    return "\u274C No quantitative metrics data available.";
+  }
+  let response = `\u26A1 **Quantitative Metrics Analysis**
+
+`;
+  response += `\u{1F4CA} **Data Points**: ${metrics.length} metrics analyzed
+
+`;
+  if (metrics.length > 0) {
+    const firstMetric = metrics[0];
+    response += `\u{1F4C8} **Key Metrics**:
+`;
+    if (firstMetric.VOLATILITY !== void 0) {
+      response += `\u2022 **Volatility**: ${firstMetric.VOLATILITY.toFixed(2)}%
+`;
+    }
+    if (firstMetric.SHARPE !== void 0) {
+      response += `\u2022 **Sharpe Ratio**: ${firstMetric.SHARPE.toFixed(3)}
+`;
+    }
+    if (firstMetric.MAX_DRAWDOWN !== void 0) {
+      response += `\u2022 **Max Drawdown**: ${firstMetric.MAX_DRAWDOWN.toFixed(2)}%
+`;
+    }
+    if (firstMetric.CAGR !== void 0) {
+      response += `\u2022 **CAGR**: ${firstMetric.CAGR.toFixed(2)}%
+`;
+    }
+    if (firstMetric.ALL_TIME_RETURN !== void 0) {
+      response += `\u2022 **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%
+`;
+    }
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Quantmetrics API
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
 function analyzeQuantitativeMetrics(quantData, analysisType) {
   if (!quantData || quantData.length === 0) {
     return {
@@ -6523,7 +6415,7 @@ function analyzeDistribution(values) {
 }
 
 // src/actions/getMarketMetricsAction.ts
-import { elizaLogger as elizaLogger5 } from "@elizaos/core";
+import { elizaLogger as elizaLogger6 } from "@elizaos/core";
 var marketMetricsTemplate = `You are an AI assistant specialized in extracting TokenMetrics market analytics requests from user messages.
 
 Your task is to analyze the user's message and extract relevant parameters for fetching market metrics data.
@@ -6572,7 +6464,7 @@ var MarketMetricsRequestSchema = z.object({
   ])).optional().describe("Types of analysis to focus on")
 });
 var handler = async (runtime, message, state, _options, callback) => {
-  elizaLogger5.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
+  elizaLogger6.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
   try {
     const extractedRequest = await extractTokenMetricsRequest(
       runtime,
@@ -6582,7 +6474,7 @@ var handler = async (runtime, message, state, _options, callback) => {
       MarketMetricsRequestSchema,
       generateRequestId()
     );
-    elizaLogger5.info("\u{1F4CA} Extracted market metrics request:", extractedRequest);
+    elizaLogger6.info("\u{1F4CA} Extracted market metrics request:", extractedRequest);
     const processedRequest = {
       start_date: extractedRequest.start_date,
       end_date: extractedRequest.end_date,
@@ -6699,7 +6591,7 @@ var handler = async (runtime, message, state, _options, callback) => {
     }
     return true;
   } catch (error) {
-    elizaLogger5.error("\u274C Market Metrics Action Error:", error);
+    elizaLogger6.error("\u274C Market Metrics Action Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     const errorText = `\u274C **Error Getting Market Metrics**
 
@@ -6733,8 +6625,15 @@ function getSignalDescription(signal) {
       return "\u2753 Unknown";
   }
 }
-var validate = async (runtime) => {
-  return validateAndGetApiKey(runtime) !== null;
+var validate = async (runtime, message, state) => {
+  elizaLogger6.log("\u{1F50D} Validating getMarketMetricsAction (1.x)");
+  try {
+    validateAndGetApiKey(runtime);
+    return true;
+  } catch (error) {
+    elizaLogger6.error("\u274C Validation failed:", error);
+    return false;
+  }
 };
 var examples = [
   [
@@ -7015,6 +6914,9 @@ function generateMarketRecommendations(currentMetrics, trendAnalysis, strengthAs
 }
 
 // src/actions/getIndicesAction.ts
+import {
+  elizaLogger as elizaLogger7
+} from "@elizaos/core";
 var IndicesRequestSchema = z.object({
   indicesType: z.string().nullable().optional().describe("Type of indices to filter (active, passive, etc.)"),
   limit: z.number().min(1).max(100).optional().describe("Number of indices to return"),
@@ -7223,8 +7125,15 @@ var getIndicesAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger7.log("\u{1F50D} Validating getIndicesAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger7.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeIndicesData(indices, analysisType = "all") {
@@ -7453,6 +7362,9 @@ function formatIndicesResponse(result, requestedLimit) {
 }
 
 // src/actions/getAiReportsAction.ts
+import {
+  elizaLogger as elizaLogger8
+} from "@elizaos/core";
 var AiReportsRequestSchema = z.object({
   token_id: z.number().min(1).optional().describe("The ID of the token to get AI reports for"),
   symbol: z.string().optional().describe("The symbol of the token to get AI reports for"),
@@ -7827,8 +7739,15 @@ var getAiReportsAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger8.log("\u{1F50D} Validating getAiReportsAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger8.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeAiReports(reportsData, analysisType = "all") {
@@ -8482,7 +8401,7 @@ function generateIntelligenceSummary(intelligence) {
 
 // src/actions/getTradingSignalsAction.ts
 import {
-  elizaLogger as elizaLogger6
+  elizaLogger as elizaLogger9
 } from "@elizaos/core";
 var tradingSignalsTemplate = `# Task: Extract Trading Signals Request Information
 
@@ -8523,16 +8442,16 @@ var TradingSignalsRequestSchema = z.object({
   confidence: z.number().min(0).max(1).describe("Confidence in extraction")
 });
 async function fetchTradingSignals(params, runtime) {
-  elizaLogger6.log(`\u{1F4E1} Fetching trading signals with params:`, params);
+  elizaLogger9.log(`\u{1F4E1} Fetching trading signals with params:`, params);
   try {
     const data = await callTokenMetricsAPI("/v2/trading-signals", params, runtime);
     if (!data) {
       throw new Error("No data received from trading signals API");
     }
-    elizaLogger6.log(`\u2705 Successfully fetched trading signals data`);
+    elizaLogger9.log(`\u2705 Successfully fetched trading signals data`);
     return data;
   } catch (error) {
-    elizaLogger6.error("\u274C Error fetching trading signals:", error);
+    elizaLogger9.error("\u274C Error fetching trading signals:", error);
     throw error;
   }
 }
@@ -8646,21 +8565,21 @@ var getTradingSignalsAction = {
     "MARKET_SIGNALS"
   ],
   description: "Get AI-generated trading signals and recommendations for cryptocurrencies from TokenMetrics",
-  validate: async (runtime, message) => {
-    elizaLogger6.log("\u{1F50D} Validating getTradingSignalsAction");
+  validate: async (runtime, message, state) => {
+    elizaLogger9.log("\u{1F50D} Validating getTradingSignalsAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger6.error("\u274C Validation failed:", error);
+      elizaLogger9.error("\u274C Validation failed:", error);
       return false;
     }
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger6.log("\u{1F680} Starting TokenMetrics trading signals handler");
-    elizaLogger6.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger6.log(`\u{1F194} Request ID: ${requestId}`);
+    elizaLogger9.log("\u{1F680} Starting TokenMetrics trading signals handler");
+    elizaLogger9.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger9.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
       const signalsRequest = await extractTokenMetricsRequest(
@@ -8671,10 +8590,10 @@ var getTradingSignalsAction = {
         TradingSignalsRequestSchema,
         requestId
       );
-      elizaLogger6.log("\u{1F3AF} AI Extracted signals request:", signalsRequest);
-      elizaLogger6.log(`\u{1F194} Request ${requestId}: AI Processing "${signalsRequest.cryptocurrency || "general market"}"`);
+      elizaLogger9.log("\u{1F3AF} AI Extracted signals request:", signalsRequest);
+      elizaLogger9.log(`\u{1F194} Request ${requestId}: AI Processing "${signalsRequest.cryptocurrency || "general market"}"`);
       if (!signalsRequest.cryptocurrency && !signalsRequest.signal_type && !signalsRequest.category && signalsRequest.confidence < 0.2) {
-        elizaLogger6.log("\u274C AI extraction failed - very low confidence");
+        elizaLogger9.log("\u274C AI extraction failed - very low confidence");
         if (callback) {
           callback({
             text: `\u274C I couldn't identify specific trading signals criteria from your request.
@@ -8701,27 +8620,27 @@ Try asking something like:
         }
         return false;
       }
-      elizaLogger6.success("\u{1F3AF} Final extraction result:", signalsRequest);
+      elizaLogger9.success("\u{1F3AF} Final extraction result:", signalsRequest);
       const apiParams = {
         limit: 50,
         page: 1
       };
       let tokenInfo = null;
       if (signalsRequest.cryptocurrency) {
-        elizaLogger6.log(`\u{1F50D} Attempting to resolve token for: "${signalsRequest.cryptocurrency}"`);
+        elizaLogger9.log(`\u{1F50D} Attempting to resolve token for: "${signalsRequest.cryptocurrency}"`);
         try {
           tokenInfo = await resolveTokenSmart(signalsRequest.cryptocurrency, runtime);
           if (tokenInfo) {
             apiParams.token_id = tokenInfo.TOKEN_ID;
-            elizaLogger6.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+            elizaLogger9.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
           } else {
             apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
-            elizaLogger6.log(`\u{1F50D} Using symbol parameter: ${signalsRequest.cryptocurrency}`);
+            elizaLogger9.log(`\u{1F50D} Using symbol parameter: ${signalsRequest.cryptocurrency}`);
           }
         } catch (error) {
-          elizaLogger6.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
+          elizaLogger9.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
           apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
-          elizaLogger6.log(`\u{1F50D} Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
+          elizaLogger9.log(`\u{1F50D} Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
         }
       }
       if (signalsRequest.signal_type) {
@@ -8737,11 +8656,11 @@ Try asking something like:
       if (signalsRequest.exchange) {
         apiParams.exchange = signalsRequest.exchange;
       }
-      elizaLogger6.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger6.log(`\u{1F4E1} Fetching trading signals data`);
+      elizaLogger9.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger9.log(`\u{1F4E1} Fetching trading signals data`);
       const signalsData = await fetchTradingSignals(apiParams, runtime);
       if (!signalsData) {
-        elizaLogger6.log("\u274C Failed to fetch trading signals data");
+        elizaLogger9.log("\u274C Failed to fetch trading signals data");
         if (callback) {
           callback({
             text: `\u274C Unable to fetch trading signals data at the moment.
@@ -8763,7 +8682,7 @@ Please try again in a few moments or try with different criteria.`,
       }
       let signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
       if (signals.length > 1 && apiParams.symbol) {
-        elizaLogger6.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+        elizaLogger9.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
         const mainTokenSelectors = [
           // For Bitcoin - select the main Bitcoin, not wrapped versions
           (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
@@ -8791,21 +8710,21 @@ Please try again in a few moments or try with different criteria.`,
           const match = signals.find(selector);
           if (match) {
             selectedToken = match;
-            elizaLogger6.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+            elizaLogger9.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
             break;
           }
         }
         if (selectedToken) {
           signals = [selectedToken];
-          elizaLogger6.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+          elizaLogger9.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
         } else {
-          elizaLogger6.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
+          elizaLogger9.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
         }
       }
-      elizaLogger6.log(`\u{1F50D} Final signals count: ${signals.length}`);
+      elizaLogger9.log(`\u{1F50D} Final signals count: ${signals.length}`);
       const responseText = formatTradingSignalsResponse(signals, tokenInfo);
       const analysis = analyzeTradingSignals(signals);
-      elizaLogger6.success("\u2705 Successfully processed trading signals request");
+      elizaLogger9.success("\u2705 Successfully processed trading signals request");
       if (callback) {
         callback({
           text: responseText,
@@ -8829,8 +8748,8 @@ Please try again in a few moments or try with different criteria.`,
       }
       return true;
     } catch (error) {
-      elizaLogger6.error("\u274C Error in TokenMetrics trading signals handler:", error);
-      elizaLogger6.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      elizaLogger9.error("\u274C Error in TokenMetrics trading signals handler:", error);
+      elizaLogger9.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
       if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         callback({
@@ -8904,6 +8823,9 @@ Please check your TokenMetrics API key configuration and try again.`,
 };
 
 // src/actions/getIndicesHoldingsAction.ts
+import {
+  elizaLogger as elizaLogger10
+} from "@elizaos/core";
 var IndicesHoldingsRequestSchema = z.object({
   indexId: z.number().min(1).describe("The ID of the index to get holdings for"),
   analysisType: z.enum(["composition", "risk", "performance", "all"]).optional().describe("Type of analysis to focus on")
@@ -9091,8 +9013,15 @@ var getIndicesHoldingsAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger10.log("\u{1F50D} Validating getIndicesHoldingsAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger10.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeHoldingsData(holdings, analysisType = "all") {
@@ -9335,6 +9264,9 @@ function formatIndicesHoldingsResponse(result) {
 }
 
 // src/actions/getCorrelationAction.ts
+import {
+  elizaLogger as elizaLogger11
+} from "@elizaos/core";
 var CorrelationRequestSchema = z.object({
   token_id: z.number().min(1).optional().describe("The ID of the token to analyze correlation for"),
   symbol: z.string().optional().describe("The symbol of the token to analyze correlation for"),
@@ -9344,44 +9276,6 @@ var CorrelationRequestSchema = z.object({
   page: z.number().min(1).optional().describe("Page number for pagination"),
   analysisType: z.enum(["diversification", "hedging", "risk_management", "all"]).optional().describe("Type of correlation analysis to focus on")
 });
-var CORRELATION_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting correlation analysis requests from natural language.
-
-The user wants to analyze price correlations between cryptocurrencies. Extract the following information:
-
-1. **token_id** (optional): Numeric ID of the token
-   - Only extract if explicitly mentioned as a number
-
-2. **symbol** (optional): Token symbol like BTC, ETH, etc.
-   - Look for cryptocurrency symbols or names
-   - Convert names to symbols if possible (Bitcoin \u2192 BTC, Ethereum \u2192 ETH)
-
-3. **category** (optional): Token category filter
-   - Look for categories like "defi", "layer1", "gaming", "meme", "infrastructure"
-   - Extract from phrases like "DeFi tokens", "Layer 1 blockchains", "gaming coins"
-
-4. **exchange** (optional): Exchange filter
-   - Look for exchange names like "binance", "coinbase", "kraken"
-
-5. **limit** (optional, default: 50): Number of results to return
-   - Look for phrases like "top 20", "first 100", "50 correlations"
-
-6. **page** (optional, default: 1): Page number for pagination
-
-7. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "diversification" - focus on finding uncorrelated assets for portfolio diversification
-   - "hedging" - focus on negatively correlated assets for hedging strategies
-   - "risk_management" - focus on correlation risks and concentration analysis
-   - "all" - comprehensive correlation analysis
-
-Examples:
-- "Get correlation analysis for Bitcoin" \u2192 {symbol: "BTC", analysisType: "all"}
-- "Show me DeFi tokens for diversification" \u2192 {category: "defi", analysisType: "diversification"}
-- "Find hedging opportunities for ETH" \u2192 {symbol: "ETH", analysisType: "hedging"}
-- "Correlation risk analysis for top 20 tokens" \u2192 {limit: 20, analysisType: "risk_management"}
-
-Extract the request details from the user's message.
-`;
 var getCorrelationAction = {
   name: "GET_CORRELATION_TOKENMETRICS",
   description: "Get Top 10 and Bottom 10 correlation of tokens with the top 100 market cap tokens from TokenMetrics for diversification and risk analysis",
@@ -9441,142 +9335,132 @@ var getCorrelationAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  validate: async (runtime, message, state) => {
+    elizaLogger11.log("\u{1F50D} Validating getCorrelationAction (1.x)");
     try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing correlation analysis request...`);
-      const correlationRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        _state || await runtime.composeState(message),
-        CORRELATION_EXTRACTION_TEMPLATE,
-        CorrelationRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, correlationRequest);
-      const processedRequest = {
-        token_id: correlationRequest.token_id,
-        symbol: correlationRequest.symbol,
-        category: correlationRequest.category,
-        exchange: correlationRequest.exchange,
-        limit: correlationRequest.limit || 50,
-        page: correlationRequest.page || 1,
-        analysisType: correlationRequest.analysisType || "all"
-      };
-      const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
-      };
-      if (processedRequest.token_id) {
-        apiParams.token_id = processedRequest.token_id;
-      }
-      if (processedRequest.symbol) {
-        apiParams.symbol = processedRequest.symbol;
-      }
-      if (processedRequest.category) {
-        apiParams.category = processedRequest.category;
-      }
-      if (processedRequest.exchange) {
-        apiParams.exchange = processedRequest.exchange;
-      }
-      const response = await callTokenMetricsAPI(
-        "/v2/correlation",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing correlation data...`);
-      const correlationData = Array.isArray(response) ? response : response.data || [];
-      const correlationAnalysis = analyzeCorrelationData(correlationData, processedRequest.analysisType);
-      const result = {
-        success: true,
-        message: `Successfully retrieved correlation data for ${correlationData.length} token relationships`,
-        request_id: requestId,
-        correlation_data: correlationData,
-        analysis: correlationAnalysis,
-        metadata: {
-          endpoint: "correlation",
-          requested_token: processedRequest.symbol || processedRequest.token_id,
-          filters_applied: {
-            category: processedRequest.category,
-            exchange: processedRequest.exchange
-          },
-          analysis_focus: processedRequest.analysisType,
-          pagination: {
-            page: processedRequest.page,
-            limit: processedRequest.limit
-          },
-          data_points: correlationData.length,
-          api_version: "v2",
-          data_source: "TokenMetrics Correlation Engine"
-        },
-        correlation_explanation: {
-          purpose: "Understand price movement relationships between cryptocurrencies for optimal portfolio construction",
-          correlation_ranges: {
-            "0.8 to 1.0": "Very strong positive correlation - assets move together",
-            "0.5 to 0.8": "Strong positive correlation - similar directional movement",
-            "0.2 to 0.5": "Moderate positive correlation - some relationship",
-            "-0.2 to 0.2": "Weak correlation - minimal relationship",
-            "-0.5 to -0.2": "Moderate negative correlation - some inverse relationship",
-            "-0.8 to -0.5": "Strong negative correlation - opposite movements",
-            "-1.0 to -0.8": "Very strong negative correlation - strong inverse relationship"
-          },
-          usage_guidelines: [
-            "Use low or negative correlations for diversification",
-            "Avoid high correlations for risk reduction",
-            "Monitor correlation changes during market stress",
-            "Consider correlations for hedging strategies"
-          ],
-          portfolio_applications: [
-            "Select uncorrelated assets to reduce portfolio volatility",
-            "Identify assets that move independently for diversification",
-            "Find negatively correlated assets for hedging",
-            "Avoid concentrating in highly correlated assets"
-          ]
-        }
-      };
-      console.log(`[${requestId}] Correlation analysis completed successfully`);
-      console.log(`[${requestId}] Analysis completed successfully`);
-      return {
-        text: response,
-        content: {
-          success: true,
-          request_id: requestId,
-          data: result,
-          metadata: {
-            endpoint: "correlation",
-            data_source: "TokenMetrics Official API",
-            api_version: "v2"
-          }
-        }
-      };
+      validateAndGetApiKey(runtime);
+      return true;
     } catch (error) {
-      console.error("Error in getCorrelation action:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve correlation data from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/correlation is accessible",
-          parameter_validation: [
-            "Verify token_id is a valid number or symbol is a valid string",
-            "Check that filtering parameters are valid strings",
-            "Ensure your API key has access to correlation analysis endpoint",
-            "Confirm the token has sufficient price history for correlation analysis"
-          ],
-          common_solutions: [
-            "Try using a major token (BTC, ETH) to test functionality",
-            "Remove filters to get broader correlation results",
-            "Check if your subscription includes correlation analysis access",
-            "Verify the token is in the top 100 market cap or has sufficient data"
-          ]
-        }
-      };
+      elizaLogger11.error("\u274C Validation failed:", error);
+      return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  handler: async (runtime, message, state, _options, callback) => {
+    const requestId = generateRequestId();
+    elizaLogger11.log("\u{1F680} Starting TokenMetrics correlation handler (1.x)");
+    elizaLogger11.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger11.log(`\u{1F194} Request ID: ${requestId}`);
+    try {
+      validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const apiParams = {
+        limit: 20,
+        page: 1
+      };
+      elizaLogger11.log(`\u{1F4E1} Fetching correlation data`);
+      const correlationData = await callTokenMetricsAPI("/v2/correlation", apiParams, runtime);
+      if (!correlationData) {
+        elizaLogger11.log("\u274C Failed to fetch correlation data");
+        if (callback) {
+          await callback({
+            text: `\u274C Unable to fetch correlation data at the moment.
+
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
+
+Please try again in a few moments.`,
+            content: {
+              error: "API fetch failed",
+              request_id: requestId
+            }
+          });
+        }
+        return false;
+      }
+      const correlations = Array.isArray(correlationData) ? correlationData : correlationData.data || [];
+      elizaLogger11.log(`\u{1F50D} Received ${correlations.length} correlation data points`);
+      const responseText = formatCorrelationResponse(correlations);
+      const analysis = analyzeCorrelationData(correlations, "comprehensive");
+      elizaLogger11.success("\u2705 Successfully processed correlation request");
+      if (callback) {
+        await callback({
+          text: responseText,
+          content: {
+            success: true,
+            correlation_data: correlations,
+            analysis,
+            source: "TokenMetrics Correlation API",
+            request_id: requestId,
+            metadata: {
+              endpoint: "correlation",
+              data_source: "TokenMetrics API",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              total_correlations: correlations.length
+            }
+          }
+        });
+      }
+      return true;
+    } catch (error) {
+      elizaLogger11.error("\u274C Error in TokenMetrics correlation handler:", error);
+      elizaLogger11.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      if (callback) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        await callback({
+          text: `\u274C I encountered an error while fetching correlation data: ${errorMessage}
+
+This could be due to:
+\u2022 Network connectivity issues
+\u2022 TokenMetrics API service problems
+\u2022 Invalid API key or authentication issues
+\u2022 Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+          content: {
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true,
+            request_id: requestId
+          }
+        });
+      }
+      return false;
+    }
   }
 };
+function formatCorrelationResponse(correlations) {
+  if (!correlations || correlations.length === 0) {
+    return "\u274C No correlation data available.";
+  }
+  let response = `\u{1F4CA} **Token Correlation Analysis**
+
+`;
+  response += `\u{1F517} **Total Correlations**: ${correlations.length}
+
+`;
+  if (correlations.length > 0) {
+    const topCorrelations = correlations.slice(0, 10);
+    response += `\u{1F4C8} **Top Correlations**:
+`;
+    topCorrelations.forEach((corr, index) => {
+      const token1 = corr.TOKEN1_SYMBOL || corr.SYMBOL1 || "TOKEN1";
+      const token2 = corr.TOKEN2_SYMBOL || corr.SYMBOL2 || "TOKEN2";
+      const correlation = corr.CORRELATION || corr.CORR_VALUE || 0;
+      response += `${index + 1}. **${token1}** \u2194 **${token2}**: ${correlation.toFixed(3)}
+`;
+    });
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Correlation API
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
 function analyzeCorrelationData(correlationData, analysisType = "all") {
   if (!correlationData || correlationData.length === 0) {
     return {
@@ -10208,6 +10092,9 @@ function shouldUseDynamicHedging(avgCorrelation) {
 }
 
 // src/actions/getDailyOhlcvAction.ts
+import {
+  elizaLogger as elizaLogger12
+} from "@elizaos/core";
 var DailyOhlcvRequestSchema = z.object({
   cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
   token_id: z.number().optional().describe("Specific token ID if known"),
@@ -10358,7 +10245,7 @@ var getDailyOhlcvAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing daily OHLCV request...`);
@@ -10750,8 +10637,15 @@ ${ohlcvAnalysis.summary}
       };
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger12.log("\u{1F50D} Validating getDailyOhlcvAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger12.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeDailyOhlcvData(ohlcvData, analysisType = "all") {
@@ -11236,6 +11130,7 @@ function determineSignalConfidence(trendAnalysis, technicalAnalysis) {
 }
 
 // src/actions/getHourlyOhlcvAction.ts
+import { elizaLogger as elizaLogger13 } from "@elizaos/core";
 var HourlyOhlcvRequestSchema = z.object({
   cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
   token_id: z.number().optional().describe("Specific token ID if known"),
@@ -11387,19 +11282,22 @@ var getHourlyOhlcvAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback) {
+  handler: async (runtime, message, state, _options, callback) => {
     try {
       const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing hourly OHLCV request...`);
+      elizaLogger13.log(`[${requestId}] Processing hourly OHLCV request...`);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
       const ohlcvRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state || await runtime.composeState(message),
+        state,
         HOURLY_OHLCV_EXTRACTION_TEMPLATE,
         HourlyOhlcvRequestSchema,
         requestId
       );
-      console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
+      elizaLogger13.log(`[${requestId}] Extracted request:`, ohlcvRequest);
       let processedRequest = {
         cryptocurrency: ohlcvRequest.cryptocurrency,
         token_id: ohlcvRequest.token_id,
@@ -11413,12 +11311,12 @@ var getHourlyOhlcvAction = {
         analysisType: ohlcvRequest.analysisType || "all"
       };
       if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
-        console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
+        elizaLogger13.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
         const regexResult = extractCryptocurrencySimple4(message.content.text);
         if (regexResult.cryptocurrency) {
           processedRequest.cryptocurrency = regexResult.cryptocurrency;
           processedRequest.symbol = regexResult.symbol;
-          console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
+          elizaLogger13.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
         }
       }
       if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
@@ -11440,7 +11338,7 @@ var getHourlyOhlcvAction = {
         };
         const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
         if (fullName) {
-          console.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
+          elizaLogger13.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
           processedRequest.cryptocurrency = fullName;
           if (!processedRequest.symbol) {
             processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
@@ -11454,10 +11352,10 @@ var getHourlyOhlcvAction = {
           if (resolvedToken) {
             processedRequest.token_id = resolvedToken.token_id;
             processedRequest.symbol = resolvedToken.symbol;
-            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+            elizaLogger13.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
           }
         } catch (error) {
-          console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+          elizaLogger13.log(`[${requestId}] Token resolution failed, proceeding with original request`);
         }
       }
       const apiParams = {
@@ -11466,10 +11364,10 @@ var getHourlyOhlcvAction = {
       };
       if (processedRequest.cryptocurrency) {
         apiParams.token_name = processedRequest.cryptocurrency;
-        console.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
+        elizaLogger13.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
       } else if (processedRequest.token_name) {
         apiParams.token_name = processedRequest.token_name;
-        console.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
+        elizaLogger13.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
       }
       if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
       if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
@@ -11478,7 +11376,7 @@ var getHourlyOhlcvAction = {
         apiParams,
         runtime
       );
-      console.log(`[${requestId}] API response received, processing data...`);
+      elizaLogger13.log(`[${requestId}] API response received, processing data...`);
       const ohlcvData = Array.isArray(response) ? response : response.data || [];
       let filteredByToken = ohlcvData;
       if (ohlcvData.length > 0 && processedRequest.symbol) {
@@ -11491,7 +11389,7 @@ var getHourlyOhlcvAction = {
           return groups;
         }, {});
         const tokenIds = Object.keys(tokenGroups);
-        console.log(
+        elizaLogger13.log(
           `[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`,
           tokenIds.map((id) => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`)
         );
@@ -11522,7 +11420,7 @@ var getHourlyOhlcvAction = {
             if (tokenName2.includes("wrapped") || tokenName2.includes("osmosis") || tokenName2.includes("synthetic") || tokenName2.includes("bridged")) {
               score -= 20;
             }
-            console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
+            elizaLogger13.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
             if (score > maxScore) {
               maxScore = score;
               selectedTokenId = tokenId;
@@ -11531,28 +11429,28 @@ var getHourlyOhlcvAction = {
           if (selectedTokenId) {
             filteredByToken = tokenGroups[selectedTokenId];
             const selectedToken = filteredByToken[0];
-            console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
+            elizaLogger13.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
           } else {
-            console.log(`[${requestId}] No clear main token identified, using all data`);
+            elizaLogger13.log(`[${requestId}] No clear main token identified, using all data`);
           }
         } else {
-          console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
+          elizaLogger13.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
         }
       }
       const validData = filteredByToken.filter((item) => {
         if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
-          console.log(`[${requestId}] Filtering out invalid data point:`, item);
+          elizaLogger13.log(`[${requestId}] Filtering out invalid data point:`, item);
           return false;
         }
         const priceRange = (item.HIGH - item.LOW) / item.LOW;
         if (priceRange > 10) {
-          console.log(`[${requestId}] Filtering out extreme outlier:`, item);
+          elizaLogger13.log(`[${requestId}] Filtering out extreme outlier:`, item);
           return false;
         }
         return true;
       });
-      console.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
-      console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
+      elizaLogger13.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
+      elizaLogger13.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
       const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
       const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
       const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
@@ -11724,7 +11622,7 @@ ${ohlcvAnalysis.summary}
           ]
         }
       };
-      console.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
+      elizaLogger13.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
       if (callback) {
         callback({
           text: responseText,
@@ -11733,7 +11631,7 @@ ${ohlcvAnalysis.summary}
       }
       return true;
     } catch (error) {
-      console.error("Error in getHourlyOhlcvAction:", error);
+      elizaLogger13.error("Error in getHourlyOhlcvAction:", error);
       const errorMessage = `\u274C **Failed to retrieve hourly OHLCV data**
 
 `;
@@ -11778,8 +11676,15 @@ ${ohlcvAnalysis.summary}
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger13.log("\u{1F50D} Validating getHourlyOhlcvAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger13.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeHourlyOhlcvData(ohlcvData, analysisType = "all") {
@@ -12363,6 +12268,9 @@ function findKeyLevels(highs, lows) {
 }
 
 // src/actions/getHourlyTradingSignalsAction.ts
+import {
+  elizaLogger as elizaLogger14
+} from "@elizaos/core";
 var HourlyTradingSignalsRequestSchema = z.object({
   cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
   token_id: z.number().optional().describe("Specific token ID if known"),
@@ -12379,62 +12287,6 @@ var HourlyTradingSignalsRequestSchema = z.object({
   page: z.number().min(1).optional().describe("Page number for pagination"),
   analysisType: z.enum(["active_trading", "scalping", "momentum", "all"]).optional().describe("Type of analysis to focus on")
 });
-var HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting hourly trading signals requests from natural language.
-
-The user wants to get AI-generated hourly trading signals for cryptocurrency analysis. Extract the following information:
-
-1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
-   - Can be a specific token or general request
-
-2. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
-
-3. **symbol** (optional): Token symbol
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
-
-4. **signal** (optional): Filter by signal type
-   - 1 = bullish/long signals
-   - -1 = bearish/short signals
-   - 0 = neutral signals
-   - Look for phrases like "bullish signals", "buy signals", "short signals"
-
-5. **startDate** (optional): Start date for data range
-   - Look for dates in YYYY-MM-DD format
-   - Convert relative dates like "last week", "past 3 days"
-
-6. **endDate** (optional): End date for data range
-
-7. **category** (optional): Token category filter
-   - Look for categories like "defi", "layer1", "gaming"
-
-8. **exchange** (optional): Exchange filter
-
-9. **marketcap** (optional): Minimum market cap filter
-
-10. **volume** (optional): Minimum volume filter
-
-11. **fdv** (optional): Minimum fully diluted valuation filter
-
-12. **limit** (optional, default: 20): Number of signals to return
-
-13. **page** (optional, default: 1): Page number for pagination
-
-14. **analysisType** (optional, default: "all"): What type of analysis they want
-    - "active_trading" - focus on frequent trading opportunities
-    - "scalping" - focus on very short-term signals
-    - "momentum" - focus on momentum-based signals
-    - "all" - comprehensive hourly signal analysis
-
-Examples:
-- "Get hourly trading signals for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me bullish hourly signals" \u2192 {signal: 1, analysisType: "active_trading"}
-- "Hourly buy signals for ETH" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", signal: 1, analysisType: "active_trading"}
-- "Scalping signals for the past 24 hours" \u2192 {analysisType: "scalping"}
-
-Extract the request details from the user's message.
-`;
 var getHourlyTradingSignalsAction = {
   name: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS",
   description: "Get AI-generated hourly trading signals for cryptocurrencies with frequent updates for active trading from TokenMetrics",
@@ -12496,160 +12348,136 @@ var getHourlyTradingSignalsAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  validate: async (runtime, message, state) => {
+    elizaLogger14.log("\u{1F50D} Validating getHourlyTradingSignalsAction (1.x)");
     try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing hourly trading signals request...`);
-      const signalsRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        _state || await runtime.composeState(message),
-        HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE,
-        HourlyTradingSignalsRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, signalsRequest);
-      const processedRequest = {
-        cryptocurrency: signalsRequest.cryptocurrency,
-        token_id: signalsRequest.token_id,
-        symbol: signalsRequest.symbol,
-        signal: signalsRequest.signal,
-        startDate: signalsRequest.startDate,
-        endDate: signalsRequest.endDate,
-        category: signalsRequest.category,
-        exchange: signalsRequest.exchange,
-        marketcap: signalsRequest.marketcap,
-        volume: signalsRequest.volume,
-        fdv: signalsRequest.fdv,
-        limit: signalsRequest.limit || 20,
-        page: signalsRequest.page || 1,
-        analysisType: signalsRequest.analysisType || "all"
-      };
-      let resolvedToken = null;
-      if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-        try {
-          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-          if (resolvedToken) {
-            processedRequest.token_id = resolvedToken.token_id;
-            processedRequest.symbol = resolvedToken.symbol;
-            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-          }
-        } catch (error) {
-          console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
-        }
-      }
-      const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
-      };
-      if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
-      if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
-      if (processedRequest.signal !== void 0) apiParams.signal = processedRequest.signal;
-      if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
-      if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
-      if (processedRequest.category) apiParams.category = processedRequest.category;
-      if (processedRequest.exchange) apiParams.exchange = processedRequest.exchange;
-      if (processedRequest.marketcap) apiParams.marketcap = processedRequest.marketcap;
-      if (processedRequest.volume) apiParams.volume = processedRequest.volume;
-      if (processedRequest.fdv) apiParams.fdv = processedRequest.fdv;
-      const response = await callTokenMetricsAPI(
-        "/v2/hourly-trading-signals",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing data...`);
-      const hourlySignals = Array.isArray(response) ? response : response.data || [];
-      const signalsAnalysis = analyzeHourlyTradingSignals(hourlySignals, processedRequest.analysisType);
-      const result = {
-        success: true,
-        message: `Successfully retrieved ${hourlySignals.length} hourly trading signals from TokenMetrics AI`,
-        request_id: requestId,
-        hourly_trading_signals: hourlySignals,
-        analysis: signalsAnalysis,
-        metadata: {
-          endpoint: "hourly-trading-signals",
-          requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-          resolved_token: resolvedToken,
-          signal_filter: processedRequest.signal,
-          date_range: {
-            start: processedRequest.startDate,
-            end: processedRequest.endDate
-          },
-          filters_applied: {
-            category: processedRequest.category,
-            exchange: processedRequest.exchange,
-            min_marketcap: processedRequest.marketcap,
-            min_volume: processedRequest.volume,
-            min_fdv: processedRequest.fdv
-          },
-          analysis_focus: processedRequest.analysisType,
-          pagination: {
-            page: processedRequest.page,
-            limit: processedRequest.limit
-          },
-          data_points: hourlySignals.length,
-          api_version: "v2",
-          data_source: "TokenMetrics AI Hourly Signals",
-          update_frequency: "Hourly"
-        },
-        signals_explanation: {
-          signal_values: {
-            "1": "Bullish/Long signal - AI recommends buying or holding position",
-            "-1": "Bearish/Short signal - AI recommends short position or selling",
-            "0": "No signal - AI sees neutral conditions"
-          },
-          field_name: "TRADING_SIGNAL",
-          hourly_advantages: [
-            "More frequent signal updates for active trading",
-            "Better timing for short-term positions",
-            "Captures intraday market movements",
-            "Ideal for scalping and day trading strategies"
-          ]
-        }
-      };
-      console.log(`[${requestId}] Hourly trading signals analysis completed successfully`);
-      console.log(`[${requestId}] Analysis completed successfully`);
-      return {
-        text: response,
-        content: {
-          success: true,
-          request_id: requestId,
-          data: result,
-          metadata: {
-            endpoint: "hourly-trading-signals",
-            data_source: "TokenMetrics Official API",
-            api_version: "v2"
-          }
-        }
-      };
+      validateAndGetApiKey(runtime);
+      return true;
     } catch (error) {
-      console.error("Error in getHourlyTradingSignalsAction:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve hourly trading signals from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/hourly-trading-signals is accessible",
-          parameter_validation: [
-            "Verify token_id is a valid number or symbol is a valid string",
-            "Check that signal filter is 1 (bullish), -1 (bearish), or 0 (neutral)",
-            "Ensure your API key has access to hourly trading signals",
-            "Verify date parameters use YYYY-MM-DD format"
-          ],
-          common_solutions: [
-            "Try using a major token (BTC, ETH) to test functionality",
-            "Remove filters to get broader signal results",
-            "Check if your subscription includes hourly signals access",
-            "Verify the token has active hourly signal generation"
-          ]
-        }
-      };
+      elizaLogger14.error("\u274C Validation failed:", error);
+      return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  handler: async (runtime, message, state, _options, callback) => {
+    const requestId = generateRequestId();
+    elizaLogger14.log("\u{1F680} Starting TokenMetrics hourly trading signals handler (1.x)");
+    elizaLogger14.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger14.log(`\u{1F194} Request ID: ${requestId}`);
+    try {
+      validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const apiParams = {
+        limit: 20,
+        page: 1
+      };
+      elizaLogger14.log(`\u{1F4E1} Fetching hourly trading signals data`);
+      const signalsData = await callTokenMetricsAPI("/v2/hourly-trading-signals", apiParams, runtime);
+      if (!signalsData) {
+        elizaLogger14.log("\u274C Failed to fetch hourly trading signals data");
+        if (callback) {
+          await callback({
+            text: `\u274C Unable to fetch hourly trading signals data at the moment.
+
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
+
+Please try again in a few moments.`,
+            content: {
+              error: "API fetch failed",
+              request_id: requestId
+            }
+          });
+        }
+        return false;
+      }
+      const signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
+      elizaLogger14.log(`\u{1F50D} Received ${signals.length} hourly trading signals`);
+      const responseText = formatHourlyTradingSignalsResponse(signals);
+      const analysis = analyzeHourlyTradingSignals(signals, "comprehensive");
+      elizaLogger14.success("\u2705 Successfully processed hourly trading signals request");
+      if (callback) {
+        await callback({
+          text: responseText,
+          content: {
+            success: true,
+            signals_data: signals,
+            analysis,
+            source: "TokenMetrics Hourly Trading Signals API",
+            request_id: requestId,
+            metadata: {
+              endpoint: "hourly-trading-signals",
+              data_source: "TokenMetrics API",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              total_signals: signals.length
+            }
+          }
+        });
+      }
+      return true;
+    } catch (error) {
+      elizaLogger14.error("\u274C Error in TokenMetrics hourly trading signals handler:", error);
+      elizaLogger14.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      if (callback) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        await callback({
+          text: `\u274C I encountered an error while fetching hourly trading signals: ${errorMessage}
+
+This could be due to:
+\u2022 Network connectivity issues
+\u2022 TokenMetrics API service problems
+\u2022 Invalid API key or authentication issues
+\u2022 Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+          content: {
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true,
+            request_id: requestId
+          }
+        });
+      }
+      return false;
+    }
   }
 };
+function formatHourlyTradingSignalsResponse(signals) {
+  if (!signals || signals.length === 0) {
+    return "\u274C No hourly trading signals data available.";
+  }
+  let response = `\u26A1 **Hourly Trading Signals Analysis**
+
+`;
+  response += `\u{1F4CA} **Total Signals**: ${signals.length}
+
+`;
+  if (signals.length > 0) {
+    const recentSignals = signals.slice(0, 5);
+    response += `\u{1F4C8} **Recent Signals**:
+`;
+    recentSignals.forEach((signal, index) => {
+      const symbol = signal.SYMBOL || signal.TOKEN_SYMBOL || "N/A";
+      const action = signal.SIGNAL || signal.ACTION || "HOLD";
+      const confidence = signal.CONFIDENCE || signal.SCORE || "N/A";
+      response += `${index + 1}. **${symbol}**: ${action}`;
+      if (confidence !== "N/A") {
+        response += ` (Confidence: ${confidence})`;
+      }
+      response += `
+`;
+    });
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Hourly Trading Signals API
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
 function analyzeHourlyTradingSignals(signalsData, analysisType = "all") {
   if (!signalsData || signalsData.length === 0) {
     return {
@@ -13119,6 +12947,9 @@ function identifyBestTradingWindows(signalsData) {
 }
 
 // src/actions/getResistanceSupportAction.ts
+import {
+  elizaLogger as elizaLogger15
+} from "@elizaos/core";
 var ResistanceSupportRequestSchema = z.object({
   cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
   token_id: z.number().optional().describe("Specific token ID if known"),
@@ -13264,7 +13095,7 @@ var getResistanceSupportAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback) {
+  handler: async (runtime, message, state, _options, callback) => {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing resistance and support levels request...`);
@@ -13723,8 +13554,15 @@ var getResistanceSupportAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger15.log("\u{1F50D} Validating getResistanceSupportAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger15.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeResistanceSupportLevels(levelsData, analysisType = "all") {
@@ -14248,6 +14086,7 @@ function classifyMarketStructure(resistanceLevels, supportLevels) {
 
 // src/actions/getScenarioAnalysisAction.ts
 import {
+  elizaLogger as elizaLogger16,
   composeContext as composeContext6,
   generateObject as generateObject6,
   ModelClass as ModelClass6
@@ -14399,7 +14238,7 @@ var getScenarioAnalysisAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback) {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing scenario analysis request...`);
@@ -14687,8 +14526,15 @@ Try using the full cryptocurrency name instead of the symbol.`,
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger16.log("\u{1F50D} Validating getScenarioAnalysisAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger16.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeScenarioData(scenarioData, analysisType = "all") {
@@ -15308,6 +15154,9 @@ function analyzeSurvivalProbability(scenarioData) {
 }
 
 // src/actions/getSentimentAction.ts
+import {
+  elizaLogger as elizaLogger17
+} from "@elizaos/core";
 var SentimentRequestSchema = z.object({
   limit: z.number().min(1).max(100).optional().describe("Number of sentiment data points to return"),
   page: z.number().min(1).optional().describe("Page number for pagination"),
@@ -15425,14 +15274,17 @@ var getSentimentAction = {
       }
     ]
   ],
-  async handler(runtime, message, state, _params, callback) {
+  handler: async (runtime, message, state, _options, callback) => {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing sentiment analysis request...`);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
       const sentimentRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state || await runtime.composeState(message),
+        state,
         SENTIMENT_EXTRACTION_TEMPLATE,
         SentimentRequestSchema,
         requestId
@@ -15575,7 +15427,7 @@ var getSentimentAction = {
       console.log(`[${requestId}] Sentiment analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -15592,29 +15444,36 @@ var getSentimentAction = {
       return true;
     } catch (error) {
       console.error("Error in getSentimentAction:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve sentiment data from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/sentiments is accessible",
-          parameter_validation: [
-            "Check that pagination parameters are positive integers",
-            "Ensure your API key has access to sentiment data",
-            "Verify the sentiment engine is operational"
-          ],
-          common_solutions: [
-            "Try reducing the limit if requesting too much data",
-            "Check if your subscription includes sentiment analysis access",
-            "Verify the sentiment data is available for the requested timeframe",
-            "Ensure sufficient social media and news data exists"
-          ]
-        }
-      };
+      if (callback) {
+        await callback({
+          text: `\u274C I encountered an error while fetching sentiment data: ${error instanceof Error ? error.message : "Unknown error"}
+
+This could be due to:
+\u2022 Network connectivity issues
+\u2022 TokenMetrics API service problems
+\u2022 Invalid API key or authentication issues
+\u2022 Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+          content: {
+            error: error instanceof Error ? error.message : "Unknown error",
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true
+          }
+        });
+      }
+      return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger17.log("\u{1F50D} Validating getSentimentAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger17.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeSentimentData(sentimentData, analysisType = "all") {
@@ -16092,6 +15951,9 @@ function assessNewsImpact(currentSentiment, sourceAnalysis) {
 }
 
 // src/actions/getTmaiAction.ts
+import {
+  elizaLogger as elizaLogger18
+} from "@elizaos/core";
 var TmaiRequestSchema = z.object({
   cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
   token_id: z.number().optional().describe("Specific token ID if known"),
@@ -16194,14 +16056,17 @@ var getTmaiAction = {
       }
     ]
   ],
-  async handler(runtime, message, _state) {
+  handler: async (runtime, message, state, _options, callback) => {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing TMAI analysis request...`);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
       const tmaiRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        _state || await runtime.composeState(message),
+        state,
         TMAI_EXTRACTION_TEMPLATE,
         TmaiRequestSchema,
         requestId
@@ -16287,45 +16152,54 @@ var getTmaiAction = {
       };
       console.log(`[${requestId}] TMAI analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
-      return {
-        text: response,
-        content: {
-          success: true,
-          request_id: requestId,
-          data: result,
-          metadata: {
-            endpoint: "tmai",
-            data_source: "TokenMetrics Official API",
-            api_version: "v2"
+      if (callback) {
+        await callback({
+          text: response,
+          content: {
+            success: true,
+            request_id: requestId,
+            data: result,
+            metadata: {
+              endpoint: "tmai",
+              data_source: "TokenMetrics Official API",
+              api_version: "v2"
+            }
           }
-        }
-      };
+        });
+      }
+      return true;
     } catch (error) {
       console.error("Error in getTmaiAction:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve TMAI analysis from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/tmai is accessible",
-          parameter_validation: [
-            "Verify token_id is a valid number or symbol is a valid string",
-            "Check that pagination parameters are positive integers",
-            "Ensure your API key has access to TMAI endpoint",
-            "Confirm the token has sufficient data for AI analysis"
-          ],
-          common_solutions: [
-            "Try using a major token (BTC, ETH) to test functionality",
-            "Check if your subscription includes TMAI access",
-            "Verify the token has been analyzed by TokenMetrics AI engine",
-            "Ensure sufficient historical data exists for AI modeling"
-          ]
-        }
-      };
+      if (callback) {
+        await callback({
+          text: `\u274C I encountered an error while fetching TMAI analysis: ${error instanceof Error ? error.message : "Unknown error"}
+
+This could be due to:
+\u2022 Network connectivity issues
+\u2022 TokenMetrics API service problems
+\u2022 Invalid API key or authentication issues
+\u2022 Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+          content: {
+            error: error instanceof Error ? error.message : "Unknown error",
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true
+          }
+        });
+      }
+      return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger18.log("\u{1F50D} Validating getTmaiAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger18.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeTmaiData(tmaiData, analysisType = "all") {
@@ -16554,7 +16428,7 @@ function generateRiskAssessment2(tmaiData, confidenceAnalysis) {
 
 // src/actions/getTokensAction.ts
 import {
-  elizaLogger as elizaLogger8
+  elizaLogger as elizaLogger19
 } from "@elizaos/core";
 var tokensTemplate = `# Task: Extract Token Search Request Information
 
@@ -16637,16 +16511,16 @@ function normalizeCryptocurrencyName(name) {
   return normalized || name;
 }
 async function fetchTokens(params, runtime) {
-  elizaLogger8.log(`\u{1F4E1} Fetching tokens with params:`, params);
+  elizaLogger19.log(`\u{1F4E1} Fetching tokens with params:`, params);
   try {
     const data = await callTokenMetricsAPI("/v2/tokens", params, runtime);
     if (!data) {
       throw new Error("No data received from tokens API");
     }
-    elizaLogger8.log(`\u2705 Successfully fetched tokens data`);
+    elizaLogger19.log(`\u2705 Successfully fetched tokens data`);
     return data;
   } catch (error) {
-    elizaLogger8.error("\u274C Error fetching tokens:", error);
+    elizaLogger19.error("\u274C Error fetching tokens:", error);
     throw error;
   }
 }
@@ -16799,93 +16673,120 @@ var getTokensAction = {
     "list tokens"
   ],
   description: "Get list of supported cryptocurrencies and tokens from TokenMetrics database - for searching token information, not prices",
-  validate: async (runtime, message) => {
-    elizaLogger8.log("\u{1F50D} Validating getTokensAction");
+  validate: async (runtime, message, state) => {
+    elizaLogger19.log("\u{1F50D} Validating getTokensAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger8.error("\u274C Validation failed:", error);
+      elizaLogger19.error("\u274C Validation failed:", error);
       return false;
     }
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger8.log("\u{1F680} Starting TokenMetrics tokens handler");
-    elizaLogger8.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger8.log(`\u{1F194} Request ID: ${requestId}`);
+    elizaLogger19.log("\u{1F680} Starting TokenMetrics tokens handler (1.x)");
+    elizaLogger19.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger19.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
       const tokensRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state || await runtime.composeState(message),
+        state,
         tokensTemplate,
         TokensRequestSchema,
         requestId
       );
-      elizaLogger8.log("\u{1F3AF} AI Extracted tokens request:", tokensRequest);
-      elizaLogger8.log(`\u{1F194} Request ${requestId}: AI Processing "${tokensRequest.cryptocurrency || tokensRequest.search_type}"`);
-      if (tokensRequest.confidence < 0.2) {
-        elizaLogger8.log("\u274C AI extraction failed or insufficient information");
+      elizaLogger19.log(`\u{1F3AF} AI extracted request: ${JSON.stringify(tokensRequest, null, 2)}`);
+      elizaLogger19.log(`\u{1F194} Request ${requestId}: Extracted - ${JSON.stringify(tokensRequest)}`);
+      const hasValidCriteria = tokensRequest && (tokensRequest.cryptocurrency || tokensRequest.category || tokensRequest.exchange || tokensRequest.search_type === "specific");
+      if (!hasValidCriteria) {
+        elizaLogger19.log(`\u{1F504} No specific search criteria found, treating as general tokens list request`);
+        elizaLogger19.log(`\u{1F194} Request ${requestId}: FALLBACK - General token list request`);
+        const fallbackRequest = {
+          list_request: true,
+          limit: 20,
+          page: 1,
+          confidence: 0.8
+        };
         if (callback) {
-          callback({
-            text: `\u274C I couldn't identify specific token search criteria from your request.
+          const response = await callTokenMetricsAPI("/v2/tokens", {
+            limit: fallbackRequest.limit,
+            page: fallbackRequest.page
+          }, runtime);
+          const tokens2 = Array.isArray(response) ? response : response?.data || [];
+          if (tokens2.length === 0) {
+            await callback({
+              text: `\u274C Unable to fetch tokens data at the moment.
 
-I can help you find tokens by:
-\u2022 Listing all available tokens
-\u2022 Searching by specific cryptocurrency (Bitcoin, Ethereum, etc.)
-\u2022 Filtering by category (DeFi, Layer-1, gaming, meme tokens)
-\u2022 Filtering by exchange (Binance, Coinbase, Uniswap)
-\u2022 Market filters (high market cap, volume, etc.)
+This could be due to:
+\u2022 Temporary API service unavailability
+\u2022 Network connectivity issues  
+\u2022 API rate limiting
 
-Try asking something like:
-\u2022 "List all available tokens"
-\u2022 "Show me DeFi tokens"
-\u2022 "Find tokens on Binance"
-\u2022 "Get supported cryptocurrencies"`,
+Please try again in a few moments.`,
+              content: {
+                error: "No tokens data available",
+                request_id: requestId
+              }
+            });
+            return false;
+          }
+          const responseText2 = formatTokensResponse(tokens2, "all", requestId);
+          await callback({
+            text: responseText2,
             content: {
-              error: "Insufficient token search criteria",
-              confidence: tokensRequest?.confidence || 0,
-              request_id: requestId
+              success: true,
+              request_id: requestId,
+              tokens_data: tokens2,
+              search_criteria: fallbackRequest,
+              metadata: {
+                endpoint: "tokens",
+                data_source: "TokenMetrics API",
+                timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+                total_tokens: tokens2.length
+              }
             }
           });
         }
-        return false;
+        return true;
       }
-      elizaLogger8.success("\u{1F3AF} Final extraction result:", tokensRequest);
       const apiParams = {
-        limit: 50,
-        page: 1
+        limit: tokensRequest.limit || 20,
+        page: tokensRequest.page || 1
       };
       if (tokensRequest.cryptocurrency) {
         apiParams.token_name = normalizeCryptocurrencyName(tokensRequest.cryptocurrency);
-        elizaLogger8.log(`\u{1F50D} Searching for specific token by name: ${apiParams.token_name}`);
+        elizaLogger19.log(`\u{1F50D} Searching for specific token by name: ${apiParams.token_name}`);
         if (apiParams.token_name.length <= 5) {
           apiParams.symbol = apiParams.token_name.toUpperCase();
-          elizaLogger8.log(`\u{1F50D} Also searching by symbol: ${apiParams.symbol}`);
+          elizaLogger19.log(`\u{1F50D} Also searching by symbol: ${apiParams.symbol}`);
         }
       }
       if (tokensRequest.category) {
         apiParams.category = tokensRequest.category.toLowerCase();
-        elizaLogger8.log(`\u{1F4C2} Filtering by category: ${tokensRequest.category}`);
+        elizaLogger19.log(`\u{1F4C2} Filtering by category: ${tokensRequest.category}`);
       }
       if (tokensRequest.exchange) {
         apiParams.exchange = tokensRequest.exchange;
-        elizaLogger8.log(`\u{1F3EA} Filtering by exchange: ${tokensRequest.exchange}`);
+        elizaLogger19.log(`\u{1F3EA} Filtering by exchange: ${tokensRequest.exchange}`);
       }
       if (tokensRequest.search_type === "all") {
         apiParams.limit = 100;
       } else if (tokensRequest.search_type === "specific") {
         apiParams.limit = 10;
       }
-      elizaLogger8.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger8.log(`\u{1F4E1} Fetching tokens data`);
+      elizaLogger19.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger19.log(`\u{1F4E1} Fetching tokens data`);
       const tokensData = await fetchTokens(apiParams, runtime);
       if (!tokensData) {
-        elizaLogger8.log("\u274C Failed to fetch tokens data");
+        elizaLogger19.log("\u274C Failed to fetch tokens data");
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C Unable to fetch tokens data at the moment.
 
 This could be due to:
@@ -16904,16 +16805,16 @@ Please try again in a few moments or try with different criteria.`,
         return false;
       }
       const tokens = Array.isArray(tokensData) ? tokensData : tokensData.data || [];
-      elizaLogger8.log(`\u{1F50D} Received ${tokens.length} tokens`);
+      elizaLogger19.log(`\u{1F50D} Received ${tokens.length} tokens`);
       const responseText = formatTokensResponse(tokens, tokensRequest.search_type, {
         cryptocurrency: tokensRequest.cryptocurrency,
         category: tokensRequest.category,
         exchange: tokensRequest.exchange
       });
       const analysis = analyzeTokens(tokens);
-      elizaLogger8.success("\u2705 Successfully processed tokens request");
+      elizaLogger19.success("\u2705 Successfully processed tokens request");
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -16936,11 +16837,11 @@ Please try again in a few moments or try with different criteria.`,
       }
       return true;
     } catch (error) {
-      elizaLogger8.error("\u274C Error in TokenMetrics tokens handler:", error);
-      elizaLogger8.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      elizaLogger19.error("\u274C Error in TokenMetrics tokens handler:", error);
+      elizaLogger19.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
       if (callback) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback({
+        await callback({
           text: `\u274C I encountered an error while fetching tokens: ${errorMessage}
 
 This could be due to:
@@ -17056,6 +16957,9 @@ Please check your TokenMetrics API key configuration and try again.`,
 };
 
 // src/actions/getTopMarketCapAction.ts
+import {
+  elizaLogger as elizaLogger20
+} from "@elizaos/core";
 var TopMarketCapRequestSchema = z.object({
   top_k: z.number().min(1).max(1e3).optional().describe("Number of top tokens to return"),
   page: z.number().min(1).optional().describe("Page number for pagination"),
@@ -17242,8 +17146,15 @@ var getTopMarketCapAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger20.log("\u{1F50D} Validating getTopMarketCapAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger20.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeTopTokensRanking(topTokens, top_k, analysisType = "all") {
@@ -17432,6 +17343,9 @@ function formatTopMarketCapResponse(topTokens, analysis, request) {
 }
 
 // src/actions/getCryptoInvestorsAction.ts
+import {
+  elizaLogger as elizaLogger21
+} from "@elizaos/core";
 var CryptoInvestorsRequestSchema = z.object({
   limit: z.number().min(1).max(1e3).optional().describe("Number of investors to return"),
   page: z.number().min(1).optional().describe("Page number for pagination"),
@@ -17625,8 +17539,15 @@ var getCryptoInvestorsAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger21.log("\u{1F50D} Validating getCryptoInvestorsAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger21.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzeCryptoInvestors(investorsData, analysisType = "all") {
@@ -18136,6 +18057,9 @@ function formatCryptoInvestorsResponse(investorsData, analysis, request) {
 }
 
 // src/actions/getIndicesPerformanceAction.ts
+import {
+  elizaLogger as elizaLogger22
+} from "@elizaos/core";
 var IndicesPerformanceRequestSchema = z.object({
   indexId: z.number().min(1).describe("The ID of the index to get performance data for"),
   startDate: z.string().optional().describe("Start date for performance data (YYYY-MM-DD format)"),
@@ -18362,8 +18286,15 @@ var getIndicesPerformanceAction = {
       return false;
     }
   },
-  async validate(runtime, _message) {
-    return validateAndGetApiKey(runtime) !== null;
+  validate: async (runtime, message, state) => {
+    elizaLogger22.log("\u{1F50D} Validating getIndicesPerformanceAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger22.error("\u274C Validation failed:", error);
+      return false;
+    }
   }
 };
 function analyzePerformanceData(performance, analysisType = "all") {
@@ -18605,16 +18536,11 @@ function formatIndicesPerformanceResponse(result) {
   } else {
     response += `\u274C No performance data found for index ${metadata.index_id}.
 
-`;
-    response += `This could be due to:
-`;
-    response += `\u2022 Invalid index ID
-`;
-    response += `\u2022 No performance history available
-`;
-    response += `\u2022 Date range outside available data
-`;
-    response += `\u2022 API connectivity issues
+This could be due to:
+\u2022 Invalid index ID
+\u2022 No performance history available
+\u2022 Date range outside available data
+\u2022 API connectivity issues
 `;
   }
   response += `
@@ -18626,36 +18552,39 @@ function formatIndicesPerformanceResponse(result) {
 }
 
 // src/index.ts
-elizaLogger9.log("\n=======================================");
-elizaLogger9.log("   TokenMetrics Plugin Loading...     ");
-elizaLogger9.log("=======================================");
-elizaLogger9.log("Name      : tokenmetrics-plugin");
-elizaLogger9.log("Version   : 2.1.0 (COMPLETE-AI-INTEGRATION)");
-elizaLogger9.log("API Docs  : https://developers.tokenmetrics.com");
-elizaLogger9.log("Real API  : https://api.tokenmetrics.com/v2");
-elizaLogger9.log("");
-elizaLogger9.log("\u{1F527} FEATURES IMPLEMENTED:");
-elizaLogger9.log("\u2705 Natural Language Processing (All 22 Actions)");
-elizaLogger9.log("\u2705 Dynamic Token Resolution");
-elizaLogger9.log("\u2705 Real TokenMetrics API Integration");
-elizaLogger9.log("\u2705 AI-Powered Request Extraction");
-elizaLogger9.log("\u2705 Smart Analysis Type Detection");
-elizaLogger9.log("\u2705 Comprehensive Error Handling");
-elizaLogger9.log("\u2705 100% API Endpoint Success Rate");
-elizaLogger9.log("");
-elizaLogger9.log("\u{1F3AF} AVAILABLE ACTIONS (22 Total):");
-elizaLogger9.log("  \u2022 Price Data & Market Analysis");
-elizaLogger9.log("  \u2022 Trading Signals & Technical Analysis");
-elizaLogger9.log("  \u2022 Grades & Investment Insights");
-elizaLogger9.log("  \u2022 Portfolio & Risk Management");
-elizaLogger9.log("  \u2022 Sentiment & News Analysis");
-elizaLogger9.log("  \u2022 AI Reports & Predictions");
-elizaLogger9.log("  \u2022 On-Chain & Market Metrics");
-elizaLogger9.log("=======================================\n");
+elizaLogger23.log("\n=======================================");
+elizaLogger23.log("   TokenMetrics Plugin Loading...     ");
+elizaLogger23.log("=======================================");
+elizaLogger23.log("Name      : tokenmetrics-plugin");
+elizaLogger23.log("Version   : 1.0.0 (1.x MIGRATION)");
+elizaLogger23.log("API Docs  : https://developers.tokenmetrics.com");
+elizaLogger23.log("Real API  : https://api.tokenmetrics.com/v2");
+elizaLogger23.log("");
+elizaLogger23.log("\u{1F527} FEATURES IMPLEMENTED:");
+elizaLogger23.log("\u2705 1.x Callback Pattern (All 21 Actions)");
+elizaLogger23.log("\u2705 Updated State Management");
+elizaLogger23.log("\u2705 Provider Pattern Support");
+elizaLogger23.log("\u2705 Natural Language Processing");
+elizaLogger23.log("\u2705 Dynamic Token Resolution");
+elizaLogger23.log("\u2705 Real TokenMetrics API Integration");
+elizaLogger23.log("\u2705 AI-Powered Request Extraction");
+elizaLogger23.log("\u2705 Smart Analysis Type Detection");
+elizaLogger23.log("\u2705 Comprehensive Error Handling");
+elizaLogger23.log("\u2705 100% API Endpoint Success Rate");
+elizaLogger23.log("");
+elizaLogger23.log("\u{1F3AF} AVAILABLE ACTIONS (21 Total):");
+elizaLogger23.log("  \u2022 Price Data & Market Analysis");
+elizaLogger23.log("  \u2022 Trading Signals & Technical Analysis");
+elizaLogger23.log("  \u2022 Grades & Investment Insights");
+elizaLogger23.log("  \u2022 Portfolio & Risk Management");
+elizaLogger23.log("  \u2022 Sentiment & News Analysis");
+elizaLogger23.log("  \u2022 AI Reports & Predictions");
+elizaLogger23.log("  \u2022 On-Chain & Market Metrics");
+elizaLogger23.log("=======================================\n");
 var tokenmetricsPlugin = {
   name: "tokenmetrics",
-  description: "Complete TokenMetrics integration providing comprehensive cryptocurrency market data, analysis, and insights with advanced AI-powered natural language processing across 22 specialized endpoints",
-  // All 22 updated actions with AI helper pattern
+  description: "Complete TokenMetrics integration providing comprehensive cryptocurrency market data, analysis, and insights with advanced AI-powered natural language processing across 21 specialized endpoints (1.x compatible)",
+  // All 21 updated actions with 1.x callback pattern
   actions: [
     // Core Market Data Actions
     getPriceAction,
@@ -18707,18 +18636,17 @@ var tokenmetricsPlugin = {
     getTmaiAction
     // TMAI AI insights
   ],
-  // Optional arrays (initialize as empty arrays to avoid undefined issues)
-  evaluators: [],
-  // No custom evaluators for now
+  // Initialize provider system for 1.x compatibility
   providers: [],
-  // No custom providers for now
+  // Initialize evaluator system for 1.x compatibility
+  evaluators: [],
+  // Initialize service system for 1.x compatibility
   services: []
-  // No custom services for now
 };
 function validateTokenMetricsPlugin() {
   const issues = [];
   const recommendations = [];
-  elizaLogger9.log("\u{1F50D} Validating TokenMetrics plugin configuration...");
+  elizaLogger23.log("\u{1F50D} Validating TokenMetrics plugin configuration (1.x)...");
   if (!tokenmetricsPlugin.name || typeof tokenmetricsPlugin.name !== "string") {
     issues.push("Plugin name is missing or invalid");
   }
@@ -18742,6 +18670,10 @@ function validateTokenMetricsPlugin() {
     if (typeof action.validate !== "function") {
       issues.push(`Action ${action.name || index} is missing a valid validate function`);
     }
+    const handlerString = action.handler.toString();
+    if (!handlerString.includes("callback") && !handlerString.includes("HandlerCallback")) {
+      recommendations.push(`Action ${action.name} should use 1.x callback pattern`);
+    }
     if (!action.similes || !Array.isArray(action.similes) || action.similes.length === 0) {
       recommendations.push(`Action ${action.name} should include similes for better trigger recognition`);
     }
@@ -18753,52 +18685,57 @@ function validateTokenMetricsPlugin() {
     }
   });
   const isValid2 = issues.length === 0;
-  elizaLogger9.log(`\u{1F4CA} Plugin validation summary:`);
-  elizaLogger9.log(`  \u2022 Actions: ${actions.length}`);
-  elizaLogger9.log(`  \u2022 Evaluators: ${evaluators.length}`);
-  elizaLogger9.log(`  \u2022 Providers: ${providers.length}`);
-  elizaLogger9.log(`  \u2022 Services: ${services.length}`);
+  elizaLogger23.log(`\u{1F4CA} Plugin validation summary (1.x):`);
+  elizaLogger23.log(`  \u2022 Actions: ${actions.length}`);
+  elizaLogger23.log(`  \u2022 Evaluators: ${evaluators.length}`);
+  elizaLogger23.log(`  \u2022 Providers: ${providers.length}`);
+  elizaLogger23.log(`  \u2022 Services: ${services.length}`);
   if (isValid2) {
-    elizaLogger9.log("\u2705 Plugin validation passed!");
+    elizaLogger23.log("\u2705 Plugin validation passed (1.x compatible)!");
   } else {
-    elizaLogger9.error("\u274C Plugin validation failed:");
-    issues.forEach((issue) => elizaLogger9.error(`  \u2022 ${issue}`));
+    elizaLogger23.error("\u274C Plugin validation failed:");
+    issues.forEach((issue) => elizaLogger23.error(`  \u2022 ${issue}`));
   }
   if (recommendations.length > 0) {
-    elizaLogger9.log("\u{1F4A1} Recommendations for improvement:");
-    recommendations.forEach((rec) => elizaLogger9.log(`  \u2022 ${rec}`));
+    elizaLogger23.log("\u{1F4A1} Recommendations for 1.x improvement:");
+    recommendations.forEach((rec) => elizaLogger23.log(`  \u2022 ${rec}`));
   }
   return { isValid: isValid2, issues, recommendations };
 }
 function debugTokenMetricsPlugin() {
-  elizaLogger9.log("\u{1F9EA} TokenMetrics Plugin Debug Information:");
-  elizaLogger9.log(`  \u{1F4CB} Plugin Name: ${tokenmetricsPlugin.name}`);
-  elizaLogger9.log(`  \u{1F4CB} Description: ${tokenmetricsPlugin.description}`);
+  elizaLogger23.log("\u{1F9EA} TokenMetrics Plugin Debug Information (1.x):");
+  elizaLogger23.log(`  \u{1F4CB} Plugin Name: ${tokenmetricsPlugin.name}`);
+  elizaLogger23.log(`  \u{1F4CB} Description: ${tokenmetricsPlugin.description}`);
   const actions = tokenmetricsPlugin.actions || [];
   const evaluators = tokenmetricsPlugin.evaluators || [];
   const providers = tokenmetricsPlugin.providers || [];
   const services = tokenmetricsPlugin.services || [];
-  elizaLogger9.log("  \u{1F527} Plugin Components:");
-  elizaLogger9.log(`    \u2022 Actions: ${actions.length}`);
-  elizaLogger9.log(`    \u2022 Evaluators: ${evaluators.length}`);
-  elizaLogger9.log(`    \u2022 Providers: ${providers.length}`);
-  elizaLogger9.log(`    \u2022 Services: ${services.length}`);
+  elizaLogger23.log("  \u{1F527} Plugin Components (1.x):");
+  elizaLogger23.log(`    \u2022 Actions: ${actions.length}`);
+  elizaLogger23.log(`    \u2022 Evaluators: ${evaluators.length}`);
+  elizaLogger23.log(`    \u2022 Providers: ${providers.length}`);
+  elizaLogger23.log(`    \u2022 Services: ${services.length}`);
   if (actions.length > 0) {
-    elizaLogger9.log("  \u{1F3AC} Available Actions:");
+    elizaLogger23.log("  \u{1F3AC} Available Actions (1.x):");
     actions.forEach((action, index) => {
       const similes = action.similes || [];
       const examples2 = action.examples || [];
-      elizaLogger9.log(`    ${index + 1}. ${action.name}`);
-      elizaLogger9.log(`       Description: ${action.description || "No description"}`);
-      elizaLogger9.log(`       Similes: ${similes.length > 0 ? similes.join(", ") : "None"}`);
-      elizaLogger9.log(`       Examples: ${examples2.length}`);
+      elizaLogger23.log(`    ${index + 1}. ${action.name}`);
+      elizaLogger23.log(`       Description: ${action.description || "No description"}`);
+      elizaLogger23.log(`       Similes: ${similes.length > 0 ? similes.join(", ") : "None"}`);
+      elizaLogger23.log(`       Examples: ${examples2.length}`);
+      const handlerString = action.handler.toString();
+      const hasCallback = handlerString.includes("callback") || handlerString.includes("HandlerCallback");
+      const hasAwait = handlerString.includes("await callback");
+      elizaLogger23.log(`       1.x Callback: ${hasCallback ? "\u2705" : "\u274C"}`);
+      elizaLogger23.log(`       Async Callback: ${hasAwait ? "\u2705" : "\u26A0\uFE0F"}`);
     });
   }
 }
 function checkTokenMetricsEnvironment() {
   const missingVars = [];
   const suggestions = [];
-  elizaLogger9.log("\u{1F50D} Checking TokenMetrics environment configuration...");
+  elizaLogger23.log("\u{1F50D} Checking TokenMetrics environment configuration (1.x)...");
   const apiKeyFromEnv = process.env.TOKENMETRICS_API_KEY;
   if (!apiKeyFromEnv) {
     missingVars.push("TOKENMETRICS_API_KEY");
@@ -18806,69 +18743,74 @@ function checkTokenMetricsEnvironment() {
     suggestions.push("Ensure your character.ts file includes TOKENMETRICS_API_KEY in secrets");
     suggestions.push("Verify you have a valid TokenMetrics API subscription");
   } else {
-    elizaLogger9.log("\u2705 TOKENMETRICS_API_KEY found in environment");
+    elizaLogger23.log("\u2705 TOKENMETRICS_API_KEY found in environment");
     if (apiKeyFromEnv.length < 10) {
       suggestions.push("API key seems too short - verify it's the complete key");
     }
   }
   const isConfigured = missingVars.length === 0;
   if (isConfigured) {
-    elizaLogger9.log("\u2705 TokenMetrics environment is properly configured!");
+    elizaLogger23.log("\u2705 TokenMetrics environment is properly configured (1.x)!");
   } else {
-    elizaLogger9.warn("\u26A0\uFE0F TokenMetrics environment configuration issues found:");
-    missingVars.forEach((varName) => elizaLogger9.warn(`  \u2022 Missing: ${varName}`));
+    elizaLogger23.warn("\u26A0\uFE0F TokenMetrics environment configuration issues found:");
+    missingVars.forEach((varName) => elizaLogger23.warn(`  \u2022 Missing: ${varName}`));
     if (suggestions.length > 0) {
-      elizaLogger9.log("\u{1F4A1} Configuration suggestions:");
-      suggestions.forEach((suggestion) => elizaLogger9.log(`  \u2022 ${suggestion}`));
+      elizaLogger23.log("\u{1F4A1} Configuration suggestions:");
+      suggestions.forEach((suggestion) => elizaLogger23.log(`  \u2022 ${suggestion}`));
     }
   }
   return { isConfigured, missingVars, suggestions };
 }
 function validatePluginRuntime() {
-  elizaLogger9.log("\u{1F504} Performing runtime validation...");
+  elizaLogger23.log("\u{1F504} Performing runtime validation (1.x)...");
   try {
     const actions = tokenmetricsPlugin.actions || [];
     if (actions.length === 0) {
-      elizaLogger9.error("\u274C No actions available at runtime");
+      elizaLogger23.error("\u274C No actions available at runtime");
       return false;
     }
     for (const action of actions) {
       if (!action.name || typeof action.name !== "string") {
-        elizaLogger9.error(`\u274C Action missing valid name`);
+        elizaLogger23.error(`\u274C Action missing valid name`);
         return false;
       }
       if (typeof action.handler !== "function") {
-        elizaLogger9.error(`\u274C Action ${action.name} handler is not a function`);
+        elizaLogger23.error(`\u274C Action ${action.name} handler is not a function`);
         return false;
       }
       if (typeof action.validate !== "function") {
-        elizaLogger9.error(`\u274C Action ${action.name} validate is not a function`);
+        elizaLogger23.error(`\u274C Action ${action.name} validate is not a function`);
         return false;
       }
+      const handlerString = action.handler.toString();
+      if (!handlerString.includes("callback")) {
+        elizaLogger23.warn(`\u26A0\uFE0F Action ${action.name} may not be using 1.x callback pattern`);
+      }
     }
-    elizaLogger9.log("\u2705 Runtime validation passed!");
-    elizaLogger9.log(`\u{1F4CA} Validated ${actions.length} actions successfully`);
+    elizaLogger23.log("\u2705 Runtime validation passed (1.x compatible)!");
+    elizaLogger23.log(`\u{1F4CA} Validated ${actions.length} actions successfully`);
     return true;
   } catch (error) {
-    elizaLogger9.error("\u274C Runtime validation failed:", error);
+    elizaLogger23.error("\u274C Runtime validation failed:", error);
     return false;
   }
 }
-elizaLogger9.log("\u{1F680} Running TokenMetrics plugin initialization checks...");
+elizaLogger23.log("\u{1F680} Running TokenMetrics plugin initialization checks (1.x)...");
 var structureValidation = validateTokenMetricsPlugin();
 var envValidation = checkTokenMetricsEnvironment();
 var runtimeValidation = validatePluginRuntime();
 debugTokenMetricsPlugin();
 if (structureValidation.isValid && envValidation.isConfigured && runtimeValidation) {
-  elizaLogger9.success("\u{1F389} TokenMetrics plugin fully initialized and ready!");
-  elizaLogger9.log("\u{1F4AC} Users can now ask: 'What's the price of Bitcoin?'");
-  elizaLogger9.log("\u{1F527} Plugin uses minimal interface - guaranteed TypeScript compatibility");
+  elizaLogger23.success("\u{1F389} TokenMetrics plugin fully initialized and ready (1.x compatible)!");
+  elizaLogger23.log("\u{1F4AC} Users can now ask: 'What's the price of Bitcoin?'");
+  elizaLogger23.log("\u{1F527} Plugin uses 1.x callback patterns - enhanced TypeScript compatibility");
+  elizaLogger23.log("\u26A1 Updated state management with composeState support");
 } else {
-  elizaLogger9.warn("\u26A0\uFE0F TokenMetrics plugin loaded with some issues:");
-  if (!structureValidation.isValid) elizaLogger9.warn("  \u2022 Plugin structure issues detected");
-  if (!envValidation.isConfigured) elizaLogger9.warn("  \u2022 Environment configuration incomplete");
-  if (!runtimeValidation) elizaLogger9.warn("  \u2022 Runtime validation failed");
-  elizaLogger9.log("\u{1F4A1} Check the logs above for specific recommendations");
+  elizaLogger23.warn("\u26A0\uFE0F TokenMetrics plugin loaded with some issues:");
+  if (!structureValidation.isValid) elizaLogger23.warn("  \u2022 Plugin structure issues detected");
+  if (!envValidation.isConfigured) elizaLogger23.warn("  \u2022 Environment configuration incomplete");
+  if (!runtimeValidation) elizaLogger23.warn("  \u2022 Runtime validation failed");
+  elizaLogger23.log("\u{1F4A1} Check the logs above for specific recommendations");
 }
 var index_default = tokenmetricsPlugin;
 export {
@@ -18888,3 +18830,4 @@ export {
   validatePluginRuntime,
   validateTokenMetricsPlugin
 };
+//# sourceMappingURL=index.js.map

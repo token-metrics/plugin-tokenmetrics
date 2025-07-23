@@ -12,6 +12,7 @@ import {
 import type { HourlyOhlcvResponse } from "../types";
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
 import type { HandlerCallback } from "@elizaos/core";
+import { elizaLogger } from "@elizaos/core";
 
 // Zod schema for hourly OHLCV request validation
 const HourlyOhlcvRequestSchema = z.object({
@@ -182,22 +183,33 @@ export const getHourlyOhlcvAction: Action = {
         ]
     ],
     
-    async handler(runtime: IAgentRuntime, message: Memory, state: State | undefined, _params: any, callback?: HandlerCallback) {
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
         try {
             const requestId = generateRequestId();
-            console.log(`[${requestId}] Processing hourly OHLCV request...`);
+            elizaLogger.log(`[${requestId}] Processing hourly OHLCV request...`);
+            
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
             
             // Extract structured request using AI
             const ohlcvRequest = await extractTokenMetricsRequest<HourlyOhlcvRequest>(
                 runtime,
                 message,
-                state || await runtime.composeState(message),
+                state,
                 HOURLY_OHLCV_EXTRACTION_TEMPLATE,
                 HourlyOhlcvRequestSchema,
                 requestId
             );
             
-            console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
+            elizaLogger.log(`[${requestId}] Extracted request:`, ohlcvRequest);
             
             // Enhanced extraction with regex fallback for better symbol support
             let processedRequest = {
@@ -214,12 +226,12 @@ export const getHourlyOhlcvAction: Action = {
             
             // Apply regex fallback if AI extraction failed or returned wrong data
             if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes('unknown')) {
-                console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
+                elizaLogger.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
                 const regexResult = extractCryptocurrencySimple(message.content.text);
                 if (regexResult.cryptocurrency) {
                     processedRequest.cryptocurrency = regexResult.cryptocurrency;
                     processedRequest.symbol = regexResult.symbol;
-                    console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
+                    elizaLogger.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
                 }
             }
             
@@ -246,7 +258,7 @@ export const getHourlyOhlcvAction: Action = {
                 
                 const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
                 if (fullName) {
-                    console.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
+                    elizaLogger.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
                     processedRequest.cryptocurrency = fullName;
                     if (!processedRequest.symbol) {
                         processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
@@ -262,10 +274,10 @@ export const getHourlyOhlcvAction: Action = {
                     if (resolvedToken) {
                         processedRequest.token_id = resolvedToken.token_id;
                         processedRequest.symbol = resolvedToken.symbol;
-                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                        elizaLogger.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
                     }
                 } catch (error) {
-                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                    elizaLogger.log(`[${requestId}] Token resolution failed, proceeding with original request`);
                 }
             }
             
@@ -278,10 +290,10 @@ export const getHourlyOhlcvAction: Action = {
             // Add token identification parameter - use the full cryptocurrency name
             if (processedRequest.cryptocurrency) {
                 apiParams.token_name = processedRequest.cryptocurrency;
-                console.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
+                elizaLogger.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
             } else if (processedRequest.token_name) {
                 apiParams.token_name = processedRequest.token_name;
-                console.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
+                elizaLogger.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
             }
             
             // Add date range parameters if provided
@@ -295,7 +307,7 @@ export const getHourlyOhlcvAction: Action = {
                 runtime
             );
             
-            console.log(`[${requestId}] API response received, processing data...`);
+            elizaLogger.log(`[${requestId}] API response received, processing data...`);
             
             // Process response data
             const ohlcvData = Array.isArray(response) ? response : response.data || [];
@@ -316,7 +328,7 @@ export const getHourlyOhlcvAction: Action = {
                 }, {});
                 
                 const tokenIds = Object.keys(tokenGroups);
-                console.log(`[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`, 
+                elizaLogger.log(`[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`, 
                     tokenIds.map(id => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`));
                 
                 if (tokenIds.length > 1) {
@@ -362,7 +374,7 @@ export const getHourlyOhlcvAction: Action = {
                             score -= 20;
                         }
                         
-                        console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
+                        elizaLogger.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
                         
                         if (score > maxScore) {
                             maxScore = score;
@@ -373,12 +385,12 @@ export const getHourlyOhlcvAction: Action = {
                     if (selectedTokenId) {
                         filteredByToken = tokenGroups[selectedTokenId];
                         const selectedToken = filteredByToken[0];
-                        console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
+                        elizaLogger.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
                     } else {
-                        console.log(`[${requestId}] No clear main token identified, using all data`);
+                        elizaLogger.log(`[${requestId}] No clear main token identified, using all data`);
                     }
                 } else {
-                    console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
+                    elizaLogger.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
                 }
             }
             
@@ -387,22 +399,22 @@ export const getHourlyOhlcvAction: Action = {
                 // Remove data points with zero or null values
                 if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || 
                     item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
-                    console.log(`[${requestId}] Filtering out invalid data point:`, item);
+                    elizaLogger.log(`[${requestId}] Filtering out invalid data point:`, item);
                     return false;
                 }
                 
                 // Remove extreme outliers (price changes > 1000% in an hour)
                 const priceRange = (item.HIGH - item.LOW) / item.LOW;
                 if (priceRange > 10) { // 1000% hourly range is unrealistic
-                    console.log(`[${requestId}] Filtering out extreme outlier:`, item);
+                    elizaLogger.log(`[${requestId}] Filtering out extreme outlier:`, item);
                     return false;
                 }
                 
                 return true;
             });
             
-            console.log(`[${requestId}] Token filtering: ${ohlcvData.length} → ${filteredByToken.length} data points`);
-            console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} → ${validData.length} valid points remaining`);
+            elizaLogger.log(`[${requestId}] Token filtering: ${ohlcvData.length} → ${filteredByToken.length} data points`);
+            elizaLogger.log(`[${requestId}] Quality filtering: ${filteredByToken.length} → ${validData.length} valid points remaining`);
             
             // Sort data chronologically (oldest first for proper analysis)
             const sortedData = validData.sort((a: any, b: any) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
@@ -549,7 +561,7 @@ export const getHourlyOhlcvAction: Action = {
                 }
             };
             
-            console.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
+            elizaLogger.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
             
             // Use callback pattern to send formatted response
             if (callback) {
@@ -561,7 +573,7 @@ export const getHourlyOhlcvAction: Action = {
             return true;
             
         } catch (error) {
-            console.error("Error in getHourlyOhlcvAction:", error);
+            elizaLogger.error("Error in getHourlyOhlcvAction:", error);
             
             const errorMessage = `❌ **Failed to retrieve hourly OHLCV data**\n\n`;
             const errorText = errorMessage + 
@@ -607,8 +619,16 @@ export const getHourlyOhlcvAction: Action = {
         }
     },
     
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getHourlyOhlcvAction (1.x)");
+        
+        try {
+            validateAndGetApiKey(runtime);
+            return true;
+        } catch (error) {
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
+        }
     }
 };
 

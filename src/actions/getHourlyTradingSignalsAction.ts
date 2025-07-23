@@ -165,186 +165,168 @@ export const getHourlyTradingSignalsAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getHourlyTradingSignalsAction (1.x)");
+        
         try {
-            const requestId = generateRequestId();
-            console.log(`[${requestId}] Processing hourly trading signals request...`);
-            
-            // Extract structured request using AI
-            const signalsRequest = await extractTokenMetricsRequest<HourlyTradingSignalsRequest>(
-                runtime,
-                message,
-                _state || await runtime.composeState(message),
-                HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE,
-                HourlyTradingSignalsRequestSchema,
-                requestId
-            );
-            
-            console.log(`[${requestId}] Extracted request:`, signalsRequest);
-            
-            // Apply defaults for optional fields
-            const processedRequest = {
-                cryptocurrency: signalsRequest.cryptocurrency,
-                token_id: signalsRequest.token_id,
-                symbol: signalsRequest.symbol,
-                signal: signalsRequest.signal,
-                startDate: signalsRequest.startDate,
-                endDate: signalsRequest.endDate,
-                category: signalsRequest.category,
-                exchange: signalsRequest.exchange,
-                marketcap: signalsRequest.marketcap,
-                volume: signalsRequest.volume,
-                fdv: signalsRequest.fdv,
-                limit: signalsRequest.limit || 20,
-                page: signalsRequest.page || 1,
-                analysisType: signalsRequest.analysisType || "all"
-            };
-            
-            // Resolve token if cryptocurrency name is provided
-            let resolvedToken = null;
-            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-                try {
-                    resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-                    if (resolvedToken) {
-                        processedRequest.token_id = resolvedToken.token_id;
-                        processedRequest.symbol = resolvedToken.symbol;
-                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-                    }
-                } catch (error) {
-                    console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
-                }
-            }
-            
-            // Build API parameters
-            const apiParams: Record<string, any> = {
-                limit: processedRequest.limit,
-                page: processedRequest.page
-            };
-            
-            // Add token identification parameters
-            if (processedRequest.token_id) apiParams.token_id = processedRequest.token_id;
-            if (processedRequest.symbol) apiParams.symbol = processedRequest.symbol;
-            
-            // Add filter parameters
-            if (processedRequest.signal !== undefined) apiParams.signal = processedRequest.signal;
-            if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
-            if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
-            if (processedRequest.category) apiParams.category = processedRequest.category;
-            if (processedRequest.exchange) apiParams.exchange = processedRequest.exchange;
-            if (processedRequest.marketcap) apiParams.marketcap = processedRequest.marketcap;
-            if (processedRequest.volume) apiParams.volume = processedRequest.volume;
-            if (processedRequest.fdv) apiParams.fdv = processedRequest.fdv;
-            
-            // Make API call
-            const response = await callTokenMetricsAPI(
-                "/v2/hourly-trading-signals",
-                apiParams,
-                runtime
-            );
-            
-            console.log(`[${requestId}] API response received, processing data...`);
-            
-            // Process response data
-            const hourlySignals = Array.isArray(response) ? response : response.data || [];
-            
-            // Analyze the hourly trading signals based on requested analysis type
-            const signalsAnalysis = analyzeHourlyTradingSignals(hourlySignals, processedRequest.analysisType);
-            
-            const result = {
-                success: true,
-                message: `Successfully retrieved ${hourlySignals.length} hourly trading signals from TokenMetrics AI`,
-                request_id: requestId,
-                hourly_trading_signals: hourlySignals,
-                analysis: signalsAnalysis,
-                metadata: {
-                    endpoint: "hourly-trading-signals",
-                    requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-                    resolved_token: resolvedToken,
-                    signal_filter: processedRequest.signal,
-                    date_range: {
-                        start: processedRequest.startDate,
-                        end: processedRequest.endDate
-                    },
-                    filters_applied: {
-                        category: processedRequest.category,
-                        exchange: processedRequest.exchange,
-                        min_marketcap: processedRequest.marketcap,
-                        min_volume: processedRequest.volume,
-                        min_fdv: processedRequest.fdv
-                    },
-                    analysis_focus: processedRequest.analysisType,
-                    pagination: {
-                        page: processedRequest.page,
-                        limit: processedRequest.limit
-                    },
-                    data_points: hourlySignals.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics AI Hourly Signals",
-                    update_frequency: "Hourly"
-                },
-                signals_explanation: {
-                    signal_values: {
-                        "1": "Bullish/Long signal - AI recommends buying or holding position",
-                        "-1": "Bearish/Short signal - AI recommends short position or selling",
-                        "0": "No signal - AI sees neutral conditions"
-                    },
-                    field_name: "TRADING_SIGNAL",
-                    hourly_advantages: [
-                        "More frequent signal updates for active trading",
-                        "Better timing for short-term positions",
-                        "Captures intraday market movements",
-                        "Ideal for scalping and day trading strategies"
-                    ]
-                }
-            };
-            
-            console.log(`[${requestId}] Hourly trading signals analysis completed successfully`);
-            console.log(`[${requestId}] Analysis completed successfully`);
-            
-            // Return the response directly (like working actions)
-            return {
-                text: response,
-                content: {
-                    success: true,
-                    request_id: requestId,
-                    data: result,
-                    metadata: {
-                        endpoint: "hourly-trading-signals",
-                        data_source: "TokenMetrics Official API",
-                        api_version: "v2"
-                    }
-                }
-            };
+            validateAndGetApiKey(runtime);
+            return true;
         } catch (error) {
-            console.error("Error in getHourlyTradingSignalsAction:", error);
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve hourly trading signals from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/hourly-trading-signals is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that signal filter is 1 (bullish), -1 (bearish), or 0 (neutral)",
-                        "Ensure your API key has access to hourly trading signals",
-                        "Verify date parameters use YYYY-MM-DD format"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Remove filters to get broader signal results",
-                        "Check if your subscription includes hourly signals access",
-                        "Verify the token has active hourly signal generation"
-                    ]
-                }
-            };
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
         }
     },
-    
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
+        const requestId = generateRequestId();
+        
+        elizaLogger.log("🚀 Starting TokenMetrics hourly trading signals handler (1.x)");
+        elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
+        elizaLogger.log(`🆔 Request ID: ${requestId}`);
+
+        try {
+            // STEP 1: Validate API key early
+            validateAndGetApiKey(runtime);
+
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
+
+            // STEP 2: Build API parameters
+            const apiParams: any = {
+                limit: 20,
+                page: 1
+            };
+
+            // STEP 3: Fetch hourly trading signals data
+            elizaLogger.log(`📡 Fetching hourly trading signals data`);
+            const signalsData = await callTokenMetricsAPI('/v2/hourly-trading-signals', apiParams, runtime);
+            
+            if (!signalsData) {
+                elizaLogger.log("❌ Failed to fetch hourly trading signals data");
+                
+                if (callback) {
+                    await callback({
+                        text: `❌ Unable to fetch hourly trading signals data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+
+Please try again in a few moments.`,
+                        content: { 
+                            error: "API fetch failed",
+                            request_id: requestId
+                        }
+                    });
+                }
+                return false;
+            }
+
+            // Handle the response data
+            const signals = Array.isArray(signalsData) ? signalsData : (signalsData.data || []);
+            
+            elizaLogger.log(`🔍 Received ${signals.length} hourly trading signals`);
+
+            // STEP 4: Format and present the results  
+            const responseText = formatHourlyTradingSignalsResponse(signals);
+            const analysis = analyzeHourlyTradingSignals(signals, "comprehensive");
+
+            elizaLogger.success("✅ Successfully processed hourly trading signals request");
+
+            if (callback) {
+                await callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        signals_data: signals,
+                        analysis: analysis,
+                        source: "TokenMetrics Hourly Trading Signals API",
+                        request_id: requestId,
+                        metadata: {
+                            endpoint: "hourly-trading-signals",
+                            data_source: "TokenMetrics API",
+                            timestamp: new Date().toISOString(),
+                            total_signals: signals.length
+                        }
+                    }
+                });
+            }
+
+            return true;
+
+        } catch (error) {
+            elizaLogger.error("❌ Error in TokenMetrics hourly trading signals handler:", error);
+            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
+            
+            if (callback) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                
+                await callback({
+                    text: `❌ I encountered an error while fetching hourly trading signals: ${errorMessage}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true,
+                        request_id: requestId
+                    }
+                });
+            }
+            
+            return false;
+        }
     }
 };
+
+/**
+ * Format hourly trading signals response for user
+ */
+function formatHourlyTradingSignalsResponse(signals: any[]): string {
+    if (!signals || signals.length === 0) {
+        return "❌ No hourly trading signals data available.";
+    }
+
+    let response = `⚡ **Hourly Trading Signals Analysis**\n\n`;
+    response += `📊 **Total Signals**: ${signals.length}\n\n`;
+
+    if (signals.length > 0) {
+        const recentSignals = signals.slice(0, 5);
+        response += `📈 **Recent Signals**:\n`;
+        
+        recentSignals.forEach((signal, index) => {
+            const symbol = signal.SYMBOL || signal.TOKEN_SYMBOL || 'N/A';
+            const action = signal.SIGNAL || signal.ACTION || 'HOLD';
+            const confidence = signal.CONFIDENCE || signal.SCORE || 'N/A';
+            
+            response += `${index + 1}. **${symbol}**: ${action}`;
+            if (confidence !== 'N/A') {
+                response += ` (Confidence: ${confidence})`;
+            }
+            response += `\n`;
+        });
+    }
+
+    response += `\n📊 **Data Source**: TokenMetrics Hourly Trading Signals API\n`;
+    response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
+}
 
 /**
  * Analyze hourly trading signals to provide trading insights based on analysis type

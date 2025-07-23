@@ -137,164 +137,164 @@ export const getCorrelationAction: Action = {
         ]
     ],
     
-    async handler(runtime, message, _state) {
+    validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
+        elizaLogger.log("🔍 Validating getCorrelationAction (1.x)");
+        
         try {
-            const requestId = generateRequestId();
-            console.log(`[${requestId}] Processing correlation analysis request...`);
-            
-            // Extract structured request using AI
-            const correlationRequest = await extractTokenMetricsRequest<CorrelationRequest>(
-                runtime,
-                message,
-                _state || await runtime.composeState(message),
-                CORRELATION_EXTRACTION_TEMPLATE,
-                CorrelationRequestSchema,
-                requestId
-            );
-            
-            console.log(`[${requestId}] Extracted request:`, correlationRequest);
-            
-            // Apply defaults for optional fields
-            const processedRequest = {
-                token_id: correlationRequest.token_id,
-                symbol: correlationRequest.symbol,
-                category: correlationRequest.category,
-                exchange: correlationRequest.exchange,
-                limit: correlationRequest.limit || 50,
-                page: correlationRequest.page || 1,
-                analysisType: correlationRequest.analysisType || "all"
-            };
-            
-            // Build API parameters
-            const apiParams: Record<string, any> = {
-                limit: processedRequest.limit,
-                page: processedRequest.page
-            };
-            
-            // Add token identification parameters
-            if (processedRequest.token_id) {
-                apiParams.token_id = processedRequest.token_id;
-            }
-            if (processedRequest.symbol) {
-                apiParams.symbol = processedRequest.symbol;
-            }
-            if (processedRequest.category) {
-                apiParams.category = processedRequest.category;
-            }
-            if (processedRequest.exchange) {
-                apiParams.exchange = processedRequest.exchange;
-            }
-            
-            // Make API call
-            const response = await callTokenMetricsAPI(
-                "/v2/correlation",
-                apiParams,
-                runtime
-            );
-            
-            console.log(`[${requestId}] API response received, processing correlation data...`);
-            
-            // Process response data
-            const correlationData = Array.isArray(response) ? response : response.data || [];
-            
-            // Analyze the correlation data based on requested analysis type
-            const correlationAnalysis = analyzeCorrelationData(correlationData, processedRequest.analysisType);
-            
-            const result = {
-                success: true,
-                message: `Successfully retrieved correlation data for ${correlationData.length} token relationships`,
-                request_id: requestId,
-                correlation_data: correlationData,
-                analysis: correlationAnalysis,
-                metadata: {
-                    endpoint: "correlation",
-                    requested_token: processedRequest.symbol || processedRequest.token_id,
-                    filters_applied: {
-                        category: processedRequest.category,
-                        exchange: processedRequest.exchange
-                    },
-                    analysis_focus: processedRequest.analysisType,
-                    pagination: {
-                        page: processedRequest.page,
-                        limit: processedRequest.limit
-                    },
-                    data_points: correlationData.length,
-                    api_version: "v2",
-                    data_source: "TokenMetrics Correlation Engine"
-                },
-                correlation_explanation: {
-                    purpose: "Understand price movement relationships between cryptocurrencies for optimal portfolio construction",
-                    correlation_ranges: {
-                        "0.8 to 1.0": "Very strong positive correlation - assets move together",
-                        "0.5 to 0.8": "Strong positive correlation - similar directional movement",
-                        "0.2 to 0.5": "Moderate positive correlation - some relationship",
-                        "-0.2 to 0.2": "Weak correlation - minimal relationship",
-                        "-0.5 to -0.2": "Moderate negative correlation - some inverse relationship",
-                        "-0.8 to -0.5": "Strong negative correlation - opposite movements",
-                        "-1.0 to -0.8": "Very strong negative correlation - strong inverse relationship"
-                    },
-                    usage_guidelines: [
-                        "Use low or negative correlations for diversification",
-                        "Avoid high correlations for risk reduction",
-                        "Monitor correlation changes during market stress",
-                        "Consider correlations for hedging strategies"
-                    ],
-                    portfolio_applications: [
-                        "Select uncorrelated assets to reduce portfolio volatility",
-                        "Identify assets that move independently for diversification",
-                        "Find negatively correlated assets for hedging",
-                        "Avoid concentrating in highly correlated assets"
-                    ]
-                }
-            };
-            
-            console.log(`[${requestId}] Correlation analysis completed successfully`);
-            console.log(`[${requestId}] Analysis completed successfully`);
-            
-            // Return the response directly (like working actions)
-            return {
-                text: response,
-                content: {
-                    success: true,
-                    request_id: requestId,
-                    data: result,
-                    metadata: {
-                        endpoint: "correlation",
-                        data_source: "TokenMetrics Official API",
-                        api_version: "v2"
-                    }
-                }
-            };
+            validateAndGetApiKey(runtime);
+            return true;
         } catch (error) {
-            console.error("Error in getCorrelation action:", error);
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve correlation data from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/correlation is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that filtering parameters are valid strings",
-                        "Ensure your API key has access to correlation analysis endpoint",
-                        "Confirm the token has sufficient price history for correlation analysis"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC, ETH) to test functionality",
-                        "Remove filters to get broader correlation results",
-                        "Check if your subscription includes correlation analysis access",
-                        "Verify the token is in the top 100 market cap or has sufficient data"
-                    ]
-                }
-            };
+            elizaLogger.error("❌ Validation failed:", error);
+            return false;
         }
     },
 
-    async validate(runtime, _message) {
-        return validateAndGetApiKey(runtime) !== null;
+    handler: async (
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<boolean> => {
+        const requestId = generateRequestId();
+        
+        elizaLogger.log("🚀 Starting TokenMetrics correlation handler (1.x)");
+        elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
+        elizaLogger.log(`🆔 Request ID: ${requestId}`);
+
+        try {
+            // STEP 1: Validate API key early
+            validateAndGetApiKey(runtime);
+
+            // Ensure we have a proper state
+            if (!state) {
+                state = await runtime.composeState(message);
+            }
+
+            // STEP 2: Build API parameters
+            const apiParams: any = {
+                limit: 20,
+                page: 1
+            };
+
+            // STEP 3: Fetch correlation data
+            elizaLogger.log(`📡 Fetching correlation data`);
+            const correlationData = await callTokenMetricsAPI('/v2/correlation', apiParams, runtime);
+            
+            if (!correlationData) {
+                elizaLogger.log("❌ Failed to fetch correlation data");
+                
+                if (callback) {
+                    await callback({
+                        text: `❌ Unable to fetch correlation data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+
+Please try again in a few moments.`,
+                        content: { 
+                            error: "API fetch failed",
+                            request_id: requestId
+                        }
+                    });
+                }
+                return false;
+            }
+
+            // Handle the response data
+            const correlations = Array.isArray(correlationData) ? correlationData : (correlationData.data || []);
+            
+            elizaLogger.log(`🔍 Received ${correlations.length} correlation data points`);
+
+            // STEP 4: Format and present the results
+            const responseText = formatCorrelationResponse(correlations);
+            const analysis = analyzeCorrelationData(correlations, "comprehensive");
+
+            elizaLogger.success("✅ Successfully processed correlation request");
+
+            if (callback) {
+                await callback({
+                    text: responseText,
+                    content: {
+                        success: true,
+                        correlation_data: correlations,
+                        analysis: analysis,
+                        source: "TokenMetrics Correlation API",
+                        request_id: requestId,
+                        metadata: {
+                            endpoint: "correlation",
+                            data_source: "TokenMetrics API",
+                            timestamp: new Date().toISOString(),
+                            total_correlations: correlations.length
+                        }
+                    }
+                });
+            }
+
+            return true;
+
+        } catch (error) {
+            elizaLogger.error("❌ Error in TokenMetrics correlation handler:", error);
+            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
+            
+            if (callback) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                
+                await callback({
+                    text: `❌ I encountered an error while fetching correlation data: ${errorMessage}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                    content: { 
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true,
+                        request_id: requestId
+                    }
+                });
+            }
+            
+            return false;
+        }
     }
 };
+
+/**
+ * Format correlation response for user
+ */
+function formatCorrelationResponse(correlations: any[]): string {
+    if (!correlations || correlations.length === 0) {
+        return "❌ No correlation data available.";
+    }
+
+    let response = `📊 **Token Correlation Analysis**\n\n`;
+    response += `🔗 **Total Correlations**: ${correlations.length}\n\n`;
+
+    if (correlations.length > 0) {
+        const topCorrelations = correlations.slice(0, 10);
+        response += `📈 **Top Correlations**:\n`;
+        
+        topCorrelations.forEach((corr, index) => {
+            const token1 = corr.TOKEN1_SYMBOL || corr.SYMBOL1 || 'TOKEN1';
+            const token2 = corr.TOKEN2_SYMBOL || corr.SYMBOL2 || 'TOKEN2';
+            const correlation = corr.CORRELATION || corr.CORR_VALUE || 0;
+            
+            response += `${index + 1}. **${token1}** ↔ **${token2}**: ${correlation.toFixed(3)}\n`;
+        });
+    }
+
+    response += `\n📊 **Data Source**: TokenMetrics Correlation API\n`;
+    response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
+    
+    return response;
+}
 
 /**
  * Comprehensive analysis of correlation data for portfolio optimization and risk management
