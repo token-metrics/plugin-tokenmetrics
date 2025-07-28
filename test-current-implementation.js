@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
 
-const API_KEY = "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72";
+const API_KEY = process.env.TOKENMETRICS_API_KEY;
 const BASE_URL = "https://api.tokenmetrics.com";
 
 console.log("🚀 TokenMetrics Plugin Implementation Test");

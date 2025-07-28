@@ -17,7 +17,7 @@ export const character: Character = {
             OPENAI_API_KEY: process.env.OPENAI_API_KEY,
             
             // CRITICAL: Add this line for TokenMetrics plugin to work
-            TOKENMETRICS_API_KEY: "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72",
+            TOKENMETRICS_API_KEY: process.env.TOKENMETRICS_API_KEY,
         },
         voice: {
             model: "en_US-hfc_female-medium",

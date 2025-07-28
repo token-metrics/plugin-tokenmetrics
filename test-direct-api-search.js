@@ -1,7 +1,7 @@
 // Test script to explore TokenMetrics API direct search capabilities
 // Based on the API documentation showing token_name parameter usage
 
-const API_KEY = "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72";
+const API_KEY = process.env.TOKENMETRICS_API_KEY;
 const BASE_URL = "https://api.tokenmetrics.com/v2/tokens";
 
 async function testDirectSearch(tokenName) {

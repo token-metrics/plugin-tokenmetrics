@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 
-const API_KEY = "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72";
+const API_KEY = process.env.TOKENMETRICS_API_KEY;
 
 async function testTokenSearchApproaches() {
     console.log("🔍 TESTING DIFFERENT TOKEN SEARCH APPROACHES");

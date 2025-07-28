@@ -36,7 +36,7 @@ export function validateAndGetApiKey(runtime: IAgentRuntime): string {
         elizaLogger.warn("❌ TOKENMETRICS_API_KEY not found or empty in runtime settings");
         elizaLogger.log("💡 Falling back to hardcoded API key for testing...");
         
-        const HARDCODED_API_KEY = "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72";
+        const HARDCODED_API_KEY = process.env.TOKENMETRICS_API_KEY;
         apiKey = HARDCODED_API_KEY;
         elizaLogger.log("✅ Using hardcoded API key for testing");
     } else {

@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
 // Your TokenMetrics API key
-const API_KEY = "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72";
+const API_KEY = process.env.TOKENMETRICS_API_KEY;
 
 // Test function to check what tokens we're actually getting
 async function debugTokenResolution() {

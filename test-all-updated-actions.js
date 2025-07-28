@@ -14,7 +14,7 @@ const __dirname = dirname(__filename);
 
 // Test configuration
 const TEST_CONFIG = {
-    API_KEY: "tm-b7212f8d-1bcb-4c40-be3f-b4d1a4eeee72",
+            API_KEY: process.env.TOKENMETRICS_API_KEY,
     BASE_URL: "https://api.tokenmetrics.com",
     TIMEOUT: 30000,
     MAX_RETRIES: 3
