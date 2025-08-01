@@ -1,10 +1,13 @@
-import type { Action } from "@elizaos/core";
 import {
+    type Action,
+    type ActionResult,
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    type ActionExample,
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -52,7 +55,13 @@ Examples:
 - "List influential crypto investors" → {limit: 50, page: 1, analysisType: "influence"}
 - "Crypto investor sentiment analysis" → {limit: 50, page: 1, analysisType: "sentiment"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<limit>number of investors to return</limit>
+<page>page number for pagination</page>
+<analysisType>performance|influence|sentiment|all</analysisType>
+</response>
 `;
 
 /**
@@ -77,50 +86,50 @@ export const getCryptoInvestorsAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me the latest crypto investors data"
+                    text: "Get crypto investors data"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve the latest crypto investors list and their scores from TokenMetrics.",
+                    text: "I'll fetch the latest crypto investors analysis from TokenMetrics.",
                     action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get top 20 crypto investors by performance"
+                    text: "Show me top crypto investors and their scores"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get the top 20 crypto investors ranked by their performance scores.",
+                    text: "I'll get the comprehensive crypto investors data and analysis for you.",
                     action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Analyze influential crypto investors"
+                    text: "What are the current crypto market participants?"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll analyze the most influential crypto investors and their market impact.",
+                    text: "Let me retrieve the latest crypto investors information and market participation data.",
                     action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
                 }
             }
         ]
-    ],
+    ] as ActionExample[][],
     
     async handler(
         runtime: IAgentRuntime,
@@ -128,7 +137,7 @@ export const getCryptoInvestorsAction: Action = {
         state: State | undefined,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> {
+    ): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing crypto investors request...`);
@@ -147,9 +156,9 @@ export const getCryptoInvestorsAction: Action = {
             
             // Apply defaults for optional fields
             const processedRequest = {
-                limit: investorsRequest.limit || 50,
-                page: investorsRequest.page || 1,
-                analysisType: investorsRequest.analysisType || "all"
+                limit: investorsRequest?.limit || 50,
+                page: investorsRequest?.page || 1,
+                analysisType: investorsRequest?.analysisType || "all"
             };
             
             // Build API parameters
@@ -222,7 +231,7 @@ export const getCryptoInvestorsAction: Action = {
                 });
             }
             
-            return true;
+            return createActionResult({ success: true, text: responseText });
         } catch (error) {
             console.error("Error in getCryptoInvestorsAction:", error);
             
@@ -251,7 +260,7 @@ export const getCryptoInvestorsAction: Action = {
                     content: errorResult
                 });
             }
-            return false;
+            return createActionResult({ success: false, error: "Failed to process request" });
         }
     },
     

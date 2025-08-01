@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -30,45 +31,41 @@ const CorrelationRequestSchema = z.object({
 
 type CorrelationRequest = z.infer<typeof CorrelationRequestSchema>;
 
-// AI extraction template for natural language processing
-const CORRELATION_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting correlation analysis requests from natural language.
+// Template for extracting correlation information (Updated to XML format)
+const correlationTemplate = `Extract correlation analysis request information from the message.
 
-The user wants to analyze price correlations between cryptocurrencies. Extract the following information:
+Correlation analysis provides:
+- Asset correlation coefficients
+- Portfolio diversification insights
+- Risk relationship analysis
+- Market movement correlations
+- Cross-asset dependency analysis
+- Portfolio optimization data
 
-1. **token_id** (optional): Numeric ID of the token
-   - Only extract if explicitly mentioned as a number
+Instructions:
+Look for CORRELATION requests, such as:
+- Correlation analysis ("Correlation between Bitcoin and Ethereum", "Asset correlations")
+- Diversification queries ("How correlated are these tokens?", "Portfolio diversification")
+- Risk relationship ("Market correlation analysis", "Cross-asset relationships")
+- Portfolio optimization ("Correlation for portfolio", "Diversification analysis")
 
-2. **symbol** (optional): Token symbol like BTC, ETH, etc.
-   - Look for cryptocurrency symbols or names
-   - Convert names to symbols if possible (Bitcoin → BTC, Ethereum → ETH)
+EXAMPLES:
+- "Show correlation between Bitcoin and Ethereum"
+- "Get correlation analysis for DeFi tokens"
+- "Portfolio correlation analysis"
+- "How correlated is SOL with the market?"
+- "Diversification analysis for my portfolio"
 
-3. **category** (optional): Token category filter
-   - Look for categories like "defi", "layer1", "gaming", "meme", "infrastructure"
-   - Extract from phrases like "DeFi tokens", "Layer 1 blockchains", "gaming coins"
+Respond with an XML block containing only the extracted values:
 
-4. **exchange** (optional): Exchange filter
-   - Look for exchange names like "binance", "coinbase", "kraken"
-
-5. **limit** (optional, default: 50): Number of results to return
-   - Look for phrases like "top 20", "first 100", "50 correlations"
-
-6. **page** (optional, default: 1): Page number for pagination
-
-7. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "diversification" - focus on finding uncorrelated assets for portfolio diversification
-   - "hedging" - focus on negatively correlated assets for hedging strategies
-   - "risk_management" - focus on correlation risks and concentration analysis
-   - "all" - comprehensive correlation analysis
-
-Examples:
-- "Get correlation analysis for Bitcoin" → {symbol: "BTC", analysisType: "all"}
-- "Show me DeFi tokens for diversification" → {category: "defi", analysisType: "diversification"}
-- "Find hedging opportunities for ETH" → {symbol: "ETH", analysisType: "hedging"}
-- "Correlation risk analysis for top 20 tokens" → {limit: 20, analysisType: "risk_management"}
-
-Extract the request details from the user's message.
-`;
+<response>
+<primary_asset>main token for correlation analysis</primary_asset>
+<comparison_assets>comma-separated list of tokens to compare</comparison_assets>
+<analysis_type>pairwise, portfolio, market, or general</analysis_type>
+<timeframe>daily, weekly, monthly, or general</timeframe>
+<correlation_period>30d, 90d, 1y, or default</correlation_period>
+<focus_area>diversification, risk, optimization, or general</focus_area>
+</response>`;
 
 /**
  * CORRELATION ACTION - Based on actual TokenMetrics API documentation
@@ -92,45 +89,45 @@ export const getCorrelationAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get correlation analysis for Bitcoin"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve Bitcoin's correlation with other top cryptocurrencies for diversification analysis.",
+                    text: "I'll analyze price correlations for Bitcoin with other cryptocurrencies.",
                     action: "GET_CORRELATION_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me correlation data for DeFi tokens"
+                    text: "Show me DeFi tokens for portfolio diversification"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll analyze correlation patterns within the DeFi sector for portfolio optimization.",
+                    text: "I'll find DeFi tokens with low correlations for portfolio diversification.",
                     action: "GET_CORRELATION_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Find hedging opportunities for Ethereum"
+                    text: "Find hedging opportunities for my Ethereum position"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll identify negatively correlated assets that could serve as hedges for Ethereum.",
+                    text: "I'll analyze correlations to find assets that could hedge your Ethereum exposure.",
                     action: "GET_CORRELATION_TOKENMETRICS"
                 }
             }
@@ -155,8 +152,8 @@ export const getCorrelationAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
-        const requestId = generateRequestId();
+    ): Promise<ActionResult> => {
+            const requestId = generateRequestId();
         
         elizaLogger.log("🚀 Starting TokenMetrics correlation handler (1.x)");
         elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
@@ -176,7 +173,7 @@ export const getCorrelationAction: Action = {
                 limit: 20,
                 page: 1
             };
-
+            
             // STEP 3: Fetch correlation data
             elizaLogger.log(`📡 Fetching correlation data`);
             const correlationData = await callTokenMetricsAPI('/v2/correlation', apiParams, runtime);
@@ -199,8 +196,15 @@ Please try again in a few moments.`,
                             request_id: requestId
                         }
                     });
-                }
-                return false;
+            }
+                return createActionResult({
+                    success: false,
+                    text: "❌ Unable to fetch correlation data at the moment.",
+                    data: {
+                        error: "API fetch failed",
+                        request_id: requestId
+                    }
+                });
             }
 
             // Handle the response data
@@ -218,13 +222,13 @@ Please try again in a few moments.`,
                 await callback({
                     text: responseText,
                     content: {
-                        success: true,
+                success: true,
                         correlation_data: correlations,
                         analysis: analysis,
                         source: "TokenMetrics Correlation API",
-                        request_id: requestId,
-                        metadata: {
-                            endpoint: "correlation",
+                request_id: requestId,
+                metadata: {
+                    endpoint: "correlation",
                             data_source: "TokenMetrics API",
                             timestamp: new Date().toISOString(),
                             total_correlations: correlations.length
@@ -233,25 +237,33 @@ Please try again in a few moments.`,
                 });
             }
 
-            return true;
+            return createActionResult({
+                    success: true,
+                text: responseText,
+                data: {
+                    success: true,
+                    correlation_data: correlations,
+                    analysis: analysis,
+                    source: "TokenMetrics Correlation API",
+                    request_id: requestId,
+                    metadata: {
+                        endpoint: "correlation",
+                        data_source: "TokenMetrics API",
+                        timestamp: new Date().toISOString(),
+                        total_correlations: correlations.length
+                    }
+                }
+            });
 
         } catch (error) {
-            elizaLogger.error("❌ Error in TokenMetrics correlation handler:", error);
+            elizaLogger.error("❌ Error in correlation handler:", error);
             elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
             
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            
             if (callback) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                
                 await callback({
-                    text: `❌ I encountered an error while fetching correlation data: ${errorMessage}
-
-This could be due to:
-• Network connectivity issues
-• TokenMetrics API service problems
-• Invalid API key or authentication issues
-• Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+                    text: `❌ I encountered an error while fetching correlation data: ${errorMessage}`,
                     content: { 
                         error: errorMessage,
                         error_type: error instanceof Error ? error.constructor.name : 'Unknown',
@@ -261,7 +273,10 @@ Please check your TokenMetrics API key configuration and try again.`,
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
         }
     }
 };
@@ -294,7 +309,7 @@ function formatCorrelationResponse(correlations: any[]): string {
     response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
     
     return response;
-}
+    }
 
 /**
  * Comprehensive analysis of correlation data for portfolio optimization and risk management

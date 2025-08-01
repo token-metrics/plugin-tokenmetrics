@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -52,13 +53,23 @@ The user wants to get AI-generated reports for cryptocurrency analysis. Extract 
    - "comprehensive" - focus on deep dive comprehensive reports
    - "all" - all types of AI reports
 
-Examples:
-- "Get AI reports for Bitcoin" → {symbol: "BTC", analysisType: "all"}
-- "Show me investment analysis for ETH" → {symbol: "ETH", analysisType: "investment"}
-- "Get comprehensive AI reports" → {analysisType: "comprehensive"}
-- "Technical analysis reports for token 123" → {token_id: 123, analysisType: "technical"}
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-Extract the request details from the user's message.
+Examples of request patterns (but extract the actual token from user's message):
+- "Get AI reports for [TOKEN]" → extract [TOKEN]
+- "Show me investment analysis for [TOKEN]" → extract [TOKEN]
+- "Get comprehensive AI reports" → general analysis
+- "Technical analysis reports for token 123" → specific token ID
+
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<token_id>specific token ID if mentioned</token_id>
+<symbol>token symbol mentioned by user</symbol>
+<limit>number of reports to return</limit>
+<page>page number for pagination</page>
+<analysisType>investment|technical|comprehensive|all</analysisType>
+</response>
 `;
 
 /**
@@ -83,75 +94,91 @@ export const getAiReportsAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get AI analysis reports for Bitcoin"
+                    text: "Get AI report for Bitcoin"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve comprehensive AI-generated analysis reports for Bitcoin from TokenMetrics.",
+                    text: "I'll get the AI-generated report for Bitcoin.",
                     action: "GET_AI_REPORTS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me the latest AI reports available"
+                    text: "Show me AI insights for the crypto market"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get the latest AI-generated reports from TokenMetrics covering various cryptocurrency projects.",
+                    text: "I'll retrieve AI-powered market insights and analysis.",
                     action: "GET_AI_REPORTS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get investment analysis reports for Ethereum"
+                    text: "AI analysis for Ethereum investment"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve AI-generated investment analysis reports for Ethereum.",
+                    text: "I'll generate an AI analysis for Ethereum investment opportunities.",
                     action: "GET_AI_REPORTS_TOKENMETRICS"
                 }
             }
         ]
     ],
     
-    async handler(runtime: IAgentRuntime, message: Memory, _state: State | undefined, _params: any, callback?: HandlerCallback) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing AI reports request...`);
             
-            // Extract structured request using AI
+            // Extract structured request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = AI_REPORTS_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const aiReportsRequest = await extractTokenMetricsRequest<AiReportsRequest>(
                 runtime,
                 message,
-                _state || await runtime.composeState(message),
-                AI_REPORTS_EXTRACTION_TEMPLATE,
+                state || await runtime.composeState(message),
+                enhancedTemplate,
                 AiReportsRequestSchema,
                 requestId
             );
             
+            elizaLogger.log("🎯 AI Extracted AI reports request:", aiReportsRequest);
             console.log(`[${requestId}] Extracted request:`, aiReportsRequest);
             
             // Apply defaults for optional fields
             const processedRequest = {
-                token_id: aiReportsRequest.token_id,
-                symbol: aiReportsRequest.symbol,
-                limit: aiReportsRequest.limit || 50,
-                page: aiReportsRequest.page || 1,
-                analysisType: aiReportsRequest.analysisType || "all"
+                token_id: aiReportsRequest?.token_id,
+                symbol: aiReportsRequest?.symbol,
+                limit: aiReportsRequest?.limit || 50,
+                page: aiReportsRequest?.page || 1,
+                analysisType: aiReportsRequest?.analysisType || "all"
             };
             
             // Build API parameters
@@ -349,7 +376,7 @@ export const getAiReportsAction: Action = {
             
             // Use callback to send response to user (like working actions)
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -364,7 +391,7 @@ export const getAiReportsAction: Action = {
                 });
             }
             
-            return true;
+            return createActionResult({ success: true, text: responseText });
         } catch (error) {
             console.error("Error in getAiReports action:", error);
             
@@ -381,7 +408,7 @@ export const getAiReportsAction: Action = {
                 `• Ensure your API key has access to the ai-reports endpoint`;
             
             if (callback) {
-                callback({
+                await callback({
                     text: errorMessage,
                     content: {
                         success: false,
@@ -391,7 +418,7 @@ export const getAiReportsAction: Action = {
                 });
             }
             
-            return false;
+            return createActionResult({ success: false, error: "Failed to process request" });
         }
     },
 

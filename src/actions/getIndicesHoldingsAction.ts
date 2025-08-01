@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -25,31 +26,45 @@ const IndicesHoldingsRequestSchema = z.object({
 
 type IndicesHoldingsRequest = z.infer<typeof IndicesHoldingsRequestSchema>;
 
-// AI extraction template for natural language processing
-const INDICES_HOLDINGS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting crypto index holdings requests from natural language.
+// Template for extracting indices holdings information (Updated to XML format)
+const indicesHoldingsTemplate = `Extract indices holdings request information from the message.
 
-The user wants to get information about the holdings/composition of a specific crypto index. Extract the following information:
+IMPORTANT: The user MUST specify an index ID number. Look for phrases like:
+- "index 1", "index ID 1", "crypto index 3"  
+- "holdings of index 5", "index number 2"
+- "DeFi index" (may refer to a specific numbered index)
 
-1. **indexId** (required): The ID number of the index they want holdings for
-   - Look for phrases like "index 1", "index ID 5", "index number 3"
-   - Extract the numeric ID from the request
-   - This is required - if no ID is found, ask for clarification
+Index holdings provide:
+- Portfolio composition and token allocation
+- Weight percentages and allocation values
+- Risk concentration analysis
+- Performance attribution
+- Diversification insights
+- Rebalancing information
 
-2. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "composition" - focus on token allocation and weights
-   - "risk" - focus on concentration and risk metrics
-   - "performance" - focus on price changes and performance
-   - "all" - comprehensive analysis
+Instructions:
+Look for INDEX HOLDINGS requests, such as:
+- Holdings composition ("Holdings of index 1", "Index composition")
+- Portfolio allocation ("Token allocation", "Index weights")
+- Risk analysis ("Holdings risk", "Concentration analysis")
+- Performance attribution ("Holdings performance", "Asset contribution")
 
-Examples:
-- "Show me holdings of index 1" → {indexId: 1, analysisType: "all"}
-- "What tokens are in crypto index 5?" → {indexId: 5, analysisType: "composition"}
-- "Get risk analysis for index 3 holdings" → {indexId: 3, analysisType: "risk"}
-- "Index 2 composition and performance" → {indexId: 2, analysisType: "performance"}
+EXAMPLES (extract the exact index number):
+- "Show me holdings of index 1" → indexId: 1
+- "What tokens are in crypto index 5?" → indexId: 5
+- "Get risk analysis for index 3 holdings" → indexId: 3
+- "Index 2 composition and performance" → indexId: 2
+- "DeFi index holdings" → indexId: (look for any number mentioned, or leave empty if no specific number)
 
-Extract the request details from the user's message.
-`;
+CRITICAL: If no specific index number is mentioned, leave indexId empty so we can prompt the user to specify one.
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<indexId>numeric ID of the index</indexId>
+<analysisType>composition|risk|performance|all</analysisType>
+<focusArea>allocation|diversification|concentration|general</focusArea>
+</response>`;
 
 /**
  * INDICES HOLDINGS ACTION - Based on actual TokenMetrics API documentation
@@ -74,28 +89,28 @@ export const getIndicesHoldingsAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me the holdings of crypto index 1"
+                    text: "Show me holdings of index 1"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get the current holdings and allocation weights for that crypto index.",
+                    text: "I'll get the holdings composition for index 1.",
                     action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "What tokens are in the DeFi index and their weights?"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
                     text: "Let me show you the token composition and weight allocation for the DeFi index.",
                     action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
@@ -104,13 +119,13 @@ export const getIndicesHoldingsAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get risk analysis for index 3 holdings"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll analyze the holdings composition and risk metrics for index 3.",
                     action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
@@ -125,7 +140,7 @@ export const getIndicesHoldingsAction: Action = {
         state: State | undefined,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> {
+    ): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing indices holdings request...`);
@@ -135,7 +150,7 @@ export const getIndicesHoldingsAction: Action = {
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                INDICES_HOLDINGS_EXTRACTION_TEMPLATE,
+                indicesHoldingsTemplate,
                 IndicesHoldingsRequestSchema,
                 requestId
             );
@@ -144,9 +159,43 @@ export const getIndicesHoldingsAction: Action = {
             
             // Apply defaults for optional fields
             const processedRequest = {
-                indexId: holdingsRequest.indexId,
-                analysisType: holdingsRequest.analysisType || "all"
+                indexId: holdingsRequest?.indexId,
+                analysisType: holdingsRequest?.analysisType || "all"
             };
+            
+            // Validate that index ID is provided (required by API)
+            if (!processedRequest.indexId) {
+                const errorMessage = "⚠️ **Index ID Required**\n\n" +
+                    "The indices holdings endpoint requires a specific index ID. Please specify which index you want to analyze.\n\n" +
+                    "**Examples:**\n" +
+                    "• \"Show me holdings of index 1\"\n" +
+                    "• \"Get holdings for index 5\"\n" +
+                    "• \"What tokens are in crypto index 3?\"\n\n" +
+                    "**Common Index IDs:**\n" +
+                    "• Index 1: Often the main crypto index\n" +
+                    "• Index 3: May be DeFi-focused index\n" +
+                    "• Index 5: Could be large-cap index\n\n" +
+                    "Please try again with a specific index number.";
+                
+                console.log(`[${requestId}] ❌ No index ID provided in request`);
+                
+                if (callback) {
+                    await callback({
+                        text: errorMessage,
+                        content: {
+                            success: false,
+                            error: "Missing required index ID",
+                            request_id: requestId,
+                            help: "Specify an index ID (e.g., 'holdings of index 1')"
+                        }
+                    });
+                }
+                
+                return createActionResult({
+                    success: false,
+                    error: "Index ID is required for holdings lookup"
+                });
+            }
             
             // Build API parameters
             const apiParams: Record<string, any> = {
@@ -214,38 +263,59 @@ export const getIndicesHoldingsAction: Action = {
             
             console.log(`[${requestId}] Analysis completed successfully`);
             
-            // Use callback to send response to user (like working actions)
+            elizaLogger.success("✅ Successfully processed indices holdings request");
+
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
+                        holdings_data: holdings,
+                        analysis: holdingsAnalysis,
+                        source: "TokenMetrics Indices Holdings API",
                         request_id: requestId,
-                        data: result,
                         metadata: {
-                            endpoint: "indicesholdings",
-                            data_source: "TokenMetrics Official API",
-                            api_version: "v2"
+                            endpoint: "indices-holdings",
+                            data_source: "TokenMetrics API",
+                            timestamp: new Date().toISOString(),
+                            total_holdings: holdings.length
                         }
                     }
                 });
             }
             
-            return true;
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    holdings_data: holdings,
+                    analysis: holdingsAnalysis,
+                    source: "TokenMetrics Indices Holdings API",
+                    request_id: requestId
+                }
+            });
         } catch (error) {
             console.error("Error in getIndicesHoldings action:", error);
             
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            const reqId = generateRequestId(); // Generate new ID for error case
+            
             if (callback) {
-                callback({
-                    text: `❌ Failed to retrieve indices holdings data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                await callback({
+                    text: `❌ Error fetching indices holdings: ${errorMessage}`,
                     content: {
-                        success: false,
-                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true,
+                        request_id: reqId
                     }
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
         }
     },
 

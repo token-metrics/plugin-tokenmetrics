@@ -1,14 +1,16 @@
 import {
     type Action,
+    type ActionResult,
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
     type ActionExample,
     elizaLogger,
-    composeContext,
-    generateObject,
-    ModelClass
+    composePromptFromState,
+    parseKeyValueXml,
+    ModelType,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -21,46 +23,50 @@ import {
     resolveTokenSmart
 } from "./aiActionHelper";
 
-// Template for extracting trading signals information from conversations
-const tradingSignalsTemplate = `# Task: Extract Trading Signals Request Information
+// Template for extracting trading signals information (Updated to XML format)
+const tradingSignalsTemplate = `Extract trading signals request information from the user's message.
 
-Based on the conversation context, identify what trading signals information the user is requesting.
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-# Conversation Context:
-{{recentMessages}}
+Trading signals provide:
+- Buy/Sell/Hold recommendations
+- Entry and exit price targets
+- Risk assessment levels
+- Technical indicator analysis
+- Market timing suggestions
 
-# Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
-- Trading signal requests ("trading signals", "buy sell signals", "AI signals", "trading recommendations")
-- Signal types ("bullish", "bearish", "long", "short", "buy", "sell")
-- Time periods or date ranges
-- Market filters (category, exchange, market cap, volume)
+Instructions:
+Look for TRADING SIGNALS requests in the user's message, such as:
+- Signal queries ("Trading signals for [TOKEN]", "Buy signals")
+- Entry/exit requests ("When to buy [TOKEN]?", "Entry points")
+- Market timing ("Best time to trade [TOKEN]", "Trading opportunities")
+- Technical analysis ("Technical signals for [TOKEN]")
 
-The user might say things like:
-- "Get trading signals for Bitcoin"
-- "Show me AI trading signals"
-- "What are the current buy/sell signals?"
-- "Get bullish signals for DeFi tokens"
-- "Show trading recommendations for Ethereum"
-- "Get signals for tokens with high volume"
-- "What tokens have buy signals today?"
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
 
-Extract the relevant information for the trading signals request.
+Examples of request patterns (but extract the actual token from user's message):
+- "Get trading signals for [TOKEN]" → extract [TOKEN]
+- "Trading signals for [TOKEN]" → extract [TOKEN]
+- "Should I buy [TOKEN]?" → extract [TOKEN]
+- "Entry signals for [TOKEN]" → extract [TOKEN]
 
-# Response Format:
-Return a structured object with the trading signals request information.`;
+Respond with an XML block containing only the extracted values:
 
-// Schema for the extracted data
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<signal_type>bullish, bearish, buy, sell, hold, or general</signal_type>
+<timeframe>1h, 4h, daily, weekly, or general</timeframe>
+<analysis_depth>basic, detailed, comprehensive</analysis_depth>
+</response>`;
+
+// Schema for the extracted data - simplified like hourly OHLCV
 const TradingSignalsRequestSchema = z.object({
-    cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
-    signal_type: z.enum(["bullish", "bearish", "long", "short", "buy", "sell", "any"]).nullable().describe("Type of signal requested"),
-    category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-    exchange: z.string().nullable().describe("Exchange filter"),
-    time_period: z.string().nullable().describe("Time period or date range"),
-    market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
-    confidence: z.number().min(0).max(1).describe("Confidence in extraction")
+    cryptocurrency: z.string().optional().describe("The cryptocurrency symbol or name mentioned"),
+    signal_type: z.string().optional().describe("Type of signal requested"),
+    category: z.string().optional().describe("Token category filter (e.g., defi, layer-1, meme)"),
+    exchange: z.string().optional().describe("Exchange filter"),
+    time_period: z.string().optional().describe("Time period or date range"),
+    market_filter: z.string().optional().describe("Market cap, volume, or other filters")
 });
 
 type TradingSignalsRequest = z.infer<typeof TradingSignalsRequestSchema>;
@@ -221,7 +227,7 @@ export const getTradingSignalsAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         const requestId = generateRequestId();
         
         elizaLogger.log("🚀 Starting TokenMetrics trading signals handler");
@@ -232,51 +238,31 @@ export const getTradingSignalsAction: Action = {
             // STEP 1: Validate API key early
             validateAndGetApiKey(runtime);
 
-            // STEP 2: Extract trading signals request using AI
-            const signalsRequest = await extractTokenMetricsRequest(
+            // STEP 2: Extract trading signals request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template (like getScenarioAnalysisAction does)
+            const enhancedTemplate = tradingSignalsTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
+            const signalsRequest = await extractTokenMetricsRequest<TradingSignalsRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                tradingSignalsTemplate,
+                enhancedTemplate,
                 TradingSignalsRequestSchema,
                 requestId
             );
 
             elizaLogger.log("🎯 AI Extracted signals request:", signalsRequest);
-            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${signalsRequest.cryptocurrency || 'general market'}"`);
+            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${signalsRequest?.cryptocurrency || 'general market'}"`);
+            elizaLogger.log(`🔍 DEBUG: AI extracted cryptocurrency: "${signalsRequest?.cryptocurrency}"`);
+            console.log(`[${requestId}] Extracted request:`, signalsRequest);
 
-            // STEP 3: Validate that we have sufficient information
-            // Allow general trading signals requests even without specific criteria
-            if (!signalsRequest.cryptocurrency && !signalsRequest.signal_type && !signalsRequest.category && signalsRequest.confidence < 0.2) {
-                elizaLogger.log("❌ AI extraction failed - very low confidence");
-                
-                if (callback) {
-                    callback({
-                        text: `❌ I couldn't identify specific trading signals criteria from your request.
-
-I can get AI trading signals for:
-• Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-• Signal types (bullish, bearish, buy, sell signals)
-• Token categories (DeFi, Layer-1, meme tokens)
-• Market filters (high volume, large cap, etc.)
-• General market signals
-
-Try asking something like:
-• "Get trading signals for Bitcoin"
-• "Show me bullish signals for DeFi tokens"
-• "What are the current buy signals?"
-• "Get AI trading recommendations"
-• "Show me trading signals"`,
-                        content: { 
-                            error: "Insufficient trading signals criteria",
-                            confidence: signalsRequest?.confidence || 0,
-                            request_id: requestId
-                        }
-                    });
-                }
-                return false;
-            }
-
+            // STEP 3: Proceed without complex validation (like hourly OHLCV does)
             elizaLogger.success("🎯 Final extraction result:", signalsRequest);
 
             // STEP 4: Build API parameters
@@ -287,7 +273,7 @@ Try asking something like:
 
             // Handle token-specific requests - but don't fail if token resolution fails
             let tokenInfo = null;
-            if (signalsRequest.cryptocurrency) {
+            if (signalsRequest?.cryptocurrency) {
                 elizaLogger.log(`🔍 Attempting to resolve token for: "${signalsRequest.cryptocurrency}"`);
                 try {
                     tokenInfo = await resolveTokenSmart(signalsRequest.cryptocurrency, runtime);
@@ -309,26 +295,32 @@ Try asking something like:
                 }
             }
 
-            // Handle signal type filtering
-            if (signalsRequest.signal_type) {
-                if (signalsRequest.signal_type === "bullish" || signalsRequest.signal_type === "long" || signalsRequest.signal_type === "buy") {
-                    apiParams.signal = 1;
-                } else if (signalsRequest.signal_type === "bearish" || signalsRequest.signal_type === "short" || signalsRequest.signal_type === "sell") {
-                    apiParams.signal = -1;
-                }
-            }
+            // Handle signal type filtering - COMMENTED OUT: causing 404 errors
+            // if (signalsRequest?.signal_type) {
+            //     if (signalsRequest.signal_type === "bullish" || signalsRequest.signal_type === "long" || signalsRequest.signal_type === "buy") {
+            //         apiParams.signal = 1;
+            //     } else if (signalsRequest.signal_type === "bearish" || signalsRequest.signal_type === "short" || signalsRequest.signal_type === "sell") {
+            //         apiParams.signal = -1;
+            //     }
+            // }
 
             // Handle category filtering
-            if (signalsRequest.category) {
+            if (signalsRequest?.category) {
                 apiParams.category = signalsRequest.category;
             }
 
             // Handle exchange filtering
-            if (signalsRequest.exchange) {
+            if (signalsRequest?.exchange) {
                 apiParams.exchange = signalsRequest.exchange;
             }
 
             elizaLogger.log(`📡 API parameters:`, apiParams);
+            elizaLogger.log(`🔍 DEBUG - About to call trading signals API with params:`, JSON.stringify(apiParams, null, 2));
+            elizaLogger.log(`🔍 DEBUG - Resolved tokenInfo:`, tokenInfo ? {
+                name: tokenInfo.TOKEN_NAME,
+                symbol: tokenInfo.TOKEN_SYMBOL,
+                id: tokenInfo.TOKEN_ID
+            } : 'null');
 
             // STEP 5: Fetch trading signals data
             elizaLogger.log(`📡 Fetching trading signals data`);
@@ -336,85 +328,15 @@ Try asking something like:
             
             if (!signalsData) {
                 elizaLogger.log("❌ Failed to fetch trading signals data");
-                
-                if (callback) {
-                    callback({
-                        text: `❌ Unable to fetch trading signals data at the moment.
-
-This could be due to:
-• TokenMetrics API connectivity issues
-• Temporary service interruption  
-• Rate limiting
-• No signals available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-                        content: { 
-                            error: "API fetch failed",
-                            request_id: requestId
-                        }
-                    });
-                }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ Unable to fetch trading signals data at the moment. Please try again.`,
+                    data: { error: "API fetch failed", request_id: requestId }
+                });
             }
 
-            // Handle the response data with smart token filtering for multiple tokens with same symbol
+            // Handle the response data
             let signals = Array.isArray(signalsData) ? signalsData : (signalsData.data || []);
-            
-            // Apply smart token filtering if we have multiple tokens with same symbol (like BTC)
-            if (signals.length > 1 && apiParams.symbol) {
-                elizaLogger.log(`🔍 Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
-                
-                // Priority selection logic for main tokens
-                const mainTokenSelectors = [
-                    // For Bitcoin - select the main Bitcoin, not wrapped versions
-                    (token: any) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
-                    // For Dogecoin - select the main Dogecoin, not other DOGE tokens
-                    (token: any) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
-                    // For Ethereum - select the main Ethereum
-                    (token: any) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
-                    // For other tokens - prefer exact name matches or shortest/simplest names
-                    (token: any) => {
-                        const name = token.TOKEN_NAME.toLowerCase();
-                        const symbol = token.TOKEN_SYMBOL.toLowerCase();
-                        
-                        // Avoid wrapped, bridged, or derivative tokens
-                        const avoidKeywords = ['wrapped', 'bridged', 'peg', 'department', 'binance', 'osmosis'];
-                        const hasAvoidKeywords = avoidKeywords.some(keyword => name.includes(keyword));
-                        
-                        if (hasAvoidKeywords) return false;
-                        
-                        // Prefer tokens where name matches the expected name for the symbol
-                        if (symbol === 'btc' && name.includes('bitcoin')) return true;
-                        if (symbol === 'eth' && name.includes('ethereum')) return true;
-                        if (symbol === 'doge' && name.includes('dogecoin')) return true;
-                        if (symbol === 'sol' && name.includes('solana')) return true;
-                        if (symbol === 'avax' && name.includes('avalanche')) return true;
-                        
-                        return false;
-                    }
-                ];
-                
-                // Try each selector until we find a match
-                let selectedToken = null;
-                for (const selector of mainTokenSelectors) {
-                    const match = signals.find(selector);
-                    if (match) {
-                        selectedToken = match;
-                        elizaLogger.log(`✅ Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
-                        break;
-                    }
-                }
-                
-                // If we found a main token, use only that one
-                if (selectedToken) {
-                    signals = [selectedToken];
-                    elizaLogger.log(`🎯 Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
-                } else {
-                    // Fallback: use the first token but log the issue
-                    elizaLogger.log(`⚠️ No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
-                }
-            }
-            
             elizaLogger.log(`🔍 Final signals count: ${signals.length}`);
 
             // STEP 6: Format and present the results
@@ -426,99 +348,50 @@ Please try again in a few moments or try with different criteria.`,
             if (callback) {
                 callback({
                     text: responseText,
-                    content: {
+                    data: {
                         success: true,
                         signals_data: signals,
                         analysis: analysis,
                         source: "TokenMetrics AI Trading Signals",
-                        request_id: requestId,
-                        query_details: {
-                            original_request: signalsRequest.cryptocurrency || "general market",
-                            signal_type: signalsRequest.signal_type,
-                            category: signalsRequest.category,
-                            confidence: signalsRequest.confidence,
-                            data_freshness: "real-time",
-                            request_id: requestId,
-                            extraction_method: "ai_with_cache_busting"
-                        }
-                    }
-                });
-            }
-
-            return true;
-
-        } catch (error) {
-            elizaLogger.error("❌ Error in TokenMetrics trading signals handler:", error);
-            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
-            
-            if (callback) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                
-                callback({
-                    text: `❌ I encountered an error while fetching trading signals: ${errorMessage}
-
-This could be due to:
-• Network connectivity issues
-• TokenMetrics API service problems
-• Invalid API key or authentication issues
-• Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
-                    content: { 
-                        error: errorMessage,
-                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
-                        troubleshooting: true,
                         request_id: requestId
                     }
                 });
             }
+
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    success: true,
+                    signals_data: signals,
+                    analysis: analysis,
+                    source: "TokenMetrics AI Trading Signals",
+                    request_id: requestId
+                }
+            });
+
+        } catch (error) {
+            elizaLogger.error("❌ Error in TokenMetrics trading signals handler:", error);
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error occurred'
+            });
         }
     },
 
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get trading signals for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll fetch the latest AI trading signals for Bitcoin from TokenMetrics.",
-                    action: "GET_TRADING_SIGNALS_TOKENMETRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Show me bullish signals for DeFi tokens"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll get bullish trading signals for DeFi category tokens from TokenMetrics AI.",
-                    action: "GET_TRADING_SIGNALS_TOKENMETRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "What are the current AI trading recommendations?"
-                }
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "Let me fetch the latest AI trading signals and recommendations from TokenMetrics.",
                     action: "GET_TRADING_SIGNALS_TOKENMETRICS"
                 }
             }

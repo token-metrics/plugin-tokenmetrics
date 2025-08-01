@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -35,55 +36,43 @@ const QuantmetricsRequestSchema = z.object({
 
 type QuantmetricsRequest = z.infer<typeof QuantmetricsRequestSchema>;
 
-// AI extraction template for natural language processing
-const QUANTMETRICS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting quantitative metrics requests from natural language.
+// Template for extracting quantmetrics information (Updated to XML format)
+const quantmetricsTemplate = `Extract quantmetrics request information from the message.
 
-The user wants to get comprehensive quantitative metrics for cryptocurrency analysis. Extract the following information:
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
-   - Can be a specific token or general request
+Quantmetrics provide:
+- Quantitative analysis and metrics
+- Mathematical models and scoring
+- Statistical performance indicators
+- Risk-adjusted return metrics
+- Portfolio optimization data
+- Algorithmic trading insights
 
-2. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
+Instructions:
+Look for QUANTMETRICS requests, such as:
+- Quantitative analysis ("Quantmetrics for [TOKEN]", "Get quant analysis")
+- Statistical metrics ("Statistical analysis", "Quant scoring")
+- Risk metrics ("Risk-adjusted returns", "Quantitative risk")
+- Performance metrics ("Quant performance", "Mathematical analysis")
 
-3. **symbol** (optional): Token symbol
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
 
-4. **category** (optional): Token category filter
-   - Look for categories like "defi", "layer1", "gaming", "nft"
+Examples of request patterns (but extract the actual token from user's message):
+- "Get quantmetrics for [TOKEN]" → extract [TOKEN]
+- "Show me quantitative analysis for [TOKEN]" → extract [TOKEN]
+- "Quantitative metrics for [TOKEN]" → extract [TOKEN]
+- "Risk-adjusted analysis for [TOKEN]" → extract [TOKEN]
 
-5. **exchange** (optional): Exchange filter
-   - Exchange names like "binance", "coinbase", "uniswap"
+Respond with an XML block containing only the extracted values:
 
-6. **marketcap** (optional): Minimum market cap filter
-   - Look for phrases like "market cap over $500M", "large cap tokens"
-   - Convert to numbers (e.g., "$500M" → 500000000)
-
-7. **volume** (optional): Minimum volume filter
-   - Look for volume requirements
-
-8. **fdv** (optional): Minimum fully diluted valuation filter
-
-9. **limit** (optional, default: 50): Number of results to return
-
-10. **page** (optional, default: 1): Page number for pagination
-
-11. **analysisType** (optional, default: "all"): What type of analysis they want
-    - "risk" - focus on risk metrics (volatility, drawdown, VaR)
-    - "returns" - focus on return metrics (CAGR, Sharpe, Sortino)
-    - "performance" - focus on performance analysis
-    - "all" - comprehensive analysis
-
-Examples:
-- "Get quantitative metrics for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Risk metrics for DeFi tokens with market cap over $500M" → {category: "defi", marketcap: 500000000, analysisType: "risk"}
-- "Show me Sharpe ratio and returns for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "returns"}
-- "Quantitative analysis for large cap tokens" → {marketcap: 1000000000, analysisType: "all"}
-
-Extract the request details from the user's message.
-`;
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<analysis_type>risk, performance, statistical, or general</analysis_type>
+<metric_focus>returns, volatility, sharpe, sortino, or all</metric_focus>
+<timeframe>daily, weekly, monthly, or general</timeframe>
+<limit>number of results requested (default 20)</limit>
+</response>`;
 
 /**
  * CORRECTED Quantmetrics Action - Based on actual TokenMetrics API documentation
@@ -107,28 +96,28 @@ export const getQuantmetricsAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get quantitative metrics for Bitcoin"
+                    text: "Get quantmetrics for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve comprehensive quantitative metrics for Bitcoin including volatility, Sharpe ratio, and risk measurements.",
+                    text: "I'll fetch comprehensive quantitative metrics for Bitcoin from TokenMetrics.",
                     action: "GET_QUANTMETRICS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me risk metrics for DeFi tokens with market cap over $500M"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll analyze quantitative risk metrics for large-cap DeFi tokens.",
                     action: "GET_QUANTMETRICS_TOKENMETRICS"
@@ -137,13 +126,13 @@ export const getQuantmetricsAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Analyze Sharpe ratio and returns for Ethereum"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get the quantitative return metrics and Sharpe ratio analysis for Ethereum.",
                     action: "GET_QUANTMETRICS_TOKENMETRICS"
@@ -170,8 +159,8 @@ export const getQuantmetricsAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
-        const requestId = generateRequestId();
+    ): Promise<ActionResult> => {
+            const requestId = generateRequestId();
         
         elizaLogger.log("🚀 Starting TokenMetrics quantmetrics handler (1.x)");
         elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
@@ -185,14 +174,60 @@ export const getQuantmetricsAction: Action = {
             if (!state) {
                 state = await runtime.composeState(message);
             }
+            
+            // STEP 2: Extract quantmetrics request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template (like other working actions)
+            const enhancedTemplate = quantmetricsTemplate + `
 
-            // STEP 2: Build API parameters
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
+            const quantRequest = await extractTokenMetricsRequest(
+                runtime,
+                message,
+                state,
+                enhancedTemplate,
+                QuantmetricsRequestSchema,
+                requestId
+            );
+
+            elizaLogger.log("🎯 AI Extracted quantmetrics request:", quantRequest);
+            elizaLogger.log(`🔍 DEBUG: AI extracted cryptocurrency: "${quantRequest?.cryptocurrency}"`);
+            console.log(`[${requestId}] Extracted request:`, quantRequest);
+            
+            // STEP 3: Build API parameters with token-specific filtering
             const apiParams: any = {
-                limit: 20,
+                limit: quantRequest?.limit || 20,
                 page: 1
             };
 
-            // STEP 3: Fetch quantmetrics data
+            // Handle token-specific requests
+            let tokenInfo = null;
+            if (quantRequest?.cryptocurrency) {
+                elizaLogger.log(`🔍 Resolving token for: "${quantRequest.cryptocurrency}"`);
+                try {
+                    tokenInfo = await resolveTokenSmart(quantRequest.cryptocurrency, runtime);
+                    
+                    if (tokenInfo) {
+                        apiParams.token_id = tokenInfo.TOKEN_ID;
+                        elizaLogger.log(`✅ Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+                    } else {
+                        apiParams.symbol = quantRequest.cryptocurrency.toUpperCase();
+                        elizaLogger.log(`🔍 Using symbol: ${quantRequest.cryptocurrency}`);
+                    }
+                } catch (error) {
+                    elizaLogger.log(`⚠️ Token resolution failed, using symbol fallback: ${error}`);
+                    apiParams.symbol = quantRequest.cryptocurrency.toUpperCase();
+                    elizaLogger.log(`🔍 Fallback to symbol parameter: ${quantRequest.cryptocurrency.toUpperCase()}`);
+                }
+            }
+
+            elizaLogger.log(`📡 API parameters:`, apiParams);
+            
+            // STEP 4: Fetch quantmetrics data
             elizaLogger.log(`📡 Fetching quantmetrics data`);
             const quantData = await callTokenMetricsAPI('/v2/quantmetrics', apiParams, runtime);
             
@@ -215,7 +250,14 @@ Please try again in a few moments.`,
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: "❌ Unable to fetch quantitative metrics data at the moment.",
+                    data: { 
+                        error: "API fetch failed",
+                        request_id: requestId
+                    }
+                });
             }
 
             // Handle the response data
@@ -223,8 +265,8 @@ Please try again in a few moments.`,
             
             elizaLogger.log(`🔍 Received ${metrics.length} quantmetrics`);
 
-            // STEP 4: Format and present the results
-            const responseText = formatQuantmetricsResponse(metrics);
+            // STEP 5: Format and present the results
+            const responseText = formatQuantmetricsResponse(metrics, tokenInfo);
             const analysis = analyzeQuantitativeMetrics(metrics, "comprehensive");
 
             elizaLogger.success("✅ Successfully processed quantmetrics request");
@@ -247,26 +289,34 @@ Please try again in a few moments.`,
                     }
                 });
             }
-
-            return true;
-
+            
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    success: true,
+                    quantmetrics_data: metrics,
+                    analysis: analysis,
+                    source: "TokenMetrics Quantmetrics API",
+                    request_id: requestId,
+                    metadata: {
+                        endpoint: "quantmetrics",
+                        data_source: "TokenMetrics API",
+                        timestamp: new Date().toISOString(),
+                        total_metrics: metrics.length
+                    }
+                }
+            });
+            
         } catch (error) {
-            elizaLogger.error("❌ Error in TokenMetrics quantmetrics handler:", error);
+            elizaLogger.error("❌ Error in quantmetrics handler:", error);
             elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
             
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            
             if (callback) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                
                 await callback({
-                    text: `❌ I encountered an error while fetching quantitative metrics: ${errorMessage}
-
-This could be due to:
-• Network connectivity issues
-• TokenMetrics API service problems
-• Invalid API key or authentication issues
-• Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+                    text: `❌ I encountered an error while fetching quantitative metrics: ${errorMessage}`,
                     content: { 
                         error: errorMessage,
                         error_type: error instanceof Error ? error.constructor.name : 'Unknown',
@@ -276,7 +326,10 @@ Please check your TokenMetrics API key configuration and try again.`,
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
         }
     }
 };
@@ -284,12 +337,17 @@ Please check your TokenMetrics API key configuration and try again.`,
 /**
  * Format quantmetrics response for user
  */
-function formatQuantmetricsResponse(metrics: any[]): string {
+function formatQuantmetricsResponse(metrics: any[], tokenInfo?: any): string {
     if (!metrics || metrics.length === 0) {
         return "❌ No quantitative metrics data available.";
     }
 
     let response = `⚡ **Quantitative Metrics Analysis**\n\n`;
+    
+    if (tokenInfo) {
+        response += `🎯 **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})\n`;
+    }
+    
     response += `📊 **Data Points**: ${metrics.length} metrics analyzed\n\n`;
 
     if (metrics.length > 0) {
@@ -310,7 +368,7 @@ function formatQuantmetricsResponse(metrics: any[]): string {
         }
         if (firstMetric.ALL_TIME_RETURN !== undefined) {
             response += `• **All-Time Return**: ${firstMetric.ALL_TIME_RETURN.toFixed(2)}%\n`;
-        }
+    }
     }
 
     response += `\n📊 **Data Source**: TokenMetrics Quantmetrics API\n`;

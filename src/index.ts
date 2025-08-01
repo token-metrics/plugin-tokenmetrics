@@ -1,28 +1,30 @@
 import type { Plugin } from "@elizaos/core";
 import { elizaLogger } from "@elizaos/core";
 
-// Import all updated actions with 1.x callback patterns
-import { getPriceAction } from "./actions/getPriceAction";
-import { getTraderGradesAction } from "./actions/getTraderGradesAction";
-import { getInvestorGradesAction } from "./actions/getInvestorGradesAction";
-import { getQuantmetricsAction } from "./actions/getQuantmetricsAction";
-import { getMarketMetricsAction } from "./actions/getMarketMetricsAction";
-import { getIndicesAction } from "./actions/getIndicesAction";
-import { getAiReportsAction } from "./actions/getAiReportsAction";
-import { getTradingSignalsAction } from "./actions/getTradingSignalsAction";
-import { getIndicesHoldingsAction } from "./actions/getIndicesHoldingsAction";
-import { getCorrelationAction } from "./actions/getCorrelationAction";
-import { getDailyOhlcvAction } from "./actions/getDailyOhlcvAction";
-import { getHourlyOhlcvAction } from "./actions/getHourlyOhlcvAction";
-import { getHourlyTradingSignalsAction } from "./actions/getHourlyTradingSignalsAction";
-import { getResistanceSupportAction } from "./actions/getResistanceSupportAction";
-import { getScenarioAnalysisAction } from "./actions/getScenarioAnalysisAction";
-import { getSentimentAction } from "./actions/getSentimentAction";
-import { getTmaiAction } from "./actions/getTmaiAction";
-import { getTokensAction } from "./actions/getTokensAction";
-import { getTopMarketCapAction } from "./actions/getTopMarketCapAction";
-import { getCryptoInvestorsAction } from "./actions/getCryptoInvestorsAction";
-import { getIndicesPerformanceAction } from "./actions/getIndicesPerformanceAction";
+// Import all actions
+import {
+    getPriceAction,
+    getTokensAction,
+    getTopMarketCapAction,
+    getTradingSignalsAction,
+    getHourlyTradingSignalsAction,
+    getDailyOhlcvAction,
+    getHourlyOhlcvAction,
+    getResistanceSupportAction,
+    getTraderGradesAction,
+    getInvestorGradesAction,
+    getQuantmetricsAction,
+    getMarketMetricsAction,
+    getCorrelationAction,
+    getIndicesAction,
+    getIndicesHoldingsAction,
+    getIndicesPerformanceAction,
+    getAiReportsAction,
+    getMoonshotTokensAction,
+    getScenarioAnalysisAction,
+    getCryptoInvestorsAction,
+    getTmaiAction
+} from "./actions";
 
 // Import and export helper functions for testing and debugging
 import {
@@ -102,42 +104,29 @@ export const tokenmetricsPlugin: Plugin = {
     name: "tokenmetrics",
     description: "Complete TokenMetrics integration providing comprehensive cryptocurrency market data, analysis, and insights with advanced AI-powered natural language processing across 21 specialized endpoints (1.x compatible)",
     
-    // All 21 updated actions with 1.x callback pattern
+    // All 21 updated actions with ElizaOS 1.x patterns
     actions: [
-        // Core Market Data Actions
-        getPriceAction,                    // Real-time price data
-        getTokensAction,                   // Token information
-        getTopMarketCapAction,             // Top market cap tokens
-        
-        // Trading & Technical Analysis Actions
-        getTradingSignalsAction,           // Trading signals
-        getHourlyTradingSignalsAction,     // Hourly trading signals
-        getDailyOhlcvAction,              // Daily OHLCV data
-        getHourlyOhlcvAction,             // Hourly OHLCV data
-        getResistanceSupportAction,        // Support/resistance levels
-        
-        // Grades & Investment Analysis Actions
-        getTraderGradesAction,            // Trader grades
-        getInvestorGradesAction,          // Investor grades
-        getQuantmetricsAction,            // Quantitative metrics
-        
-        // Market & Exchange Analysis Actions
-        getMarketMetricsAction,           // Market metrics (exchange flow, historical)
-        getCorrelationAction,             // Correlation analysis
-        
-        // Portfolio & Index Actions
-        getIndicesAction,                 // Market indices
-        getIndicesHoldingsAction,         // Portfolio holdings
-        getIndicesPerformanceAction,      // Index performance
-        
-        // News & Sentiment Actions
-        getAiReportsAction,               // AI reports and news analysis
-        getSentimentAction,               // Sentiment analysis
-        
-        // Advanced Analysis Actions
-        getScenarioAnalysisAction,        // Scenario analysis
-        getCryptoInvestorsAction,         // Crypto investors data
-        getTmaiAction,                    // TMAI AI insights
+        getPriceAction,
+        getTokensAction,
+        getTopMarketCapAction,
+        getTradingSignalsAction,
+        getHourlyTradingSignalsAction,
+        getDailyOhlcvAction,
+        getHourlyOhlcvAction,
+        getResistanceSupportAction,
+        getTraderGradesAction,
+        getInvestorGradesAction,
+        getQuantmetricsAction,
+        getMarketMetricsAction,
+        getCorrelationAction,
+        getIndicesAction,
+        getIndicesHoldingsAction,
+        getIndicesPerformanceAction,
+        getAiReportsAction,
+        getMoonshotTokensAction,
+        getScenarioAnalysisAction,
+        getCryptoInvestorsAction,
+        getTmaiAction
     ],
     
     // Initialize provider system for 1.x compatibility

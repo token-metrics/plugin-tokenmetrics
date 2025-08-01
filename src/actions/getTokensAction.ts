@@ -1,14 +1,16 @@
 import {
     type Action,
+    type ActionResult,
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
     type ActionExample,
     elizaLogger,
-    composeContext,
-    generateObject,
-    ModelClass
+    composePromptFromState,
+    parseKeyValueXml,
+    ModelType,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -21,17 +23,14 @@ import {
     resolveTokenSmart
 } from "./aiActionHelper";
 
-// Template for extracting tokens information from conversations
-const tokensTemplate = `# Task: Extract Token Search Request Information
+// Template for extracting tokens information from conversations (Updated to XML format)
+const tokensTemplate = `Extract token search request information from the message.
 
 IMPORTANT: This is for TOKEN SEARCH/DATABASE QUERIES, NOT price requests.
 
 Based on the conversation context, identify what token information the user is requesting.
 
-# Conversation Context:
-{{recentMessages}}
-
-# Instructions:
+Instructions:
 Look for TOKEN SEARCH/DATABASE requests, such as:
 - Token listing requests ("list tokens", "available tokens", "supported cryptocurrencies")
 - Token database searches ("search for [token] information", "find token details", "lookup token")
@@ -57,10 +56,16 @@ DO NOT MATCH PRICE REQUESTS:
 - "Get Bitcoin price" (this is a PRICE request)
 - "Show me DOGE price" (this is a PRICE request)
 
-Extract the relevant information for the TOKEN SEARCH request.
+Respond with an XML block containing only the extracted values:
 
-# Response Format:
-Return a structured object with the token search request information.`;
+<response>
+<cryptocurrency>specific token name if mentioned</cryptocurrency>
+<category>category filter if mentioned (e.g., DeFi, gaming, meme)</category>
+<exchange>exchange filter if mentioned</exchange>
+<search_type>general or specific or category or exchange</search_type>
+<market_cap_filter>high, medium, low if mentioned</market_cap_filter>
+<limit>number of results requested (default 20)</limit>
+</response>`;
 
 // Schema for the extracted data
 const TokensRequestSchema = z.object({
@@ -317,7 +322,7 @@ export const getTokensAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         const requestId = generateRequestId();
         
         elizaLogger.log("🚀 Starting TokenMetrics tokens handler (1.x)");
@@ -390,7 +395,10 @@ Please try again in a few moments.`,
                                 request_id: requestId
                             }
                         });
-                        return false;
+                        return createActionResult({
+                            success: false,
+                            error: "No tokens data available"
+                        });
                     }
 
                     const responseText = formatTokensResponse(tokens, "all", requestId);
@@ -412,7 +420,20 @@ Please try again in a few moments.`,
                     });
                 }
 
-                return true;
+                return createActionResult({
+                    success: true,
+                    text: "Successfully retrieved tokens list",
+                    data: {
+                        tokens_data: [], // Return empty array for fallback
+                        search_criteria: fallbackRequest,
+                        metadata: {
+                            endpoint: "tokens",
+                            data_source: "TokenMetrics API",
+                            timestamp: new Date().toISOString(),
+                            total_tokens: 0
+                        }
+                    }
+                });
             }
 
             // Use the extracted request for API call
@@ -481,7 +502,10 @@ Please try again in a few moments or try with different criteria.`,
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    error: "API fetch failed"
+                });
             }
 
             // Handle the response data
@@ -522,15 +546,33 @@ Please try again in a few moments or try with different criteria.`,
                 });
             }
 
-            return true;
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    tokens_data: tokens,
+                    analysis: analysis,
+                    source: "TokenMetrics Token Database",
+                    query_details: {
+                        search_type: tokensRequest.search_type,
+                        cryptocurrency: tokensRequest.cryptocurrency,
+                        category: tokensRequest.category,
+                        exchange: tokensRequest.exchange,
+                        confidence: tokensRequest.confidence,
+                        data_freshness: "real-time",
+                        request_id: requestId,
+                        extraction_method: "ai_with_cache_busting"
+                    }
+                }
+            });
 
         } catch (error) {
             elizaLogger.error("❌ Error in TokenMetrics tokens handler:", error);
             elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
             
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            
             if (callback) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                
                 await callback({
                     text: `❌ I encountered an error while fetching tokens: ${errorMessage}
 
@@ -550,20 +592,23 @@ Please check your TokenMetrics API key configuration and try again.`,
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
         }
     },
 
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "List all available tokens"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll fetch all available cryptocurrencies from TokenMetrics database.",
                     action: "GET_TOKENS_TOKENMETRICS"
@@ -572,13 +617,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me DeFi tokens"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get all DeFi category tokens from TokenMetrics database.",
                     action: "GET_TOKENS_TOKENMETRICS"
@@ -587,13 +632,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Search for Bitcoin token information"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll search for Bitcoin token details in TokenMetrics database.",
                     action: "GET_TOKENS_TOKENMETRICS"
@@ -602,13 +647,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Find token details for Ethereum"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll look up Ethereum token information from TokenMetrics database.",
                     action: "GET_TOKENS_TOKENMETRICS"
@@ -617,13 +662,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get supported cryptocurrencies list"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll retrieve the complete list of supported cryptocurrencies from TokenMetrics.",
                     action: "GET_TOKENS_TOKENMETRICS"
@@ -632,13 +677,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Search token database for Solana"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll search the TokenMetrics database for Solana token information.",
                     action: "GET_TOKENS_TOKENMETRICS"

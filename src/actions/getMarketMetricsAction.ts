@@ -1,5 +1,5 @@
-import type { Action, ActionExample, HandlerCallback, IAgentRuntime, Memory, State } from "@elizaos/core";
-import { elizaLogger, composeContext, generateObject, ModelClass } from "@elizaos/core";
+import type { Action, ActionExample, ActionResult, HandlerCallback, IAgentRuntime, Memory, State } from "@elizaos/core";
+import { elizaLogger, composePromptFromState, parseKeyValueXml, ModelType, createActionResult } from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -12,49 +12,46 @@ import {
 } from "./aiActionHelper";
 
 /**
- * TokenMetrics Market Metrics Action - Refactored with AI Extraction
- * 
- * Provides comprehensive market analytics including the crucial bullish/bearish 
- * market indicator that helps assess overall crypto market sentiment.
- * Real Endpoint: GET https://api.tokenmetrics.com/v2/market-metrics
+ * TokenMetrics Market Metrics Action - Migrated to ElizaOS 1.x
  */
 
-// Template for extracting market metrics requests from conversations
-const marketMetricsTemplate = `You are an AI assistant specialized in extracting TokenMetrics market analytics requests from user messages.
+// Template for extracting market metrics information (Updated to XML format)
+const marketMetricsTemplate = `Extract market metrics request information from the message.
 
-Your task is to analyze the user's message and extract relevant parameters for fetching market metrics data.
+Market metrics provide comprehensive market analysis including:
+- Overall market trends and sentiment
+- Market capitalization data
+- Volume analysis and liquidity metrics
+- Price movement patterns
+- Market dominance statistics
+- Fear & Greed index
+- Market volatility measurements
 
-Market metrics provide:
-- Bullish/bearish market indicators
-- Overall crypto market sentiment
-- Market direction analysis
-- Total crypto market insights
+Instructions:
+Look for MARKET METRICS requests, such as:
+- General market analysis ("What's the market doing?", "How's the crypto market?")
+- Market cap queries ("Total crypto market cap", "Market capitalization analysis")
+- Volume analysis ("Market volume trends", "Trading volume analysis")
+- Market sentiment ("Market sentiment today", "Fear and greed index")
+- Market trends ("Market trend analysis", "Overall market performance")
 
-Extract the following information from the user's request:
+EXAMPLES:
+- "How's the crypto market performing today?"
+- "What's the total market cap?"
+- "Show me market volume trends"
+- "Get market sentiment analysis"
+- "Market metrics overview"
+- "Current market trends"
 
-1. **Date Range** (optional):
-   - start_date: Start date for historical data (YYYY-MM-DD format)
-   - end_date: End date for historical data (YYYY-MM-DD format)
-   - If user mentions "current", "now", "today" - leave dates empty for current data
-   - If user mentions "past week/month" - calculate appropriate date range
+Respond with an XML block containing only the extracted values:
 
-2. **Data Preferences** (optional):
-   - limit: Number of data points to return (default: 50, max: 100)
-   - page: Page number for pagination (default: 1)
-
-3. **Analysis Focus** (extract intent):
-   - market_sentiment: User wants bullish/bearish analysis
-   - trend_analysis: User wants trend patterns
-   - strategic_insights: User wants investment implications
-   - current_status: User wants current market state
-
-Examples of user requests:
-- "What's the current crypto market sentiment?" → current data, focus on sentiment
-- "Show me market analytics for December 2024" → date range, general analytics
-- "Is the market bullish or bearish?" → current data, sentiment focus
-- "Give me market trends for the past 30 days" → 30-day range, trend focus
-
-Respond with a JSON object containing the extracted parameters.`;
+<response>
+<analysis_type>general or sentiment or volume or trends or dominance</analysis_type>
+<timeframe>hourly or daily or weekly or monthly</timeframe>
+<market_focus>total or defi or layer1 or altcoins or all</market_focus>
+<metrics_requested>cap, volume, sentiment, trends, volatility, or all</metrics_requested>
+<comparison_period>24h or 7d or 30d or 1y or none</comparison_period>
+</response>`;
 
 // Zod schema for market metrics requests
 const MarketMetricsRequestSchema = z.object({
@@ -79,7 +76,7 @@ const handler = async (
     state?: State,
     _options?: any,
     callback?: HandlerCallback
-): Promise<boolean> => {
+): Promise<ActionResult> => {
     elizaLogger.info("🏢 Starting TokenMetrics Market Metrics Action");
     
     try {
@@ -208,25 +205,32 @@ const handler = async (
             });
         }
         
-        return true;
+        return createActionResult({
+            success: true,
+            text: responseText,
+            data: {
+                market_metrics: marketMetrics,
+                analysis: marketAnalysis,
+                source: "TokenMetrics Market Analytics"
+            }
+        });
         
     } catch (error) {
-        elizaLogger.error("❌ Market Metrics Action Error:", error);
+        elizaLogger.error("❌ Error in market metrics handler:", error);
         
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        const errorText = `❌ **Error Getting Market Metrics**\n\n${errorMessage}\n\n💡 **Troubleshooting Tips**:\n• Check your TokenMetrics API key\n• Verify date format (YYYY-MM-DD)\n• Ensure you have access to market metrics endpoint`;
+        const errorText = `❌ Unable to fetch market metrics: ${error instanceof Error ? error.message : 'Unknown error'}`;
         
         if (callback) {
-            callback({
+            await callback({
                 text: errorText,
-                content: {
-                    success: false,
-                    error: errorMessage
-                }
+                content: { error: "Market metrics fetch failed" }
             });
         }
         
-        return false;
+        return createActionResult({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 };
 
@@ -257,45 +261,45 @@ const validate = async (runtime: IAgentRuntime, message: Memory, state?: State) 
 const examples: ActionExample[][] = [
     [
         {
-            user: "{{user1}}",
+            name: "{{user1}}",
             content: {
                 text: "What's the current crypto market sentiment?"
             }
         },
         {
-            user: "{{user2}}",
+            name: "{{agent}}",
             content: {
-                text: "I'll check the current TokenMetrics market metrics to assess overall cryptocurrency market sentiment.",
+                text: "I'll analyze the current crypto market sentiment using TokenMetrics market metrics.",
                 action: "GET_MARKET_METRICS_TOKENMETRICS"
             }
         }
     ],
     [
         {
-            user: "{{user1}}",
+            name: "{{user1}}",
             content: {
-                text: "Show me market analytics for the past 30 days"
+                text: "Show me market trends analysis"
             }
         },
         {
-            user: "{{user2}}",
+            name: "{{agent}}",
             content: {
-                text: "I'll retrieve TokenMetrics market analytics for the past 30 days to analyze recent trends.",
+                text: "Let me fetch comprehensive market trends analysis from TokenMetrics.",
                 action: "GET_MARKET_METRICS_TOKENMETRICS"
             }
         }
     ],
     [
         {
-            user: "{{user1}}",
+            name: "{{user1}}",
             content: {
-                text: "Is the crypto market bullish or bearish right now?"
+                text: "Is the market bullish or bearish right now?"
             }
         },
         {
-            user: "{{user2}}",
+            name: "{{agent}}",
             content: {
-                text: "I'll get the latest TokenMetrics market indicator to determine current market direction.",
+                text: "I'll check the current bullish/bearish market indicators for you.",
                 action: "GET_MARKET_METRICS_TOKENMETRICS"
             }
         }

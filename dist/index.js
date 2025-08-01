@@ -1,13 +1,132 @@
+var __defProp = Object.defineProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
 // src/index.ts
 import { elizaLogger as elizaLogger23 } from "@elizaos/core";
 
 // src/actions/getPriceAction.ts
-import { elizaLogger as elizaLogger2 } from "@elizaos/core";
+import { elizaLogger as elizaLogger2, createActionResult } from "@elizaos/core";
 
-// node_modules/zod/lib/index.mjs
+// node_modules/zod/v3/external.js
+var external_exports = {};
+__export(external_exports, {
+  BRAND: () => BRAND,
+  DIRTY: () => DIRTY,
+  EMPTY_PATH: () => EMPTY_PATH,
+  INVALID: () => INVALID,
+  NEVER: () => NEVER,
+  OK: () => OK,
+  ParseStatus: () => ParseStatus,
+  Schema: () => ZodType,
+  ZodAny: () => ZodAny,
+  ZodArray: () => ZodArray,
+  ZodBigInt: () => ZodBigInt,
+  ZodBoolean: () => ZodBoolean,
+  ZodBranded: () => ZodBranded,
+  ZodCatch: () => ZodCatch,
+  ZodDate: () => ZodDate,
+  ZodDefault: () => ZodDefault,
+  ZodDiscriminatedUnion: () => ZodDiscriminatedUnion,
+  ZodEffects: () => ZodEffects,
+  ZodEnum: () => ZodEnum,
+  ZodError: () => ZodError,
+  ZodFirstPartyTypeKind: () => ZodFirstPartyTypeKind,
+  ZodFunction: () => ZodFunction,
+  ZodIntersection: () => ZodIntersection,
+  ZodIssueCode: () => ZodIssueCode,
+  ZodLazy: () => ZodLazy,
+  ZodLiteral: () => ZodLiteral,
+  ZodMap: () => ZodMap,
+  ZodNaN: () => ZodNaN,
+  ZodNativeEnum: () => ZodNativeEnum,
+  ZodNever: () => ZodNever,
+  ZodNull: () => ZodNull,
+  ZodNullable: () => ZodNullable,
+  ZodNumber: () => ZodNumber,
+  ZodObject: () => ZodObject,
+  ZodOptional: () => ZodOptional,
+  ZodParsedType: () => ZodParsedType,
+  ZodPipeline: () => ZodPipeline,
+  ZodPromise: () => ZodPromise,
+  ZodReadonly: () => ZodReadonly,
+  ZodRecord: () => ZodRecord,
+  ZodSchema: () => ZodType,
+  ZodSet: () => ZodSet,
+  ZodString: () => ZodString,
+  ZodSymbol: () => ZodSymbol,
+  ZodTransformer: () => ZodEffects,
+  ZodTuple: () => ZodTuple,
+  ZodType: () => ZodType,
+  ZodUndefined: () => ZodUndefined,
+  ZodUnion: () => ZodUnion,
+  ZodUnknown: () => ZodUnknown,
+  ZodVoid: () => ZodVoid,
+  addIssueToContext: () => addIssueToContext,
+  any: () => anyType,
+  array: () => arrayType,
+  bigint: () => bigIntType,
+  boolean: () => booleanType,
+  coerce: () => coerce,
+  custom: () => custom,
+  date: () => dateType,
+  datetimeRegex: () => datetimeRegex,
+  defaultErrorMap: () => en_default,
+  discriminatedUnion: () => discriminatedUnionType,
+  effect: () => effectsType,
+  enum: () => enumType,
+  function: () => functionType,
+  getErrorMap: () => getErrorMap,
+  getParsedType: () => getParsedType,
+  instanceof: () => instanceOfType,
+  intersection: () => intersectionType,
+  isAborted: () => isAborted,
+  isAsync: () => isAsync,
+  isDirty: () => isDirty,
+  isValid: () => isValid,
+  late: () => late,
+  lazy: () => lazyType,
+  literal: () => literalType,
+  makeIssue: () => makeIssue,
+  map: () => mapType,
+  nan: () => nanType,
+  nativeEnum: () => nativeEnumType,
+  never: () => neverType,
+  null: () => nullType,
+  nullable: () => nullableType,
+  number: () => numberType,
+  object: () => objectType,
+  objectUtil: () => objectUtil,
+  oboolean: () => oboolean,
+  onumber: () => onumber,
+  optional: () => optionalType,
+  ostring: () => ostring,
+  pipeline: () => pipelineType,
+  preprocess: () => preprocessType,
+  promise: () => promiseType,
+  quotelessJson: () => quotelessJson,
+  record: () => recordType,
+  set: () => setType,
+  setErrorMap: () => setErrorMap,
+  strictObject: () => strictObjectType,
+  string: () => stringType,
+  symbol: () => symbolType,
+  transformer: () => effectsType,
+  tuple: () => tupleType,
+  undefined: () => undefinedType,
+  union: () => unionType,
+  unknown: () => unknownType,
+  util: () => util,
+  void: () => voidType
+});
+
+// node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
-  util2.assertEqual = (val) => val;
+  util2.assertEqual = (_) => {
+  };
   function assertIs(_arg) {
   }
   util2.assertIs = assertIs;
@@ -51,7 +170,7 @@ var util;
     }
     return void 0;
   };
-  util2.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && isFinite(val) && Math.floor(val) === val;
+  util2.isInteger = typeof Number.isInteger === "function" ? (val) => Number.isInteger(val) : (val) => typeof val === "number" && Number.isFinite(val) && Math.floor(val) === val;
   function joinValues(array, separator = " | ") {
     return array.map((val) => typeof val === "string" ? `'${val}'` : val).join(separator);
   }
@@ -103,7 +222,7 @@ var getParsedType = (data) => {
     case "string":
       return ZodParsedType.string;
     case "number":
-      return isNaN(data) ? ZodParsedType.nan : ZodParsedType.number;
+      return Number.isNaN(data) ? ZodParsedType.nan : ZodParsedType.number;
     case "boolean":
       return ZodParsedType.boolean;
     case "function":
@@ -136,6 +255,8 @@ var getParsedType = (data) => {
       return ZodParsedType.unknown;
   }
 };
+
+// node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -235,8 +356,9 @@ var ZodError = class _ZodError extends Error {
     const formErrors = [];
     for (const sub of this.issues) {
       if (sub.path.length > 0) {
-        fieldErrors[sub.path[0]] = fieldErrors[sub.path[0]] || [];
-        fieldErrors[sub.path[0]].push(mapper(sub));
+        const firstEl = sub.path[0];
+        fieldErrors[firstEl] = fieldErrors[firstEl] || [];
+        fieldErrors[firstEl].push(mapper(sub));
       } else {
         formErrors.push(mapper(sub));
       }
@@ -251,6 +373,8 @@ ZodError.create = (issues) => {
   const error = new ZodError(issues);
   return error;
 };
+
+// node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -312,6 +436,8 @@ var errorMap = (issue, _ctx) => {
         message = `String must contain ${issue.exact ? "exactly" : issue.inclusive ? `at least` : `over`} ${issue.minimum} character(s)`;
       else if (issue.type === "number")
         message = `Number must be ${issue.exact ? `exactly equal to ` : issue.inclusive ? `greater than or equal to ` : `greater than `}${issue.minimum}`;
+      else if (issue.type === "bigint")
+        message = `Number must be ${issue.exact ? `exactly equal to ` : issue.inclusive ? `greater than or equal to ` : `greater than `}${issue.minimum}`;
       else if (issue.type === "date")
         message = `Date must be ${issue.exact ? `exactly equal to ` : issue.inclusive ? `greater than or equal to ` : `greater than `}${new Date(Number(issue.minimum))}`;
       else
@@ -349,13 +475,18 @@ var errorMap = (issue, _ctx) => {
   }
   return { message };
 };
-var overrideErrorMap = errorMap;
+var en_default = errorMap;
+
+// node_modules/zod/v3/errors.js
+var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
 }
 function getErrorMap() {
   return overrideErrorMap;
 }
+
+// node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -395,7 +526,7 @@ function addIssueToContext(ctx, issueData) {
       // then schema-bound map if available
       overrideMap,
       // then global override map
-      overrideMap === errorMap ? void 0 : errorMap
+      overrideMap === en_default ? void 0 : en_default
       // then global default map
     ].filter((x) => !!x)
   });
@@ -464,24 +595,15 @@ var isAborted = (x) => x.status === "aborted";
 var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
-function __classPrivateFieldGet(receiver, state, kind, f) {
-  if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-  if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-  return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-}
-function __classPrivateFieldSet(receiver, state, value, kind, f) {
-  if (kind === "m") throw new TypeError("Private method is not writable");
-  if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
-  if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-  return kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value), value;
-}
+
+// node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
-  errorUtil2.toString = (message) => typeof message === "string" ? message : message === null || message === void 0 ? void 0 : message.message;
+  errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
-var _ZodEnum_cache;
-var _ZodNativeEnum_cache;
+
+// node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -492,7 +614,7 @@ var ParseInputLazyPath = class {
   }
   get path() {
     if (!this._cachedPath.length) {
-      if (this._key instanceof Array) {
+      if (Array.isArray(this._key)) {
         this._cachedPath.push(...this._path, ...this._key);
       } else {
         this._cachedPath.push(...this._path, this._key);
@@ -530,17 +652,16 @@ function processCreateParams(params) {
   if (errorMap2)
     return { errorMap: errorMap2, description };
   const customMap = (iss, ctx) => {
-    var _a, _b;
     const { message } = params;
     if (iss.code === "invalid_enum_value") {
-      return { message: message !== null && message !== void 0 ? message : ctx.defaultError };
+      return { message: message ?? ctx.defaultError };
     }
     if (typeof ctx.data === "undefined") {
-      return { message: (_a = message !== null && message !== void 0 ? message : required_error) !== null && _a !== void 0 ? _a : ctx.defaultError };
+      return { message: message ?? required_error ?? ctx.defaultError };
     }
     if (iss.code !== "invalid_type")
       return { message: ctx.defaultError };
-    return { message: (_b = message !== null && message !== void 0 ? message : invalid_type_error) !== null && _b !== void 0 ? _b : ctx.defaultError };
+    return { message: message ?? invalid_type_error ?? ctx.defaultError };
   };
   return { errorMap: customMap, description };
 }
@@ -592,14 +713,13 @@ var ZodType = class {
     throw result.error;
   }
   safeParse(data, params) {
-    var _a;
     const ctx = {
       common: {
         issues: [],
-        async: (_a = params === null || params === void 0 ? void 0 : params.async) !== null && _a !== void 0 ? _a : false,
-        contextualErrorMap: params === null || params === void 0 ? void 0 : params.errorMap
+        async: params?.async ?? false,
+        contextualErrorMap: params?.errorMap
       },
-      path: (params === null || params === void 0 ? void 0 : params.path) || [],
+      path: params?.path || [],
       schemaErrorMap: this._def.errorMap,
       parent: null,
       data,
@@ -609,7 +729,6 @@ var ZodType = class {
     return handleResult(ctx, result);
   }
   "~validate"(data) {
-    var _a, _b;
     const ctx = {
       common: {
         issues: [],
@@ -630,7 +749,7 @@ var ZodType = class {
           issues: ctx.common.issues
         };
       } catch (err) {
-        if ((_b = (_a = err === null || err === void 0 ? void 0 : err.message) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === null || _b === void 0 ? void 0 : _b.includes("encountered")) {
+        if (err?.message?.toLowerCase()?.includes("encountered")) {
           this["~standard"].async = true;
         }
         ctx.common = {
@@ -655,10 +774,10 @@ var ZodType = class {
     const ctx = {
       common: {
         issues: [],
-        contextualErrorMap: params === null || params === void 0 ? void 0 : params.errorMap,
+        contextualErrorMap: params?.errorMap,
         async: true
       },
-      path: (params === null || params === void 0 ? void 0 : params.path) || [],
+      path: params?.path || [],
       schemaErrorMap: this._def.errorMap,
       parent: null,
       data,
@@ -883,16 +1002,20 @@ function isValidJWT(jwt, alg) {
     return false;
   try {
     const [header] = jwt.split(".");
+    if (!header)
+      return false;
     const base64 = header.replace(/-/g, "+").replace(/_/g, "/").padEnd(header.length + (4 - header.length % 4) % 4, "=");
     const decoded = JSON.parse(atob(base64));
     if (typeof decoded !== "object" || decoded === null)
       return false;
-    if (!decoded.typ || !decoded.alg)
+    if ("typ" in decoded && decoded?.typ !== "JWT")
+      return false;
+    if (!decoded.alg)
       return false;
     if (alg && decoded.alg !== alg)
       return false;
     return true;
-  } catch (_a) {
+  } catch {
     return false;
   }
 }
@@ -1051,7 +1174,7 @@ var ZodString = class _ZodString extends ZodType {
       } else if (check.kind === "url") {
         try {
           new URL(input.data);
-        } catch (_a) {
+        } catch {
           ctx = this._getOrReturnCtx(input, ctx);
           addIssueToContext(ctx, {
             validation: "url",
@@ -1263,7 +1386,6 @@ var ZodString = class _ZodString extends ZodType {
     return this._addCheck({ kind: "cidr", ...errorUtil.errToObj(options) });
   }
   datetime(options) {
-    var _a, _b;
     if (typeof options === "string") {
       return this._addCheck({
         kind: "datetime",
@@ -1275,10 +1397,10 @@ var ZodString = class _ZodString extends ZodType {
     }
     return this._addCheck({
       kind: "datetime",
-      precision: typeof (options === null || options === void 0 ? void 0 : options.precision) === "undefined" ? null : options === null || options === void 0 ? void 0 : options.precision,
-      offset: (_a = options === null || options === void 0 ? void 0 : options.offset) !== null && _a !== void 0 ? _a : false,
-      local: (_b = options === null || options === void 0 ? void 0 : options.local) !== null && _b !== void 0 ? _b : false,
-      ...errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message)
+      precision: typeof options?.precision === "undefined" ? null : options?.precision,
+      offset: options?.offset ?? false,
+      local: options?.local ?? false,
+      ...errorUtil.errToObj(options?.message)
     });
   }
   date(message) {
@@ -1294,8 +1416,8 @@ var ZodString = class _ZodString extends ZodType {
     }
     return this._addCheck({
       kind: "time",
-      precision: typeof (options === null || options === void 0 ? void 0 : options.precision) === "undefined" ? null : options === null || options === void 0 ? void 0 : options.precision,
-      ...errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message)
+      precision: typeof options?.precision === "undefined" ? null : options?.precision,
+      ...errorUtil.errToObj(options?.message)
     });
   }
   duration(message) {
@@ -1312,8 +1434,8 @@ var ZodString = class _ZodString extends ZodType {
     return this._addCheck({
       kind: "includes",
       value,
-      position: options === null || options === void 0 ? void 0 : options.position,
-      ...errorUtil.errToObj(options === null || options === void 0 ? void 0 : options.message)
+      position: options?.position,
+      ...errorUtil.errToObj(options?.message)
     });
   }
   startsWith(value, message) {
@@ -1445,11 +1567,10 @@ var ZodString = class _ZodString extends ZodType {
   }
 };
 ZodString.create = (params) => {
-  var _a;
   return new ZodString({
     checks: [],
     typeName: ZodFirstPartyTypeKind.ZodString,
-    coerce: (_a = params === null || params === void 0 ? void 0 : params.coerce) !== null && _a !== void 0 ? _a : false,
+    coerce: params?.coerce ?? false,
     ...processCreateParams(params)
   });
 };
@@ -1457,9 +1578,9 @@ function floatSafeRemainder(val, step) {
   const valDecCount = (val.toString().split(".")[1] || "").length;
   const stepDecCount = (step.toString().split(".")[1] || "").length;
   const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount;
-  const valInt = parseInt(val.toFixed(decCount).replace(".", ""));
-  const stepInt = parseInt(step.toFixed(decCount).replace(".", ""));
-  return valInt % stepInt / Math.pow(10, decCount);
+  const valInt = Number.parseInt(val.toFixed(decCount).replace(".", ""));
+  const stepInt = Number.parseInt(step.toFixed(decCount).replace(".", ""));
+  return valInt % stepInt / 10 ** decCount;
 }
 var ZodNumber = class _ZodNumber extends ZodType {
   constructor() {
@@ -1669,7 +1790,8 @@ var ZodNumber = class _ZodNumber extends ZodType {
     return !!this._def.checks.find((ch) => ch.kind === "int" || ch.kind === "multipleOf" && util.isInteger(ch.value));
   }
   get isFinite() {
-    let max = null, min = null;
+    let max = null;
+    let min = null;
     for (const ch of this._def.checks) {
       if (ch.kind === "finite" || ch.kind === "int" || ch.kind === "multipleOf") {
         return true;
@@ -1688,7 +1810,7 @@ ZodNumber.create = (params) => {
   return new ZodNumber({
     checks: [],
     typeName: ZodFirstPartyTypeKind.ZodNumber,
-    coerce: (params === null || params === void 0 ? void 0 : params.coerce) || false,
+    coerce: params?.coerce || false,
     ...processCreateParams(params)
   });
 };
@@ -1702,7 +1824,7 @@ var ZodBigInt = class _ZodBigInt extends ZodType {
     if (this._def.coerce) {
       try {
         input.data = BigInt(input.data);
-      } catch (_a) {
+      } catch {
         return this._getInvalidInput(input);
       }
     }
@@ -1857,11 +1979,10 @@ var ZodBigInt = class _ZodBigInt extends ZodType {
   }
 };
 ZodBigInt.create = (params) => {
-  var _a;
   return new ZodBigInt({
     checks: [],
     typeName: ZodFirstPartyTypeKind.ZodBigInt,
-    coerce: (_a = params === null || params === void 0 ? void 0 : params.coerce) !== null && _a !== void 0 ? _a : false,
+    coerce: params?.coerce ?? false,
     ...processCreateParams(params)
   });
 };
@@ -1886,7 +2007,7 @@ var ZodBoolean = class extends ZodType {
 ZodBoolean.create = (params) => {
   return new ZodBoolean({
     typeName: ZodFirstPartyTypeKind.ZodBoolean,
-    coerce: (params === null || params === void 0 ? void 0 : params.coerce) || false,
+    coerce: params?.coerce || false,
     ...processCreateParams(params)
   });
 };
@@ -1905,7 +2026,7 @@ var ZodDate = class _ZodDate extends ZodType {
       });
       return INVALID;
     }
-    if (isNaN(input.data.getTime())) {
+    if (Number.isNaN(input.data.getTime())) {
       const ctx2 = this._getOrReturnCtx(input);
       addIssueToContext(ctx2, {
         code: ZodIssueCode.invalid_date
@@ -1994,7 +2115,7 @@ var ZodDate = class _ZodDate extends ZodType {
 ZodDate.create = (params) => {
   return new ZodDate({
     checks: [],
-    coerce: (params === null || params === void 0 ? void 0 : params.coerce) || false,
+    coerce: params?.coerce || false,
     typeName: ZodFirstPartyTypeKind.ZodDate,
     ...processCreateParams(params)
   });
@@ -2269,7 +2390,8 @@ var ZodObject = class _ZodObject extends ZodType {
       return this._cached;
     const shape = this._def.shape();
     const keys = util.objectKeys(shape);
-    return this._cached = { shape, keys };
+    this._cached = { shape, keys };
+    return this._cached;
   }
   _parse(input) {
     const parsedType = this._getType(input);
@@ -2319,8 +2441,8 @@ var ZodObject = class _ZodObject extends ZodType {
           });
           status.dirty();
         }
-      } else if (unknownKeys === "strip") ;
-      else {
+      } else if (unknownKeys === "strip") {
+      } else {
         throw new Error(`Internal ZodObject error: invalid unknownKeys value.`);
       }
     } else {
@@ -2367,11 +2489,10 @@ var ZodObject = class _ZodObject extends ZodType {
       unknownKeys: "strict",
       ...message !== void 0 ? {
         errorMap: (issue, ctx) => {
-          var _a, _b, _c, _d;
-          const defaultError = (_c = (_b = (_a = this._def).errorMap) === null || _b === void 0 ? void 0 : _b.call(_a, issue, ctx).message) !== null && _c !== void 0 ? _c : ctx.defaultError;
+          const defaultError = this._def.errorMap?.(issue, ctx).message ?? ctx.defaultError;
           if (issue.code === "unrecognized_keys")
             return {
-              message: (_d = errorUtil.errToObj(message).message) !== null && _d !== void 0 ? _d : defaultError
+              message: errorUtil.errToObj(message).message ?? defaultError
             };
           return {
             message: defaultError
@@ -2502,11 +2623,11 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   pick(mask) {
     const shape = {};
-    util.objectKeys(mask).forEach((key) => {
+    for (const key of util.objectKeys(mask)) {
       if (mask[key] && this.shape[key]) {
         shape[key] = this.shape[key];
       }
-    });
+    }
     return new _ZodObject({
       ...this._def,
       shape: () => shape
@@ -2514,11 +2635,11 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   omit(mask) {
     const shape = {};
-    util.objectKeys(this.shape).forEach((key) => {
+    for (const key of util.objectKeys(this.shape)) {
       if (!mask[key]) {
         shape[key] = this.shape[key];
       }
-    });
+    }
     return new _ZodObject({
       ...this._def,
       shape: () => shape
@@ -2532,14 +2653,14 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   partial(mask) {
     const newShape = {};
-    util.objectKeys(this.shape).forEach((key) => {
+    for (const key of util.objectKeys(this.shape)) {
       const fieldSchema = this.shape[key];
       if (mask && !mask[key]) {
         newShape[key] = fieldSchema;
       } else {
         newShape[key] = fieldSchema.optional();
       }
-    });
+    }
     return new _ZodObject({
       ...this._def,
       shape: () => newShape
@@ -2547,7 +2668,7 @@ var ZodObject = class _ZodObject extends ZodType {
   }
   required(mask) {
     const newShape = {};
-    util.objectKeys(this.shape).forEach((key) => {
+    for (const key of util.objectKeys(this.shape)) {
       if (mask && !mask[key]) {
         newShape[key] = this.shape[key];
       } else {
@@ -2558,7 +2679,7 @@ var ZodObject = class _ZodObject extends ZodType {
         }
         newShape[key] = newField;
       }
-    });
+    }
     return new _ZodObject({
       ...this._def,
       shape: () => newShape
@@ -3174,12 +3295,7 @@ var ZodFunction = class _ZodFunction extends ZodType {
       return makeIssue({
         data: args,
         path: ctx.path,
-        errorMaps: [
-          ctx.common.contextualErrorMap,
-          ctx.schemaErrorMap,
-          getErrorMap(),
-          errorMap
-        ].filter((x) => !!x),
+        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap(), en_default].filter((x) => !!x),
         issueData: {
           code: ZodIssueCode.invalid_arguments,
           argumentsError: error
@@ -3190,12 +3306,7 @@ var ZodFunction = class _ZodFunction extends ZodType {
       return makeIssue({
         data: returns,
         path: ctx.path,
-        errorMaps: [
-          ctx.common.contextualErrorMap,
-          ctx.schemaErrorMap,
-          getErrorMap(),
-          errorMap
-        ].filter((x) => !!x),
+        errorMaps: [ctx.common.contextualErrorMap, ctx.schemaErrorMap, getErrorMap(), en_default].filter((x) => !!x),
         issueData: {
           code: ZodIssueCode.invalid_return_type,
           returnTypeError: error
@@ -3319,10 +3430,6 @@ function createZodEnum(values, params) {
   });
 }
 var ZodEnum = class _ZodEnum extends ZodType {
-  constructor() {
-    super(...arguments);
-    _ZodEnum_cache.set(this, void 0);
-  }
   _parse(input) {
     if (typeof input.data !== "string") {
       const ctx = this._getOrReturnCtx(input);
@@ -3334,10 +3441,10 @@ var ZodEnum = class _ZodEnum extends ZodType {
       });
       return INVALID;
     }
-    if (!__classPrivateFieldGet(this, _ZodEnum_cache, "f")) {
-      __classPrivateFieldSet(this, _ZodEnum_cache, new Set(this._def.values), "f");
+    if (!this._cache) {
+      this._cache = new Set(this._def.values);
     }
-    if (!__classPrivateFieldGet(this, _ZodEnum_cache, "f").has(input.data)) {
+    if (!this._cache.has(input.data)) {
       const ctx = this._getOrReturnCtx(input);
       const expectedValues = this._def.values;
       addIssueToContext(ctx, {
@@ -3386,13 +3493,8 @@ var ZodEnum = class _ZodEnum extends ZodType {
     });
   }
 };
-_ZodEnum_cache = /* @__PURE__ */ new WeakMap();
 ZodEnum.create = createZodEnum;
 var ZodNativeEnum = class extends ZodType {
-  constructor() {
-    super(...arguments);
-    _ZodNativeEnum_cache.set(this, void 0);
-  }
   _parse(input) {
     const nativeEnumValues = util.getValidEnumValues(this._def.values);
     const ctx = this._getOrReturnCtx(input);
@@ -3405,10 +3507,10 @@ var ZodNativeEnum = class extends ZodType {
       });
       return INVALID;
     }
-    if (!__classPrivateFieldGet(this, _ZodNativeEnum_cache, "f")) {
-      __classPrivateFieldSet(this, _ZodNativeEnum_cache, new Set(util.getValidEnumValues(this._def.values)), "f");
+    if (!this._cache) {
+      this._cache = new Set(util.getValidEnumValues(this._def.values));
     }
-    if (!__classPrivateFieldGet(this, _ZodNativeEnum_cache, "f").has(input.data)) {
+    if (!this._cache.has(input.data)) {
       const expectedValues = util.objectValues(nativeEnumValues);
       addIssueToContext(ctx, {
         received: ctx.data,
@@ -3423,7 +3525,6 @@ var ZodNativeEnum = class extends ZodType {
     return this._def.values;
   }
 };
-_ZodNativeEnum_cache = /* @__PURE__ */ new WeakMap();
 ZodNativeEnum.create = (values, params) => {
   return new ZodNativeEnum({
     values,
@@ -3564,7 +3665,7 @@ var ZodEffects = class extends ZodType {
           parent: ctx
         });
         if (!isValid(base))
-          return base;
+          return INVALID;
         const result = effect.transform(base.value, checkCtx);
         if (result instanceof Promise) {
           throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
@@ -3573,8 +3674,11 @@ var ZodEffects = class extends ZodType {
       } else {
         return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
           if (!isValid(base))
-            return base;
-          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({ status: status.value, value: result }));
+            return INVALID;
+          return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
+            status: status.value,
+            value: result
+          }));
         });
       }
     }
@@ -3834,21 +3938,19 @@ function cleanParams(params, data) {
 function custom(check, _params = {}, fatal) {
   if (check)
     return ZodAny.create().superRefine((data, ctx) => {
-      var _a, _b;
       const r = check(data);
       if (r instanceof Promise) {
         return r.then((r2) => {
-          var _a2, _b2;
           if (!r2) {
             const params = cleanParams(_params, data);
-            const _fatal = (_b2 = (_a2 = params.fatal) !== null && _a2 !== void 0 ? _a2 : fatal) !== null && _b2 !== void 0 ? _b2 : true;
+            const _fatal = params.fatal ?? fatal ?? true;
             ctx.addIssue({ code: "custom", ...params, fatal: _fatal });
           }
         });
       }
       if (!r) {
         const params = cleanParams(_params, data);
-        const _fatal = (_b = (_a = params.fatal) !== null && _a !== void 0 ? _a : fatal) !== null && _b !== void 0 ? _b : true;
+        const _fatal = params.fatal ?? fatal ?? true;
         ctx.addIssue({ code: "custom", ...params, fatal: _fatal });
       }
       return;
@@ -3948,129 +4050,13 @@ var coerce = {
   date: (arg) => ZodDate.create({ ...arg, coerce: true })
 };
 var NEVER = INVALID;
-var z = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  defaultErrorMap: errorMap,
-  setErrorMap,
-  getErrorMap,
-  makeIssue,
-  EMPTY_PATH,
-  addIssueToContext,
-  ParseStatus,
-  INVALID,
-  DIRTY,
-  OK,
-  isAborted,
-  isDirty,
-  isValid,
-  isAsync,
-  get util() {
-    return util;
-  },
-  get objectUtil() {
-    return objectUtil;
-  },
-  ZodParsedType,
-  getParsedType,
-  ZodType,
-  datetimeRegex,
-  ZodString,
-  ZodNumber,
-  ZodBigInt,
-  ZodBoolean,
-  ZodDate,
-  ZodSymbol,
-  ZodUndefined,
-  ZodNull,
-  ZodAny,
-  ZodUnknown,
-  ZodNever,
-  ZodVoid,
-  ZodArray,
-  ZodObject,
-  ZodUnion,
-  ZodDiscriminatedUnion,
-  ZodIntersection,
-  ZodTuple,
-  ZodRecord,
-  ZodMap,
-  ZodSet,
-  ZodFunction,
-  ZodLazy,
-  ZodLiteral,
-  ZodEnum,
-  ZodNativeEnum,
-  ZodPromise,
-  ZodEffects,
-  ZodTransformer: ZodEffects,
-  ZodOptional,
-  ZodNullable,
-  ZodDefault,
-  ZodCatch,
-  ZodNaN,
-  BRAND,
-  ZodBranded,
-  ZodPipeline,
-  ZodReadonly,
-  custom,
-  Schema: ZodType,
-  ZodSchema: ZodType,
-  late,
-  get ZodFirstPartyTypeKind() {
-    return ZodFirstPartyTypeKind;
-  },
-  coerce,
-  any: anyType,
-  array: arrayType,
-  bigint: bigIntType,
-  boolean: booleanType,
-  date: dateType,
-  discriminatedUnion: discriminatedUnionType,
-  effect: effectsType,
-  "enum": enumType,
-  "function": functionType,
-  "instanceof": instanceOfType,
-  intersection: intersectionType,
-  lazy: lazyType,
-  literal: literalType,
-  map: mapType,
-  nan: nanType,
-  nativeEnum: nativeEnumType,
-  never: neverType,
-  "null": nullType,
-  nullable: nullableType,
-  number: numberType,
-  object: objectType,
-  oboolean,
-  onumber,
-  optional: optionalType,
-  ostring,
-  pipeline: pipelineType,
-  preprocess: preprocessType,
-  promise: promiseType,
-  record: recordType,
-  set: setType,
-  strictObject: strictObjectType,
-  string: stringType,
-  symbol: symbolType,
-  transformer: effectsType,
-  tuple: tupleType,
-  "undefined": undefinedType,
-  union: unionType,
-  unknown: unknownType,
-  "void": voidType,
-  NEVER,
-  ZodIssueCode,
-  quotelessJson,
-  ZodError
-});
 
 // src/actions/aiActionHelper.ts
 import {
   elizaLogger,
-  composeContext,
-  generateObject,
-  ModelClass
+  composePromptFromState,
+  ModelType,
+  parseKeyValueXml
 } from "@elizaos/core";
 var API_TIMEOUT = 1e4;
 var MAX_RETRIES = 3;
@@ -4144,40 +4130,22 @@ async function fetchWithRetry(url, options, maxRetries = MAX_RETRIES) {
   throw lastError;
 }
 async function extractTokenMetricsRequest(runtime, message, state, template, schema, requestId) {
-  elizaLogger.log("\u{1F504} Forcing fresh state composition with cache busting...");
-  state = await runtime.composeState(message);
-  elizaLogger.log("\u{1F4CA} Composed fresh state with cache busting");
-  const uniqueTemplate = `${template}
-
-# Cache Busting ID: ${requestId}
-# Timestamp: ${(/* @__PURE__ */ new Date()).toISOString()}
-
-USER MESSAGE: "${message.content.text}"
-
-Please analyze the CURRENT user message above and extract the relevant information.`;
-  const context = composeContext({
-    state,
-    template: uniqueTemplate
+  elizaLogger.log(`\u{1F504} [${requestId}] Starting AI extraction following migration docs...`);
+  const composedState = await runtime.composeState(message);
+  elizaLogger.log(`\u{1F4CA} [${requestId}] State composed successfully`);
+  const prompt = composePromptFromState({
+    state: composedState,
+    template
   });
-  elizaLogger.log("\u{1F3AF} Context created with cache busting, extracting information...");
-  console.log(`
-\u{1F50D} AI EXTRACTION CONTEXT [${requestId}]:`);
-  console.log(`\u{1F4DD} User message: "${message.content.text}"`);
-  console.log(`\u{1F4CB} Template being used:`);
-  console.log(uniqueTemplate);
-  console.log(`\u{1F51A} END CONTEXT [${requestId}]
-`);
-  const response = await generateObject({
-    runtime,
-    context,
-    modelClass: ModelClass.LARGE,
-    // Changed from SMALL to LARGE for better instruction following
-    schema
+  elizaLogger.log(`\u{1F4DD} [${requestId}] Prompt composed successfully`);
+  const result = await runtime.useModel(ModelType.TEXT_SMALL, {
+    prompt
   });
-  const extractedRequest = response.object;
-  elizaLogger.log("\u{1F3AF} AI Extracted request:", extractedRequest);
-  elizaLogger.log(`\u{1F194} Request ${requestId}: AI Processing completed`);
-  return extractedRequest;
+  elizaLogger.log(`\u{1F916} [${requestId}] Model result received`);
+  const content = parseKeyValueXml(result);
+  elizaLogger.log(`\u{1F50D} [${requestId}] Content parsed from XML`);
+  elizaLogger.log(`\u2705 [${requestId}] AI extraction completed successfully`);
+  return content;
 }
 async function callTokenMetricsAPI(endpoint, params, runtime) {
   const apiKey = validateAndGetApiKey(runtime);
@@ -4561,10 +4529,10 @@ function extractCryptocurrencySimple(text) {
   }
   return null;
 }
-var PriceRequestSchema = z.object({
-  cryptocurrency: z.string().describe("The cryptocurrency name or symbol (e.g., 'Bitcoin', 'BTC', 'Ethereum', 'ETH', 'Dogecoin', 'DOGE', 'Avalanche', 'AVAX')"),
-  symbol: z.string().optional().describe("The cryptocurrency symbol (e.g., 'BTC', 'ETH', 'SOL', 'DOGE', 'AVAX')"),
-  analysisType: z.enum(["current", "trend", "technical", "all"]).optional().describe("Type of price analysis to focus on")
+var PriceRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().describe("The cryptocurrency name or symbol (e.g., 'Bitcoin', 'BTC', 'Ethereum', 'ETH', 'Dogecoin', 'DOGE', 'Avalanche', 'AVAX')"),
+  symbol: external_exports.string().optional().describe("The cryptocurrency symbol (e.g., 'BTC', 'ETH', 'SOL', 'DOGE', 'AVAX')"),
+  analysisType: external_exports.enum(["current", "trend", "technical", "all"]).optional().describe("Type of price analysis to focus on")
 });
 var PRICE_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting cryptocurrency PRICE requests from natural language.
@@ -4751,13 +4719,13 @@ var getPriceAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "What's the price of Bitcoin?"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
           text: "I'll get the current Bitcoin price from TokenMetrics for you.",
           action: "GET_PRICE_TOKENMETRICS"
@@ -4766,13 +4734,13 @@ var getPriceAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "How much is Ethereum worth right now?"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
           text: "Let me fetch the latest Ethereum price data from TokenMetrics.",
           action: "GET_PRICE_TOKENMETRICS"
@@ -4781,13 +4749,13 @@ var getPriceAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get me Solana price trends"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
           text: "I'll retrieve Solana price data with trend analysis from TokenMetrics.",
           action: "GET_PRICE_TOKENMETRICS"
@@ -4812,13 +4780,16 @@ var getPriceAction = {
       console.log(`
 \u{1F50D} PRICE ACTION DEBUG [${requestId}]:`);
       console.log(`\u{1F4DD} User message: "${message.content.text}"`);
-      if (!state) {
-        state = await runtime.composeState(message);
+      let currentState = state;
+      if (!currentState) {
+        currentState = await runtime.composeState(message);
+      } else {
+        currentState = await runtime.composeState(message, ["RECENT_MESSAGES"]);
       }
       let priceRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state,
+        currentState,
         PRICE_EXTRACTION_TEMPLATE,
         PriceRequestSchema,
         requestId
@@ -4828,7 +4799,7 @@ var getPriceAction = {
       if (!priceRequest) {
         elizaLogger2.log(`[${requestId}] \u274C DEBUG: AI extraction returned null - analyzing with fallback...`);
         console.log(`\u274C AI extraction failed, trying fallback...`);
-        const cryptoFromText = extractCryptocurrencySimple(message.content.text);
+        const cryptoFromText = extractCryptocurrencySimple(message.content?.text || "");
         if (!cryptoFromText) {
           elizaLogger2.log(`[${requestId}] \u274C DEBUG: Fallback extraction also failed`);
           console.log(`\u274C Fallback extraction failed too`);
@@ -4853,7 +4824,20 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
               }
             });
           }
-          return false;
+          return createActionResult({
+            success: false,
+            text: `\u274C I couldn't identify which cryptocurrency you're asking about.
+
+I can get price data for any cryptocurrency supported by TokenMetrics including:
+\u2022 Bitcoin (BTC), Ethereum (ETH), Solana (SOL)
+\u2022 Cardano (ADA), Polygon (MATIC), Chainlink (LINK)
+\u2022 Uniswap (UNI), Avalanche (AVAX), Polkadot (DOT)
+\u2022 Dogecoin (DOGE), XRP, Litecoin (LTC)
+\u2022 And many more!
+
+Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
+            error: "No cryptocurrency identified"
+          });
         }
         priceRequest = {
           cryptocurrency: cryptoFromText,
@@ -4887,7 +4871,20 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
             }
           });
         }
-        return false;
+        return createActionResult({
+          success: false,
+          text: `\u274C I couldn't identify which cryptocurrency you're asking about.
+
+I can get price data for any cryptocurrency supported by TokenMetrics including:
+\u2022 Bitcoin (BTC), Ethereum (ETH), Solana (SOL)
+\u2022 Cardano (ADA), Polygon (MATIC), Chainlink (LINK)
+\u2022 Uniswap (UNI), Avalanche (AVAX), Polkadot (DOT)
+\u2022 Dogecoin (DOGE), XRP, Litecoin (LTC)
+\u2022 And many more!
+
+Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
+          error: "No cryptocurrency identified"
+        });
       }
       elizaLogger2.log(`[${requestId}] \u{1F50D} DEBUG: Starting token resolution for: "${cryptoToResolve}"`);
       console.log(`\u{1F50D} Starting token resolution for: "${cryptoToResolve}"`);
@@ -4927,7 +4924,21 @@ Try using the official name, such as:
             }
           });
         }
-        return false;
+        return createActionResult({
+          success: false,
+          text: `\u274C I couldn't find information for "${cryptoToResolve}".
+
+This might be:
+\u2022 A very new token not yet in TokenMetrics database
+\u2022 An alternative name or symbol I don't recognize
+\u2022 A spelling variation
+
+Try using the official name, such as:
+\u2022 Bitcoin, Ethereum, Solana, Cardano, Dogecoin
+\u2022 Uniswap, Chainlink, Polygon, Avalanche
+\u2022 Or check the exact spelling on CoinMarketCap`,
+          error: "Token not found"
+        });
       }
       elizaLogger2.log(`[${requestId}] \u2705 DEBUG: Successfully resolved token: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL}) - ID: ${tokenInfo.TOKEN_ID}`);
       const apiParams = {
@@ -4955,7 +4966,18 @@ Please try again in a few moments.`,
             }
           });
         }
-        return false;
+        return createActionResult({
+          success: false,
+          text: `\u274C No price data available for ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} at the moment.
+
+This could be due to:
+\u2022 Temporary data unavailability
+\u2022 Market data processing delays
+\u2022 Token not actively traded
+
+Please try again in a few moments.`,
+          error: "No price data"
+        });
       }
       const analysisType = priceRequest.analysisType || "current";
       const analysis = analyzePriceData(priceData, analysisType);
@@ -4979,7 +5001,17 @@ Please try again in a few moments.`,
           }
         });
       }
-      return true;
+      return createActionResult({
+        success: true,
+        text: responseText,
+        data: {
+          token_info: tokenInfo,
+          price_data: priceData,
+          analysis,
+          source: "TokenMetrics Price API",
+          request_id: requestId
+        }
+      });
     } catch (error) {
       elizaLogger2.error("\u274C Error in price action:", error);
       if (callback) {
@@ -4999,386 +5031,9 @@ Please check your TokenMetrics API key configuration and try again.`,
           }
         });
       }
-      return false;
-    }
-  }
-};
-
-// src/actions/getTraderGradesAction.ts
-import {
-  elizaLogger as elizaLogger3
-} from "@elizaos/core";
-var traderGradesTemplate = `# Task: Extract Trader Grades Request Information
-
-Based on the conversation context, identify what trader grades information the user is requesting.
-
-# Conversation Context:
-{{recentMessages}}
-
-# Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
-- Trader grade requests ("trader grades", "trading grades", "AI grades", "token grades", "ratings")
-- Grade types ("A", "B", "C", "D", "F" grades)
-- Time periods or date ranges
-- Market filters (category, exchange, market cap, volume)
-
-The user might say things like:
-- "Get trader grades for Bitcoin"
-- "Show me AI trader grades"
-- "What are the current token grades?"
-- "Get A-grade tokens for trading"
-- "Show trading grades for DeFi tokens"
-- "Get grades for tokens with high volume"
-- "What tokens have A+ grades today?"
-
-Extract the relevant information for the trader grades request.
-
-# Response Format:
-Return a structured object with the trader grades request information.`;
-var TraderGradesRequestSchema = z.object({
-  cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
-  grade_filter: z.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
-  category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-  exchange: z.string().nullable().describe("Exchange filter"),
-  time_period: z.string().nullable().describe("Time period or date range"),
-  market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
-  confidence: z.number().min(0).max(1).describe("Confidence in extraction")
-});
-async function fetchTraderGrades(params, runtime) {
-  elizaLogger3.log(`\u{1F4E1} Fetching trader grades with params:`, params);
-  try {
-    const data = await callTokenMetricsAPI("/v2/trader-grades", params, runtime);
-    if (!data) {
-      throw new Error("No data received from trader grades API");
-    }
-    elizaLogger3.log(`\u2705 Successfully fetched trader grades data`);
-    return data;
-  } catch (error) {
-    elizaLogger3.error("\u274C Error fetching trader grades:", error);
-    throw error;
-  }
-}
-function convertToLetterGrade(numericGrade) {
-  if (numericGrade >= 90) return "A";
-  if (numericGrade >= 80) return "B";
-  if (numericGrade >= 70) return "C";
-  if (numericGrade >= 60) return "D";
-  return "F";
-}
-function formatTraderGradesResponse(data, tokenInfo) {
-  if (!data || data.length === 0) {
-    return "\u274C No trader grades found for the specified criteria.";
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeCount = grades.length;
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  const processedGrades = grades.map((item) => {
-    const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade(numericGrade);
-    gradeDistribution[letterGrade]++;
-    return {
-      ...item,
-      LETTER_GRADE: letterGrade,
-      NUMERIC_GRADE: numericGrade
-    };
-  });
-  let response = `\u{1F4CA} **TokenMetrics Trader Grades Analysis**
-
-`;
-  if (tokenInfo) {
-    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
-`;
-  }
-  response += `\u{1F4C8} **Grade Summary**: ${gradeCount} tokens analyzed
-`;
-  response += `\u{1F7E2} **A Grade**: ${gradeDistribution.A} tokens (${(gradeDistribution.A / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F535} **B Grade**: ${gradeDistribution.B} tokens (${(gradeDistribution.B / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E1} **C Grade**: ${gradeDistribution.C} tokens (${(gradeDistribution.C / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E0} **D Grade**: ${gradeDistribution.D} tokens (${(gradeDistribution.D / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F534} **F Grade**: ${gradeDistribution.F} tokens (${(gradeDistribution.F / gradeCount * 100).toFixed(1)}%)
-
-`;
-  const topGrades = processedGrades.filter((g) => g.LETTER_GRADE === "A").sort((a, b) => b.NUMERIC_GRADE - a.NUMERIC_GRADE).slice(0, 5);
-  if (topGrades.length > 0) {
-    response += `\u{1F3C6} **Top A-Grade Tokens**:
-`;
-    topGrades.forEach((grade, index) => {
-      response += `${index + 1}. **${grade.TOKEN_SYMBOL}** (${grade.TOKEN_NAME}): Grade ${grade.LETTER_GRADE} (${grade.NUMERIC_GRADE.toFixed(1)})`;
-      if (grade.TM_TRADER_GRADE_24H_PCT_CHANGE) {
-        const change = grade.TM_TRADER_GRADE_24H_PCT_CHANGE;
-        const changeIcon = change > 0 ? "\u{1F4C8}" : change < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
-        response += ` ${changeIcon} ${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
-      }
-      response += `
-`;
-    });
-    response += `
-`;
-  }
-  if (gradeCount === 1 && tokenInfo) {
-    const token = processedGrades[0];
-    response += `\u{1F4CB} **Detailed Analysis for ${token.TOKEN_SYMBOL}**:
-`;
-    response += `\u2022 **Overall Grade**: ${token.LETTER_GRADE} (${token.NUMERIC_GRADE.toFixed(1)}/100)
-`;
-    if (token.TA_GRADE) response += `\u2022 **Technical Analysis**: ${convertToLetterGrade(token.TA_GRADE)} (${token.TA_GRADE.toFixed(1)}/100)
-`;
-    if (token.QUANT_GRADE) response += `\u2022 **Quantitative Analysis**: ${convertToLetterGrade(token.QUANT_GRADE)} (${token.QUANT_GRADE.toFixed(1)}/100)
-`;
-    if (token.TM_TRADER_GRADE_24H_PCT_CHANGE) {
-      const change = token.TM_TRADER_GRADE_24H_PCT_CHANGE;
-      const changeIcon = change > 0 ? "\u{1F4C8}" : change < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
-      response += `\u2022 **24h Change**: ${changeIcon} ${change > 0 ? "+" : ""}${change.toFixed(2)}%
-`;
-    }
-    response += `\u2022 **Last Updated**: ${new Date(token.DATE).toLocaleDateString()}
-
-`;
-  }
-  response += `\u{1F4A1} **AI Trading Recommendations**:
-`;
-  const aGradePercentage = gradeDistribution.A / gradeCount * 100;
-  const fGradePercentage = gradeDistribution.F / gradeCount * 100;
-  if (aGradePercentage > 30) {
-    response += `\u2022 Strong market with ${aGradePercentage.toFixed(1)}% A-grade tokens
-`;
-    response += `\u2022 Consider increasing exposure to top-rated cryptocurrencies
-`;
-    response += `\u2022 Focus on A and B grade tokens for long positions
-`;
-  } else if (fGradePercentage > 30) {
-    response += `\u2022 Weak market with ${fGradePercentage.toFixed(1)}% F-grade tokens
-`;
-    response += `\u2022 Exercise caution with new positions
-`;
-    response += `\u2022 Consider defensive strategies or cash positions
-`;
-  } else {
-    response += `\u2022 Mixed market conditions - selective approach recommended
-`;
-    response += `\u2022 Focus on highest-grade tokens with strong fundamentals
-`;
-    response += `\u2022 Avoid D and F grade tokens for new positions
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics AI Trader Grades
-`;
-  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-function analyzeTraderGrades(data) {
-  if (!data || data.length === 0) {
-    return { error: "No data to analyze" };
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  const processedGrades = grades.map((item) => {
-    const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade(numericGrade);
-    gradeDistribution[letterGrade]++;
-    return {
-      symbol: item.TOKEN_SYMBOL,
-      name: item.TOKEN_NAME,
-      grade: letterGrade,
-      score: numericGrade,
-      date: item.DATE,
-      ta_grade: item.TA_GRADE,
-      quant_grade: item.QUANT_GRADE,
-      trader_grade: item.TM_TRADER_GRADE,
-      change_24h: item.TM_TRADER_GRADE_24H_PCT_CHANGE
-    };
-  });
-  const analysis = {
-    total_tokens: grades.length,
-    grade_distribution: gradeDistribution,
-    top_tokens: processedGrades.filter((g) => g.grade === "A").sort((a, b) => b.score - a.score).slice(0, 10),
-    market_quality: "neutral"
-  };
-  const aPercentage = gradeDistribution.A / grades.length * 100;
-  const fPercentage = gradeDistribution.F / grades.length * 100;
-  if (aPercentage > 40) {
-    analysis.market_quality = "excellent";
-  } else if (aPercentage > 25) {
-    analysis.market_quality = "good";
-  } else if (fPercentage > 40) {
-    analysis.market_quality = "poor";
-  } else {
-    analysis.market_quality = "fair";
-  }
-  return analysis;
-}
-var getTraderGradesAction = {
-  name: "GET_TRADER_GRADES_TOKENMETRICS",
-  similes: [
-    "GET_TRADER_GRADES",
-    "GET_AI_GRADES",
-    "GET_TOKEN_GRADES",
-    "GET_TRADING_GRADES",
-    "TRADER_GRADES",
-    "AI_GRADES",
-    "TOKEN_RATINGS"
-  ],
-  description: "Get AI-generated trader grades and ratings for cryptocurrencies from TokenMetrics",
-  validate: async (runtime, message, state) => {
-    elizaLogger3.log("\u{1F50D} Validating getTraderGradesAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger3.error("\u274C Validation failed:", error);
-      return false;
-    }
-  },
-  handler: async (runtime, message, state, _options, callback) => {
-    const requestId = generateRequestId();
-    elizaLogger3.log("\u{1F680} Starting TokenMetrics trader grades handler (1.x)");
-    elizaLogger3.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger3.log(`\u{1F194} Request ID: ${requestId}`);
-    try {
-      validateAndGetApiKey(runtime);
-      if (!state) {
-        state = await runtime.composeState(message);
-      }
-      const gradesRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state,
-        traderGradesTemplate,
-        TraderGradesRequestSchema,
-        requestId
-      );
-      elizaLogger3.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
-      elizaLogger3.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || "general market"}"`);
-      if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
-        elizaLogger3.log("\u274C AI extraction failed or insufficient information");
-        if (callback) {
-          await callback({
-            text: `\u274C I couldn't identify specific trader grades criteria from your request.
-
-I can get AI trader grades for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Grade filters (A, B, C, D, F grades)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-
-Try asking something like:
-\u2022 "Get trader grades for Bitcoin"
-\u2022 "Show me A-grade tokens"
-\u2022 "What are the current AI grades?"
-\u2022 "Get trading grades for DeFi tokens"`,
-            content: {
-              error: "Insufficient trader grades criteria",
-              confidence: gradesRequest?.confidence || 0,
-              request_id: requestId
-            }
-          });
-        }
-        return false;
-      }
-      elizaLogger3.success("\u{1F3AF} Final extraction result:", gradesRequest);
-      const apiParams = {
-        limit: 50,
-        page: 1
-      };
-      let tokenInfo = null;
-      if (gradesRequest.cryptocurrency) {
-        elizaLogger3.log(`\u{1F50D} Resolving token for: "${gradesRequest.cryptocurrency}"`);
-        tokenInfo = await resolveTokenSmart(gradesRequest.cryptocurrency, runtime);
-        if (tokenInfo) {
-          apiParams.token_id = tokenInfo.TOKEN_ID;
-          elizaLogger3.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-        } else {
-          apiParams.symbol = gradesRequest.cryptocurrency.toUpperCase();
-          elizaLogger3.log(`\u{1F50D} Using symbol: ${gradesRequest.cryptocurrency}`);
-        }
-      }
-      if (gradesRequest.grade_filter && gradesRequest.grade_filter !== "any") {
-        apiParams.grade = gradesRequest.grade_filter;
-      }
-      if (gradesRequest.category) {
-        apiParams.category = gradesRequest.category;
-      }
-      if (gradesRequest.exchange) {
-        apiParams.exchange = gradesRequest.exchange;
-      }
-      elizaLogger3.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger3.log(`\u{1F4E1} Fetching trader grades data`);
-      const gradesData = await fetchTraderGrades(apiParams, runtime);
-      if (!gradesData) {
-        elizaLogger3.log("\u274C Failed to fetch trader grades data");
-        if (callback) {
-          await callback({
-            text: `\u274C Unable to fetch trader grades data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No grades available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-            content: {
-              error: "API fetch failed",
-              request_id: requestId
-            }
-          });
-        }
-        return false;
-      }
-      const grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
-      elizaLogger3.log(`\u{1F50D} Received ${grades.length} trader grades`);
-      const responseText = formatTraderGradesResponse(grades, tokenInfo);
-      const analysis = analyzeTraderGrades(grades);
-      elizaLogger3.success("\u2705 Successfully processed trader grades request");
-      if (callback) {
-        await callback({
-          text: responseText,
-          content: {
-            success: true,
-            grades_data: grades,
-            analysis,
-            source: "TokenMetrics AI Trader Grades",
-            request_id: requestId,
-            query_details: {
-              original_request: gradesRequest.cryptocurrency || "general market",
-              grade_filter: gradesRequest.grade_filter,
-              category: gradesRequest.category,
-              confidence: gradesRequest.confidence,
-              data_freshness: "real-time",
-              request_id: requestId,
-              extraction_method: "ai_with_cache_busting"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      elizaLogger3.error("\u274C Error in TokenMetrics trader grades handler:", error);
-      elizaLogger3.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        await callback({
-          text: `\u274C I encountered an error while fetching trader grades: ${errorMessage}
+      return createActionResult({
+        success: false,
+        text: `\u274C I encountered an error while fetching price data: ${error instanceof Error ? error.message : "Unknown error"}
 
 This could be due to:
 \u2022 Network connectivity issues
@@ -5387,674 +5042,66 @@ This could be due to:
 \u2022 Temporary system overload
 
 Please check your TokenMetrics API key configuration and try again.`,
-          content: {
-            error: errorMessage,
-            error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true,
-            request_id: requestId
-          }
-        });
-      }
-      return false;
-    }
-  },
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get trader grades for Bitcoin"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll fetch the latest AI trader grades for Bitcoin from TokenMetrics.",
-          action: "GET_TRADER_GRADES_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me A-grade tokens"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get all A-grade tokens from TokenMetrics AI trader grades.",
-          action: "GET_TRADER_GRADES_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What are the current AI trading grades?"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "Let me fetch the latest AI trader grades and ratings from TokenMetrics.",
-          action: "GET_TRADER_GRADES_TOKENMETRICS"
-        }
-      }
-    ]
-  ]
-};
-
-// src/actions/getInvestorGradesAction.ts
-import {
-  elizaLogger as elizaLogger4
-} from "@elizaos/core";
-var investorGradesTemplate = `# Task: Extract Investor Grades Request Information
-
-Based on the conversation context, identify what investor grades information the user is requesting.
-
-# Conversation Context:
-{{recentMessages}}
-
-# CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
-
-# Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, DOGE, SHIB, PEPE, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, Dogecoin, etc.)
-- Investor grade requests ("investor grades", "investment grades", "long-term grades", "investment ratings")
-- Grade types ("A", "B", "C", "D", "F" grades)
-- Investment timeframes ("long-term", "investment horizon", "hodl")
-- Market filters (category, exchange, market cap, volume)
-
-PATTERN RECOGNITION:
-- "Bitcoin" or "BTC" \u2192 cryptocurrency: "Bitcoin", symbol: "BTC"
-- "Ethereum" or "ETH" \u2192 cryptocurrency: "Ethereum", symbol: "ETH"  
-- "Solana" or "SOL" \u2192 cryptocurrency: "Solana", symbol: "SOL"
-- "Dogecoin" or "DOGE" \u2192 cryptocurrency: "Dogecoin", symbol: "DOGE"
-- "Avalanche" or "AVAX" \u2192 cryptocurrency: "Avalanche", symbol: "AVAX"
-
-The user might say things like:
-- "Get investor grades for Bitcoin"
-- "Show me long-term investment grades"
-- "What are the current investor ratings?"
-- "Get A-grade tokens for investment"
-- "Show investment grades for DeFi tokens"
-- "Get grades for long-term holding"
-- "What tokens have A+ investor grades?"
-- "Investment rating for SOL"
-- "Show me investment grades for AVAX"
-
-Extract the relevant information for the investor grades request.
-
-# Response Format:
-Return a structured object with the investor grades request information.
-
-# Cache Busting ID: {{requestId}}
-# Timestamp: {{timestamp}}
-
-USER MESSAGE: "{{userMessage}}"
-
-Please analyze the CURRENT user message above and extract the relevant information.`;
-var InvestorGradesRequestSchema = z.object({
-  cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
-  symbol: z.string().nullable().describe("The cryptocurrency symbol if identified"),
-  grade_filter: z.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
-  category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-  confidence: z.number().min(0).max(1).describe("Confidence in extraction")
-});
-function extractCryptocurrencySimple2(text) {
-  const cryptoPatterns = [
-    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
-    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
-    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
-    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
-    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
-    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
-    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
-    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
-    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
-    { regex: /\b(shiba|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" },
-    { regex: /\b(pepe)\b/i, name: "Pepe", symbol: "PEPE" },
-    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" }
-  ];
-  for (const pattern of cryptoPatterns) {
-    if (pattern.regex.test(text)) {
-      return { cryptocurrency: pattern.name, symbol: pattern.symbol };
-    }
-  }
-  return null;
-}
-function convertToLetterGrade2(numericGrade) {
-  if (numericGrade >= 90) return "A";
-  if (numericGrade >= 80) return "B";
-  if (numericGrade >= 70) return "C";
-  if (numericGrade >= 60) return "D";
-  return "F";
-}
-async function fetchInvestorGrades(params, runtime) {
-  elizaLogger4.log(`\u{1F4E1} Fetching investor grades with params:`, params);
-  try {
-    const data = await callTokenMetricsAPI("/v2/investor-grades", params, runtime);
-    if (!data) {
-      throw new Error("No data received from investor grades API");
-    }
-    elizaLogger4.log(`\u2705 Successfully fetched investor grades data`);
-    return data;
-  } catch (error) {
-    elizaLogger4.error("\u274C Error fetching investor grades:", error);
-    throw error;
-  }
-}
-function formatInvestorGradesResponse(data, tokenInfo) {
-  if (!data || data.length === 0) {
-    return "\u274C No investor grades found for the specified criteria.";
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeCount = grades.length;
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  grades.forEach((item) => {
-    const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade2(numericGrade);
-    gradeDistribution[letterGrade]++;
-  });
-  let response = `\u{1F4CA} **TokenMetrics Investor Grades Analysis**
-
-`;
-  if (tokenInfo) {
-    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
-`;
-  }
-  response += `\u{1F4C8} **Grade Summary**: ${gradeCount} tokens analyzed
-`;
-  response += `\u{1F7E2} **A Grade**: ${gradeDistribution.A} tokens (${(gradeDistribution.A / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F535} **B Grade**: ${gradeDistribution.B} tokens (${(gradeDistribution.B / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E1} **C Grade**: ${gradeDistribution.C} tokens (${(gradeDistribution.C / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E0} **D Grade**: ${gradeDistribution.D} tokens (${(gradeDistribution.D / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F534} **F Grade**: ${gradeDistribution.F} tokens (${(gradeDistribution.F / gradeCount * 100).toFixed(1)}%)
-
-`;
-  if (tokenInfo && grades.length === 1) {
-    const grade = grades[0];
-    const numericGrade = grade.TM_INVESTOR_GRADE || grade.INVESTOR_GRADE || grade.TA_GRADE || grade.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade2(numericGrade);
-    response += `\u{1F4CB} **Detailed Analysis for ${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL}**:
-`;
-    response += `\u2022 **Overall Grade**: ${letterGrade} (${numericGrade.toFixed(1)}/100)
-`;
-    if (grade.TA_GRADE) {
-      response += `\u2022 **Technical Analysis**: ${convertToLetterGrade2(grade.TA_GRADE)} (${grade.TA_GRADE.toFixed(1)}/100)
-`;
-    }
-    if (grade.QUANT_GRADE) {
-      response += `\u2022 **Quantitative Analysis**: ${convertToLetterGrade2(grade.QUANT_GRADE)} (${grade.QUANT_GRADE.toFixed(1)}/100)
-`;
-    }
-    if (grade.CHANGE_24H) {
-      const changeIcon = grade.CHANGE_24H >= 0 ? "\u{1F4C8}" : "\u{1F4C9}";
-      response += `\u2022 **24h Change**: ${changeIcon} ${grade.CHANGE_24H > 0 ? "+" : ""}${grade.CHANGE_24H.toFixed(2)}%
-`;
-    }
-    if (grade.DATE) {
-      response += `\u2022 **Last Updated**: ${grade.DATE}
-`;
-    }
-    response += `
-`;
-  } else {
-    const topGrades = grades.map((item) => ({
-      ...item,
-      numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
-    })).filter((g) => g.numericGrade >= 90).sort((a, b) => b.numericGrade - a.numericGrade).slice(0, 5);
-    if (topGrades.length > 0) {
-      response += `\u{1F3C6} **Top A-Grade Investment Tokens**:
-`;
-      topGrades.forEach((grade, index) => {
-        const letterGrade = convertToLetterGrade2(grade.numericGrade);
-        response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${letterGrade} (${grade.numericGrade.toFixed(1)})`;
-        if (grade.CHANGE_24H) {
-          const changeIcon = grade.CHANGE_24H >= 0 ? "\u{1F4C8}" : "\u{1F4C9}";
-          response += ` ${changeIcon} ${grade.CHANGE_24H > 0 ? "+" : ""}${grade.CHANGE_24H.toFixed(2)}%`;
-        }
-        response += `
-`;
+        error: error instanceof Error ? error.message : "Unknown error"
       });
-      response += `
-`;
     }
   }
-  response += `\u{1F4A1} **AI Investment Recommendations**:
-`;
-  const aGradePercentage = gradeDistribution.A / gradeCount * 100;
-  const fGradePercentage = gradeDistribution.F / gradeCount * 100;
-  if (aGradePercentage > 30) {
-    response += `\u2022 Strong investment environment with ${aGradePercentage.toFixed(1)}% A-grade tokens
-`;
-    response += `\u2022 Consider building long-term positions in top-rated cryptocurrencies
-`;
-    response += `\u2022 Focus on A and B grade tokens for portfolio allocation
-`;
-  } else if (fGradePercentage > 30) {
-    response += `\u2022 Challenging investment environment with ${fGradePercentage.toFixed(1)}% F-grade tokens
-`;
-    response += `\u2022 Exercise extreme caution with new investments
-`;
-    response += `\u2022 Consider dollar-cost averaging or waiting for better conditions
-`;
-  } else {
-    response += `\u2022 Mixed investment conditions - selective approach recommended
-`;
-    response += `\u2022 Focus on highest-grade tokens with strong fundamentals
-`;
-    response += `\u2022 Avoid D and F grade tokens for long-term holdings
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
-`;
-  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-function analyzeInvestorGrades(data) {
-  if (!data || data.length === 0) {
-    return { error: "No data to analyze" };
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  grades.forEach((item) => {
-    const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade2(numericGrade);
-    gradeDistribution[letterGrade]++;
-  });
-  const analysis = {
-    total_tokens: grades.length,
-    grade_distribution: gradeDistribution,
-    top_investments: grades.map((item) => ({
-      ...item,
-      numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
-    })).filter((g) => g.numericGrade >= 90).sort((a, b) => b.numericGrade - a.numericGrade).slice(0, 10).map((g) => ({
-      symbol: g.TOKEN_SYMBOL || g.SYMBOL,
-      name: g.TOKEN_NAME || g.NAME,
-      grade: convertToLetterGrade2(g.numericGrade),
-      score: g.numericGrade,
-      date: g.DATE
-    })),
-    investment_quality: "neutral"
-  };
-  const aPercentage = gradeDistribution.A / grades.length * 100;
-  const fPercentage = gradeDistribution.F / grades.length * 100;
-  if (aPercentage > 40) {
-    analysis.investment_quality = "excellent";
-  } else if (aPercentage > 25) {
-    analysis.investment_quality = "good";
-  } else if (fPercentage > 40) {
-    analysis.investment_quality = "poor";
-  } else {
-    analysis.investment_quality = "fair";
-  }
-  return analysis;
-}
-var getInvestorGradesAction = {
-  name: "GET_INVESTOR_GRADES_TOKENMETRICS",
-  similes: [
-    "GET_INVESTOR_GRADES",
-    "GET_INVESTMENT_GRADES",
-    "GET_LONG_TERM_GRADES",
-    "GET_INVESTMENT_RATINGS",
-    "INVESTOR_GRADES",
-    "INVESTMENT_GRADES",
-    "LONG_TERM_RATINGS"
-  ],
-  description: "Get AI-generated investor grades and ratings for long-term cryptocurrency investments from TokenMetrics",
-  validate: async (runtime, message, state) => {
-    elizaLogger4.log("\u{1F50D} Validating getInvestorGradesAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger4.error("\u274C Validation failed:", error);
-      return false;
-    }
-  },
-  handler: async (runtime, message, state, _options, callback) => {
-    const requestId = generateRequestId();
-    elizaLogger4.log("\u{1F680} Starting TokenMetrics investor grades handler (1.x)");
-    elizaLogger4.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger4.log(`\u{1F194} Request ID: ${requestId}`);
-    try {
-      validateAndGetApiKey(runtime);
-      if (!state) {
-        state = await runtime.composeState(message);
-      }
-      const gradesRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state,
-        investorGradesTemplate,
-        InvestorGradesRequestSchema,
-        requestId
-      );
-      elizaLogger4.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
-      elizaLogger4.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || "general market"}"`);
-      let finalRequest = gradesRequest;
-      if (!gradesRequest.cryptocurrency || gradesRequest.confidence < 0.5) {
-        elizaLogger4.log("\u{1F504} Applying regex fallback for cryptocurrency extraction");
-        const regexResult = extractCryptocurrencySimple2(message.content?.text || "");
-        if (regexResult) {
-          finalRequest = {
-            ...gradesRequest,
-            cryptocurrency: regexResult.cryptocurrency,
-            symbol: regexResult.symbol,
-            confidence: Math.max(gradesRequest.confidence, 0.8)
-          };
-          elizaLogger4.log("\u2705 Regex fallback successful:", regexResult);
-        }
-      }
-      if (!finalRequest.cryptocurrency && !finalRequest.grade_filter && !finalRequest.category && finalRequest.confidence < 0.3) {
-        elizaLogger4.log("\u274C AI extraction failed or insufficient information");
-        if (callback) {
-          await callback({
-            text: `\u274C I couldn't identify specific investor grades criteria from your request.
-
-I can get AI investor grades for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Grade filters (A, B, C, D, F grades)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-
-Try asking something like:
-\u2022 "Get investor grades for Bitcoin"
-\u2022 "Show me A-grade investment tokens"
-\u2022 "What are the current long-term grades?"
-\u2022 "Get investment grades for DeFi tokens"`,
-            content: {
-              error: "Insufficient investor grades criteria",
-              confidence: finalRequest?.confidence || 0,
-              request_id: requestId
-            }
-          });
-        }
-        return false;
-      }
-      elizaLogger4.success("\u{1F3AF} Final extraction result:", finalRequest);
-      const apiParams = {
-        limit: 50,
-        page: 1
-      };
-      let tokenInfo = null;
-      if (finalRequest.cryptocurrency) {
-        elizaLogger4.log(`\u{1F50D} Resolving token for: "${finalRequest.cryptocurrency}"`);
-        try {
-          tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
-          if (tokenInfo) {
-            apiParams.token_id = tokenInfo.TOKEN_ID;
-            elizaLogger4.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-          } else {
-            apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
-            elizaLogger4.log(`\u{1F50D} Using symbol: ${finalRequest.cryptocurrency}`);
-          }
-        } catch (error) {
-          elizaLogger4.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
-          apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
-          elizaLogger4.log(`\u{1F50D} Fallback to symbol parameter: ${finalRequest.cryptocurrency.toUpperCase()}`);
-        }
-      }
-      if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
-        elizaLogger4.log(`\u{1F50D} Grade filter requested: ${finalRequest.grade_filter} (will filter results post-API)`);
-      }
-      if (finalRequest.category) {
-        apiParams.category = finalRequest.category;
-      }
-      elizaLogger4.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger4.log(`\u{1F4E1} Fetching investor grades data`);
-      const gradesData = await fetchInvestorGrades(apiParams, runtime);
-      if (!gradesData) {
-        elizaLogger4.log("\u274C Failed to fetch investor grades data");
-        if (callback) {
-          await callback({
-            text: `\u274C Unable to fetch investor grades data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No grades available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-            content: {
-              error: "API fetch failed",
-              request_id: requestId
-            }
-          });
-        }
-        return false;
-      }
-      let grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
-      if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
-        elizaLogger4.log(`\u{1F50D} Applying grade filter: ${finalRequest.grade_filter}`);
-        const gradeRanges = {
-          "A": [90, 100],
-          "B": [80, 89.99],
-          "C": [70, 79.99],
-          "D": [60, 69.99],
-          "F": [0, 59.99]
-        };
-        const [minGrade, maxGrade] = gradeRanges[finalRequest.grade_filter] || [0, 100];
-        const originalCount = grades.length;
-        grades = grades.filter((token) => {
-          const numericGrade = token.TM_INVESTOR_GRADE || token.INVESTOR_GRADE || token.TA_GRADE || token.QUANT_GRADE || 0;
-          return numericGrade >= minGrade && numericGrade <= maxGrade;
-        });
-        elizaLogger4.log(`\u{1F50D} Grade filtering: ${originalCount} \u2192 ${grades.length} tokens (${finalRequest.grade_filter}-grade: ${minGrade}-${maxGrade})`);
-        if (grades.length === 0) {
-          elizaLogger4.log(`\u274C No ${finalRequest.grade_filter}-grade tokens found`);
-          if (callback) {
-            await callback({
-              text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
-
-I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
-
-**${finalRequest.grade_filter}-Grade Requirements:**
-\u2022 Grade range: ${minGrade} - ${maxGrade}
-\u2022 Current market conditions may not have tokens in this range
-
-**Suggestions:**
-\u2022 Try a different grade range (A, B, C, D, F)
-\u2022 Check general market grades: "Show me current investor grades"
-\u2022 Look for specific tokens: "Get investor grades for Bitcoin"
-
-\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
-\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
-              content: {
-                error: "No tokens found for grade filter",
-                grade_filter: finalRequest.grade_filter,
-                grade_range: [minGrade, maxGrade],
-                request_id: requestId
-              }
-            });
-          }
-          return false;
-        }
-      }
-      if (grades.length > 1 && apiParams.symbol) {
-        elizaLogger4.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
-        const mainTokenSelectors = [
-          // For Bitcoin - select the main Bitcoin, not wrapped versions
-          (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
-          // For Dogecoin - select the main Dogecoin, not other DOGE tokens
-          (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
-          // For Ethereum - select the main Ethereum
-          (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
-          // For Avalanche - select the main Avalanche, not wrapped versions
-          (token) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
-          // For other tokens - prefer exact name matches or shortest/simplest names
-          (token) => {
-            const name = token.TOKEN_NAME?.toLowerCase() || "";
-            const symbol = token.TOKEN_SYMBOL?.toLowerCase() || "";
-            const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis", "wormhole", "beam"];
-            const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
-            if (hasAvoidKeywords) return false;
-            if (symbol === "btc" && name.includes("bitcoin")) return true;
-            if (symbol === "eth" && name.includes("ethereum")) return true;
-            if (symbol === "doge" && name.includes("dogecoin")) return true;
-            if (symbol === "sol" && name.includes("solana")) return true;
-            if (symbol === "avax" && name.includes("avalanche")) return true;
-            return false;
-          }
-        ];
-        let selectedToken = null;
-        for (const selector of mainTokenSelectors) {
-          const match = grades.find(selector);
-          if (match) {
-            selectedToken = match;
-            elizaLogger4.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
-            break;
-          }
-        }
-        if (selectedToken) {
-          grades = [selectedToken];
-          elizaLogger4.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
-        } else {
-          elizaLogger4.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${grades[0]?.TOKEN_NAME || "unknown"}`);
-        }
-      }
-      elizaLogger4.log(`\u{1F50D} Final grades count: ${grades.length}`);
-      const responseText = formatInvestorGradesResponse(grades, tokenInfo);
-      const analysis = analyzeInvestorGrades(grades);
-      elizaLogger4.success("\u2705 Successfully processed investor grades request");
-      if (callback) {
-        await callback({
-          text: responseText,
-          content: {
-            success: true,
-            grades_data: grades,
-            analysis,
-            source: "TokenMetrics AI Investor Grades",
-            request_id: requestId,
-            query_details: {
-              original_request: finalRequest.cryptocurrency || "general market",
-              grade_filter: finalRequest.grade_filter,
-              category: finalRequest.category,
-              confidence: finalRequest.confidence,
-              data_freshness: "real-time",
-              request_id: requestId,
-              extraction_method: "ai_with_cache_busting_and_regex_fallback"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      elizaLogger4.error("\u274C Error in TokenMetrics investor grades handler:", error);
-      elizaLogger4.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        await callback({
-          text: `\u274C I encountered an error while fetching investor grades: ${errorMessage}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
-          content: {
-            error: errorMessage,
-            error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true,
-            request_id: requestId
-          }
-        });
-      }
-      return false;
-    }
-  },
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get investor grades for Bitcoin"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll fetch the latest AI investor grades for Bitcoin from TokenMetrics.",
-          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me A-grade investment tokens"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get all A-grade tokens for long-term investment from TokenMetrics.",
-          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What are the current long-term investment grades?"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "Let me fetch the latest AI investor grades and ratings from TokenMetrics.",
-          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
-        }
-      }
-    ]
-  ]
 };
 
 // src/actions/getQuantmetricsAction.ts
 import {
-  elizaLogger as elizaLogger5
+  elizaLogger as elizaLogger3,
+  createActionResult as createActionResult2
 } from "@elizaos/core";
-var QuantmetricsRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  category: z.string().optional().describe("Token category filter (e.g., defi, layer1)"),
-  exchange: z.string().optional().describe("Exchange filter"),
-  marketcap: z.number().optional().describe("Minimum market cap filter"),
-  volume: z.number().optional().describe("Minimum volume filter"),
-  fdv: z.number().optional().describe("Minimum fully diluted valuation filter"),
-  limit: z.number().min(1).max(1e3).optional().describe("Number of results to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["risk", "returns", "performance", "all"]).optional().describe("Type of analysis to focus on")
+var QuantmetricsRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  category: external_exports.string().optional().describe("Token category filter (e.g., defi, layer1)"),
+  exchange: external_exports.string().optional().describe("Exchange filter"),
+  marketcap: external_exports.number().optional().describe("Minimum market cap filter"),
+  volume: external_exports.number().optional().describe("Minimum volume filter"),
+  fdv: external_exports.number().optional().describe("Minimum fully diluted valuation filter"),
+  limit: external_exports.number().min(1).max(1e3).optional().describe("Number of results to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["risk", "returns", "performance", "all"]).optional().describe("Type of analysis to focus on")
 });
+var quantmetricsTemplate = `Extract quantmetrics request information from the message.
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
+Quantmetrics provide:
+- Quantitative analysis and metrics
+- Mathematical models and scoring
+- Statistical performance indicators
+- Risk-adjusted return metrics
+- Portfolio optimization data
+- Algorithmic trading insights
+
+Instructions:
+Look for QUANTMETRICS requests, such as:
+- Quantitative analysis ("Quantmetrics for [TOKEN]", "Get quant analysis")
+- Statistical metrics ("Statistical analysis", "Quant scoring")
+- Risk metrics ("Risk-adjusted returns", "Quantitative risk")
+- Performance metrics ("Quant performance", "Mathematical analysis")
+
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+
+Examples of request patterns (but extract the actual token from user's message):
+- "Get quantmetrics for [TOKEN]" \u2192 extract [TOKEN]
+- "Show me quantitative analysis for [TOKEN]" \u2192 extract [TOKEN]
+- "Quantitative metrics for [TOKEN]" \u2192 extract [TOKEN]
+- "Risk-adjusted analysis for [TOKEN]" \u2192 extract [TOKEN]
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<analysis_type>risk, performance, statistical, or general</analysis_type>
+<metric_focus>returns, volatility, sharpe, sortino, or all</metric_focus>
+<timeframe>daily, weekly, monthly, or general</timeframe>
+<limit>number of results requested (default 20)</limit>
+</response>`;
 var getQuantmetricsAction = {
   name: "GET_QUANTMETRICS_TOKENMETRICS",
   description: "Get comprehensive quantitative metrics including volatility, Sharpe ratio, CAGR, and risk measurements from TokenMetrics",
@@ -6070,28 +5117,28 @@ var getQuantmetricsAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Get quantitative metrics for Bitcoin"
+          text: "Get quantmetrics for Bitcoin"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve comprehensive quantitative metrics for Bitcoin including volatility, Sharpe ratio, and risk measurements.",
+          text: "I'll fetch comprehensive quantitative metrics for Bitcoin from TokenMetrics.",
           action: "GET_QUANTMETRICS_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Show me risk metrics for DeFi tokens with market cap over $500M"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll analyze quantitative risk metrics for large-cap DeFi tokens.",
           action: "GET_QUANTMETRICS_TOKENMETRICS"
@@ -6100,13 +5147,13 @@ var getQuantmetricsAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Analyze Sharpe ratio and returns for Ethereum"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll get the quantitative return metrics and Sharpe ratio analysis for Ethereum.",
           action: "GET_QUANTMETRICS_TOKENMETRICS"
@@ -6115,33 +5162,69 @@ var getQuantmetricsAction = {
     ]
   ],
   validate: async (runtime, message, state) => {
-    elizaLogger5.log("\u{1F50D} Validating getQuantmetricsAction (1.x)");
+    elizaLogger3.log("\u{1F50D} Validating getQuantmetricsAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger5.error("\u274C Validation failed:", error);
+      elizaLogger3.error("\u274C Validation failed:", error);
       return false;
     }
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger5.log("\u{1F680} Starting TokenMetrics quantmetrics handler (1.x)");
-    elizaLogger5.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger5.log(`\u{1F194} Request ID: ${requestId}`);
+    elizaLogger3.log("\u{1F680} Starting TokenMetrics quantmetrics handler (1.x)");
+    elizaLogger3.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger3.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
       if (!state) {
         state = await runtime.composeState(message);
       }
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = quantmetricsTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const quantRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state,
+        enhancedTemplate,
+        QuantmetricsRequestSchema,
+        requestId
+      );
+      elizaLogger3.log("\u{1F3AF} AI Extracted quantmetrics request:", quantRequest);
+      elizaLogger3.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${quantRequest?.cryptocurrency}"`);
+      console.log(`[${requestId}] Extracted request:`, quantRequest);
       const apiParams = {
-        limit: 20,
+        limit: quantRequest?.limit || 20,
         page: 1
       };
-      elizaLogger5.log(`\u{1F4E1} Fetching quantmetrics data`);
+      let tokenInfo = null;
+      if (quantRequest?.cryptocurrency) {
+        elizaLogger3.log(`\u{1F50D} Resolving token for: "${quantRequest.cryptocurrency}"`);
+        try {
+          tokenInfo = await resolveTokenSmart(quantRequest.cryptocurrency, runtime);
+          if (tokenInfo) {
+            apiParams.token_id = tokenInfo.TOKEN_ID;
+            elizaLogger3.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+          } else {
+            apiParams.symbol = quantRequest.cryptocurrency.toUpperCase();
+            elizaLogger3.log(`\u{1F50D} Using symbol: ${quantRequest.cryptocurrency}`);
+          }
+        } catch (error) {
+          elizaLogger3.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
+          apiParams.symbol = quantRequest.cryptocurrency.toUpperCase();
+          elizaLogger3.log(`\u{1F50D} Fallback to symbol parameter: ${quantRequest.cryptocurrency.toUpperCase()}`);
+        }
+      }
+      elizaLogger3.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger3.log(`\u{1F4E1} Fetching quantmetrics data`);
       const quantData = await callTokenMetricsAPI("/v2/quantmetrics", apiParams, runtime);
       if (!quantData) {
-        elizaLogger5.log("\u274C Failed to fetch quantmetrics data");
+        elizaLogger3.log("\u274C Failed to fetch quantmetrics data");
         if (callback) {
           await callback({
             text: `\u274C Unable to fetch quantitative metrics data at the moment.
@@ -6158,13 +5241,20 @@ Please try again in a few moments.`,
             }
           });
         }
-        return false;
+        return createActionResult2({
+          success: false,
+          text: "\u274C Unable to fetch quantitative metrics data at the moment.",
+          data: {
+            error: "API fetch failed",
+            request_id: requestId
+          }
+        });
       }
       const metrics = Array.isArray(quantData) ? quantData : quantData.data || [];
-      elizaLogger5.log(`\u{1F50D} Received ${metrics.length} quantmetrics`);
-      const responseText = formatQuantmetricsResponse(metrics);
+      elizaLogger3.log(`\u{1F50D} Received ${metrics.length} quantmetrics`);
+      const responseText = formatQuantmetricsResponse(metrics, tokenInfo);
       const analysis = analyzeQuantitativeMetrics(metrics, "comprehensive");
-      elizaLogger5.success("\u2705 Successfully processed quantmetrics request");
+      elizaLogger3.success("\u2705 Successfully processed quantmetrics request");
       if (callback) {
         await callback({
           text: responseText,
@@ -6183,22 +5273,30 @@ Please try again in a few moments.`,
           }
         });
       }
-      return true;
+      return createActionResult2({
+        success: true,
+        text: responseText,
+        data: {
+          success: true,
+          quantmetrics_data: metrics,
+          analysis,
+          source: "TokenMetrics Quantmetrics API",
+          request_id: requestId,
+          metadata: {
+            endpoint: "quantmetrics",
+            data_source: "TokenMetrics API",
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            total_metrics: metrics.length
+          }
+        }
+      });
     } catch (error) {
-      elizaLogger5.error("\u274C Error in TokenMetrics quantmetrics handler:", error);
-      elizaLogger5.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      elizaLogger3.error("\u274C Error in quantmetrics handler:", error);
+      elizaLogger3.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         await callback({
-          text: `\u274C I encountered an error while fetching quantitative metrics: ${errorMessage}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+          text: `\u274C I encountered an error while fetching quantitative metrics: ${errorMessage}`,
           content: {
             error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
@@ -6207,17 +5305,24 @@ Please check your TokenMetrics API key configuration and try again.`,
           }
         });
       }
-      return false;
+      return createActionResult2({
+        success: false,
+        error: errorMessage
+      });
     }
   }
 };
-function formatQuantmetricsResponse(metrics) {
+function formatQuantmetricsResponse(metrics, tokenInfo) {
   if (!metrics || metrics.length === 0) {
     return "\u274C No quantitative metrics data available.";
   }
   let response = `\u26A1 **Quantitative Metrics Analysis**
 
 `;
+  if (tokenInfo) {
+    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
+`;
+  }
   response += `\u{1F4CA} **Data Points**: ${metrics.length} metrics analyzed
 
 `;
@@ -6414,2867 +5519,19 @@ function analyzeDistribution(values) {
   };
 }
 
-// src/actions/getMarketMetricsAction.ts
-import { elizaLogger as elizaLogger6 } from "@elizaos/core";
-var marketMetricsTemplate = `You are an AI assistant specialized in extracting TokenMetrics market analytics requests from user messages.
-
-Your task is to analyze the user's message and extract relevant parameters for fetching market metrics data.
-
-Market metrics provide:
-- Bullish/bearish market indicators
-- Overall crypto market sentiment
-- Market direction analysis
-- Total crypto market insights
-
-Extract the following information from the user's request:
-
-1. **Date Range** (optional):
-   - start_date: Start date for historical data (YYYY-MM-DD format)
-   - end_date: End date for historical data (YYYY-MM-DD format)
-   - If user mentions "current", "now", "today" - leave dates empty for current data
-   - If user mentions "past week/month" - calculate appropriate date range
-
-2. **Data Preferences** (optional):
-   - limit: Number of data points to return (default: 50, max: 100)
-   - page: Page number for pagination (default: 1)
-
-3. **Analysis Focus** (extract intent):
-   - market_sentiment: User wants bullish/bearish analysis
-   - trend_analysis: User wants trend patterns
-   - strategic_insights: User wants investment implications
-   - current_status: User wants current market state
-
-Examples of user requests:
-- "What's the current crypto market sentiment?" \u2192 current data, focus on sentiment
-- "Show me market analytics for December 2024" \u2192 date range, general analytics
-- "Is the market bullish or bearish?" \u2192 current data, sentiment focus
-- "Give me market trends for the past 30 days" \u2192 30-day range, trend focus
-
-Respond with a JSON object containing the extracted parameters.`;
-var MarketMetricsRequestSchema = z.object({
-  start_date: z.string().optional().describe("Start date in YYYY-MM-DD format"),
-  end_date: z.string().optional().describe("End date in YYYY-MM-DD format"),
-  limit: z.number().min(1).max(100).optional().describe("Number of data points to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysis_focus: z.array(z.enum([
-    "market_sentiment",
-    "trend_analysis",
-    "strategic_insights",
-    "current_status"
-  ])).optional().describe("Types of analysis to focus on")
-});
-var handler = async (runtime, message, state, _options, callback) => {
-  elizaLogger6.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
-  try {
-    const extractedRequest = await extractTokenMetricsRequest(
-      runtime,
-      message,
-      state || await runtime.composeState(message),
-      marketMetricsTemplate,
-      MarketMetricsRequestSchema,
-      generateRequestId()
-    );
-    elizaLogger6.info("\u{1F4CA} Extracted market metrics request:", extractedRequest);
-    const processedRequest = {
-      start_date: extractedRequest.start_date,
-      end_date: extractedRequest.end_date,
-      limit: extractedRequest.limit || 50,
-      page: extractedRequest.page || 1,
-      analysis_focus: extractedRequest.analysis_focus || ["current_status"]
-    };
-    const apiParams = {
-      limit: processedRequest.limit,
-      page: processedRequest.page
-    };
-    if (processedRequest.start_date) {
-      apiParams.startDate = processedRequest.start_date;
-    }
-    if (processedRequest.end_date) {
-      apiParams.endDate = processedRequest.end_date;
-    }
-    const response = await callTokenMetricsAPI(
-      "/v2/market-metrics",
-      apiParams,
-      runtime
-    );
-    if (!response || response.error && !response.data) {
-      throw new Error(response?.error || "Failed to fetch market metrics data");
-    }
-    const marketMetrics = Array.isArray(response) ? response : response.data || [];
-    const marketAnalysis = analyzeMarketMetrics(marketMetrics);
-    const currentStatus = getCurrentMarketStatus(marketMetrics);
-    let responseText = "\u{1F4CA} **TokenMetrics Market Analytics**\n\n";
-    if (processedRequest.analysis_focus.includes("current_status")) {
-      responseText += `\u{1F3AF} **Current Market Status**: ${currentStatus.sentiment_description}
-`;
-      responseText += `\u{1F4C8} **Market Direction**: ${currentStatus.direction}
-`;
-      responseText += `\u{1F4AA} **Signal Strength**: ${currentStatus.strength}/10
-
-`;
-    }
-    if (processedRequest.analysis_focus.includes("market_sentiment")) {
-      responseText += `\u{1F50D} **Market Sentiment Analysis**:
-`;
-      responseText += `\u2022 Bullish/Bearish Indicator: ${marketAnalysis.overall_sentiment}
-`;
-      responseText += `\u2022 Confidence Level: ${marketAnalysis.confidence_level}%
-`;
-      responseText += `\u2022 Market Phase: ${marketAnalysis.market_phase}
-
-`;
-    }
-    if (processedRequest.analysis_focus.includes("trend_analysis")) {
-      responseText += `\u{1F4C8} **Trend Analysis**:
-`;
-      responseText += `\u2022 Primary Trend: ${marketAnalysis.trend_direction}
-`;
-      responseText += `\u2022 Trend Strength: ${marketAnalysis.trend_strength}
-`;
-      responseText += `\u2022 Momentum: ${marketAnalysis.momentum}
-
-`;
-    }
-    if (processedRequest.analysis_focus.includes("strategic_insights")) {
-      responseText += `\u{1F4A1} **Strategic Insights**:
-`;
-      if (marketAnalysis.strategic_implications) {
-        marketAnalysis.strategic_implications.forEach((insight, index) => {
-          responseText += `${index + 1}. ${insight}
-`;
-        });
-      }
-      responseText += "\n";
-    }
-    responseText += `\u{1F4CB} **Key Metrics Summary**:
-`;
-    responseText += `\u2022 Data Points Analyzed: ${marketMetrics.length}
-`;
-    responseText += `\u2022 Total Crypto Market Cap: ${formatCurrency(marketMetrics[0]?.TOTAL_CRYPTO_MCAP || 0)}
-`;
-    responseText += `\u2022 High-Grade Coins: ${formatPercentage(marketMetrics[0]?.TM_GRADE_PERC_HIGH_COINS || 0)}%
-`;
-    responseText += `\u2022 Current Signal: ${getSignalDescription(marketMetrics[0]?.TM_GRADE_SIGNAL || 0)}
-`;
-    responseText += `\u2022 Previous Signal: ${getSignalDescription(marketMetrics[0]?.LAST_TM_GRADE_SIGNAL || 0)}
-`;
-    if (marketAnalysis.recommendations && marketAnalysis.recommendations.length > 0) {
-      responseText += `
-\u{1F3AF} **Recommendations**:
-`;
-      marketAnalysis.recommendations.forEach((rec, index) => {
-        responseText += `${index + 1}. ${rec}
-`;
-      });
-    }
-    if (callback) {
-      callback({
-        text: responseText,
-        content: {
-          success: true,
-          data: {
-            market_metrics: marketMetrics,
-            analysis: marketAnalysis,
-            current_status: currentStatus,
-            metadata: {
-              endpoint: "/v2/market-metrics",
-              data_points: marketMetrics.length,
-              analysis_focus: processedRequest.analysis_focus,
-              date_range: {
-                start: processedRequest.start_date,
-                end: processedRequest.end_date
-              }
-            }
-          }
-        }
-      });
-    }
-    return true;
-  } catch (error) {
-    elizaLogger6.error("\u274C Market Metrics Action Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    const errorText = `\u274C **Error Getting Market Metrics**
-
-${errorMessage}
-
-\u{1F4A1} **Troubleshooting Tips**:
-\u2022 Check your TokenMetrics API key
-\u2022 Verify date format (YYYY-MM-DD)
-\u2022 Ensure you have access to market metrics endpoint`;
-    if (callback) {
-      callback({
-        text: errorText,
-        content: {
-          success: false,
-          error: errorMessage
-        }
-      });
-    }
-    return false;
-  }
-};
-function getSignalDescription(signal) {
-  switch (signal) {
-    case 1:
-      return "\u{1F7E2} Bullish";
-    case -1:
-      return "\u{1F534} Bearish";
-    case 0:
-      return "\u{1F7E1} Neutral";
-    default:
-      return "\u2753 Unknown";
-  }
-}
-var validate = async (runtime, message, state) => {
-  elizaLogger6.log("\u{1F50D} Validating getMarketMetricsAction (1.x)");
-  try {
-    validateAndGetApiKey(runtime);
-    return true;
-  } catch (error) {
-    elizaLogger6.error("\u274C Validation failed:", error);
-    return false;
-  }
-};
-var examples = [
-  [
-    {
-      user: "{{user1}}",
-      content: {
-        text: "What's the current crypto market sentiment?"
-      }
-    },
-    {
-      user: "{{user2}}",
-      content: {
-        text: "I'll check the current TokenMetrics market metrics to assess overall cryptocurrency market sentiment.",
-        action: "GET_MARKET_METRICS_TOKENMETRICS"
-      }
-    }
-  ],
-  [
-    {
-      user: "{{user1}}",
-      content: {
-        text: "Show me market analytics for the past 30 days"
-      }
-    },
-    {
-      user: "{{user2}}",
-      content: {
-        text: "I'll retrieve TokenMetrics market analytics for the past 30 days to analyze recent trends.",
-        action: "GET_MARKET_METRICS_TOKENMETRICS"
-      }
-    }
-  ],
-  [
-    {
-      user: "{{user1}}",
-      content: {
-        text: "Is the crypto market bullish or bearish right now?"
-      }
-    },
-    {
-      user: "{{user2}}",
-      content: {
-        text: "I'll get the latest TokenMetrics market indicator to determine current market direction.",
-        action: "GET_MARKET_METRICS_TOKENMETRICS"
-      }
-    }
-  ]
-];
-var getMarketMetricsAction = {
-  name: "GET_MARKET_METRICS_TOKENMETRICS",
-  description: "Get TokenMetrics market analytics including bullish/bearish market indicator and comprehensive market insights",
-  similes: [
-    "get market metrics",
-    "check market sentiment",
-    "get market analytics",
-    "bullish bearish indicator",
-    "get market direction",
-    "crypto market analysis",
-    "market sentiment analysis"
-  ],
-  handler,
-  validate,
-  examples
-};
-function analyzeMarketMetrics(marketData) {
-  if (!marketData || marketData.length === 0) {
-    return {
-      overall_sentiment: "Neutral",
-      confidence_level: 0,
-      market_phase: "Unknown",
-      trend_direction: "Sideways",
-      trend_strength: "Weak",
-      momentum: "Neutral",
-      strategic_implications: ["Insufficient data for analysis"],
-      recommendations: ["Wait for more market data"]
-    };
-  }
-  const latestData = marketData[0] || {};
-  const recentData = marketData.slice(0, Math.min(7, marketData.length));
-  const signalAnalysis = analyzeSignalDistribution(marketData);
-  const trendAnalysis = analyzeTrendPatterns(recentData);
-  const strengthAssessment = assessMarketStrength(signalAnalysis, trendAnalysis);
-  const strategicImplications = generateStrategicImplications(latestData, trendAnalysis, signalAnalysis);
-  const recommendations = generateMarketRecommendations(latestData, trendAnalysis, strengthAssessment);
-  return {
-    overall_sentiment: getCurrentSentimentDescription(latestData),
-    confidence_level: Math.round(strengthAssessment.confidence * 100),
-    market_phase: strengthAssessment.phase,
-    trend_direction: trendAnalysis.primary_direction,
-    trend_strength: trendAnalysis.strength,
-    momentum: trendAnalysis.momentum,
-    market_cap_trend: trendAnalysis.market_cap_trend,
-    volatility_level: strengthAssessment.volatility,
-    strategic_implications: strategicImplications,
-    recommendations,
-    signal_distribution: signalAnalysis,
-    trend_analysis: trendAnalysis,
-    strength_assessment: strengthAssessment
-  };
-}
-function getCurrentSentimentDescription(metrics) {
-  if (!metrics) return "Neutral";
-  const bullishIndicators = metrics.bullish_score || metrics.bullish_indicator || 0;
-  const bearishIndicators = metrics.bearish_score || metrics.bearish_indicator || 0;
-  if (bullishIndicators > bearishIndicators * 1.2) return "Bullish";
-  if (bearishIndicators > bullishIndicators * 1.2) return "Bearish";
-  return "Neutral";
-}
-function getCurrentMarketStatus(data) {
-  if (!data || data.length === 0) {
-    return {
-      sentiment_description: "Unknown",
-      direction: "Sideways",
-      strength: 5,
-      confidence: 0
-    };
-  }
-  const latest = data[0];
-  const sentiment = getCurrentSentimentDescription(latest);
-  let strength = 5;
-  if (latest.market_strength) {
-    strength = Math.round(latest.market_strength * 10);
-  } else if (latest.bullish_score && latest.bearish_score) {
-    const diff = Math.abs(latest.bullish_score - latest.bearish_score);
-    strength = Math.min(10, Math.max(1, Math.round(5 + diff * 5)));
-  }
-  return {
-    sentiment_description: sentiment,
-    direction: sentiment === "Neutral" ? "Sideways" : sentiment,
-    strength: Math.min(10, Math.max(1, strength)),
-    confidence: data.length >= 7 ? 0.8 : 0.5,
-    last_updated: latest.date || latest.timestamp || (/* @__PURE__ */ new Date()).toISOString()
-  };
-}
-function analyzeSignalDistribution(data) {
-  if (!data || data.length === 0) {
-    return {
-      bullish_percentage: 50,
-      bearish_percentage: 50,
-      neutral_percentage: 0,
-      signal_consistency: 0,
-      dominant_signal: "Neutral"
-    };
-  }
-  let bullishCount = 0;
-  let bearishCount = 0;
-  let neutralCount = 0;
-  data.forEach((item) => {
-    const sentiment = getCurrentSentimentDescription(item);
-    if (sentiment === "Bullish") bullishCount++;
-    else if (sentiment === "Bearish") bearishCount++;
-    else neutralCount++;
-  });
-  const total = data.length;
-  const bullishPct = Math.round(bullishCount / total * 100);
-  const bearishPct = Math.round(bearishCount / total * 100);
-  const neutralPct = Math.round(neutralCount / total * 100);
-  let dominantSignal = "Neutral";
-  if (bullishPct > bearishPct && bullishPct > neutralPct) dominantSignal = "Bullish";
-  else if (bearishPct > bullishPct && bearishPct > neutralPct) dominantSignal = "Bearish";
-  const consistency = Math.max(bullishPct, bearishPct, neutralPct) / 100;
-  return {
-    bullish_percentage: bullishPct,
-    bearish_percentage: bearishPct,
-    neutral_percentage: neutralPct,
-    signal_consistency: Math.round(consistency * 100),
-    dominant_signal: dominantSignal
-  };
-}
-function analyzeTrendPatterns(recentData) {
-  if (!recentData || recentData.length < 2) {
-    return {
-      primary_direction: "Sideways",
-      strength: "Weak",
-      momentum: "Neutral",
-      market_cap_trend: "Stable"
-    };
-  }
-  const values = recentData.map(
-    (item) => item.total_market_cap || item.market_cap || item.price || 0
-  ).filter((val) => val > 0);
-  if (values.length < 2) {
-    return {
-      primary_direction: "Sideways",
-      strength: "Weak",
-      momentum: "Neutral",
-      market_cap_trend: "Stable"
-    };
-  }
-  const first = values[values.length - 1];
-  const last = values[0];
-  const change = (last - first) / first * 100;
-  let direction = "Sideways";
-  let strength = "Weak";
-  let momentum = "Neutral";
-  if (Math.abs(change) > 5) {
-    direction = change > 0 ? "Upward" : "Downward";
-    strength = Math.abs(change) > 15 ? "Strong" : "Moderate";
-  }
-  if (values.length >= 4) {
-    const recentChange = (values[0] - values[1]) / values[1] * 100;
-    const earlierChange = (values[2] - values[3]) / values[3] * 100;
-    if (Math.abs(recentChange) > Math.abs(earlierChange) * 1.2) {
-      momentum = "Accelerating";
-    } else if (Math.abs(recentChange) < Math.abs(earlierChange) * 0.8) {
-      momentum = "Decelerating";
-    }
-  }
-  return {
-    primary_direction: direction,
-    strength,
-    momentum,
-    market_cap_trend: direction === "Sideways" ? "Stable" : direction,
-    change_percentage: Math.round(change * 100) / 100
-  };
-}
-function assessMarketStrength(signalAnalysis, trendAnalysis) {
-  const signalStrength = signalAnalysis.signal_consistency / 100;
-  const trendStrength = trendAnalysis.strength === "Strong" ? 0.8 : trendAnalysis.strength === "Moderate" ? 0.6 : 0.4;
-  const overallStrength = (signalStrength + trendStrength) / 2;
-  let phase = "Consolidation";
-  if (overallStrength > 0.7) phase = "Trending";
-  else if (overallStrength < 0.4) phase = "Uncertain";
-  let volatility = "Medium";
-  if (trendAnalysis.change_percentage && Math.abs(trendAnalysis.change_percentage) > 10) {
-    volatility = "High";
-  } else if (trendAnalysis.change_percentage && Math.abs(trendAnalysis.change_percentage) < 3) {
-    volatility = "Low";
-  }
-  return {
-    confidence: overallStrength,
-    phase,
-    volatility,
-    overall_score: Math.round(overallStrength * 10)
-  };
-}
-function generateStrategicImplications(currentMetrics, trendAnalysis, signalAnalysis) {
-  const implications = [];
-  if (signalAnalysis.dominant_signal === "Bullish" && signalAnalysis.signal_consistency > 60) {
-    implications.push("Strong bullish sentiment suggests favorable conditions for crypto exposure");
-  } else if (signalAnalysis.dominant_signal === "Bearish" && signalAnalysis.signal_consistency > 60) {
-    implications.push("Bearish sentiment indicates defensive positioning may be prudent");
-  } else {
-    implications.push("Mixed signals suggest maintaining balanced portfolio allocation");
-  }
-  if (trendAnalysis.primary_direction === "Upward" && trendAnalysis.strength === "Strong") {
-    implications.push("Strong upward trend supports momentum-based strategies");
-  } else if (trendAnalysis.primary_direction === "Downward" && trendAnalysis.strength === "Strong") {
-    implications.push("Strong downward trend suggests waiting for reversal signals");
-  }
-  if (trendAnalysis.momentum === "Accelerating") {
-    implications.push("Accelerating momentum may indicate trend continuation");
-  } else if (trendAnalysis.momentum === "Decelerating") {
-    implications.push("Decelerating momentum suggests potential trend reversal");
-  }
-  return implications.length > 0 ? implications : ["Market conditions require careful monitoring"];
-}
-function generateMarketRecommendations(currentMetrics, trendAnalysis, strengthAssessment) {
-  const recommendations = [];
-  if (strengthAssessment.phase === "Trending") {
-    recommendations.push("Consider trend-following strategies with appropriate risk management");
-  } else if (strengthAssessment.phase === "Consolidation") {
-    recommendations.push("Range-bound strategies may be more effective in current conditions");
-  } else {
-    recommendations.push("Exercise caution and wait for clearer market signals");
-  }
-  if (strengthAssessment.volatility === "High") {
-    recommendations.push("High volatility requires smaller position sizes and tighter stops");
-  } else if (strengthAssessment.volatility === "Low") {
-    recommendations.push("Low volatility environment may favor larger position sizes");
-  }
-  if (strengthAssessment.confidence > 0.7) {
-    recommendations.push("High confidence signals support more aggressive positioning");
-  } else if (strengthAssessment.confidence < 0.4) {
-    recommendations.push("Low confidence suggests conservative approach until clarity improves");
-  }
-  return recommendations.length > 0 ? recommendations : ["Monitor market conditions closely before making major decisions"];
-}
-
-// src/actions/getIndicesAction.ts
-import {
-  elizaLogger as elizaLogger7
-} from "@elizaos/core";
-var IndicesRequestSchema = z.object({
-  indicesType: z.string().nullable().optional().describe("Type of indices to filter (active, passive, etc.)"),
-  limit: z.number().min(1).max(100).optional().describe("Number of indices to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["performance", "risk", "diversification", "all"]).optional().describe("Type of analysis to focus on")
-});
-var INDICES_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting crypto indices analysis requests from natural language.
-
-The user wants to get information about crypto indices. Extract the following information:
-
-1. **indicesType** (optional): Type of indices they're interested in
-   - "active" for actively managed indices
-   - "passive" for passive/index tracking
-   - Leave null for all types
-
-2. **limit** (default: 50): How many indices to return (1-100)
-
-3. **page** (default: 1): Which page of results (for pagination)
-
-4. **analysisType** (default: "all"): What type of analysis they want
-   - "performance" - focus on returns and performance metrics
-   - "risk" - focus on volatility and risk metrics  
-   - "diversification" - focus on portfolio diversification
-   - "all" - comprehensive analysis
-
-Examples:
-- "Show me crypto indices" \u2192 {indicesType: null, limit: 50, page: 1, analysisType: "all"}
-- "Get active crypto index funds" \u2192 {indicesType: "active", limit: 50, page: 1, analysisType: "all"}
-- "What are the best performing passive indices?" \u2192 {indicesType: "passive", limit: 50, page: 1, analysisType: "performance"}
-- "Show me 20 indices focused on risk analysis" \u2192 {indicesType: null, limit: 20, page: 1, analysisType: "risk"}
-
-Extract the request details from the user's message.
-`;
-var getIndicesAction = {
-  name: "GET_INDICES_TOKENMETRICS",
-  description: "Get active and passive crypto indices with performance and market data from TokenMetrics for index-based investment analysis",
-  similes: [
-    "get indices",
-    "crypto indices",
-    "index funds",
-    "passive indices",
-    "active indices",
-    "index performance",
-    "crypto index analysis",
-    "index investment opportunities"
-  ],
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me available crypto indices"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll get the available crypto indices for you, including both active and passive investment options.",
-          action: "GET_INDICES_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What are the best performing crypto index funds?"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "Let me analyze the crypto indices performance data to show you the top performers.",
-          action: "GET_INDICES_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get me active crypto indices with risk analysis"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll retrieve active crypto indices and provide detailed risk analysis for your investment decisions.",
-          action: "GET_INDICES_TOKENMETRICS"
-        }
-      }
-    ]
-  ],
-  async handler(runtime, message, state, _options, callback) {
-    try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing indices request...`);
-      const indicesRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state || await runtime.composeState(message),
-        INDICES_EXTRACTION_TEMPLATE,
-        IndicesRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, indicesRequest);
-      const processedRequest = {
-        indicesType: indicesRequest.indicesType,
-        limit: indicesRequest.limit || 50,
-        page: indicesRequest.page || 1,
-        analysisType: indicesRequest.analysisType || "all"
-      };
-      const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
-      };
-      if (processedRequest.indicesType && processedRequest.indicesType !== null) {
-        apiParams.indicesType = processedRequest.indicesType;
-      }
-      const response = await callTokenMetricsAPI(
-        "/v2/indices",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing data...`);
-      const indices = Array.isArray(response) ? response : response.data || [];
-      console.log(`[${requestId}] Raw API response:`, JSON.stringify(response, null, 2));
-      console.log(`[${requestId}] Processed indices array:`, JSON.stringify(indices.slice(0, 2), null, 2));
-      const indicesAnalysis = analyzeIndicesData(indices, processedRequest.analysisType);
-      const result = {
-        success: true,
-        message: `Successfully retrieved ${indices.length} crypto indices`,
-        request_id: requestId,
-        indices_data: indices,
-        analysis: indicesAnalysis,
-        metadata: {
-          endpoint: "indices",
-          filters_applied: {
-            indices_type: processedRequest.indicesType,
-            analysis_focus: processedRequest.analysisType
-          },
-          pagination: {
-            page: processedRequest.page,
-            limit: processedRequest.limit
-          },
-          data_points: indices.length,
-          api_version: "v2",
-          data_source: "TokenMetrics Indices Engine"
-        },
-        indices_explanation: {
-          purpose: "Crypto indices provide diversified exposure to cryptocurrency markets through professionally managed baskets",
-          index_types: [
-            "Active Indices - Professionally managed with dynamic allocation strategies",
-            "Passive Indices - Market-cap weighted or rule-based allocation strategies",
-            "Sector Indices - Focused on specific crypto sectors (DeFi, Layer 1, etc.)",
-            "Thematic Indices - Based on investment themes and market trends"
-          ],
-          key_metrics: [
-            "Total Return - Overall performance since inception",
-            "Annual Return - Annualized performance metrics",
-            "Volatility - Risk measurement for the index",
-            "Sharpe Ratio - Risk-adjusted return measurement",
-            "Max Drawdown - Worst-case scenario loss measurement",
-            "Assets Count - Number of tokens in the index"
-          ],
-          usage_guidelines: [
-            "Use for diversified crypto exposure without picking individual tokens",
-            "Compare active vs passive strategies for your investment goals",
-            "Consider volatility and Sharpe ratio for risk assessment",
-            "Review assets count for diversification level",
-            "Monitor total return and max drawdown for performance evaluation"
-          ]
-        }
-      };
-      console.log(`[${requestId}] Indices analysis completed successfully`);
-      const responseText = formatIndicesResponse(result, processedRequest.limit);
-      console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "indices",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      console.error("Error in getIndices action:", error);
-      if (callback) {
-        callback({
-          text: `\u274C Failed to retrieve indices data: ${error instanceof Error ? error.message : "Unknown error"}`,
-          content: {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred"
-          }
-        });
-      }
-      return false;
-    }
-  },
-  validate: async (runtime, message, state) => {
-    elizaLogger7.log("\u{1F50D} Validating getIndicesAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger7.error("\u274C Validation failed:", error);
-      return false;
-    }
-  }
-};
-function analyzeIndicesData(indices, analysisType = "all") {
-  if (!indices || indices.length === 0) {
-    return {
-      summary: "No indices data available for analysis",
-      insights: [],
-      recommendations: []
-    };
-  }
-  const activeIndices = [];
-  const passiveIndices = [];
-  const validAllTimeReturns = indices.filter((index) => index.ALL_TIME !== void 0 && index.ALL_TIME !== null);
-  const avgAllTimeReturn = validAllTimeReturns.length > 0 ? validAllTimeReturns.reduce((sum, index) => sum + index.ALL_TIME, 0) / validAllTimeReturns.length : 0;
-  const valid1MReturns = indices.filter((index) => index["1M"] !== void 0 && index["1M"] !== null);
-  const avg1MReturn = valid1MReturns.length > 0 ? valid1MReturns.reduce((sum, index) => sum + index["1M"], 0) / valid1MReturns.length : 0;
-  const validGrades = indices.filter((index) => index.INDEX_GRADE !== void 0 && index.INDEX_GRADE !== null);
-  const avgIndexGrade = validGrades.length > 0 ? validGrades.reduce((sum, index) => sum + index.INDEX_GRADE, 0) / validGrades.length : 0;
-  const topPerformers = indices.filter((index) => index.ALL_TIME !== void 0 && index.ALL_TIME !== null).sort((a, b) => b.ALL_TIME - a.ALL_TIME).slice(0, 3);
-  const bestRecentPerformers = indices.filter((index) => index["1M"] !== void 0 && index["1M"] !== null).sort((a, b) => b["1M"] - a["1M"]).slice(0, 3);
-  const insights = [
-    `\u{1F4CA} Total Indices Available: ${indices.length}`,
-    `\u{1F4C8} Average All-Time Return: ${formatPercentage(avgAllTimeReturn)}`,
-    `\u{1F4C5} Average 1-Month Return: ${formatPercentage(avg1MReturn)}`,
-    `\u{1F3AF} Average Index Grade: ${avgIndexGrade.toFixed(1)}/100`,
-    `\u{1F3C6} Top All-Time Performer: ${topPerformers[0]?.NAME} (${formatPercentage(topPerformers[0]?.ALL_TIME)})`
-  ];
-  const recommendations = [
-    indices.length > 10 ? `\u{1F3AF} Good Selection: ${indices.length} indices available for diversified crypto exposure` : `\u26A0\uFE0F Limited Selection: Only ${indices.length} indices currently available`,
-    avgIndexGrade > 50 ? `\u2705 Strong Quality: Average index grade of ${avgIndexGrade.toFixed(1)}/100 indicates good quality indices` : `\u26A0\uFE0F Consider Quality: Lower average grade suggests careful selection needed`,
-    avg1MReturn > 0 ? `\u{1F4C8} Positive Momentum: Average 1-month return of ${formatPercentage(avg1MReturn)} shows recent strength` : `\u{1F4C9} Recent Weakness: Negative 1-month returns suggest market challenges`,
-    topPerformers.length > 0 ? `\u{1F680} Strong Leaders: Top performer ${topPerformers[0]?.NAME} shows ${formatPercentage(topPerformers[0]?.ALL_TIME)} all-time returns` : `\u26A0\uFE0F No clear leaders identified`
-  ];
-  let focusedAnalysis = {};
-  switch (analysisType) {
-    case "performance":
-      focusedAnalysis = {
-        performance_focus: {
-          top_all_time_performers: topPerformers.slice(0, 5),
-          recent_performers: bestRecentPerformers.slice(0, 5),
-          performance_distribution: {
-            positive_all_time: indices.filter((i) => (i.ALL_TIME || 0) > 0).length,
-            negative_all_time: indices.filter((i) => (i.ALL_TIME || 0) < 0).length,
-            positive_1m: indices.filter((i) => (i["1M"] || 0) > 0).length,
-            negative_1m: indices.filter((i) => (i["1M"] || 0) < 0).length
-          },
-          performance_insights: [
-            `\u{1F680} ${indices.filter((i) => (i.ALL_TIME || 0) > 100).length} indices with >100% all-time returns`,
-            `\u{1F4C8} ${indices.filter((i) => (i["1M"] || 0) > 0).length}/${indices.length} indices showing positive 1-month returns`,
-            `\u2B50 Best all-time: ${topPerformers[0]?.NAME} at ${formatPercentage(topPerformers[0]?.ALL_TIME)}`
-          ]
-        }
-      };
-      break;
-    case "risk":
-      const lowRiskIndices = indices.filter((i) => (i.INDEX_GRADE || 0) > 70).slice(0, 5);
-      const highRiskIndices = indices.filter((i) => (i.INDEX_GRADE || 0) < 30).slice(0, 5);
-      focusedAnalysis = {
-        risk_focus: {
-          high_grade_indices: lowRiskIndices,
-          low_grade_indices: highRiskIndices,
-          risk_distribution: {
-            high_grade: indices.filter((i) => (i.INDEX_GRADE || 0) > 70).length,
-            medium_grade: indices.filter((i) => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length,
-            low_grade: indices.filter((i) => (i.INDEX_GRADE || 0) < 30).length
-          },
-          risk_insights: [
-            `\u{1F6E1}\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) > 70).length} high-grade indices (grade >70)`,
-            `\u2696\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length} medium-grade indices`,
-            `\u26A0\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) < 30).length} low-grade indices (grade <30)`
-          ]
-        }
-      };
-      break;
-    case "diversification":
-      focusedAnalysis = {
-        diversification_focus: {
-          by_coin_count: indices.sort((a, b) => (b.COINS || 0) - (a.COINS || 0)).slice(0, 5),
-          diversification_levels: {
-            highly_diversified: indices.filter((i) => (i.COINS || 0) > 20).length,
-            moderately_diversified: indices.filter((i) => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length,
-            focused: indices.filter((i) => (i.COINS || 0) < 10).length
-          },
-          diversification_insights: [
-            `\u{1F310} ${indices.filter((i) => (i.COINS || 0) > 20).length} highly diversified indices (>20 coins)`,
-            `\u{1F4CA} ${indices.filter((i) => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length} moderately diversified indices`,
-            `\u{1F3AF} ${indices.filter((i) => (i.COINS || 0) < 10).length} focused indices (<10 coins)`
-          ]
-        }
-      };
-      break;
-  }
-  return {
-    summary: `Analysis of ${indices.length} crypto indices showing ${formatPercentage(avgAllTimeReturn)} average all-time return with ${avgIndexGrade.toFixed(1)}/100 average grade`,
-    analysis_type: analysisType,
-    performance_metrics: {
-      total_indices: indices.length,
-      active_indices: 0,
-      // Not available in API
-      passive_indices: 0,
-      // Not available in API
-      avg_all_time_return: avgAllTimeReturn,
-      avg_1m_return: avg1MReturn,
-      avg_index_grade: avgIndexGrade,
-      avg_sharpe_ratio: 0
-      // Not available in API
-    },
-    top_performers: topPerformers.map((index) => ({
-      name: index.NAME,
-      ticker: index.TICKER,
-      all_time_return: index.ALL_TIME,
-      one_month_return: index["1M"],
-      index_grade: index.INDEX_GRADE,
-      coins: index.COINS
-    })),
-    best_recent_performers: bestRecentPerformers.map((index) => ({
-      name: index.NAME,
-      ticker: index.TICKER,
-      one_month_return: index["1M"],
-      all_time_return: index.ALL_TIME,
-      index_grade: index.INDEX_GRADE
-    })),
-    insights,
-    recommendations,
-    ...focusedAnalysis,
-    investment_considerations: [
-      "\u{1F4C8} Compare all-time returns vs recent performance trends",
-      "\u{1F3AF} Consider index grade as quality indicator (higher is better)",
-      "\u{1F504} Review coin count for diversification level",
-      "\u{1F4B0} Factor in 24H volume for liquidity assessment",
-      "\u{1F4CA} Analyze market cap for index size and stability",
-      "\u2696\uFE0F Balance between focused and diversified strategies"
-    ]
-  };
-}
-function formatIndicesResponse(result, requestedLimit) {
-  const { indices_data, analysis } = result;
-  let response = `\u{1F4CA} **Crypto Indices Analysis**
-
-`;
-  if (indices_data && indices_data.length > 0) {
-    response += `\u{1F3AF} **Found ${indices_data.length} Indices**
-
-`;
-    const displayLimit = requestedLimit || indices_data.length;
-    const topIndices = indices_data.filter((index) => index.ALL_TIME !== void 0).sort((a, b) => (b.ALL_TIME || 0) - (a.ALL_TIME || 0)).slice(0, Math.min(displayLimit, indices_data.length));
-    if (topIndices.length > 0) {
-      response += `\u{1F3C6} **Top Performing Indices:**
-`;
-      topIndices.forEach((index, i) => {
-        const name = index.NAME || `Index ${i + 1}`;
-        const ticker = index.TICKER || "";
-        const allTimeReturn = index.ALL_TIME ? formatPercentage(index.ALL_TIME) : "N/A";
-        const oneMonthReturn = index["1M"] ? formatPercentage(index["1M"]) : "N/A";
-        const indexGrade = index.INDEX_GRADE ? formatPercentage(index.INDEX_GRADE) : "N/A";
-        response += `${i + 1}. **${name}** ${ticker ? `(${ticker})` : ""}
-`;
-        response += `   \u2022 All-Time Return: ${allTimeReturn}
-`;
-        response += `   \u2022 1-Month Return: ${oneMonthReturn}
-`;
-        response += `   \u2022 Index Grade: ${indexGrade}
-`;
-        response += `
-`;
-      });
-    }
-    if (analysis && analysis.insights) {
-      response += `\u{1F4A1} **Key Insights:**
-`;
-      analysis.insights.slice(0, 5).forEach((insight) => {
-        response += `\u2022 ${insight}
-`;
-      });
-      response += `
-`;
-    }
-    if (analysis && analysis.performance_metrics) {
-      const metrics = analysis.performance_metrics;
-      response += `\u{1F4C8} **Market Overview:**
-`;
-      response += `\u2022 Total Indices: ${metrics.total_indices || 0}
-`;
-      response += `\u2022 Active Indices: ${metrics.active_indices || 0}
-`;
-      response += `\u2022 Passive Indices: ${metrics.passive_indices || 0}
-`;
-      if (metrics.avg_all_time_return !== void 0) {
-        response += `\u2022 Average All-Time Return: ${formatPercentage(metrics.avg_all_time_return)}
-`;
-      }
-      if (metrics.avg_1m_return !== void 0) {
-        response += `\u2022 Average 1-Month Return: ${formatPercentage(metrics.avg_1m_return)}
-`;
-      }
-      response += `
-`;
-    }
-    if (analysis && analysis.recommendations) {
-      response += `\u{1F3AF} **Recommendations:**
-`;
-      analysis.recommendations.slice(0, 3).forEach((rec) => {
-        response += `\u2022 ${rec}
-`;
-      });
-    }
-  } else {
-    response += `\u274C No indices data found.
-
-`;
-    response += `This could be due to:
-`;
-    response += `\u2022 API connectivity issues
-`;
-    response += `\u2022 Invalid filter parameters
-`;
-    response += `\u2022 Temporary service unavailability
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
-`;
-  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-
-// src/actions/getAiReportsAction.ts
-import {
-  elizaLogger as elizaLogger8
-} from "@elizaos/core";
-var AiReportsRequestSchema = z.object({
-  token_id: z.number().min(1).optional().describe("The ID of the token to get AI reports for"),
-  symbol: z.string().optional().describe("The symbol of the token to get AI reports for"),
-  limit: z.number().min(1).max(100).optional().describe("Number of reports to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["investment", "technical", "comprehensive", "all"]).optional().describe("Type of analysis to focus on")
-});
-var AI_REPORTS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting AI reports requests from natural language.
-
-The user wants to get AI-generated reports for cryptocurrency analysis. Extract the following information:
-
-1. **token_id** (optional): Numeric ID of the token
-   - Only extract if explicitly mentioned as a number
-
-2. **symbol** (optional): Token symbol like BTC, ETH, etc.
-   - Look for cryptocurrency symbols or names
-   - Convert names to symbols if possible (Bitcoin \u2192 BTC, Ethereum \u2192 ETH)
-
-3. **limit** (optional, default: 50): Number of reports to return
-   - Look for phrases like "50 reports", "top 20", "first 100"
-
-4. **page** (optional, default: 1): Page number for pagination
-
-5. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "investment" - focus on investment recommendations and analysis
-   - "technical" - focus on technical analysis and code reviews
-   - "comprehensive" - focus on deep dive comprehensive reports
-   - "all" - all types of AI reports
-
-Examples:
-- "Get AI reports for Bitcoin" \u2192 {symbol: "BTC", analysisType: "all"}
-- "Show me investment analysis for ETH" \u2192 {symbol: "ETH", analysisType: "investment"}
-- "Get comprehensive AI reports" \u2192 {analysisType: "comprehensive"}
-- "Technical analysis reports for token 123" \u2192 {token_id: 123, analysisType: "technical"}
-
-Extract the request details from the user's message.
-`;
-var getAiReportsAction = {
-  name: "GET_AI_REPORTS_TOKENMETRICS",
-  description: "Retrieve AI-generated reports providing comprehensive analyses of cryptocurrency tokens, including deep dives, investment analyses, and code reviews from TokenMetrics",
-  similes: [
-    "get ai reports",
-    "ai analysis reports",
-    "deep dive analysis",
-    "investment analysis",
-    "code reviews",
-    "comprehensive token analysis",
-    "ai generated insights"
-  ],
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get AI analysis reports for Bitcoin"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll retrieve comprehensive AI-generated analysis reports for Bitcoin from TokenMetrics.",
-          action: "GET_AI_REPORTS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me the latest AI reports available"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll get the latest AI-generated reports from TokenMetrics covering various cryptocurrency projects.",
-          action: "GET_AI_REPORTS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get investment analysis reports for Ethereum"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll retrieve AI-generated investment analysis reports for Ethereum.",
-          action: "GET_AI_REPORTS_TOKENMETRICS"
-        }
-      }
-    ]
-  ],
-  async handler(runtime, message, _state, _params, callback) {
-    try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing AI reports request...`);
-      const aiReportsRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        _state || await runtime.composeState(message),
-        AI_REPORTS_EXTRACTION_TEMPLATE,
-        AiReportsRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, aiReportsRequest);
-      const processedRequest = {
-        token_id: aiReportsRequest.token_id,
-        symbol: aiReportsRequest.symbol,
-        limit: aiReportsRequest.limit || 50,
-        page: aiReportsRequest.page || 1,
-        analysisType: aiReportsRequest.analysisType || "all"
-      };
-      const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
-      };
-      if (processedRequest.token_id) {
-        apiParams.token_id = processedRequest.token_id;
-      }
-      if (processedRequest.symbol) {
-        apiParams.symbol = processedRequest.symbol;
-      }
-      const response = await callTokenMetricsAPI(
-        "/v2/ai-reports",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing data...`);
-      const aiReports = Array.isArray(response) ? response : response.data || [];
-      const reportsAnalysis = analyzeAiReports(aiReports, processedRequest.analysisType);
-      const result = {
-        success: true,
-        message: `Successfully retrieved ${aiReports.length} AI-generated reports`,
-        request_id: requestId,
-        ai_reports: aiReports,
-        analysis: reportsAnalysis,
-        metadata: {
-          endpoint: "ai-reports",
-          requested_token: processedRequest.symbol || processedRequest.token_id,
-          pagination: {
-            page: processedRequest.page,
-            limit: processedRequest.limit
-          },
-          analysis_focus: processedRequest.analysisType,
-          data_points: aiReports.length,
-          api_version: "v2",
-          data_source: "TokenMetrics AI Engine"
-        },
-        reports_explanation: {
-          purpose: "AI-generated comprehensive analyses providing deep insights into cryptocurrency projects",
-          report_types: [
-            "Deep dive analyses - Comprehensive project evaluation",
-            "Investment analyses - Risk/reward assessment and recommendations",
-            "Code reviews - Technical evaluation of smart contracts and protocols",
-            "Market analysis - Competitive positioning and market dynamics"
-          ],
-          usage_guidelines: [
-            "Use for due diligence and investment research",
-            "Combine with quantitative metrics for complete picture",
-            "Review report generation date for relevance",
-            "Consider reports as one input in investment decision process"
-          ]
-        }
-      };
-      const tokenName = processedRequest.symbol || processedRequest.token_id || "various tokens";
-      let responseText = `\u{1F916} **AI Reports Analysis${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}**
-
-`;
-      if (aiReports.length === 0) {
-        responseText += `\u274C No AI reports found${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}. This could mean:
-`;
-        responseText += `\u2022 TokenMetrics AI hasn't analyzed this token yet
-`;
-        responseText += `\u2022 The token may not meet criteria for AI analysis
-`;
-        responseText += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
-
-`;
-      } else {
-        responseText += `\u2705 **Found ${aiReports.length} comprehensive AI-generated reports**
-
-`;
-        const reportTypes = reportsAnalysis.report_coverage.report_types;
-        if (reportTypes && reportTypes.length > 0) {
-          responseText += `\u{1F4CA} **Available Report Types:**
-`;
-          reportTypes.forEach((type) => {
-            responseText += `\u2022 ${type.type}: ${type.count} reports (${type.percentage}%)
-`;
-          });
-          responseText += `
-`;
-        }
-        if (processedRequest.analysisType === "investment" && reportsAnalysis.investment_focus) {
-          responseText += `\u{1F4B0} **Investment Analysis Focus:**
-`;
-          responseText += `\u2022 Investment analyses available: ${reportsAnalysis.investment_focus.investment_reports}
-`;
-          if (reportsAnalysis.investment_focus.key_investment_points && reportsAnalysis.investment_focus.key_investment_points.length > 0) {
-            responseText += `
-\u{1F4A1} **Key Investment Insights:**
-`;
-            reportsAnalysis.investment_focus.key_investment_points.slice(0, 3).forEach((point) => {
-              responseText += `\u2022 ${point}
-`;
-            });
-          }
-        } else if (processedRequest.analysisType === "technical" && reportsAnalysis.technical_focus) {
-          responseText += `\u{1F527} **Technical Analysis Focus:**
-`;
-          responseText += `\u2022 Code reviews available: ${reportsAnalysis.technical_focus.code_reviews}
-`;
-          if (reportsAnalysis.technical_focus.technical_highlights && reportsAnalysis.technical_focus.technical_highlights.length > 0) {
-            responseText += `
-\u{1F50D} **Technical Highlights:**
-`;
-            reportsAnalysis.technical_focus.technical_highlights.slice(0, 3).forEach((highlight) => {
-              responseText += `\u2022 ${highlight}
-`;
-            });
-          }
-        } else if (processedRequest.analysisType === "comprehensive" && reportsAnalysis.comprehensive_focus) {
-          responseText += `\u{1F4DA} **Comprehensive Analysis Focus:**
-`;
-          responseText += `\u2022 Deep dive reports: ${reportsAnalysis.comprehensive_focus.deep_dive_reports}
-`;
-          if (reportsAnalysis.comprehensive_focus.comprehensive_highlights && reportsAnalysis.comprehensive_focus.comprehensive_highlights.length > 0) {
-            responseText += `
-\u{1F4D6} **Comprehensive Highlights:**
-`;
-            reportsAnalysis.comprehensive_focus.comprehensive_highlights.slice(0, 3).forEach((highlight) => {
-              responseText += `\u2022 ${highlight}
-`;
-            });
-          }
-        } else {
-          responseText += `\u{1F4CA} **Comprehensive AI Analysis:**
-`;
-          responseText += `\u2022 ${reportsAnalysis.summary}
-`;
-          if (reportsAnalysis.report_content) {
-            const content = reportsAnalysis.report_content;
-            if (content.investment_analyses && content.investment_analyses.length > 0) {
-              responseText += `
-\u{1F4B0} **Investment Analysis Available** (${content.investment_analyses.length} reports)
-`;
-              const firstAnalysis = content.investment_analyses[0];
-              if (firstAnalysis.content && firstAnalysis.content.length > 100) {
-                const preview = firstAnalysis.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText += `\u{1F4DD} Preview: "${preview}..."
-`;
-              }
-            }
-            if (content.deep_dive_reports && content.deep_dive_reports.length > 0) {
-              responseText += `
-\u{1F4DA} **Deep Dive Reports Available** (${content.deep_dive_reports.length} reports)
-`;
-              const firstDeepDive = content.deep_dive_reports[0];
-              if (firstDeepDive.content && firstDeepDive.content.length > 100) {
-                const preview = firstDeepDive.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText += `\u{1F4DD} Preview: "${preview}..."
-`;
-              }
-            }
-            if (content.code_reviews && content.code_reviews.length > 0) {
-              responseText += `
-\u{1F527} **Code Reviews Available** (${content.code_reviews.length} reports)
-`;
-              const firstCodeReview = content.code_reviews[0];
-              if (firstCodeReview.content && firstCodeReview.content.length > 100) {
-                const preview = firstCodeReview.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText += `\u{1F4DD} Preview: "${preview}..."
-`;
-              }
-            }
-            if (content.executive_summaries && content.executive_summaries.length > 0) {
-              responseText += `
-\u{1F4CB} **Executive Summaries Available** (${content.executive_summaries.length} reports)
-`;
-              const firstSummary = content.executive_summaries[0];
-              if (firstSummary.content && firstSummary.content.length > 100) {
-                const preview = firstSummary.content.substring(0, 300).replace(/\n/g, " ").trim();
-                responseText += `\u{1F4DD} Preview: "${preview}..."
-`;
-              }
-            }
-          }
-        }
-        if (reportsAnalysis.research_themes && reportsAnalysis.research_themes.length > 0) {
-          responseText += `
-\u{1F50D} **Key Research Themes:**
-`;
-          reportsAnalysis.research_themes.slice(0, 4).forEach((theme) => {
-            responseText += `\u2022 ${theme}
-`;
-          });
-        }
-        if (reportsAnalysis.data_quality) {
-          responseText += `
-\u{1F4C8} **Data Quality Assessment:**
-`;
-          responseText += `\u2022 Coverage: ${reportsAnalysis.data_quality.coverage_breadth}
-`;
-          responseText += `\u2022 Completeness: ${reportsAnalysis.data_quality.completeness}
-`;
-          responseText += `\u2022 Freshness: ${reportsAnalysis.data_quality.freshness}
-`;
-        }
-        responseText += `
-\u{1F4CB} **Usage Guidelines:**
-`;
-        responseText += `\u2022 Use for due diligence and investment research
-`;
-        responseText += `\u2022 Combine with quantitative metrics for complete picture
-`;
-        responseText += `\u2022 Review report generation date for relevance
-`;
-        responseText += `\u2022 Consider reports as one input in investment decision process
-`;
-      }
-      responseText += `
-\u{1F517} **Data Source:** TokenMetrics AI Engine (v2)`;
-      console.log(`[${requestId}] AI reports analysis completed successfully`);
-      console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "aireports",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      console.error("Error in getAiReports action:", error);
-      const errorMessage = `\u274C **Failed to get AI reports**
-
-**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}
-
-**Troubleshooting:**
-\u2022 Ensure TokenMetrics AI has analyzed the requested token
-\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
-\u2022 Check if your TokenMetrics subscription includes AI reports
-\u2022 Verify the token meets criteria for AI analysis
-
-**Common Solutions:**
-\u2022 Use full token names or symbols (e.g., "Bitcoin" or "BTC")
-\u2022 Check if TokenMetrics has generated reports for the requested token
-\u2022 Ensure your API key has access to the ai-reports endpoint`;
-      if (callback) {
-        callback({
-          text: errorMessage,
-          content: {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred",
-            message: "Failed to retrieve AI reports from TokenMetrics API"
-          }
-        });
-      }
-      return false;
-    }
-  },
-  validate: async (runtime, message, state) => {
-    elizaLogger8.log("\u{1F50D} Validating getAiReportsAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger8.error("\u274C Validation failed:", error);
-      return false;
-    }
-  }
-};
-function analyzeAiReports(reportsData, analysisType = "all") {
-  if (!reportsData || reportsData.length === 0) {
-    return {
-      summary: "No AI reports available for analysis",
-      report_coverage: "No data",
-      insights: []
-    };
-  }
-  const reportContent = extractReportContent(reportsData);
-  const reportCoverage = analyzeReportCoverage(reportsData);
-  const contentAnalysis = analyzeReportContent(reportsData);
-  const qualityAssessment = assessReportQuality(reportsData);
-  const topInsights = extractTopInsights(reportsData);
-  let focusedAnalysis = {};
-  switch (analysisType) {
-    case "investment":
-      focusedAnalysis = {
-        investment_focus: {
-          investment_reports: reportsData.filter((r) => r.INVESTMENT_ANALYSIS || r.INVESTMENT_ANALYSIS_POINTER).length,
-          key_investment_points: extractInvestmentHighlights(reportsData),
-          investment_insights: [
-            `\u{1F4C8} Investment analyses available: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS).length}`,
-            `\u{1F3AF} Executive summaries: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS_POINTER).length}`,
-            `\u{1F4B0} Market analysis included: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS?.includes("Market Analysis")).length}`
-          ]
-        }
-      };
-      break;
-    case "technical":
-      focusedAnalysis = {
-        technical_focus: {
-          code_reviews: reportsData.filter((r) => r.CODE_REVIEW).length,
-          technical_highlights: extractTechnicalHighlights(reportsData),
-          technical_insights: [
-            `\u{1F527} Code reviews available: ${reportsData.filter((r) => r.CODE_REVIEW).length}`,
-            `\u{1F4CA} Architecture analysis: ${reportsData.filter((r) => r.CODE_REVIEW?.includes("Architecture")).length}`,
-            `\u{1F6E1}\uFE0F Security assessments: ${reportsData.filter((r) => r.CODE_REVIEW?.includes("security")).length}`
-          ]
-        }
-      };
-      break;
-    case "comprehensive":
-      focusedAnalysis = {
-        comprehensive_focus: {
-          deep_dive_reports: reportsData.filter((r) => r.DEEP_DIVE).length,
-          comprehensive_highlights: extractComprehensiveHighlights(reportsData),
-          comprehensive_insights: [
-            `\u{1F4DA} Deep dive reports: ${reportsData.filter((r) => r.DEEP_DIVE).length}`,
-            `\u{1F50D} Multi-faceted analysis: ${reportsData.filter((r) => r.DEEP_DIVE && r.INVESTMENT_ANALYSIS && r.CODE_REVIEW).length}`,
-            `\u{1F4D6} Detailed evaluations: ${reportsData.filter((r) => r.DEEP_DIVE?.length > 1e3).length}`
-          ]
-        }
-      };
-      break;
-  }
-  return {
-    summary: `AI analysis covering ${reportsData.length} comprehensive reports for ${reportCoverage.unique_tokens} tokens`,
-    analysis_type: analysisType,
-    report_content: reportContent,
-    report_coverage: reportCoverage,
-    content_analysis: contentAnalysis,
-    quality_assessment: qualityAssessment,
-    top_insights: topInsights,
-    research_themes: identifyResearchThemes(reportsData),
-    actionable_intelligence: generateActionableIntelligence(reportsData),
-    ...focusedAnalysis,
-    data_quality: {
-      source: "TokenMetrics AI Engine",
-      total_reports: reportsData.length,
-      coverage_breadth: assessCoverageBreadth(reportsData),
-      freshness: assessReportFreshness(reportsData),
-      completeness: assessActualReportCompleteness(reportsData)
-    },
-    investment_considerations: [
-      "\u{1F4CA} Use AI reports as part of comprehensive due diligence",
-      "\u{1F3AF} Cross-reference recommendations with quantitative metrics",
-      "\u{1F4C5} Consider report generation date for relevance",
-      "\u{1F50D} Focus on reports matching your investment timeline",
-      "\u2696\uFE0F Balance AI insights with fundamental analysis",
-      "\u{1F4C8} Track report accuracy over time for validation"
-    ]
-  };
-}
-function extractReportContent(reportsData) {
-  const content = {
-    investment_analyses: [],
-    deep_dive_reports: [],
-    code_reviews: [],
-    executive_summaries: []
-  };
-  reportsData.forEach((report) => {
-    if (report.INVESTMENT_ANALYSIS) {
-      content.investment_analyses.push({
-        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
-        content: report.INVESTMENT_ANALYSIS,
-        length: report.INVESTMENT_ANALYSIS.length
-      });
-    }
-    if (report.DEEP_DIVE) {
-      content.deep_dive_reports.push({
-        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
-        content: report.DEEP_DIVE,
-        length: report.DEEP_DIVE.length
-      });
-    }
-    if (report.CODE_REVIEW) {
-      content.code_reviews.push({
-        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
-        content: report.CODE_REVIEW,
-        length: report.CODE_REVIEW.length
-      });
-    }
-    if (report.INVESTMENT_ANALYSIS_POINTER) {
-      content.executive_summaries.push({
-        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
-        content: report.INVESTMENT_ANALYSIS_POINTER,
-        length: report.INVESTMENT_ANALYSIS_POINTER.length
-      });
-    }
-  });
-  return content;
-}
-function extractInvestmentHighlights(reportsData) {
-  const highlights = [];
-  reportsData.forEach((report) => {
-    if (report.INVESTMENT_ANALYSIS) {
-      const analysis = report.INVESTMENT_ANALYSIS;
-      if (analysis.includes("Executive Summary")) {
-        const summaryMatch = analysis.match(/## Executive Summary\n(.*?)(?=\n##|$)/s);
-        if (summaryMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL}: ${summaryMatch[1].substring(0, 200)}...`);
-        }
-      }
-      if (analysis.includes("Conclusion")) {
-        const conclusionMatch = analysis.match(/## Conclusion\n(.*?)(?=\n##|$)/s);
-        if (conclusionMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Outlook: ${conclusionMatch[1].substring(0, 150)}...`);
-        }
-      }
-    }
-    if (report.INVESTMENT_ANALYSIS_POINTER) {
-      const pointer = report.INVESTMENT_ANALYSIS_POINTER;
-      const bulletPoints = pointer.match(/- .+/g);
-      if (bulletPoints && bulletPoints.length > 0) {
-        highlights.push(`${report.TOKEN_SYMBOL}: ${bulletPoints[0].substring(2, 150)}...`);
-      }
-    }
-  });
-  return highlights.slice(0, 5);
-}
-function extractTechnicalHighlights(reportsData) {
-  const highlights = [];
-  reportsData.forEach((report) => {
-    if (report.CODE_REVIEW) {
-      const review = report.CODE_REVIEW;
-      if (review.includes("Innovation")) {
-        const innovationMatch = review.match(/## Innovation\n(.*?)(?=\n##|$)/s);
-        if (innovationMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Innovation: ${innovationMatch[1].substring(0, 150)}...`);
-        }
-      }
-      if (review.includes("Architecture")) {
-        const archMatch = review.match(/## Architecture\n(.*?)(?=\n##|$)/s);
-        if (archMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Architecture: ${archMatch[1].substring(0, 150)}...`);
-        }
-      }
-      if (review.includes("Code Quality")) {
-        const qualityMatch = review.match(/## Code Quality\n(.*?)(?=\n##|$)/s);
-        if (qualityMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Code Quality: ${qualityMatch[1].substring(0, 150)}...`);
-        }
-      }
-    }
-  });
-  return highlights.slice(0, 5);
-}
-function extractComprehensiveHighlights(reportsData) {
-  const highlights = [];
-  reportsData.forEach((report) => {
-    if (report.DEEP_DIVE) {
-      const deepDive = report.DEEP_DIVE;
-      if (deepDive.includes("Vision")) {
-        const visionMatch = deepDive.match(/### Vision\n(.*?)(?=\n###|$)/s);
-        if (visionMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Vision: ${visionMatch[1].substring(0, 150)}...`);
-        }
-      }
-      if (deepDive.includes("Problem")) {
-        const problemMatch = deepDive.match(/### Problem\n(.*?)(?=\n###|$)/s);
-        if (problemMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Problem Solved: ${problemMatch[1].substring(0, 150)}...`);
-        }
-      }
-      if (deepDive.includes("Market Analysis")) {
-        const marketMatch = deepDive.match(/## Market Analysis\n(.*?)(?=\n##|$)/s);
-        if (marketMatch) {
-          highlights.push(`${report.TOKEN_SYMBOL} Market: ${marketMatch[1].substring(0, 150)}...`);
-        }
-      }
-    }
-  });
-  return highlights.slice(0, 5);
-}
-function analyzeReportCoverage(reportsData) {
-  const uniqueTokens = new Set(reportsData.map((r) => r.TOKEN_SYMBOL || r.TOKEN_NAME).filter((s) => s)).size;
-  const tokenCoverage = /* @__PURE__ */ new Map();
-  reportsData.forEach((report) => {
-    const symbol = report.TOKEN_SYMBOL || report.TOKEN_NAME || "Unknown";
-    if (!tokenCoverage.has(symbol)) {
-      tokenCoverage.set(symbol, {
-        reports: [],
-        report_types: /* @__PURE__ */ new Set()
-      });
-    }
-    const tokenData = tokenCoverage.get(symbol);
-    tokenData.reports.push(report);
-    if (report.INVESTMENT_ANALYSIS) tokenData.report_types.add("Investment Analysis");
-    if (report.DEEP_DIVE) tokenData.report_types.add("Deep Dive");
-    if (report.CODE_REVIEW) tokenData.report_types.add("Code Review");
-    if (report.INVESTMENT_ANALYSIS_POINTER) tokenData.report_types.add("Executive Summary");
-  });
-  const mostAnalyzed = Array.from(tokenCoverage.entries()).sort((a, b) => b[1].reports.length - a[1].reports.length).slice(0, 5).map(([symbol, data]) => ({
-    symbol,
-    report_count: data.reports.length,
-    report_types: Array.from(data.report_types),
-    token_id: data.reports[0]?.TOKEN_ID || "Unknown"
-  }));
-  const reportTypes = /* @__PURE__ */ new Map();
-  reportsData.forEach((report) => {
-    if (report.INVESTMENT_ANALYSIS) reportTypes.set("Investment Analysis", (reportTypes.get("Investment Analysis") || 0) + 1);
-    if (report.DEEP_DIVE) reportTypes.set("Deep Dive", (reportTypes.get("Deep Dive") || 0) + 1);
-    if (report.CODE_REVIEW) reportTypes.set("Code Review", (reportTypes.get("Code Review") || 0) + 1);
-    if (report.INVESTMENT_ANALYSIS_POINTER) reportTypes.set("Executive Summary", (reportTypes.get("Executive Summary") || 0) + 1);
-  });
-  return {
-    unique_tokens: uniqueTokens,
-    total_reports: reportsData.length,
-    most_analyzed_tokens: mostAnalyzed,
-    report_types: Array.from(reportTypes.entries()).map(([type, count]) => ({
-      type,
-      count,
-      percentage: (count / reportsData.length * 100).toFixed(1)
-    })),
-    coverage_depth: uniqueTokens > 0 ? (reportsData.length / uniqueTokens).toFixed(1) : "0"
-  };
-}
-function assessActualReportCompleteness(reportsData) {
-  const requiredFields = ["INVESTMENT_ANALYSIS", "DEEP_DIVE", "CODE_REVIEW", "INVESTMENT_ANALYSIS_POINTER"];
-  let completeness = 0;
-  reportsData.forEach((report) => {
-    const presentFields = requiredFields.filter(
-      (field) => report[field] && report[field].length > 0
-    );
-    completeness += presentFields.length / requiredFields.length;
-  });
-  const avgCompleteness = completeness / reportsData.length * 100;
-  if (avgCompleteness > 80) return "Very Complete";
-  if (avgCompleteness > 60) return "Complete";
-  if (avgCompleteness > 40) return "Moderate";
-  return "Limited";
-}
-function analyzeReportContent(reportsData) {
-  const sentimentAnalysis = analyzeSentiment(reportsData);
-  const commonThemes = extractCommonThemes(reportsData);
-  const keywordFrequency = analyzeKeywords(reportsData);
-  return {
-    sentiment_distribution: sentimentAnalysis,
-    common_themes: commonThemes,
-    trending_keywords: keywordFrequency.slice(0, 10),
-    content_depth: assessContentDepth(reportsData),
-    analysis_focus: identifyAnalysisFocus(reportsData)
-  };
-}
-function assessReportQuality(reportsData) {
-  let qualityScore = 0;
-  let detailedReports = 0;
-  let recentReports = 0;
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  reportsData.forEach((report) => {
-    if (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 500) {
-      detailedReports++;
-      qualityScore += 2;
-    }
-    if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS) && report.KEY_INSIGHTS.length > 0) {
-      qualityScore += 1;
-    }
-    if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS) && report.RECOMMENDATIONS.length > 0) {
-      qualityScore += 1;
-    }
-    if (report.GENERATED_DATE && new Date(report.GENERATED_DATE) > thirtyDaysAgo) {
-      recentReports++;
-      qualityScore += 1;
-    }
-  });
-  const avgQualityScore = reportsData.length > 0 ? qualityScore / reportsData.length : 0;
-  let qualityRating;
-  if (avgQualityScore > 4) qualityRating = "Excellent";
-  else if (avgQualityScore > 3) qualityRating = "Good";
-  else if (avgQualityScore > 2) qualityRating = "Fair";
-  else qualityRating = "Basic";
-  return {
-    quality_rating: qualityRating,
-    average_quality_score: avgQualityScore.toFixed(1),
-    detailed_reports: detailedReports,
-    detailed_percentage: (detailedReports / reportsData.length * 100).toFixed(1),
-    recent_reports: recentReports,
-    freshness_percentage: (recentReports / reportsData.length * 100).toFixed(1),
-    completeness: assessReportCompleteness(reportsData)
-  };
-}
-function extractTopInsights(reportsData) {
-  const allInsights = [];
-  const allRecommendations = [];
-  reportsData.forEach((report) => {
-    if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS)) {
-      allInsights.push(...report.KEY_INSIGHTS.map((insight) => ({
-        insight,
-        token: report.SYMBOL || "Unknown",
-        report_date: report.GENERATED_DATE || "Unknown"
-      })));
-    }
-    if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS)) {
-      allRecommendations.push(...report.RECOMMENDATIONS.map((rec) => ({
-        recommendation: rec,
-        token: report.SYMBOL || "Unknown",
-        report_date: report.GENERATED_DATE || "Unknown"
-      })));
-    }
-  });
-  return {
-    total_insights: allInsights.length,
-    total_recommendations: allRecommendations.length,
-    recent_insights: allInsights.slice(-5),
-    // Last 5 insights
-    key_recommendations: allRecommendations.slice(-5),
-    // Last 5 recommendations
-    insight_themes: categorizeInsights(allInsights),
-    recommendation_types: categorizeRecommendations(allRecommendations)
-  };
-}
-function identifyResearchThemes(reportsData) {
-  const themes = /* @__PURE__ */ new Map();
-  reportsData.forEach((report) => {
-    if (report.REPORT_CONTENT) {
-      const content = report.REPORT_CONTENT.toLowerCase();
-      const themeKeywords = [
-        "defi",
-        "nft",
-        "layer 2",
-        "scaling",
-        "interoperability",
-        "staking",
-        "governance",
-        "yield farming",
-        "liquidity",
-        "smart contracts",
-        "consensus",
-        "privacy",
-        "institutional adoption",
-        "regulation",
-        "market making",
-        "derivatives",
-        "lending",
-        "synthetic assets"
-      ];
-      themeKeywords.forEach((keyword) => {
-        if (content.includes(keyword)) {
-          themes.set(keyword, (themes.get(keyword) || 0) + 1);
-        }
-      });
-    }
-  });
-  return Array.from(themes.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([theme, count]) => `${theme} (${count} reports)`);
-}
-function generateActionableIntelligence(reportsData) {
-  const intelligence = {
-    investment_signals: [],
-    risk_alerts: [],
-    opportunity_highlights: [],
-    market_insights: []
-  };
-  reportsData.forEach((report) => {
-    if (report.RECOMMENDATIONS) {
-      report.RECOMMENDATIONS.forEach((rec) => {
-        const recLower = rec.toLowerCase();
-        if (recLower.includes("buy") || recLower.includes("accumulate")) {
-          intelligence.investment_signals.push({
-            type: "Bullish",
-            signal: rec,
-            token: report.SYMBOL
-          });
-        } else if (recLower.includes("sell") || recLower.includes("avoid")) {
-          intelligence.investment_signals.push({
-            type: "Bearish",
-            signal: rec,
-            token: report.SYMBOL
-          });
-        }
-        if (recLower.includes("risk") || recLower.includes("caution")) {
-          intelligence.risk_alerts.push({
-            alert: rec,
-            token: report.SYMBOL
-          });
-        }
-        if (recLower.includes("opportunity") || recLower.includes("potential")) {
-          intelligence.opportunity_highlights.push({
-            opportunity: rec,
-            token: report.SYMBOL
-          });
-        }
-      });
-    }
-    if (report.KEY_INSIGHTS) {
-      report.KEY_INSIGHTS.forEach((insight) => {
-        const insightLower = insight.toLowerCase();
-        if (insightLower.includes("market") || insightLower.includes("trend")) {
-          intelligence.market_insights.push({
-            insight,
-            token: report.SYMBOL
-          });
-        }
-      });
-    }
-  });
-  return {
-    investment_signals: intelligence.investment_signals.slice(0, 10),
-    risk_alerts: intelligence.risk_alerts.slice(0, 5),
-    opportunity_highlights: intelligence.opportunity_highlights.slice(0, 5),
-    market_insights: intelligence.market_insights.slice(0, 8),
-    summary: generateIntelligenceSummary(intelligence)
-  };
-}
-function analyzeSentiment(reportsData) {
-  let bullish = 0;
-  let bearish = 0;
-  let neutral = 0;
-  reportsData.forEach((report) => {
-    if (report.REPORT_CONTENT || report.KEY_INSIGHTS || report.RECOMMENDATIONS) {
-      const content = [
-        report.REPORT_CONTENT || "",
-        ...report.KEY_INSIGHTS || [],
-        ...report.RECOMMENDATIONS || []
-      ].join(" ").toLowerCase();
-      const positiveWords = ["bullish", "positive", "growth", "opportunity", "strong", "buy", "accumulate"];
-      const negativeWords = ["bearish", "negative", "decline", "risk", "weak", "sell", "avoid"];
-      const positiveScore = positiveWords.reduce((score, word) => {
-        return score + (content.split(word).length - 1);
-      }, 0);
-      const negativeScore = negativeWords.reduce((score, word) => {
-        return score + (content.split(word).length - 1);
-      }, 0);
-      if (positiveScore > negativeScore) bullish++;
-      else if (negativeScore > positiveScore) bearish++;
-      else neutral++;
-    }
-  });
-  const total = bullish + bearish + neutral;
-  return {
-    bullish,
-    bearish,
-    neutral,
-    bullish_percentage: total > 0 ? (bullish / total * 100).toFixed(1) : "0",
-    bearish_percentage: total > 0 ? (bearish / total * 100).toFixed(1) : "0",
-    overall_sentiment: bullish > bearish ? "Bullish" : bearish > bullish ? "Bearish" : "Neutral"
-  };
-}
-function extractCommonThemes(reportsData) {
-  const themeCount = /* @__PURE__ */ new Map();
-  const commonThemes = [
-    "scalability",
-    "adoption",
-    "partnerships",
-    "technology",
-    "team",
-    "roadmap",
-    "competition",
-    "valuation",
-    "use case",
-    "governance",
-    "tokenomics",
-    "ecosystem",
-    "development",
-    "community",
-    "security"
-  ];
-  reportsData.forEach((report) => {
-    const content = [
-      report.REPORT_CONTENT || "",
-      ...report.KEY_INSIGHTS || [],
-      ...report.RECOMMENDATIONS || []
-    ].join(" ").toLowerCase();
-    commonThemes.forEach((theme) => {
-      if (content.includes(theme)) {
-        themeCount.set(theme, (themeCount.get(theme) || 0) + 1);
-      }
-    });
-  });
-  return Array.from(themeCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([theme, count]) => `${theme} (${count})`);
-}
-function analyzeKeywords(reportsData) {
-  const keywordCount = /* @__PURE__ */ new Map();
-  reportsData.forEach((report) => {
-    const content = [
-      report.REPORT_CONTENT || "",
-      ...report.KEY_INSIGHTS || [],
-      ...report.RECOMMENDATIONS || []
-    ].join(" ").toLowerCase();
-    const words = content.match(/\b[a-z]{4,}\b/g) || [];
-    const excludeWords = ["that", "this", "with", "from", "they", "have", "will", "been", "were", "would", "could", "should"];
-    words.forEach((word) => {
-      if (!excludeWords.includes(word)) {
-        keywordCount.set(word, (keywordCount.get(word) || 0) + 1);
-      }
-    });
-  });
-  return Array.from(keywordCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([keyword, count]) => ({ keyword, frequency: count }));
-}
-function assessContentDepth(reportsData) {
-  const avgContentLength = reportsData.reduce((sum, report) => {
-    return sum + (report.REPORT_CONTENT ? report.REPORT_CONTENT.length : 0);
-  }, 0) / reportsData.length;
-  if (avgContentLength > 2e3) return "Comprehensive";
-  if (avgContentLength > 1e3) return "Detailed";
-  if (avgContentLength > 500) return "Moderate";
-  return "Brief";
-}
-function identifyAnalysisFocus(reportsData) {
-  const focusAreas = /* @__PURE__ */ new Map();
-  const analysisTypes = [
-    "fundamental analysis",
-    "technical analysis",
-    "on-chain analysis",
-    "competitive analysis",
-    "market analysis",
-    "risk analysis",
-    "valuation analysis",
-    "team analysis",
-    "technology review"
-  ];
-  reportsData.forEach((report) => {
-    const content = [
-      report.REPORT_CONTENT || "",
-      report.REPORT_TYPE || ""
-    ].join(" ").toLowerCase();
-    analysisTypes.forEach((type) => {
-      if (content.includes(type.split(" ")[0])) {
-        focusAreas.set(type, (focusAreas.get(type) || 0) + 1);
-      }
-    });
-  });
-  return Array.from(focusAreas.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([focus, count]) => `${focus} (${count})`);
-}
-function assessCoverageBreadth(reportsData) {
-  const categories = new Set(reportsData.map((r) => r.CATEGORY).filter((c) => c));
-  const symbols = new Set(reportsData.map((r) => r.SYMBOL).filter((s) => s));
-  if (categories.size > 8 && symbols.size > 20) return "Very Broad";
-  if (categories.size > 5 && symbols.size > 15) return "Broad";
-  if (categories.size > 3 && symbols.size > 10) return "Moderate";
-  return "Narrow";
-}
-function assessReportFreshness(reportsData) {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  const recentReports = reportsData.filter(
-    (r) => r.GENERATED_DATE && new Date(r.GENERATED_DATE) > thirtyDaysAgo
-  ).length;
-  const freshnessPercent = recentReports / reportsData.length * 100;
-  if (freshnessPercent > 60) return "Very Fresh";
-  if (freshnessPercent > 40) return "Fresh";
-  if (freshnessPercent > 20) return "Moderate";
-  return "Dated";
-}
-function assessReportCompleteness(reportsData) {
-  const requiredFields = ["REPORT_CONTENT", "KEY_INSIGHTS", "RECOMMENDATIONS"];
-  let completeness = 0;
-  reportsData.forEach((report) => {
-    const presentFields = requiredFields.filter(
-      (field) => report[field] && (Array.isArray(report[field]) ? report[field].length > 0 : report[field].length > 0)
-    );
-    completeness += presentFields.length / requiredFields.length;
-  });
-  const avgCompleteness = completeness / reportsData.length * 100;
-  if (avgCompleteness > 80) return "Very Complete";
-  if (avgCompleteness > 60) return "Complete";
-  if (avgCompleteness > 40) return "Moderate";
-  return "Limited";
-}
-function categorizeInsights(insights) {
-  const categories = /* @__PURE__ */ new Map();
-  insights.forEach(({ insight }) => {
-    const insightLower = insight.toLowerCase();
-    if (insightLower.includes("technical") || insightLower.includes("technology")) {
-      categories.set("Technical", (categories.get("Technical") || 0) + 1);
-    } else if (insightLower.includes("market") || insightLower.includes("price")) {
-      categories.set("Market", (categories.get("Market") || 0) + 1);
-    } else if (insightLower.includes("fundamental") || insightLower.includes("business")) {
-      categories.set("Fundamental", (categories.get("Fundamental") || 0) + 1);
-    } else if (insightLower.includes("risk") || insightLower.includes("concern")) {
-      categories.set("Risk", (categories.get("Risk") || 0) + 1);
-    } else {
-      categories.set("General", (categories.get("General") || 0) + 1);
-    }
-  });
-  return Array.from(categories.entries()).map(([category, count]) => ({
-    category,
-    count,
-    percentage: (count / insights.length * 100).toFixed(1)
-  }));
-}
-function categorizeRecommendations(recommendations) {
-  const categories = /* @__PURE__ */ new Map();
-  recommendations.forEach(({ recommendation }) => {
-    const recLower = recommendation.toLowerCase();
-    if (recLower.includes("buy") || recLower.includes("accumulate")) {
-      categories.set("Buy/Accumulate", (categories.get("Buy/Accumulate") || 0) + 1);
-    } else if (recLower.includes("sell") || recLower.includes("reduce")) {
-      categories.set("Sell/Reduce", (categories.get("Sell/Reduce") || 0) + 1);
-    } else if (recLower.includes("hold") || recLower.includes("maintain")) {
-      categories.set("Hold/Maintain", (categories.get("Hold/Maintain") || 0) + 1);
-    } else if (recLower.includes("watch") || recLower.includes("monitor")) {
-      categories.set("Watch/Monitor", (categories.get("Watch/Monitor") || 0) + 1);
-    } else {
-      categories.set("General Advice", (categories.get("General Advice") || 0) + 1);
-    }
-  });
-  return Array.from(categories.entries()).map(([category, count]) => ({
-    category,
-    count,
-    percentage: (count / recommendations.length * 100).toFixed(1)
-  }));
-}
-function generateIntelligenceSummary(intelligence) {
-  const { recommendations, insights, risk_factors } = intelligence;
-  let summary = "\u{1F4CA} **AI Intelligence Summary**\n\n";
-  if (recommendations && recommendations.length > 0) {
-    summary += `\u{1F3AF} **Key Recommendations**: ${recommendations.slice(0, 3).join(", ")}
-`;
-  }
-  if (insights && insights.length > 0) {
-    summary += `\u{1F4A1} **Top Insights**: ${insights.slice(0, 3).join(", ")}
-`;
-  }
-  if (risk_factors && risk_factors.length > 0) {
-    summary += `\u26A0\uFE0F **Risk Factors**: ${risk_factors.slice(0, 2).join(", ")}
-`;
-  }
-  return summary;
-}
-
-// src/actions/getTradingSignalsAction.ts
-import {
-  elizaLogger as elizaLogger9
-} from "@elizaos/core";
-var tradingSignalsTemplate = `# Task: Extract Trading Signals Request Information
-
-Based on the conversation context, identify what trading signals information the user is requesting.
-
-# Conversation Context:
-{{recentMessages}}
-
-# Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
-- Trading signal requests ("trading signals", "buy sell signals", "AI signals", "trading recommendations")
-- Signal types ("bullish", "bearish", "long", "short", "buy", "sell")
-- Time periods or date ranges
-- Market filters (category, exchange, market cap, volume)
-
-The user might say things like:
-- "Get trading signals for Bitcoin"
-- "Show me AI trading signals"
-- "What are the current buy/sell signals?"
-- "Get bullish signals for DeFi tokens"
-- "Show trading recommendations for Ethereum"
-- "Get signals for tokens with high volume"
-- "What tokens have buy signals today?"
-
-Extract the relevant information for the trading signals request.
-
-# Response Format:
-Return a structured object with the trading signals request information.`;
-var TradingSignalsRequestSchema = z.object({
-  cryptocurrency: z.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
-  signal_type: z.enum(["bullish", "bearish", "long", "short", "buy", "sell", "any"]).nullable().describe("Type of signal requested"),
-  category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-  exchange: z.string().nullable().describe("Exchange filter"),
-  time_period: z.string().nullable().describe("Time period or date range"),
-  market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
-  confidence: z.number().min(0).max(1).describe("Confidence in extraction")
-});
-async function fetchTradingSignals(params, runtime) {
-  elizaLogger9.log(`\u{1F4E1} Fetching trading signals with params:`, params);
-  try {
-    const data = await callTokenMetricsAPI("/v2/trading-signals", params, runtime);
-    if (!data) {
-      throw new Error("No data received from trading signals API");
-    }
-    elizaLogger9.log(`\u2705 Successfully fetched trading signals data`);
-    return data;
-  } catch (error) {
-    elizaLogger9.error("\u274C Error fetching trading signals:", error);
-    throw error;
-  }
-}
-function formatTradingSignalsResponse(data, tokenInfo) {
-  if (!data || data.length === 0) {
-    return "\u274C No trading signals found for the specified criteria.";
-  }
-  const signals = Array.isArray(data) ? data : [data];
-  const signalCount = signals.length;
-  const bullishSignals = signals.filter((s) => s.TRADING_SIGNAL === 1 || s.TRADING_SIGNAL === "1").length;
-  const bearishSignals = signals.filter((s) => s.TRADING_SIGNAL === -1 || s.TRADING_SIGNAL === "-1").length;
-  const neutralSignals = signals.filter((s) => s.TRADING_SIGNAL === 0 || s.TRADING_SIGNAL === "0").length;
-  let response = `\u{1F4CA} **TokenMetrics Trading Signals Analysis**
-
-`;
-  if (tokenInfo) {
-    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
-`;
-  }
-  response += `\u{1F4C8} **Signal Summary**: ${signalCount} signals analyzed
-`;
-  response += `\u{1F7E2} **Bullish**: ${bullishSignals} signals (${(bullishSignals / signalCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F534} **Bearish**: ${bearishSignals} signals (${(bearishSignals / signalCount * 100).toFixed(1)}%)
-`;
-  response += `\u26AA **Neutral**: ${neutralSignals} signals (${(neutralSignals / signalCount * 100).toFixed(1)}%)
-
-`;
-  const recentSignals = signals.slice(0, 5);
-  response += `\u{1F50D} **Recent Signals**:
-`;
-  recentSignals.forEach((signal, index) => {
-    const signalEmoji = signal.TRADING_SIGNAL === 1 ? "\u{1F7E2}" : signal.TRADING_SIGNAL === -1 ? "\u{1F534}" : "\u26AA";
-    const signalText = signal.TRADING_SIGNAL === 1 ? "BULLISH" : signal.TRADING_SIGNAL === -1 ? "BEARISH" : "NEUTRAL";
-    response += `${signalEmoji} **${signal.TOKEN_SYMBOL || signal.TOKEN_NAME}**: ${signalText}`;
-    if (signal.DATE) {
-      response += ` (${signal.DATE})`;
-    }
-    response += `
-`;
-  });
-  response += `
-\u{1F4A1} **AI Recommendations**:
-`;
-  if (bullishSignals > bearishSignals) {
-    response += `\u2022 Market sentiment is predominantly bullish (${(bullishSignals / signalCount * 100).toFixed(1)}%)
-`;
-    response += `\u2022 Consider long positions on tokens with strong bullish signals
-`;
-    response += `\u2022 Monitor for entry opportunities on pullbacks
-`;
-  } else if (bearishSignals > bullishSignals) {
-    response += `\u2022 Market sentiment is predominantly bearish (${(bearishSignals / signalCount * 100).toFixed(1)}%)
-`;
-    response += `\u2022 Exercise caution with new long positions
-`;
-    response += `\u2022 Consider defensive strategies or short positions
-`;
-  } else {
-    response += `\u2022 Market sentiment is mixed - signals are balanced
-`;
-    response += `\u2022 Wait for clearer directional signals before major moves
-`;
-    response += `\u2022 Focus on risk management and position sizing
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics AI Trading Signals
-`;
-  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-function analyzeTradingSignals(data) {
-  if (!data || data.length === 0) {
-    return { error: "No data to analyze" };
-  }
-  const signals = Array.isArray(data) ? data : [data];
-  const analysis = {
-    total_signals: signals.length,
-    signal_distribution: {
-      bullish: signals.filter((s) => s.TRADING_SIGNAL === 1 || s.TRADING_SIGNAL === "1").length,
-      bearish: signals.filter((s) => s.TRADING_SIGNAL === -1 || s.TRADING_SIGNAL === "-1").length,
-      neutral: signals.filter((s) => s.TRADING_SIGNAL === 0 || s.TRADING_SIGNAL === "0").length
-    },
-    top_tokens: signals.slice(0, 10).map((s) => ({
-      symbol: s.TOKEN_SYMBOL,
-      name: s.TOKEN_NAME,
-      signal: s.TRADING_SIGNAL,
-      date: s.DATE
-    })),
-    market_sentiment: "neutral"
-  };
-  const { bullish, bearish, neutral } = analysis.signal_distribution;
-  if (bullish > bearish && bullish > neutral) {
-    analysis.market_sentiment = "bullish";
-  } else if (bearish > bullish && bearish > neutral) {
-    analysis.market_sentiment = "bearish";
-  }
-  return analysis;
-}
-var getTradingSignalsAction = {
-  name: "GET_TRADING_SIGNALS_TOKENMETRICS",
-  similes: [
-    "GET_TRADING_SIGNALS",
-    "GET_AI_SIGNALS",
-    "GET_BUY_SELL_SIGNALS",
-    "GET_TRADING_RECOMMENDATIONS",
-    "TRADING_SIGNALS",
-    "AI_SIGNALS",
-    "MARKET_SIGNALS"
-  ],
-  description: "Get AI-generated trading signals and recommendations for cryptocurrencies from TokenMetrics",
-  validate: async (runtime, message, state) => {
-    elizaLogger9.log("\u{1F50D} Validating getTradingSignalsAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger9.error("\u274C Validation failed:", error);
-      return false;
-    }
-  },
-  handler: async (runtime, message, state, _options, callback) => {
-    const requestId = generateRequestId();
-    elizaLogger9.log("\u{1F680} Starting TokenMetrics trading signals handler");
-    elizaLogger9.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger9.log(`\u{1F194} Request ID: ${requestId}`);
-    try {
-      validateAndGetApiKey(runtime);
-      const signalsRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state || await runtime.composeState(message),
-        tradingSignalsTemplate,
-        TradingSignalsRequestSchema,
-        requestId
-      );
-      elizaLogger9.log("\u{1F3AF} AI Extracted signals request:", signalsRequest);
-      elizaLogger9.log(`\u{1F194} Request ${requestId}: AI Processing "${signalsRequest.cryptocurrency || "general market"}"`);
-      if (!signalsRequest.cryptocurrency && !signalsRequest.signal_type && !signalsRequest.category && signalsRequest.confidence < 0.2) {
-        elizaLogger9.log("\u274C AI extraction failed - very low confidence");
-        if (callback) {
-          callback({
-            text: `\u274C I couldn't identify specific trading signals criteria from your request.
-
-I can get AI trading signals for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Signal types (bullish, bearish, buy, sell signals)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-\u2022 General market signals
-
-Try asking something like:
-\u2022 "Get trading signals for Bitcoin"
-\u2022 "Show me bullish signals for DeFi tokens"
-\u2022 "What are the current buy signals?"
-\u2022 "Get AI trading recommendations"
-\u2022 "Show me trading signals"`,
-            content: {
-              error: "Insufficient trading signals criteria",
-              confidence: signalsRequest?.confidence || 0,
-              request_id: requestId
-            }
-          });
-        }
-        return false;
-      }
-      elizaLogger9.success("\u{1F3AF} Final extraction result:", signalsRequest);
-      const apiParams = {
-        limit: 50,
-        page: 1
-      };
-      let tokenInfo = null;
-      if (signalsRequest.cryptocurrency) {
-        elizaLogger9.log(`\u{1F50D} Attempting to resolve token for: "${signalsRequest.cryptocurrency}"`);
-        try {
-          tokenInfo = await resolveTokenSmart(signalsRequest.cryptocurrency, runtime);
-          if (tokenInfo) {
-            apiParams.token_id = tokenInfo.TOKEN_ID;
-            elizaLogger9.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-          } else {
-            apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
-            elizaLogger9.log(`\u{1F50D} Using symbol parameter: ${signalsRequest.cryptocurrency}`);
-          }
-        } catch (error) {
-          elizaLogger9.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
-          apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
-          elizaLogger9.log(`\u{1F50D} Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
-        }
-      }
-      if (signalsRequest.signal_type) {
-        if (signalsRequest.signal_type === "bullish" || signalsRequest.signal_type === "long" || signalsRequest.signal_type === "buy") {
-          apiParams.signal = 1;
-        } else if (signalsRequest.signal_type === "bearish" || signalsRequest.signal_type === "short" || signalsRequest.signal_type === "sell") {
-          apiParams.signal = -1;
-        }
-      }
-      if (signalsRequest.category) {
-        apiParams.category = signalsRequest.category;
-      }
-      if (signalsRequest.exchange) {
-        apiParams.exchange = signalsRequest.exchange;
-      }
-      elizaLogger9.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger9.log(`\u{1F4E1} Fetching trading signals data`);
-      const signalsData = await fetchTradingSignals(apiParams, runtime);
-      if (!signalsData) {
-        elizaLogger9.log("\u274C Failed to fetch trading signals data");
-        if (callback) {
-          callback({
-            text: `\u274C Unable to fetch trading signals data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No signals available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-            content: {
-              error: "API fetch failed",
-              request_id: requestId
-            }
-          });
-        }
-        return false;
-      }
-      let signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
-      if (signals.length > 1 && apiParams.symbol) {
-        elizaLogger9.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
-        const mainTokenSelectors = [
-          // For Bitcoin - select the main Bitcoin, not wrapped versions
-          (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
-          // For Dogecoin - select the main Dogecoin, not other DOGE tokens
-          (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
-          // For Ethereum - select the main Ethereum
-          (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
-          // For other tokens - prefer exact name matches or shortest/simplest names
-          (token) => {
-            const name = token.TOKEN_NAME.toLowerCase();
-            const symbol = token.TOKEN_SYMBOL.toLowerCase();
-            const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis"];
-            const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
-            if (hasAvoidKeywords) return false;
-            if (symbol === "btc" && name.includes("bitcoin")) return true;
-            if (symbol === "eth" && name.includes("ethereum")) return true;
-            if (symbol === "doge" && name.includes("dogecoin")) return true;
-            if (symbol === "sol" && name.includes("solana")) return true;
-            if (symbol === "avax" && name.includes("avalanche")) return true;
-            return false;
-          }
-        ];
-        let selectedToken = null;
-        for (const selector of mainTokenSelectors) {
-          const match = signals.find(selector);
-          if (match) {
-            selectedToken = match;
-            elizaLogger9.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
-            break;
-          }
-        }
-        if (selectedToken) {
-          signals = [selectedToken];
-          elizaLogger9.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
-        } else {
-          elizaLogger9.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${signals[0].TOKEN_NAME}`);
-        }
-      }
-      elizaLogger9.log(`\u{1F50D} Final signals count: ${signals.length}`);
-      const responseText = formatTradingSignalsResponse(signals, tokenInfo);
-      const analysis = analyzeTradingSignals(signals);
-      elizaLogger9.success("\u2705 Successfully processed trading signals request");
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            signals_data: signals,
-            analysis,
-            source: "TokenMetrics AI Trading Signals",
-            request_id: requestId,
-            query_details: {
-              original_request: signalsRequest.cryptocurrency || "general market",
-              signal_type: signalsRequest.signal_type,
-              category: signalsRequest.category,
-              confidence: signalsRequest.confidence,
-              data_freshness: "real-time",
-              request_id: requestId,
-              extraction_method: "ai_with_cache_busting"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      elizaLogger9.error("\u274C Error in TokenMetrics trading signals handler:", error);
-      elizaLogger9.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        callback({
-          text: `\u274C I encountered an error while fetching trading signals: ${errorMessage}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
-          content: {
-            error: errorMessage,
-            error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true,
-            request_id: requestId
-          }
-        });
-      }
-      return false;
-    }
-  },
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get trading signals for Bitcoin"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll fetch the latest AI trading signals for Bitcoin from TokenMetrics.",
-          action: "GET_TRADING_SIGNALS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me bullish signals for DeFi tokens"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get bullish trading signals for DeFi category tokens from TokenMetrics AI.",
-          action: "GET_TRADING_SIGNALS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What are the current AI trading recommendations?"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "Let me fetch the latest AI trading signals and recommendations from TokenMetrics.",
-          action: "GET_TRADING_SIGNALS_TOKENMETRICS"
-        }
-      }
-    ]
-  ]
-};
-
-// src/actions/getIndicesHoldingsAction.ts
-import {
-  elizaLogger as elizaLogger10
-} from "@elizaos/core";
-var IndicesHoldingsRequestSchema = z.object({
-  indexId: z.number().min(1).describe("The ID of the index to get holdings for"),
-  analysisType: z.enum(["composition", "risk", "performance", "all"]).optional().describe("Type of analysis to focus on")
-});
-var INDICES_HOLDINGS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting crypto index holdings requests from natural language.
-
-The user wants to get information about the holdings/composition of a specific crypto index. Extract the following information:
-
-1. **indexId** (required): The ID number of the index they want holdings for
-   - Look for phrases like "index 1", "index ID 5", "index number 3"
-   - Extract the numeric ID from the request
-   - This is required - if no ID is found, ask for clarification
-
-2. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "composition" - focus on token allocation and weights
-   - "risk" - focus on concentration and risk metrics
-   - "performance" - focus on price changes and performance
-   - "all" - comprehensive analysis
-
-Examples:
-- "Show me holdings of index 1" \u2192 {indexId: 1, analysisType: "all"}
-- "What tokens are in crypto index 5?" \u2192 {indexId: 5, analysisType: "composition"}
-- "Get risk analysis for index 3 holdings" \u2192 {indexId: 3, analysisType: "risk"}
-- "Index 2 composition and performance" \u2192 {indexId: 2, analysisType: "performance"}
-
-Extract the request details from the user's message.
-`;
-var getIndicesHoldingsAction = {
-  name: "GET_INDICES_HOLDINGS_TOKENMETRICS",
-  description: "Get the current holdings of a crypto index with weight percentages and allocation details from TokenMetrics",
-  similes: [
-    "get index holdings",
-    "index composition",
-    "index allocations",
-    "index weights",
-    "index portfolio",
-    "index assets",
-    "index breakdown",
-    "index constituents"
-  ],
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me the holdings of crypto index 1"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll get the current holdings and allocation weights for that crypto index.",
-          action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "What tokens are in the DeFi index and their weights?"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "Let me show you the token composition and weight allocation for the DeFi index.",
-          action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get risk analysis for index 3 holdings"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll analyze the holdings composition and risk metrics for index 3.",
-          action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
-        }
-      }
-    ]
-  ],
-  async handler(runtime, message, state, _options, callback) {
-    try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing indices holdings request...`);
-      const holdingsRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state || await runtime.composeState(message),
-        INDICES_HOLDINGS_EXTRACTION_TEMPLATE,
-        IndicesHoldingsRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, holdingsRequest);
-      const processedRequest = {
-        indexId: holdingsRequest.indexId,
-        analysisType: holdingsRequest.analysisType || "all"
-      };
-      const apiParams = {
-        id: processedRequest.indexId
-      };
-      const response = await callTokenMetricsAPI(
-        "/v2/indices-holdings",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing data...`);
-      const holdings = Array.isArray(response) ? response : response.data || [];
-      const holdingsAnalysis = analyzeHoldingsData(holdings, processedRequest.analysisType);
-      const result = {
-        success: true,
-        message: `Successfully retrieved holdings for index ${processedRequest.indexId} with ${holdings.length} assets`,
-        request_id: requestId,
-        indices_holdings: holdings,
-        analysis: holdingsAnalysis,
-        metadata: {
-          endpoint: "indices-holdings",
-          index_id: processedRequest.indexId,
-          analysis_focus: processedRequest.analysisType,
-          total_holdings: holdings.length,
-          api_version: "v2",
-          data_source: "TokenMetrics Indices Engine"
-        },
-        holdings_explanation: {
-          purpose: "Index holdings show the exact composition and allocation strategy of crypto indices",
-          key_metrics: [
-            "Weight Percentage - Allocation percentage of each token in the index",
-            "Allocation Value - Dollar value allocated to each token",
-            "Price - Current market price of each holding",
-            "Market Cap - Market capitalization of each token",
-            "24h Change - Recent price performance of holdings"
-          ],
-          allocation_insights: [
-            "Higher weight percentages indicate core positions in the index strategy",
-            "Diversification can be measured by the distribution of weights",
-            "Recent price changes affect the current allocation balance",
-            "Market cap correlation shows if the index follows market-cap weighting"
-          ],
-          usage_guidelines: [
-            "Review weight distribution for diversification assessment",
-            "Monitor large allocations for concentration risk",
-            "Compare holdings to your existing portfolio for overlap analysis",
-            "Track price changes to understand index performance drivers",
-            "Use allocation values to understand absolute exposure levels"
-          ]
-        }
-      };
-      console.log(`[${requestId}] Holdings analysis completed successfully`);
-      const responseText = formatIndicesHoldingsResponse(result);
-      console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "indicesholdings",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      console.error("Error in getIndicesHoldings action:", error);
-      if (callback) {
-        callback({
-          text: `\u274C Failed to retrieve indices holdings data: ${error instanceof Error ? error.message : "Unknown error"}`,
-          content: {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred"
-          }
-        });
-      }
-      return false;
-    }
-  },
-  validate: async (runtime, message, state) => {
-    elizaLogger10.log("\u{1F50D} Validating getIndicesHoldingsAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger10.error("\u274C Validation failed:", error);
-      return false;
-    }
-  }
-};
-function analyzeHoldingsData(holdings, analysisType = "all") {
-  if (!holdings || holdings.length === 0) {
-    return {
-      summary: "No holdings data available for analysis",
-      insights: [],
-      recommendations: []
-    };
-  }
-  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
-  const totalValue = holdings.reduce((sum, holding) => {
-    const weight = holding.WEIGHT || 0;
-    const price = holding.PRICE || 0;
-    const marketCap = holding.MARKET_CAP || 0;
-    return sum + weight * marketCap;
-  }, 0);
-  const topHoldings = holdings.filter((holding) => holding.WEIGHT !== void 0).sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0)).map((holding) => ({
-    ...holding,
-    WEIGHT_PERCENTAGE: (holding.WEIGHT || 0) * 100,
-    // Convert to percentage for display
-    ALLOCATION_VALUE: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0)
-  }));
-  const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
-  const top5Weight = topHoldings.slice(0, 5).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
-  const holdingsWithROI = holdings.filter((holding) => holding.CURRENT_ROI !== void 0);
-  const avgROI = holdingsWithROI.length > 0 ? holdingsWithROI.reduce((sum, holding) => sum + (holding.CURRENT_ROI || 0), 0) / holdingsWithROI.length : 0;
-  const largeCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e10);
-  const midCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e9 && (holding.MARKET_CAP || 0) <= 1e10);
-  const smallCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) <= 1e9);
-  const insights = [
-    `\u{1F4CA} Total Holdings: ${holdings.length} tokens`,
-    `\u2696\uFE0F Total Weight: ${formatPercentage(totalWeight)}`,
-    `\u{1F4B0} Total Allocation Value: ${formatCurrency(totalValue)}`,
-    `\u{1F3C6} Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatPercentage((topHoldings[0]?.WEIGHT || 0) * 100)})`,
-    `\u{1F4C8} Top 3 Concentration: ${formatPercentage(top3Weight)}`,
-    `\u{1F4CA} Top 5 Concentration: ${formatPercentage(top5Weight)}`,
-    `\u{1F4C8} Average ROI: ${formatPercentage(avgROI * 100)}`
-  ];
-  const recommendations = [
-    top3Weight > 60 ? "\u26A0\uFE0F High Concentration: Top 3 holdings represent significant portion - consider concentration risk" : "\u2705 Balanced Allocation: Good diversification across top holdings",
-    holdings.length > 20 ? "\u2705 Well Diversified: Large number of holdings provides good diversification" : holdings.length < 10 ? "\u26A0\uFE0F Limited Diversification: Consider if concentration aligns with your risk tolerance" : "\u{1F4CA} Moderate Diversification: Reasonable number of holdings for focused strategy",
-    largeCapHoldings.length > holdings.length * 0.7 ? "\u{1F3DB}\uFE0F Large Cap Focus: Index heavily weighted toward established cryptocurrencies" : smallCapHoldings.length > holdings.length * 0.5 ? "\u{1F680} Small Cap Exposure: Higher risk/reward profile with smaller market cap tokens" : "\u2696\uFE0F Balanced Market Cap: Mix of large and smaller market cap exposures"
-  ];
-  let focusedAnalysis = {};
-  switch (analysisType) {
-    case "composition":
-      focusedAnalysis = {
-        composition_focus: {
-          weight_distribution: {
-            top_10_percent: holdings.filter((h) => (h.WEIGHT || 0) * 100 > 10).length,
-            mid_range: holdings.filter((h) => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length,
-            small_positions: holdings.filter((h) => (h.WEIGHT || 0) * 100 < 1).length
-          },
-          sector_analysis: analyzeSectorDistribution(holdings),
-          composition_insights: [
-            `\u{1F3AF} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 > 10).length} major positions (>10% weight)`,
-            `\u{1F4CA} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length} medium positions (1-10% weight)`,
-            `\u{1F50D} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 < 1).length} small positions (<1% weight)`
-          ]
-        }
-      };
-      break;
-    case "risk":
-      focusedAnalysis = {
-        risk_focus: {
-          concentration_risk: {
-            herfindahl_index: calculateHerfindahlIndex(holdings),
-            concentration_level: top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"
-          },
-          volatility_analysis: {
-            high_roi_holdings: holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) > 0.5).length,
-            stable_holdings: holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) < 0.1).length
-          },
-          risk_insights: [
-            `\u26A0\uFE0F Concentration Risk: ${top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"} (top 3: ${formatPercentage(top3Weight)})`,
-            `\u{1F4CA} High ROI Holdings: ${holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) > 0.5).length} holdings with significant ROI`,
-            `\u{1F6E1}\uFE0F Stable Holdings: ${holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) < 0.1).length} holdings with stable performance`
-          ]
-        }
-      };
-      break;
-    case "performance":
-      const topPerformers = holdings.filter((h) => h.CURRENT_ROI !== void 0).sort((a, b) => (b.CURRENT_ROI || 0) - (a.CURRENT_ROI || 0)).slice(0, 5);
-      const worstPerformers = holdings.filter((h) => h.CURRENT_ROI !== void 0).sort((a, b) => (a.CURRENT_ROI || 0) - (b.CURRENT_ROI || 0)).slice(0, 5);
-      focusedAnalysis = {
-        performance_focus: {
-          top_performers: topPerformers,
-          worst_performers: worstPerformers,
-          performance_insights: [
-            `\u{1F680} Best performer: ${topPerformers[0]?.TOKEN_NAME} (${formatPercentage((topPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
-            `\u{1F4C9} Worst performer: ${worstPerformers[0]?.TOKEN_NAME} (${formatPercentage((worstPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
-            `\u{1F4CA} ${holdings.filter((h) => (h.CURRENT_ROI || 0) > 0).length}/${holdings.length} holdings showing positive ROI`
-          ]
-        }
-      };
-      break;
-  }
-  return {
-    summary: `Index contains ${holdings.length} holdings with ${formatPercentage(top3Weight)} concentration in top 3 positions`,
-    analysis_type: analysisType,
-    portfolio_metrics: {
-      total_holdings: holdings.length,
-      total_weight: totalWeight,
-      total_value: totalValue,
-      top_3_concentration: top3Weight,
-      top_5_concentration: top5Weight,
-      avg_roi: avgROI
-    },
-    market_cap_distribution: {
-      large_cap: largeCapHoldings.length,
-      mid_cap: midCapHoldings.length,
-      small_cap: smallCapHoldings.length
-    },
-    top_holdings: topHoldings.map((holding) => ({
-      token_name: holding.TOKEN_NAME,
-      symbol: holding.TOKEN_SYMBOL,
-      weight_percentage: (holding.WEIGHT || 0) * 100,
-      allocation_value: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0),
-      price: holding.PRICE,
-      current_roi: holding.CURRENT_ROI
-    })),
-    insights,
-    recommendations,
-    ...focusedAnalysis,
-    risk_considerations: [
-      "\u{1F4CA} Monitor concentration risk in top holdings",
-      "\u{1F504} Track rebalancing frequency and methodology",
-      "\u{1F4B0} Consider correlation with your existing portfolio",
-      "\u{1F4C8} Evaluate performance attribution by holding",
-      "\u26A0\uFE0F Assess liquidity risk in smaller holdings",
-      "\u{1F3AF} Review alignment with investment objectives"
-    ]
-  };
-}
-function analyzeSectorDistribution(holdings) {
-  return {
-    sectors_identified: "Analysis requires sector classification data",
-    diversification_score: holdings.length > 15 ? "High" : holdings.length > 8 ? "Medium" : "Low"
-  };
-}
-function calculateHerfindahlIndex(holdings) {
-  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
-  if (totalWeight === 0) return 0;
-  const herfindahl = holdings.reduce((sum, holding) => {
-    const normalizedWeight = (holding.WEIGHT || 0) / totalWeight;
-    return sum + normalizedWeight * normalizedWeight;
-  }, 0);
-  return Math.round(herfindahl * 1e4);
-}
-function formatIndicesHoldingsResponse(result) {
-  const { indices_holdings, analysis, metadata } = result;
-  let response = `\u{1F4CA} **Index Holdings Analysis**
-
-`;
-  if (indices_holdings && indices_holdings.length > 0) {
-    response += `\u{1F3AF} **Index ${metadata.index_id} Holdings (${indices_holdings.length} assets)**
-
-`;
-    const topHoldings = indices_holdings.filter((holding) => holding.WEIGHT !== void 0).sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0)).slice(0, 10);
-    if (topHoldings.length > 0) {
-      response += `\u{1F3C6} **Top Holdings:**
-`;
-      topHoldings.forEach((holding, i) => {
-        const name = holding.TOKEN_NAME || holding.TOKEN_SYMBOL || `Token ${i + 1}`;
-        const symbol = holding.TOKEN_SYMBOL || "";
-        const weight = holding.WEIGHT ? formatPercentage(holding.WEIGHT * 100) : "N/A";
-        const price = holding.PRICE ? formatCurrency(holding.PRICE) : "N/A";
-        const currentROI = holding.CURRENT_ROI ? formatPercentage(holding.CURRENT_ROI * 100) : "N/A";
-        response += `${i + 1}. **${name}** ${symbol ? `(${symbol})` : ""}
-`;
-        response += `   \u2022 Weight: ${weight}
-`;
-        response += `   \u2022 Price: ${price}
-`;
-        response += `   \u2022 Current ROI: ${currentROI}
-`;
-        response += `
-`;
-      });
-    }
-    if (analysis && analysis.insights) {
-      response += `\u{1F4A1} **Key Insights:**
-`;
-      analysis.insights.slice(0, 5).forEach((insight) => {
-        response += `\u2022 ${insight}
-`;
-      });
-      response += `
-`;
-    }
-    if (analysis && analysis.portfolio_metrics) {
-      const metrics = analysis.portfolio_metrics;
-      response += `\u{1F4C8} **Portfolio Metrics:**
-`;
-      response += `\u2022 Total Holdings: ${metrics.total_holdings || 0}
-`;
-      if (metrics.top_3_concentration !== void 0) {
-        response += `\u2022 Top 3 Concentration: ${formatPercentage(metrics.top_3_concentration)}
-`;
-      }
-      if (metrics.top_5_concentration !== void 0) {
-        response += `\u2022 Top 5 Concentration: ${formatPercentage(metrics.top_5_concentration)}
-`;
-      }
-      if (metrics.avg_roi !== void 0) {
-        response += `\u2022 Average ROI: ${formatPercentage(metrics.avg_roi * 100)}
-`;
-      }
-      response += `
-`;
-    }
-    if (analysis && analysis.recommendations) {
-      response += `\u{1F3AF} **Recommendations:**
-`;
-      analysis.recommendations.slice(0, 3).forEach((rec) => {
-        response += `\u2022 ${rec}
-`;
-      });
-    }
-  } else {
-    response += `\u274C No holdings data found for index ${metadata.index_id}.
-
-`;
-    response += `This could be due to:
-`;
-    response += `\u2022 Invalid index ID
-`;
-    response += `\u2022 Index has no current holdings
-`;
-    response += `\u2022 API connectivity issues
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
-`;
-  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-
 // src/actions/getCorrelationAction.ts
 import {
-  elizaLogger as elizaLogger11
+  elizaLogger as elizaLogger4,
+  createActionResult as createActionResult3
 } from "@elizaos/core";
-var CorrelationRequestSchema = z.object({
-  token_id: z.number().min(1).optional().describe("The ID of the token to analyze correlation for"),
-  symbol: z.string().optional().describe("The symbol of the token to analyze correlation for"),
-  category: z.string().optional().describe("Filter by token category (e.g., defi, layer1, gaming)"),
-  exchange: z.string().optional().describe("Filter by exchange"),
-  limit: z.number().min(1).max(100).optional().describe("Number of correlation results to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["diversification", "hedging", "risk_management", "all"]).optional().describe("Type of correlation analysis to focus on")
+var CorrelationRequestSchema = external_exports.object({
+  token_id: external_exports.number().min(1).optional().describe("The ID of the token to analyze correlation for"),
+  symbol: external_exports.string().optional().describe("The symbol of the token to analyze correlation for"),
+  category: external_exports.string().optional().describe("Filter by token category (e.g., defi, layer1, gaming)"),
+  exchange: external_exports.string().optional().describe("Filter by exchange"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of correlation results to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["diversification", "hedging", "risk_management", "all"]).optional().describe("Type of correlation analysis to focus on")
 });
 var getCorrelationAction = {
   name: "GET_CORRELATION_TOKENMETRICS",
@@ -9291,65 +5548,65 @@ var getCorrelationAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get correlation analysis for Bitcoin"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve Bitcoin's correlation with other top cryptocurrencies for diversification analysis.",
+          text: "I'll analyze price correlations for Bitcoin with other cryptocurrencies.",
           action: "GET_CORRELATION_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Show me correlation data for DeFi tokens"
+          text: "Show me DeFi tokens for portfolio diversification"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll analyze correlation patterns within the DeFi sector for portfolio optimization.",
+          text: "I'll find DeFi tokens with low correlations for portfolio diversification.",
           action: "GET_CORRELATION_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Find hedging opportunities for Ethereum"
+          text: "Find hedging opportunities for my Ethereum position"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll identify negatively correlated assets that could serve as hedges for Ethereum.",
+          text: "I'll analyze correlations to find assets that could hedge your Ethereum exposure.",
           action: "GET_CORRELATION_TOKENMETRICS"
         }
       }
     ]
   ],
   validate: async (runtime, message, state) => {
-    elizaLogger11.log("\u{1F50D} Validating getCorrelationAction (1.x)");
+    elizaLogger4.log("\u{1F50D} Validating getCorrelationAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger11.error("\u274C Validation failed:", error);
+      elizaLogger4.error("\u274C Validation failed:", error);
       return false;
     }
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger11.log("\u{1F680} Starting TokenMetrics correlation handler (1.x)");
-    elizaLogger11.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger11.log(`\u{1F194} Request ID: ${requestId}`);
+    elizaLogger4.log("\u{1F680} Starting TokenMetrics correlation handler (1.x)");
+    elizaLogger4.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger4.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
       if (!state) {
@@ -9359,10 +5616,10 @@ var getCorrelationAction = {
         limit: 20,
         page: 1
       };
-      elizaLogger11.log(`\u{1F4E1} Fetching correlation data`);
+      elizaLogger4.log(`\u{1F4E1} Fetching correlation data`);
       const correlationData = await callTokenMetricsAPI("/v2/correlation", apiParams, runtime);
       if (!correlationData) {
-        elizaLogger11.log("\u274C Failed to fetch correlation data");
+        elizaLogger4.log("\u274C Failed to fetch correlation data");
         if (callback) {
           await callback({
             text: `\u274C Unable to fetch correlation data at the moment.
@@ -9379,13 +5636,20 @@ Please try again in a few moments.`,
             }
           });
         }
-        return false;
+        return createActionResult3({
+          success: false,
+          text: "\u274C Unable to fetch correlation data at the moment.",
+          data: {
+            error: "API fetch failed",
+            request_id: requestId
+          }
+        });
       }
       const correlations = Array.isArray(correlationData) ? correlationData : correlationData.data || [];
-      elizaLogger11.log(`\u{1F50D} Received ${correlations.length} correlation data points`);
+      elizaLogger4.log(`\u{1F50D} Received ${correlations.length} correlation data points`);
       const responseText = formatCorrelationResponse(correlations);
       const analysis = analyzeCorrelationData(correlations, "comprehensive");
-      elizaLogger11.success("\u2705 Successfully processed correlation request");
+      elizaLogger4.success("\u2705 Successfully processed correlation request");
       if (callback) {
         await callback({
           text: responseText,
@@ -9404,22 +5668,30 @@ Please try again in a few moments.`,
           }
         });
       }
-      return true;
+      return createActionResult3({
+        success: true,
+        text: responseText,
+        data: {
+          success: true,
+          correlation_data: correlations,
+          analysis,
+          source: "TokenMetrics Correlation API",
+          request_id: requestId,
+          metadata: {
+            endpoint: "correlation",
+            data_source: "TokenMetrics API",
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            total_correlations: correlations.length
+          }
+        }
+      });
     } catch (error) {
-      elizaLogger11.error("\u274C Error in TokenMetrics correlation handler:", error);
-      elizaLogger11.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      elizaLogger4.error("\u274C Error in correlation handler:", error);
+      elizaLogger4.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         await callback({
-          text: `\u274C I encountered an error while fetching correlation data: ${errorMessage}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+          text: `\u274C I encountered an error while fetching correlation data: ${errorMessage}`,
           content: {
             error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
@@ -9428,7 +5700,10 @@ Please check your TokenMetrics API key configuration and try again.`,
           }
         });
       }
-      return false;
+      return createActionResult3({
+        success: false,
+        error: errorMessage
+      });
     }
   }
 };
@@ -10091,2202 +6366,103 @@ function shouldUseDynamicHedging(avgCorrelation) {
   return "No - low correlations allow for static hedging strategies";
 }
 
-// src/actions/getDailyOhlcvAction.ts
+// src/actions/getHourlyTradingSignalsAction.ts
 import {
-  elizaLogger as elizaLogger12
+  elizaLogger as elizaLogger5,
+  createActionResult as createActionResult4
 } from "@elizaos/core";
-var DailyOhlcvRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  token_name: z.string().optional().describe("Full name of the token"),
-  startDate: z.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
-  endDate: z.string().optional().describe("End date for data range (YYYY-MM-DD)"),
-  limit: z.number().min(1).max(1e3).optional().describe("Number of data points to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["swing_trading", "trend_analysis", "technical_indicators", "all"]).optional().describe("Type of analysis to focus on")
+var HourlyTradingSignalsRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  signal: external_exports.number().optional().describe("Filter by signal type (1=bullish, -1=bearish, 0=neutral)"),
+  startDate: external_exports.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
+  endDate: external_exports.string().optional().describe("End date for data range (YYYY-MM-DD)"),
+  category: external_exports.string().optional().describe("Token category filter"),
+  exchange: external_exports.string().optional().describe("Exchange filter"),
+  marketcap: external_exports.number().optional().describe("Minimum market cap filter"),
+  volume: external_exports.number().optional().describe("Minimum volume filter"),
+  fdv: external_exports.number().optional().describe("Minimum fully diluted valuation filter"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of signals to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["active_trading", "scalping", "momentum", "all"]).optional().describe("Type of analysis to focus on")
 });
-var DAILY_OHLCV_EXTRACTION_TEMPLATE = `
-CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+var HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting hourly trading signals requests from natural language.
 
-You are an AI assistant specialized in extracting daily OHLCV data requests from natural language.
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-The user wants to get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
+The user wants to get AI-generated hourly trading signals for cryptocurrency analysis. Extract the following information:
 
-1. **cryptocurrency** (required): The EXACT name or symbol of the cryptocurrency mentioned by the user
-   - Bitcoin, BTC \u2192 "Bitcoin"
-   - Ethereum, ETH \u2192 "Ethereum" 
-   - Dogecoin, DOGE \u2192 "Dogecoin"
-   - Solana, SOL \u2192 "Solana"
-   - Avalanche, AVAX \u2192 "Avalanche"
-   - Cardano, ADA \u2192 "Cardano"
-   - Polkadot, DOT \u2192 "Polkadot"
-   - Chainlink, LINK \u2192 "Chainlink"
-   - CRITICAL: Use the EXACT name/symbol the user mentioned
+1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
+   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
+   - Can be a specific token or general request
+   - EXTRACTION RULE: Use the EXACT cryptocurrency mentioned by the user
 
-2. **symbol** (optional): Token symbol if mentioned
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
-
-3. **token_id** (optional): Specific token ID if mentioned
+2. **token_id** (optional): Specific token ID if mentioned
    - Usually a number like "3375" for Bitcoin
 
-4. **token_name** (optional): Full name of the token for API calls
-
-5. **startDate** (optional): Start date for data range
-   - Look for dates in YYYY-MM-DD format
-   - Convert relative dates like "last month", "past 30 days"
-
-6. **endDate** (optional): End date for data range
-   - Look for dates in YYYY-MM-DD format
-
-7. **limit** (optional, default: 50): Number of data points to return
-   - Look for phrases like "50 days", "last 100 candles", "200 data points"
-
-8. **page** (optional, default: 1): Page number for pagination
-
-9. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "swing_trading" - focus on swing trading opportunities and signals
-   - "trend_analysis" - focus on trend identification and direction
-   - "technical_indicators" - focus on technical indicators and patterns
-   - "all" - comprehensive OHLCV analysis
-
-CRITICAL EXAMPLES:
-- "Get daily OHLCV for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me daily candles for BTC" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Daily data for ETH for swing trading" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "swing_trading"}
-- "DOGE daily OHLCV" \u2192 {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
-- "Solana trend analysis" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "trend_analysis"}
-
-Extract the request details from the user's message.
-`;
-function extractCryptocurrencySimple3(text) {
-  const cryptoPatterns = [
-    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
-    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
-    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
-    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
-    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
-    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
-    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" },
-    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
-    { regex: /\b(binance coin|bnb)\b/i, name: "BNB", symbol: "BNB" },
-    { regex: /\b(ripple|xrp)\b/i, name: "XRP", symbol: "XRP" },
-    { regex: /\b(litecoin|ltc)\b/i, name: "Litecoin", symbol: "LTC" },
-    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
-    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
-    { regex: /\b(shiba inu|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" }
-  ];
-  for (const pattern of cryptoPatterns) {
-    if (pattern.regex.test(text)) {
-      return {
-        cryptocurrency: pattern.name,
-        symbol: pattern.symbol
-      };
-    }
-  }
-  return {};
-}
-var getDailyOhlcvAction = {
-  name: "GET_DAILY_OHLCV_TOKENMETRICS",
-  description: "Get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency tokens from TokenMetrics",
-  similes: [
-    "get daily ohlcv",
-    "daily price data",
-    "daily candles",
-    "daily chart data",
-    "swing trading data",
-    "daily technical analysis",
-    "daily market data"
-  ],
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get daily OHLCV data for Bitcoin"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll retrieve daily OHLCV data for Bitcoin from TokenMetrics.",
-          action: "GET_DAILY_OHLCV_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me daily candle data for ETH for the past month"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll get daily OHLCV data for Ethereum for the past month.",
-          action: "GET_DAILY_OHLCV_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Daily price data for swing trading analysis"
-        }
-      },
-      {
-        user: "{{agent}}",
-        content: {
-          text: "I'll retrieve daily OHLCV data optimized for swing trading analysis.",
-          action: "GET_DAILY_OHLCV_TOKENMETRICS"
-        }
-      }
-    ]
-  ],
-  async handler(runtime, message, state, _options, callback) {
-    try {
-      const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing daily OHLCV request...`);
-      const ohlcvRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state || await runtime.composeState(message),
-        DAILY_OHLCV_EXTRACTION_TEMPLATE,
-        DailyOhlcvRequestSchema,
-        requestId
-      );
-      console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
-      let processedRequest = {
-        cryptocurrency: ohlcvRequest.cryptocurrency,
-        token_id: ohlcvRequest.token_id,
-        symbol: ohlcvRequest.symbol,
-        token_name: ohlcvRequest.token_name,
-        startDate: ohlcvRequest.startDate,
-        endDate: ohlcvRequest.endDate,
-        limit: ohlcvRequest.limit || 50,
-        page: ohlcvRequest.page || 1,
-        analysisType: ohlcvRequest.analysisType || "all"
-      };
-      if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
-        console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
-        const regexResult = extractCryptocurrencySimple3(message.content.text);
-        if (regexResult.cryptocurrency) {
-          processedRequest.cryptocurrency = regexResult.cryptocurrency;
-          processedRequest.symbol = regexResult.symbol;
-          console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
-        }
-      }
-      if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
-        const symbolToNameMap = {
-          "BTC": "Bitcoin",
-          "ETH": "Ethereum",
-          "DOGE": "Dogecoin",
-          "SOL": "Solana",
-          "AVAX": "Avalanche",
-          "ADA": "Cardano",
-          "DOT": "Polkadot",
-          "LINK": "Chainlink",
-          "BNB": "BNB",
-          "XRP": "XRP",
-          "LTC": "Litecoin",
-          "MATIC": "Polygon",
-          "UNI": "Uniswap",
-          "SHIB": "Shiba Inu"
-        };
-        const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
-        if (fullName) {
-          console.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
-          processedRequest.cryptocurrency = fullName;
-          if (!processedRequest.symbol) {
-            processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
-          }
-        }
-      }
-      let resolvedToken = null;
-      if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-        try {
-          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-          if (resolvedToken) {
-            processedRequest.token_id = resolvedToken.token_id;
-            processedRequest.symbol = resolvedToken.symbol;
-            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-          }
-        } catch (error) {
-          console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
-        }
-      }
-      const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
-      };
-      if (processedRequest.symbol) {
-        apiParams.symbol = processedRequest.symbol;
-        console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
-      } else if (processedRequest.cryptocurrency) {
-        apiParams.token_name = processedRequest.cryptocurrency;
-        console.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
-      } else if (processedRequest.token_id) {
-        apiParams.token_id = processedRequest.token_id;
-        console.log(`[${requestId}] Using token_id parameter: ${processedRequest.token_id}`);
-      }
-      if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
-      if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
-      const response = await callTokenMetricsAPI(
-        "/v2/daily-ohlcv",
-        apiParams,
-        runtime
-      );
-      console.log(`[${requestId}] API response received, processing OHLCV data...`);
-      const ohlcvData = Array.isArray(response) ? response : response.data || [];
-      let filteredByToken = ohlcvData;
-      if (ohlcvData.length > 0 && processedRequest.symbol) {
-        const tokenGroups = ohlcvData.reduce((groups, item) => {
-          const tokenId = item.TOKEN_ID;
-          if (!groups[tokenId]) {
-            groups[tokenId] = [];
-          }
-          groups[tokenId].push(item);
-          return groups;
-        }, {});
-        const tokenIds = Object.keys(tokenGroups);
-        console.log(
-          `[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`,
-          tokenIds.map((id) => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`)
-        );
-        if (tokenIds.length > 1) {
-          let selectedTokenId = null;
-          let maxScore = -1;
-          for (const tokenId of tokenIds) {
-            const tokenData = tokenGroups[tokenId];
-            const firstItem = tokenData[0];
-            let score = 0;
-            const avgPrice = tokenData.reduce((sum, item) => sum + (item.CLOSE || 0), 0) / tokenData.length;
-            if (avgPrice > 1e3) score += 100;
-            else if (avgPrice > 100) score += 50;
-            else if (avgPrice > 10) score += 20;
-            else if (avgPrice > 1) score += 10;
-            const avgVolume = tokenData.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / tokenData.length;
-            if (avgVolume > 1e9) score += 50;
-            else if (avgVolume > 1e8) score += 30;
-            else if (avgVolume > 1e7) score += 20;
-            else if (avgVolume > 1e6) score += 10;
-            const tokenName2 = firstItem.TOKEN_NAME?.toLowerCase() || "";
-            const symbol = processedRequest.symbol?.toLowerCase() || "";
-            if (tokenName2 === symbol) score += 30;
-            else if (tokenName2.includes(symbol)) score += 20;
-            else if (symbol === "btc" && tokenName2 === "bitcoin") score += 40;
-            else if (symbol === "eth" && tokenName2 === "ethereum") score += 40;
-            else if (symbol === "doge" && tokenName2 === "dogecoin") score += 40;
-            if (tokenName2.includes("wrapped") || tokenName2.includes("osmosis") || tokenName2.includes("synthetic") || tokenName2.includes("bridged")) {
-              score -= 20;
-            }
-            console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
-            if (score > maxScore) {
-              maxScore = score;
-              selectedTokenId = tokenId;
-            }
-          }
-          if (selectedTokenId) {
-            filteredByToken = tokenGroups[selectedTokenId];
-            const selectedToken = filteredByToken[0];
-            console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
-          } else {
-            console.log(`[${requestId}] No clear main token identified, using all data`);
-          }
-        } else {
-          console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
-        }
-      }
-      const validData = filteredByToken.filter((item) => {
-        if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
-          console.log(`[${requestId}] Filtering out invalid data point:`, item);
-          return false;
-        }
-        const priceRange = (item.HIGH - item.LOW) / item.LOW;
-        if (priceRange > 10) {
-          console.log(`[${requestId}] Filtering out extreme outlier:`, item);
-          return false;
-        }
-        return true;
-      });
-      console.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
-      console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
-      const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
-      const ohlcvAnalysis = analyzeDailyOhlcvData(sortedData, processedRequest.analysisType);
-      const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
-      let responseText = `\u{1F4CA} **Daily OHLCV Data for ${tokenName}**
-
-`;
-      if (sortedData.length === 0) {
-        responseText += `\u274C No valid daily OHLCV data found for ${tokenName}. This could mean:
-`;
-        responseText += `\u2022 The token may not have sufficient trading history
-`;
-        responseText += `\u2022 TokenMetrics may not have daily data for this token
-`;
-        responseText += `\u2022 All data points were filtered out due to quality issues
-`;
-        responseText += `\u2022 Try using a different token name or symbol
-
-`;
-        responseText += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
-      } else {
-        if (ohlcvData.length > sortedData.length) {
-          const tokenFiltered = ohlcvData.length - filteredByToken.length;
-          const qualityFiltered = filteredByToken.length - sortedData.length;
-          if (tokenFiltered > 0 && qualityFiltered > 0) {
-            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
-
-`;
-          } else if (tokenFiltered > 0) {
-            responseText += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
-
-`;
-          } else if (qualityFiltered > 0) {
-            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
-
-`;
-          }
-        }
-        const recentData = sortedData.slice(-5).reverse();
-        responseText += `\u{1F4C8} **Recent Daily Data (Last ${recentData.length} days):**
-`;
-        recentData.forEach((item, index) => {
-          const date = new Date(item.DATE || item.TIMESTAMP);
-          const dateStr = date.toLocaleDateString();
-          responseText += `
-**Day ${index + 1}** (${dateStr}):
-`;
-          responseText += `\u2022 Open: ${formatCurrency(item.OPEN)}
-`;
-          responseText += `\u2022 High: ${formatCurrency(item.HIGH)}
-`;
-          responseText += `\u2022 Low: ${formatCurrency(item.LOW)}
-`;
-          responseText += `\u2022 Close: ${formatCurrency(item.CLOSE)}
-`;
-          responseText += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
-`;
-        });
-        if (ohlcvAnalysis && ohlcvAnalysis.summary) {
-          responseText += `
-
-\u{1F4CA} **Analysis Summary:**
-${ohlcvAnalysis.summary}
-`;
-        }
-        if (ohlcvAnalysis?.price_analysis) {
-          const priceAnalysis = ohlcvAnalysis.price_analysis;
-          responseText += `
-\u{1F4B0} **Price Movement:**
-`;
-          responseText += `\u2022 Direction: ${priceAnalysis.direction || "Unknown"}
-`;
-          responseText += `\u2022 Change: ${priceAnalysis.price_change || "N/A"} (${priceAnalysis.change_percent || "N/A"})
-`;
-          responseText += `\u2022 Range: ${priceAnalysis.lowest_price || "N/A"} - ${priceAnalysis.highest_price || "N/A"}
-`;
-        }
-        if (ohlcvAnalysis?.trend_analysis) {
-          const trendAnalysis = ohlcvAnalysis.trend_analysis;
-          responseText += `
-\u{1F4C8} **Trend Analysis:**
-`;
-          responseText += `\u2022 Primary Trend: ${trendAnalysis.primary_trend}
-`;
-          responseText += `\u2022 Trend Strength: ${trendAnalysis.trend_strength}
-`;
-          responseText += `\u2022 Momentum: ${trendAnalysis.momentum}
-`;
-        }
-        if (ohlcvAnalysis?.volume_analysis) {
-          const volumeAnalysis = ohlcvAnalysis.volume_analysis;
-          responseText += `
-\u{1F4CA} **Volume Analysis:**
-`;
-          responseText += `\u2022 Average Volume: ${volumeAnalysis.average_volume || "N/A"}
-`;
-          responseText += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend || "Unknown"}
-`;
-          responseText += `\u2022 Volume Pattern: ${volumeAnalysis.volume_pattern || "Unknown"}
-`;
-        }
-        if (ohlcvAnalysis?.trading_recommendations?.primary_recommendations?.length > 0) {
-          responseText += `
-\u{1F3AF} **Trading Recommendations:**
-`;
-          ohlcvAnalysis.trading_recommendations.primary_recommendations.forEach((rec) => {
-            responseText += `\u2022 ${rec}
-`;
-          });
-        }
-        if (processedRequest.analysisType === "swing_trading" && ohlcvAnalysis?.swing_trading_focus) {
-          responseText += `
-\u26A1 **Swing Trading Insights:**
-`;
-          ohlcvAnalysis.swing_trading_focus.insights?.forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-        } else if (processedRequest.analysisType === "trend_analysis" && ohlcvAnalysis?.trend_focus) {
-          responseText += `
-\u{1F4C8} **Trend Analysis Insights:**
-`;
-          ohlcvAnalysis.trend_focus.insights?.forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-        } else if (processedRequest.analysisType === "technical_indicators" && ohlcvAnalysis?.technical_focus) {
-          responseText += `
-\u{1F50D} **Technical Analysis:**
-`;
-          ohlcvAnalysis.technical_focus.insights?.forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-        }
-        responseText += `
-
-\u{1F4CB} **Data Summary:**
-`;
-        responseText += `\u2022 Total Data Points: ${sortedData.length}
-`;
-        responseText += `\u2022 Timeframe: 1 day intervals
-`;
-        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
-`;
-        responseText += `\u2022 Data Source: TokenMetrics Official API
-`;
-      }
-      const result = {
-        success: true,
-        message: `Successfully retrieved ${sortedData.length} daily OHLCV data points`,
-        request_id: requestId,
-        ohlcv_data: sortedData,
-        analysis: ohlcvAnalysis,
-        metadata: {
-          endpoint: "daily-ohlcv",
-          requested_token: processedRequest.symbol || processedRequest.cryptocurrency || processedRequest.token_id,
-          date_range: {
-            start: processedRequest.startDate,
-            end: processedRequest.endDate
-          },
-          analysis_focus: processedRequest.analysisType,
-          pagination: {
-            page: processedRequest.page,
-            limit: processedRequest.limit
-          },
-          data_points: sortedData.length,
-          timeframe: "1 day",
-          api_version: "v2",
-          data_source: "TokenMetrics Official API"
-        },
-        ohlcv_explanation: {
-          OPEN: "Opening price at the start of the day",
-          HIGH: "Highest price during the day",
-          LOW: "Lowest price during the day",
-          CLOSE: "Closing price at the end of the day",
-          VOLUME: "Total trading volume during the day",
-          usage_tips: [
-            "Use for swing trading and medium-term technical analysis",
-            "Daily data is ideal for trend identification and support/resistance levels",
-            "Volume analysis helps confirm breakouts and reversals"
-          ]
-        }
-      };
-      console.log(`[${requestId}] Daily OHLCV analysis completed successfully`);
-      console.log(`[${requestId}] Analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "daily-ohlcv",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
-          }
-        });
-      }
-      return true;
-    } catch (error) {
-      console.error("Error in getDailyOhlcv action:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve daily OHLCV data from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/daily-ohlcv is accessible",
-          parameter_validation: [
-            "Verify token_id is a valid number or symbol is a valid string",
-            "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
-            "Ensure your API key has access to OHLCV data",
-            "Confirm the token has sufficient trading history"
-          ],
-          common_solutions: [
-            "Try using a major token (BTC=3375, ETH=1027) to test functionality",
-            "Remove date filters to get recent data",
-            "Check if your subscription includes daily OHLCV data access"
-          ]
-        }
-      };
-    }
-  },
-  validate: async (runtime, message, state) => {
-    elizaLogger12.log("\u{1F50D} Validating getDailyOhlcvAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger12.error("\u274C Validation failed:", error);
-      return false;
-    }
-  }
-};
-function analyzeDailyOhlcvData(ohlcvData, analysisType = "all") {
-  if (!ohlcvData || ohlcvData.length === 0) {
-    return {
-      summary: "No daily OHLCV data available for analysis",
-      trend_analysis: "Cannot assess",
-      insights: []
-    };
-  }
-  const sortedData = ohlcvData.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
-  const priceAnalysis = analyzeDailyPriceMovement(sortedData);
-  const volumeAnalysis = analyzeDailyVolumePatterns(sortedData);
-  const technicalAnalysis = analyzeTechnicalIndicators(sortedData);
-  const trendAnalysis = analyzeDailyTrend(sortedData);
-  const supportResistanceAnalysis = analyzeSupportResistance(sortedData);
-  const insights = generateDailyInsights(priceAnalysis, volumeAnalysis, technicalAnalysis, trendAnalysis);
-  return {
-    summary: `Daily analysis of ${sortedData.length} days shows ${trendAnalysis.primary_trend} trend with ${priceAnalysis.volatility_level} volatility`,
-    price_analysis: priceAnalysis,
-    volume_analysis: volumeAnalysis,
-    technical_analysis: technicalAnalysis,
-    trend_analysis: trendAnalysis,
-    support_resistance: supportResistanceAnalysis,
-    insights,
-    trading_recommendations: generateDailyTradingRecommendations(trendAnalysis, technicalAnalysis, volumeAnalysis),
-    investment_signals: generateInvestmentSignals(priceAnalysis, trendAnalysis, technicalAnalysis),
-    data_quality: {
-      source: "TokenMetrics Official API",
-      timeframe: "1 day",
-      data_points: sortedData.length,
-      date_range: `${sortedData[0]?.DATE || "Unknown"} to ${sortedData[sortedData.length - 1]?.DATE || "Unknown"}`,
-      completeness: calculateDailyDataCompleteness(sortedData)
-    }
-  };
-}
-function analyzeDailyPriceMovement(data) {
-  if (data.length < 2) return { change: 0, change_percent: 0 };
-  const firstPrice = data[0].OPEN;
-  const lastPrice = data[data.length - 1].CLOSE;
-  const highestPrice = Math.max(...data.map((d) => d.HIGH));
-  const lowestPrice = Math.min(...data.map((d) => d.LOW));
-  const priceChange = lastPrice - firstPrice;
-  const changePercent = priceChange / firstPrice * 100;
-  const priceRange = highestPrice - lowestPrice;
-  const rangePercent = priceRange / firstPrice * 100;
-  const dailyReturns = data.slice(1).map(
-    (day, i) => (day.CLOSE - data[i].CLOSE) / data[i].CLOSE * 100
-  );
-  const avgDailyReturn = dailyReturns.reduce((sum, ret) => sum + ret, 0) / dailyReturns.length;
-  const volatility = Math.sqrt(dailyReturns.reduce((sum, ret) => sum + Math.pow(ret - avgDailyReturn, 2), 0) / (dailyReturns.length - 1));
-  let volatilityLevel;
-  if (volatility > 8) volatilityLevel = "Very High";
-  else if (volatility > 5) volatilityLevel = "High";
-  else if (volatility > 3) volatilityLevel = "Moderate";
-  else if (volatility > 1.5) volatilityLevel = "Low";
-  else volatilityLevel = "Very Low";
-  return {
-    start_price: formatCurrency(firstPrice),
-    end_price: formatCurrency(lastPrice),
-    price_change: formatCurrency(priceChange),
-    change_percent: formatPercentage(changePercent),
-    highest_price: formatCurrency(highestPrice),
-    lowest_price: formatCurrency(lowestPrice),
-    price_range: formatCurrency(priceRange),
-    range_percent: formatPercentage(rangePercent),
-    daily_volatility: formatPercentage(volatility),
-    volatility_level: volatilityLevel,
-    direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways",
-    momentum: calculateMomentum(data)
-  };
-}
-function analyzeDailyVolumePatterns(data) {
-  const volumes = data.map((d) => d.VOLUME).filter((v) => v > 0);
-  if (volumes.length === 0) return { average_volume: 0, pattern: "No data" };
-  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
-  const maxVolume = Math.max(...volumes);
-  const minVolume = Math.min(...volumes);
-  const priceChanges = data.slice(1).map((day, i) => day.CLOSE - data[i].CLOSE);
-  const volumePriceCorrelation = calculateCorrelation(volumes.slice(1), priceChanges);
-  const recentVolume = volumes.slice(-7).reduce((sum, vol) => sum + vol, 0) / 7;
-  const earlierVolume = volumes.slice(-14, -7).reduce((sum, vol) => sum + vol, 0) / 7;
-  const volumeTrend = recentVolume > earlierVolume * 1.1 ? "Increasing" : recentVolume < earlierVolume * 0.9 ? "Decreasing" : "Stable";
-  return {
-    average_volume: formatCurrency(avgVolume),
-    max_volume: formatCurrency(maxVolume),
-    min_volume: formatCurrency(minVolume),
-    volume_trend: volumeTrend,
-    volume_price_correlation: volumePriceCorrelation.toFixed(3),
-    volume_pattern: classifyVolumePattern(volumes),
-    volume_confirmation: analyzeVolumeConfirmation(data)
-  };
-}
-function analyzeTechnicalIndicators(data) {
-  if (data.length < 20) return { status: "Insufficient data for technical analysis" };
-  const closes = data.map((d) => d.CLOSE);
-  const sma20 = calculateSMA(closes, 20);
-  const sma50 = calculateSMA(closes, 50);
-  const currentPrice = closes[closes.length - 1];
-  const rsi = calculateRSI(closes, 14);
-  const ema12 = calculateEMA(closes, 12);
-  const ema26 = calculateEMA(closes, 26);
-  const macd = ema12[ema12.length - 1] - ema26[ema26.length - 1];
-  return {
-    moving_averages: {
-      sma_20: formatCurrency(sma20),
-      sma_50: formatCurrency(sma50),
-      price_vs_sma20: currentPrice > sma20 ? "Above" : "Below",
-      price_vs_sma50: currentPrice > sma50 ? "Above" : "Below",
-      ma_alignment: sma20 > sma50 ? "Bullish" : "Bearish"
-    },
-    momentum_indicators: {
-      rsi: rsi.toFixed(2),
-      rsi_signal: interpretRSI(rsi),
-      macd: macd.toFixed(4),
-      macd_signal: macd > 0 ? "Bullish" : "Bearish"
-    },
-    technical_bias: determineTechnicalBias(currentPrice, sma20, sma50, rsi)
-  };
-}
-function analyzeDailyTrend(data) {
-  if (data.length < 2) return { primary_trend: "Insufficient Data" };
-  const closes = data.map((d) => d.CLOSE);
-  const highs = data.map((d) => d.HIGH);
-  const lows = data.map((d) => d.LOW);
-  let shortTrend, mediumTrend, longTrend;
-  if (closes.length >= 3) {
-    shortTrend = identifyTrend(closes.slice(-3));
-  } else {
-    shortTrend = identifyTrend(closes);
-  }
-  if (closes.length >= 5) {
-    mediumTrend = identifyTrend(closes.slice(-5));
-  } else {
-    mediumTrend = shortTrend;
-  }
-  longTrend = identifyTrend(closes);
-  const analysisWindow = Math.min(10, highs.length);
-  const higherHighs = countHigherHighs(highs.slice(-analysisWindow));
-  const higherLows = countHigherLows(lows.slice(-analysisWindow));
-  let primaryTrend;
-  if (data.length >= 5) {
-    if (shortTrend === "Up" && mediumTrend === "Up") primaryTrend = "Strong Uptrend";
-    else if (shortTrend === "Down" && mediumTrend === "Down") primaryTrend = "Strong Downtrend";
-    else if (shortTrend === "Up") primaryTrend = "Uptrend";
-    else if (shortTrend === "Down") primaryTrend = "Downtrend";
-    else primaryTrend = "Sideways";
-  } else {
-    if (shortTrend === "Up") primaryTrend = "Short-term Uptrend";
-    else if (shortTrend === "Down") primaryTrend = "Short-term Downtrend";
-    else primaryTrend = "Sideways";
-  }
-  return {
-    primary_trend: primaryTrend,
-    short_term_trend: shortTrend,
-    medium_term_trend: mediumTrend,
-    long_term_trend: longTrend,
-    trend_strength: calculateTrendStrength(closes),
-    higher_highs: higherHighs,
-    higher_lows: higherLows,
-    trend_consistency: analyzeTrendConsistency(closes),
-    momentum: calculateMomentumFromTrend(closes)
-  };
-}
-function analyzeSupportResistance(data) {
-  if (data.length < 10) return { levels: "Insufficient data" };
-  const highs = data.map((d) => d.HIGH);
-  const lows = data.map((d) => d.LOW);
-  const closes = data.map((d) => d.CLOSE);
-  const resistanceLevels = findResistanceLevels(highs);
-  const supportLevels = findSupportLevels(lows);
-  const currentPrice = closes[closes.length - 1];
-  return {
-    nearest_resistance: findNearestLevel(currentPrice, resistanceLevels, "resistance"),
-    nearest_support: findNearestLevel(currentPrice, supportLevels, "support"),
-    key_levels: {
-      major_resistance: formatCurrency(Math.max(...resistanceLevels)),
-      major_support: formatCurrency(Math.min(...supportLevels))
-    },
-    level_strength: "Based on price action and volume confirmation"
-  };
-}
-function generateDailyInsights(priceAnalysis, volumeAnalysis, technicalAnalysis, trendAnalysis) {
-  const insights = [];
-  const changePercent = parseFloat(priceAnalysis.change_percent);
-  if (Math.abs(changePercent) > 20) {
-    insights.push(`Significant price movement of ${priceAnalysis.change_percent} over the analyzed period indicates strong market sentiment`);
-  }
-  if (trendAnalysis.primary_trend === "Strong Uptrend") {
-    insights.push("Strong uptrend with multiple timeframe confirmation suggests continued bullish momentum");
-  } else if (trendAnalysis.primary_trend === "Strong Downtrend") {
-    insights.push("Strong downtrend across timeframes indicates sustained selling pressure");
-  }
-  if (volumeAnalysis.volume_trend === "Increasing" && trendAnalysis.primary_trend.includes("Uptrend")) {
-    insights.push("Increasing volume during uptrend confirms buyer interest and trend sustainability");
-  } else if (volumeAnalysis.volume_trend === "Decreasing" && trendAnalysis.primary_trend.includes("Uptrend")) {
-    insights.push("Decreasing volume during uptrend suggests potential weakening momentum");
-  }
-  if (technicalAnalysis.technical_bias === "Strongly Bullish") {
-    insights.push("Technical indicators align bullishly - price above key moving averages with positive momentum");
-  } else if (technicalAnalysis.technical_bias === "Strongly Bearish") {
-    insights.push("Technical indicators show bearish alignment suggesting continued downside pressure");
-  }
-  return insights;
-}
-function generateDailyTradingRecommendations(trendAnalysis, technicalAnalysis, volumeAnalysis) {
-  const recommendations = [];
-  let overallBias = "NEUTRAL";
-  if (trendAnalysis.primary_trend === "Strong Uptrend") {
-    recommendations.push("Consider long positions on pullbacks to support levels");
-    overallBias = "BULLISH";
-  } else if (trendAnalysis.primary_trend === "Strong Downtrend") {
-    recommendations.push("Consider short positions or avoid longs until trend reversal");
-    overallBias = "BEARISH";
-  }
-  if (technicalAnalysis.momentum_indicators?.rsi_signal === "Oversold") {
-    recommendations.push("RSI oversold condition may present buying opportunity");
-  } else if (technicalAnalysis.momentum_indicators?.rsi_signal === "Overbought") {
-    recommendations.push("RSI overbought condition suggests caution for new long positions");
-  }
-  if (volumeAnalysis.volume_trend === "Increasing") {
-    recommendations.push("Increasing volume supports current trend continuation");
-  }
-  return {
-    overall_bias: overallBias,
-    recommendations,
-    risk_management: [
-      "Use appropriate position sizing based on volatility",
-      "Set stop losses at key support/resistance levels",
-      "Monitor volume for trend confirmation"
-    ]
-  };
-}
-function generateInvestmentSignals(priceAnalysis, trendAnalysis, technicalAnalysis) {
-  let investmentSignal = "HOLD";
-  const signals = [];
-  if (trendAnalysis.long_term_trend === "Up" && technicalAnalysis.technical_bias === "Bullish") {
-    investmentSignal = "BUY";
-    signals.push("Long-term uptrend with positive technical indicators supports accumulation");
-  } else if (trendAnalysis.long_term_trend === "Down" && technicalAnalysis.technical_bias === "Bearish") {
-    investmentSignal = "SELL";
-    signals.push("Long-term downtrend with negative technicals suggests distribution");
-  }
-  if (priceAnalysis.volatility_level === "Very High") {
-    signals.push("High volatility suggests using dollar-cost averaging for entries");
-  }
-  return {
-    signal: investmentSignal,
-    confidence: determineSignalConfidence(trendAnalysis, technicalAnalysis),
-    rationale: signals,
-    time_horizon: "Medium to long-term (weeks to months)"
-  };
-}
-function calculateMomentum(data) {
-  if (data.length < 5) return "Unknown";
-  const recentClose = data[data.length - 1].CLOSE;
-  const pastClose = data[data.length - 5].CLOSE;
-  const momentum = (recentClose - pastClose) / pastClose * 100;
-  if (momentum > 5) return "Strong Positive";
-  if (momentum > 2) return "Positive";
-  if (momentum > -2) return "Neutral";
-  if (momentum > -5) return "Negative";
-  return "Strong Negative";
-}
-function calculateCorrelation(x, y) {
-  const n = Math.min(x.length, y.length);
-  if (n < 2) return 0;
-  const xMean = x.slice(0, n).reduce((sum, val) => sum + val, 0) / n;
-  const yMean = y.slice(0, n).reduce((sum, val) => sum + val, 0) / n;
-  let numerator = 0;
-  let xSumSquares = 0;
-  let ySumSquares = 0;
-  for (let i = 0; i < n; i++) {
-    const xDiff = x[i] - xMean;
-    const yDiff = y[i] - yMean;
-    numerator += xDiff * yDiff;
-    xSumSquares += xDiff * xDiff;
-    ySumSquares += yDiff * yDiff;
-  }
-  const denominator = Math.sqrt(xSumSquares * ySumSquares);
-  return denominator === 0 ? 0 : numerator / denominator;
-}
-function calculateSMA(prices, period) {
-  if (prices.length < period) return prices[prices.length - 1];
-  return prices.slice(-period).reduce((sum, price) => sum + price, 0) / period;
-}
-function calculateEMA(prices, period) {
-  const ema = [];
-  const multiplier = 2 / (period + 1);
-  ema[0] = prices[0];
-  for (let i = 1; i < prices.length; i++) {
-    ema[i] = prices[i] * multiplier + ema[i - 1] * (1 - multiplier);
-  }
-  return ema;
-}
-function calculateRSI(prices, period) {
-  if (prices.length < period + 1) return 50;
-  let gains = 0;
-  let losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const change = prices[i] - prices[i - 1];
-    if (change > 0) gains += change;
-    else losses -= change;
-  }
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-  for (let i = period + 1; i < prices.length; i++) {
-    const change = prices[i] - prices[i - 1];
-    const gain = change > 0 ? change : 0;
-    const loss = change < 0 ? -change : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
-  }
-  const rs = avgGain / avgLoss;
-  return 100 - 100 / (1 + rs);
-}
-function interpretRSI(rsi) {
-  if (rsi > 70) return "Overbought";
-  if (rsi < 30) return "Oversold";
-  return "Neutral";
-}
-function identifyTrend(prices) {
-  if (prices.length < 3) return "Unknown";
-  const firstPrice = prices[0];
-  const lastPrice = prices[prices.length - 1];
-  const change = (lastPrice - firstPrice) / firstPrice;
-  if (change > 0.02) return "Up";
-  if (change < -0.02) return "Down";
-  return "Sideways";
-}
-function countHigherHighs(highs) {
-  let count = 0;
-  for (let i = 1; i < highs.length; i++) {
-    if (highs[i] > highs[i - 1]) count++;
-  }
-  return count;
-}
-function countHigherLows(lows) {
-  let count = 0;
-  for (let i = 1; i < lows.length; i++) {
-    if (lows[i] > lows[i - 1]) count++;
-  }
-  return count;
-}
-function calculateTrendStrength(closes) {
-  if (closes.length < 2) return "Insufficient Data";
-  const firstPrice = closes[0];
-  const lastPrice = closes[closes.length - 1];
-  const change = Math.abs((lastPrice - firstPrice) / firstPrice);
-  if (closes.length >= 10) {
-    if (change > 0.5) return "Very Strong";
-    if (change > 0.3) return "Strong";
-    if (change > 0.1) return "Moderate";
-    return "Weak";
-  } else {
-    if (change > 0.2) return "Strong";
-    if (change > 0.05) return "Moderate";
-    if (change > 0.01) return "Weak";
-    return "Very Weak";
-  }
-}
-function analyzeTrendConsistency(closes) {
-  if (closes.length < 2) return "Insufficient Data";
-  let directionalChanges = 0;
-  let previousDirection = null;
-  for (let i = 1; i < closes.length; i++) {
-    const currentDirection = closes[i] > closes[i - 1] ? "up" : "down";
-    if (previousDirection && currentDirection !== previousDirection) {
-      directionalChanges++;
-    }
-    previousDirection = currentDirection;
-  }
-  const consistency = 1 - directionalChanges / (closes.length - 1);
-  if (consistency > 0.8) return "Very Consistent";
-  if (consistency > 0.6) return "Consistent";
-  if (consistency > 0.4) return "Moderate";
-  return "Inconsistent";
-}
-function calculateMomentumFromTrend(closes) {
-  if (closes.length < 2) return "Unknown";
-  const recentChange = closes[closes.length - 1] - closes[closes.length - 2];
-  const recentPercent = recentChange / closes[closes.length - 2] * 100;
-  if (closes.length >= 3) {
-    const previousChange = closes[closes.length - 2] - closes[closes.length - 3];
-    const previousPercent = previousChange / closes[closes.length - 3] * 100;
-    if (recentPercent > previousPercent && recentPercent > 0) return "Accelerating Upward";
-    if (recentPercent < previousPercent && recentPercent < 0) return "Accelerating Downward";
-    if (recentPercent > 0) return "Positive";
-    if (recentPercent < 0) return "Negative";
-    return "Neutral";
-  } else {
-    if (recentPercent > 2) return "Strong Positive";
-    if (recentPercent > 0) return "Positive";
-    if (recentPercent < -2) return "Strong Negative";
-    if (recentPercent < 0) return "Negative";
-    return "Neutral";
-  }
-}
-function findResistanceLevels(highs) {
-  const levels = [];
-  for (let i = 1; i < highs.length - 1; i++) {
-    if (highs[i] > highs[i - 1] && highs[i] > highs[i + 1]) {
-      levels.push(highs[i]);
-    }
-  }
-  return levels.sort((a, b) => b - a).slice(0, 3);
-}
-function findSupportLevels(lows) {
-  const levels = [];
-  for (let i = 1; i < lows.length - 1; i++) {
-    if (lows[i] < lows[i - 1] && lows[i] < lows[i + 1]) {
-      levels.push(lows[i]);
-    }
-  }
-  return levels.sort((a, b) => a - b).slice(0, 3);
-}
-function findNearestLevel(currentPrice, levels, type) {
-  if (levels.length === 0) return "None identified";
-  const nearestLevel = levels.reduce((nearest, level) => {
-    return Math.abs(level - currentPrice) < Math.abs(nearest - currentPrice) ? level : nearest;
-  });
-  const distance = (nearestLevel - currentPrice) / currentPrice * 100;
-  return `${formatCurrency(nearestLevel)} (${distance.toFixed(2)}% ${distance > 0 ? "above" : "below"})`;
-}
-function determineTechnicalBias(price, sma20, sma50, rsi) {
-  let score = 0;
-  if (price > sma20) score += 1;
-  if (price > sma50) score += 1;
-  if (sma20 > sma50) score += 1;
-  if (rsi > 50) score += 1;
-  if (score >= 3) return "Bullish";
-  if (score <= 1) return "Bearish";
-  return "Neutral";
-}
-function classifyVolumePattern(volumes) {
-  const recentAvg = volumes.slice(-5).reduce((sum, vol) => sum + vol, 0) / 5;
-  const overallAvg = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
-  if (recentAvg > overallAvg * 1.5) return "High Volume Spike";
-  if (recentAvg > overallAvg * 1.2) return "Above Average";
-  if (recentAvg < overallAvg * 0.8) return "Below Average";
-  return "Normal";
-}
-function analyzeVolumeConfirmation(data) {
-  if (data.length < 5) return "Insufficient data";
-  const recentDays = data.slice(-5);
-  let confirmedMoves = 0;
-  for (let i = 1; i < recentDays.length; i++) {
-    const priceChange = recentDays[i].CLOSE - recentDays[i - 1].CLOSE;
-    const volumeIncrease = recentDays[i].VOLUME > recentDays[i - 1].VOLUME;
-    if (Math.abs(priceChange) > 0 && volumeIncrease) {
-      confirmedMoves++;
-    }
-  }
-  const confirmationRate = confirmedMoves / (recentDays.length - 1);
-  if (confirmationRate > 0.6) return "Strong Confirmation";
-  if (confirmationRate > 0.4) return "Moderate Confirmation";
-  return "Weak Confirmation";
-}
-function calculateDailyDataCompleteness(data) {
-  const requiredFields = ["OPEN", "HIGH", "LOW", "CLOSE", "VOLUME"];
-  let completeness = 0;
-  data.forEach((item) => {
-    const presentFields = requiredFields.filter((field) => item[field] !== null && item[field] !== void 0);
-    completeness += presentFields.length / requiredFields.length;
-  });
-  const completenessPercent = completeness / data.length * 100;
-  return `${completenessPercent.toFixed(1)}%`;
-}
-function determineSignalConfidence(trendAnalysis, technicalAnalysis) {
-  let confidence = 0;
-  if (trendAnalysis.trend_consistency === "Very Consistent") confidence += 2;
-  else if (trendAnalysis.trend_consistency === "Consistent") confidence += 1;
-  if (technicalAnalysis.technical_bias === "Bullish" || technicalAnalysis.technical_bias === "Bearish") {
-    confidence += 1;
-  }
-  if (trendAnalysis.trend_strength === "Strong" || trendAnalysis.trend_strength === "Very Strong") {
-    confidence += 1;
-  }
-  if (confidence >= 3) return "High";
-  if (confidence >= 2) return "Moderate";
-  return "Low";
-}
-
-// src/actions/getHourlyOhlcvAction.ts
-import { elizaLogger as elizaLogger13 } from "@elizaos/core";
-var HourlyOhlcvRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  token_name: z.string().optional().describe("Full name of the token"),
-  startDate: z.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
-  endDate: z.string().optional().describe("End date for data range (YYYY-MM-DD)"),
-  limit: z.number().min(1).max(1e3).optional().describe("Number of data points to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["scalping", "intraday", "technical_patterns", "all"]).optional().describe("Type of analysis to focus on")
-});
-var HOURLY_OHLCV_EXTRACTION_TEMPLATE = `
-CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
-
-You are an AI assistant specialized in extracting hourly OHLCV data requests from natural language.
-
-The user wants to get hourly OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
-
-1. **cryptocurrency** (required): The EXACT name or symbol of the cryptocurrency mentioned by the user
-   - Bitcoin, BTC \u2192 "Bitcoin"
-   - Ethereum, ETH \u2192 "Ethereum" 
-   - Dogecoin, DOGE \u2192 "Dogecoin"
-   - Solana, SOL \u2192 "Solana"
-   - Avalanche, AVAX \u2192 "Avalanche"
-   - Cardano, ADA \u2192 "Cardano"
-   - Polkadot, DOT \u2192 "Polkadot"
-   - Chainlink, LINK \u2192 "Chainlink"
-   - CRITICAL: Use the EXACT name/symbol the user mentioned
-
-2. **symbol** (optional): Token symbol if mentioned
+3. **symbol** (optional): Token symbol
    - Extract symbols like "BTC", "ETH", "ADA", etc.
 
-3. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
-
-4. **token_name** (optional): Full name of the token for API calls
+4. **signal** (optional): Filter by signal type
+   - 1 = bullish/long signals
+   - -1 = bearish/short signals
+   - 0 = neutral signals
+   - Look for phrases like "bullish signals", "buy signals", "short signals"
 
 5. **startDate** (optional): Start date for data range
    - Look for dates in YYYY-MM-DD format
    - Convert relative dates like "last week", "past 3 days"
 
 6. **endDate** (optional): End date for data range
-   - Look for dates in YYYY-MM-DD format
 
-7. **limit** (optional, default: 50): Number of data points to return
-   - Maximum 50 allowed by API
+7. **category** (optional): Token category filter
+   - Look for categories like "defi", "layer1", "gaming"
 
-8. **page** (optional, default: 1): Page number for pagination
+8. **exchange** (optional): Exchange filter
 
-9. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "scalping" - focus on very short-term price movements
-   - "intraday" - focus on day trading patterns
-   - "technical_patterns" - focus on technical analysis patterns
-   - "all" - comprehensive hourly analysis
+9. **marketcap** (optional): Minimum market cap filter
 
-CRITICAL EXAMPLES:
-- "Get hourly OHLCV for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me hourly candles for BTC" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Hourly data for ETH for scalping" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "scalping"}
-- "DOGE hourly OHLCV" \u2192 {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
-- "Solana intraday data" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "intraday"}
+10. **volume** (optional): Minimum volume filter
 
-Extract the request details from the user's message.
-`;
-function extractCryptocurrencySimple4(text) {
-  const cryptoPatterns = [
-    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
-    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
-    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
-    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
-    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
-    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
-    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" },
-    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
-    { regex: /\b(binance coin|bnb)\b/i, name: "BNB", symbol: "BNB" },
-    { regex: /\b(ripple|xrp)\b/i, name: "XRP", symbol: "XRP" },
-    { regex: /\b(litecoin|ltc)\b/i, name: "Litecoin", symbol: "LTC" },
-    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
-    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
-    { regex: /\b(shiba inu|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" }
-  ];
-  for (const pattern of cryptoPatterns) {
-    if (pattern.regex.test(text)) {
-      return {
-        cryptocurrency: pattern.name,
-        symbol: pattern.symbol
-      };
-    }
-  }
-  return {};
-}
-var getHourlyOhlcvAction = {
-  name: "GET_HOURLY_OHLCV_TOKENMETRICS",
-  description: "Get hourly OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency tokens from TokenMetrics for intraday analysis",
-  similes: [
-    "get hourly ohlcv",
-    "hourly price data",
-    "hourly candles",
-    "intraday price data",
-    "hourly chart data",
-    "technical analysis data",
-    "hourly trading data",
-    "scalping data"
-  ],
-  examples: [
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get hourly OHLCV data for Bitcoin"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll retrieve hourly OHLCV data for Bitcoin from TokenMetrics for intraday analysis.",
-          action: "GET_HOURLY_OHLCV_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Show me hourly candle data for ETH for scalping"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll get hourly OHLCV data for Ethereum optimized for scalping analysis.",
-          action: "GET_HOURLY_OHLCV_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get intraday trading data for the past 3 days"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll retrieve hourly OHLCV data for the past 3 days for intraday trading analysis.",
-          action: "GET_HOURLY_OHLCV_TOKENMETRICS"
-        }
-      }
-    ]
-  ],
-  handler: async (runtime, message, state, _options, callback) => {
-    try {
-      const requestId = generateRequestId();
-      elizaLogger13.log(`[${requestId}] Processing hourly OHLCV request...`);
-      if (!state) {
-        state = await runtime.composeState(message);
-      }
-      const ohlcvRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state,
-        HOURLY_OHLCV_EXTRACTION_TEMPLATE,
-        HourlyOhlcvRequestSchema,
-        requestId
-      );
-      elizaLogger13.log(`[${requestId}] Extracted request:`, ohlcvRequest);
-      let processedRequest = {
-        cryptocurrency: ohlcvRequest.cryptocurrency,
-        token_id: ohlcvRequest.token_id,
-        symbol: ohlcvRequest.symbol,
-        token_name: ohlcvRequest.token_name,
-        startDate: ohlcvRequest.startDate,
-        endDate: ohlcvRequest.endDate,
-        limit: ohlcvRequest.limit || 50,
-        // API maximum limit is 50
-        page: ohlcvRequest.page || 1,
-        analysisType: ohlcvRequest.analysisType || "all"
-      };
-      if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
-        elizaLogger13.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
-        const regexResult = extractCryptocurrencySimple4(message.content.text);
-        if (regexResult.cryptocurrency) {
-          processedRequest.cryptocurrency = regexResult.cryptocurrency;
-          processedRequest.symbol = regexResult.symbol;
-          elizaLogger13.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
-        }
-      }
-      if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
-        const symbolToNameMap = {
-          "BTC": "Bitcoin",
-          "ETH": "Ethereum",
-          "DOGE": "Dogecoin",
-          "SOL": "Solana",
-          "AVAX": "Avalanche",
-          "ADA": "Cardano",
-          "DOT": "Polkadot",
-          "LINK": "Chainlink",
-          "BNB": "BNB",
-          "XRP": "XRP",
-          "LTC": "Litecoin",
-          "MATIC": "Polygon",
-          "UNI": "Uniswap",
-          "SHIB": "Shiba Inu"
-        };
-        const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
-        if (fullName) {
-          elizaLogger13.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
-          processedRequest.cryptocurrency = fullName;
-          if (!processedRequest.symbol) {
-            processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
-          }
-        }
-      }
-      let resolvedToken = null;
-      if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
-        try {
-          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-          if (resolvedToken) {
-            processedRequest.token_id = resolvedToken.token_id;
-            processedRequest.symbol = resolvedToken.symbol;
-            elizaLogger13.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-          }
-        } catch (error) {
-          elizaLogger13.log(`[${requestId}] Token resolution failed, proceeding with original request`);
-        }
-      }
-      const apiParams = {
-        limit: processedRequest.limit,
-        page: processedRequest.page
-      };
-      if (processedRequest.cryptocurrency) {
-        apiParams.token_name = processedRequest.cryptocurrency;
-        elizaLogger13.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
-      } else if (processedRequest.token_name) {
-        apiParams.token_name = processedRequest.token_name;
-        elizaLogger13.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
-      }
-      if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
-      if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
-      const response = await callTokenMetricsAPI(
-        "/v2/hourly-ohlcv",
-        apiParams,
-        runtime
-      );
-      elizaLogger13.log(`[${requestId}] API response received, processing data...`);
-      const ohlcvData = Array.isArray(response) ? response : response.data || [];
-      let filteredByToken = ohlcvData;
-      if (ohlcvData.length > 0 && processedRequest.symbol) {
-        const tokenGroups = ohlcvData.reduce((groups, item) => {
-          const tokenId = item.TOKEN_ID;
-          if (!groups[tokenId]) {
-            groups[tokenId] = [];
-          }
-          groups[tokenId].push(item);
-          return groups;
-        }, {});
-        const tokenIds = Object.keys(tokenGroups);
-        elizaLogger13.log(
-          `[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`,
-          tokenIds.map((id) => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`)
-        );
-        if (tokenIds.length > 1) {
-          let selectedTokenId = null;
-          let maxScore = -1;
-          for (const tokenId of tokenIds) {
-            const tokenData = tokenGroups[tokenId];
-            const firstItem = tokenData[0];
-            let score = 0;
-            const avgPrice = tokenData.reduce((sum, item) => sum + (item.CLOSE || 0), 0) / tokenData.length;
-            if (avgPrice > 1e3) score += 100;
-            else if (avgPrice > 100) score += 50;
-            else if (avgPrice > 10) score += 20;
-            else if (avgPrice > 1) score += 10;
-            const avgVolume = tokenData.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / tokenData.length;
-            if (avgVolume > 1e9) score += 50;
-            else if (avgVolume > 1e8) score += 30;
-            else if (avgVolume > 1e7) score += 20;
-            else if (avgVolume > 1e6) score += 10;
-            const tokenName2 = firstItem.TOKEN_NAME?.toLowerCase() || "";
-            const symbol = processedRequest.symbol?.toLowerCase() || "";
-            if (tokenName2 === symbol) score += 30;
-            else if (tokenName2.includes(symbol)) score += 20;
-            else if (symbol === "btc" && tokenName2 === "bitcoin") score += 40;
-            else if (symbol === "eth" && tokenName2 === "ethereum") score += 40;
-            else if (symbol === "doge" && tokenName2 === "dogecoin") score += 40;
-            if (tokenName2.includes("wrapped") || tokenName2.includes("osmosis") || tokenName2.includes("synthetic") || tokenName2.includes("bridged")) {
-              score -= 20;
-            }
-            elizaLogger13.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
-            if (score > maxScore) {
-              maxScore = score;
-              selectedTokenId = tokenId;
-            }
-          }
-          if (selectedTokenId) {
-            filteredByToken = tokenGroups[selectedTokenId];
-            const selectedToken = filteredByToken[0];
-            elizaLogger13.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
-          } else {
-            elizaLogger13.log(`[${requestId}] No clear main token identified, using all data`);
-          }
-        } else {
-          elizaLogger13.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
-        }
-      }
-      const validData = filteredByToken.filter((item) => {
-        if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
-          elizaLogger13.log(`[${requestId}] Filtering out invalid data point:`, item);
-          return false;
-        }
-        const priceRange = (item.HIGH - item.LOW) / item.LOW;
-        if (priceRange > 10) {
-          elizaLogger13.log(`[${requestId}] Filtering out extreme outlier:`, item);
-          return false;
-        }
-        return true;
-      });
-      elizaLogger13.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
-      elizaLogger13.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
-      const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
-      const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
-      const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
-      let responseText = `\u{1F4CA} **Hourly OHLCV Data for ${tokenName}**
+11. **fdv** (optional): Minimum fully diluted valuation filter
 
-`;
-      if (ohlcvData.length === 0) {
-        responseText += `\u274C No hourly OHLCV data found for ${tokenName}. This could mean:
-`;
-        responseText += `\u2022 The token may not have sufficient trading history
-`;
-        responseText += `\u2022 TokenMetrics may not have hourly data for this token
-`;
-        responseText += `\u2022 Try using a different token name or symbol
+12. **limit** (optional, default: 20): Number of signals to return
 
-`;
-        responseText += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
-      } else {
-        if (ohlcvData.length > sortedData.length) {
-          const tokenFiltered = ohlcvData.length - filteredByToken.length;
-          const qualityFiltered = filteredByToken.length - sortedData.length;
-          if (tokenFiltered > 0 && qualityFiltered > 0) {
-            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
+13. **page** (optional, default: 1): Page number for pagination
 
-`;
-          } else if (tokenFiltered > 0) {
-            responseText += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
+14. **analysisType** (optional, default: "all"): What type of analysis they want
+    - "active_trading" - focus on frequent trading opportunities
+    - "scalping" - focus on very short-term signals
+    - "momentum" - focus on momentum-based signals
+    - "all" - comprehensive hourly signal analysis
 
-`;
-          } else if (qualityFiltered > 0) {
-            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+Examples of request patterns (but extract the actual token from user's message):
+- "Get hourly trading signals for [TOKEN]" \u2192 extract [TOKEN]
+- "Show me bullish hourly signals" \u2192 general bullish signals
+- "Hourly buy signals for [TOKEN]" \u2192 extract [TOKEN] and signal type
+- "Scalping signals for the past 24 hours" \u2192 scalping analysis
 
-`;
-          }
-        }
-        const recentData = sortedData.slice(-5).reverse();
-        responseText += `\u{1F4C8} **Recent Hourly Data (Last ${recentData.length} hours):**
-`;
-        recentData.forEach((item, index) => {
-          const date = new Date(item.DATE || item.TIMESTAMP);
-          const timeStr = date.toLocaleString();
-          responseText += `
-**Hour ${index + 1}** (${timeStr}):
-`;
-          responseText += `\u2022 Open: ${formatCurrency(item.OPEN)}
-`;
-          responseText += `\u2022 High: ${formatCurrency(item.HIGH)}
-`;
-          responseText += `\u2022 Low: ${formatCurrency(item.LOW)}
-`;
-          responseText += `\u2022 Close: ${formatCurrency(item.CLOSE)}
-`;
-          responseText += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
-`;
-        });
-        if (ohlcvAnalysis && ohlcvAnalysis.summary) {
-          responseText += `
+Extract the request details from the user's message and respond in XML format:
 
-\u{1F4CA} **Analysis Summary:**
-${ohlcvAnalysis.summary}
+<response>
+<cryptocurrency>exact token name or symbol from user's message</cryptocurrency>
+<token_id>specific token ID if mentioned</token_id>
+<symbol>token symbol if mentioned</symbol>
+<signal>1 for bullish, -1 for bearish, 0 for neutral</signal>
+<startDate>start date in YYYY-MM-DD format</startDate>
+<endDate>end date in YYYY-MM-DD format</endDate>
+<category>token category</category>
+<exchange>exchange name</exchange>
+<marketcap>minimum market cap</marketcap>
+<volume>minimum volume</volume>
+<fdv>minimum fully diluted valuation</fdv>
+<limit>number of signals to return</limit>
+<page>page number</page>
+<analysisType>active_trading|scalping|momentum|all</analysisType>
+</response>
 `;
-        }
-        if (ohlcvAnalysis?.price_analysis) {
-          const priceAnalysis = ohlcvAnalysis.price_analysis;
-          responseText += `
-\u{1F4B0} **Price Movement:**
-`;
-          responseText += `\u2022 Direction: ${priceAnalysis.direction}
-`;
-          responseText += `\u2022 Change: ${priceAnalysis.price_change} (${priceAnalysis.change_percent})
-`;
-          responseText += `\u2022 Range: ${priceAnalysis.lowest_price} - ${priceAnalysis.highest_price}
-`;
-        }
-        if (ohlcvAnalysis?.volume_analysis) {
-          const volumeAnalysis = ohlcvAnalysis.volume_analysis;
-          responseText += `
-\u{1F4CA} **Volume Analysis:**
-`;
-          responseText += `\u2022 Average Volume: ${volumeAnalysis.average_volume}
-`;
-          responseText += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend}
-`;
-          responseText += `\u2022 Consistency: ${volumeAnalysis.volume_consistency}
-`;
-        }
-        if (ohlcvAnalysis?.trading_signals?.signals?.length > 0) {
-          responseText += `
-\u{1F3AF} **Trading Signals:**
-`;
-          ohlcvAnalysis.trading_signals.signals.forEach((signal) => {
-            responseText += `\u2022 ${signal.type}: ${signal.signal}
-`;
-          });
-        }
-        if (processedRequest.analysisType === "scalping" && ohlcvAnalysis?.scalping_focus) {
-          responseText += `
-\u26A1 **Scalping Insights:**
-`;
-          ohlcvAnalysis.scalping_focus.scalping_insights?.forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-        } else if (processedRequest.analysisType === "intraday" && ohlcvAnalysis?.intraday_focus) {
-          responseText += `
-\u{1F4C8} **Intraday Insights:**
-`;
-          ohlcvAnalysis.intraday_focus.intraday_insights?.forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-        } else if (processedRequest.analysisType === "technical_patterns" && ohlcvAnalysis?.technical_focus) {
-          responseText += `
-\u{1F50D} **Technical Analysis:**
-`;
-          ohlcvAnalysis.technical_focus.technical_insights?.forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-        }
-        responseText += `
-
-\u{1F4CB} **Data Summary:**
-`;
-        responseText += `\u2022 Total Data Points: ${sortedData.length}
-`;
-        responseText += `\u2022 Timeframe: 1 hour intervals
-`;
-        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
-`;
-        responseText += `\u2022 Data Source: TokenMetrics Official API
-`;
-      }
-      const result = {
-        success: true,
-        message: `Successfully retrieved ${sortedData.length} hourly OHLCV data points`,
-        request_id: requestId,
-        ohlcv_data: sortedData,
-        analysis: ohlcvAnalysis,
-        metadata: {
-          endpoint: "hourly-ohlcv",
-          requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-          resolved_token: resolvedToken,
-          date_range: {
-            start: processedRequest.startDate,
-            end: processedRequest.endDate
-          },
-          analysis_focus: processedRequest.analysisType,
-          pagination: {
-            page: processedRequest.page,
-            limit: processedRequest.limit
-          },
-          data_points: sortedData.length,
-          timeframe: "1 hour",
-          api_version: "v2",
-          data_source: "TokenMetrics Official API"
-        },
-        ohlcv_explanation: {
-          OPEN: "Opening price at the start of the hour",
-          HIGH: "Highest price during the hour",
-          LOW: "Lowest price during the hour",
-          CLOSE: "Closing price at the end of the hour",
-          VOLUME: "Total trading volume during the hour",
-          usage_tips: [
-            "Use for intraday technical analysis and pattern recognition",
-            "Higher volume confirms price movements",
-            "Compare hourly ranges to identify volatility patterns",
-            "Ideal for scalping and day trading strategies"
-          ]
-        }
-      };
-      elizaLogger13.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
-      if (callback) {
-        callback({
-          text: responseText,
-          content: result
-        });
-      }
-      return true;
-    } catch (error) {
-      elizaLogger13.error("Error in getHourlyOhlcvAction:", error);
-      const errorMessage = `\u274C **Failed to retrieve hourly OHLCV data**
-
-`;
-      const errorText = errorMessage + `**Error**: ${error instanceof Error ? error.message : "Unknown error occurred"}
-
-**Troubleshooting Tips:**
-\u2022 Verify the token name or symbol is correct
-\u2022 Check your TokenMetrics API key is valid
-\u2022 Try using major cryptocurrencies like Bitcoin or Ethereum
-\u2022 Ensure your subscription includes OHLCV data access
-
-**Common Solutions:**
-\u2022 Remove date filters to get recent data
-\u2022 Reduce the limit if requesting too much data
-\u2022 Check if the token has sufficient trading history`;
-      const errorResult = {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve hourly OHLCV data from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/hourly-ohlcv is accessible",
-          parameter_validation: [
-            "Verify token_id is a valid number or symbol is a valid string",
-            "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
-            "Ensure your API key has access to OHLCV data",
-            "Confirm the token has sufficient trading history"
-          ],
-          common_solutions: [
-            "Try using a major token (BTC, ETH) to test functionality",
-            "Remove date filters to get recent data",
-            "Check if your subscription includes OHLCV data access",
-            "Reduce the limit if requesting too much data"
-          ]
-        }
-      };
-      if (callback) {
-        callback({
-          text: errorText,
-          content: errorResult
-        });
-      }
-      return false;
-    }
-  },
-  validate: async (runtime, message, state) => {
-    elizaLogger13.log("\u{1F50D} Validating getHourlyOhlcvAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger13.error("\u274C Validation failed:", error);
-      return false;
-    }
-  }
-};
-function analyzeHourlyOhlcvData(ohlcvData, analysisType = "all") {
-  if (!ohlcvData || ohlcvData.length === 0) {
-    return {
-      summary: "No hourly OHLCV data available for analysis",
-      price_action: "Cannot assess",
-      insights: []
-    };
-  }
-  const sortedData = ohlcvData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
-  const priceAnalysis = analyzePriceMovement(sortedData);
-  const volumeAnalysis = analyzeVolumePatterns(sortedData);
-  const volatilityAnalysis = analyzeVolatility(sortedData);
-  const trendAnalysis = analyzeTrend(sortedData);
-  const technicalAnalysis = analyzeTechnicalPatterns(sortedData);
-  let focusedAnalysis = {};
-  switch (analysisType) {
-    case "scalping":
-      focusedAnalysis = {
-        scalping_focus: {
-          micro_movements: analyzeScalpingOpportunities(sortedData),
-          volume_spikes: identifyVolumeSpikes(sortedData),
-          scalping_signals: generateScalpingSignals(priceAnalysis, volumeAnalysis),
-          scalping_insights: [
-            `\u26A1 Micro-movements detected: ${priceAnalysis.micro_movements || 0}`,
-            `\u{1F4CA} Volume spikes: ${volumeAnalysis.volume_spikes || 0}`,
-            `\u{1F3AF} Scalping opportunities: ${priceAnalysis.scalping_opportunities || 0}`
-          ]
-        }
-      };
-      break;
-    case "intraday":
-      focusedAnalysis = {
-        intraday_focus: {
-          day_trading_patterns: analyzeIntradayPatterns(sortedData),
-          session_analysis: analyzeSessionBreakdowns(sortedData),
-          intraday_signals: generateIntradaySignals(priceAnalysis, trendAnalysis),
-          intraday_insights: [
-            `\u{1F4C8} Intraday trend: ${trendAnalysis.direction}`,
-            `\u{1F550} Best trading hours: ${identifyBestTradingHours(sortedData)}`,
-            `\u{1F4B9} Day trading setups: ${technicalAnalysis.day_trading_setups || 0}`
-          ]
-        }
-      };
-      break;
-    case "technical_patterns":
-      focusedAnalysis = {
-        technical_focus: {
-          chart_patterns: identifyChartPatterns(sortedData),
-          support_resistance: findHourlyLevels(sortedData),
-          technical_indicators: calculateHourlyIndicators(sortedData),
-          technical_insights: [
-            `\u{1F4CA} Chart patterns: ${technicalAnalysis.patterns_count || 0}`,
-            `\u{1F3AF} Support/Resistance levels: ${technicalAnalysis.key_levels || 0}`,
-            `\u{1F4C8} Technical signals: ${technicalAnalysis.signals_count || 0}`
-          ]
-        }
-      };
-      break;
-  }
-  return {
-    summary: `Hourly analysis of ${sortedData.length} data points showing ${priceAnalysis.direction || "neutral"} price action with ${volatilityAnalysis.level || "unknown"} volatility`,
-    analysis_type: analysisType,
-    price_analysis: priceAnalysis,
-    volume_analysis: volumeAnalysis,
-    volatility_analysis: volatilityAnalysis,
-    trend_analysis: trendAnalysis,
-    technical_analysis: technicalAnalysis,
-    trading_signals: generateTradingSignals(priceAnalysis, volumeAnalysis, trendAnalysis),
-    insights: generateOhlcvInsights(priceAnalysis, volumeAnalysis, volatilityAnalysis, trendAnalysis),
-    risk_assessment: determineRiskLevel(priceAnalysis, volumeAnalysis),
-    ...focusedAnalysis,
-    data_quality: {
-      source: "TokenMetrics Official API",
-      completeness: calculateDataCompleteness(sortedData),
-      volume_consistency: calculateVolumeConsistency(sortedData.map((d) => d.VOLUME).filter((v) => v)),
-      data_points: sortedData.length,
-      timeframe_coverage: calculateTimeframeCoverage(sortedData)
-    },
-    trading_recommendations: generateHourlyTradingRecommendations(trendAnalysis, technicalAnalysis, analysisType)
-  };
-}
-function analyzePriceMovement(data) {
-  if (data.length < 2) return { change: 0, change_percent: 0, direction: "Sideways" };
-  const firstPrice = data[0].OPEN;
-  const lastPrice = data[data.length - 1].CLOSE;
-  const highestPrice = Math.max(...data.map((d) => d.HIGH));
-  const lowestPrice = Math.min(...data.map((d) => d.LOW));
-  const priceChange = lastPrice - firstPrice;
-  const changePercent = priceChange / firstPrice * 100;
-  const priceRange = highestPrice - lowestPrice;
-  const rangePercent = priceRange / firstPrice * 100;
-  return {
-    start_price: formatCurrency(firstPrice),
-    end_price: formatCurrency(lastPrice),
-    price_change: formatCurrency(priceChange),
-    change_percent: formatPercentage(changePercent),
-    highest_price: formatCurrency(highestPrice),
-    lowest_price: formatCurrency(lowestPrice),
-    price_range: formatCurrency(priceRange),
-    range_percent: formatPercentage(rangePercent),
-    direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways",
-    overall_direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways"
-    // Add this for backward compatibility
-  };
-}
-function analyzeVolumePatterns(data) {
-  const volumes = data.map((d) => d.VOLUME).filter((v) => v > 0);
-  if (volumes.length === 0) return { average_volume: 0, pattern: "No data" };
-  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
-  const maxVolume = Math.max(...volumes);
-  const minVolume = Math.min(...volumes);
-  const firstHalf = volumes.slice(0, Math.floor(volumes.length / 2));
-  const secondHalf = volumes.slice(Math.floor(volumes.length / 2));
-  const firstHalfAvg = firstHalf.reduce((sum, vol) => sum + vol, 0) / firstHalf.length;
-  const secondHalfAvg = secondHalf.reduce((sum, vol) => sum + vol, 0) / secondHalf.length;
-  const volumeTrend = secondHalfAvg > firstHalfAvg * 1.1 ? "Increasing" : secondHalfAvg < firstHalfAvg * 0.9 ? "Decreasing" : "Stable";
-  return {
-    average_volume: formatCurrency(avgVolume),
-    max_volume: formatCurrency(maxVolume),
-    min_volume: formatCurrency(minVolume),
-    volume_trend: volumeTrend,
-    volume_consistency: calculateVolumeConsistency(volumes)
-  };
-}
-function analyzeVolatility(data) {
-  if (data.length < 2) return { level: "Unknown" };
-  const hourlyRanges = data.map((d) => (d.HIGH - d.LOW) / d.OPEN * 100);
-  const avgRange = hourlyRanges.reduce((sum, range) => sum + range, 0) / hourlyRanges.length;
-  let volatilityLevel;
-  if (avgRange > 5) volatilityLevel = "Very High";
-  else if (avgRange > 3) volatilityLevel = "High";
-  else if (avgRange > 2) volatilityLevel = "Moderate";
-  else if (avgRange > 1) volatilityLevel = "Low";
-  else volatilityLevel = "Very Low";
-  return {
-    level: volatilityLevel,
-    average_hourly_range: formatPercentage(avgRange),
-    max_hourly_range: formatPercentage(Math.max(...hourlyRanges)),
-    volatility_trend: calculateVolatilityTrend(hourlyRanges)
-  };
-}
-function analyzeTrend(data) {
-  if (data.length < 2) return { direction: "Insufficient Data" };
-  const closes = data.map((d) => d.CLOSE);
-  const periods = [5, 10, 20];
-  const trends = [];
-  for (const period of periods) {
-    if (closes.length >= period) {
-      const recentMA = closes.slice(-period).reduce((sum, price) => sum + price, 0) / period;
-      if (closes.length >= period * 2) {
-        const earlierMA = closes.slice(-period * 2, -period).reduce((sum, price) => sum + price, 0) / period;
-        trends.push(recentMA > earlierMA ? 1 : -1);
-      } else {
-        const firstPrice = closes[0];
-        trends.push(recentMA > firstPrice ? 1 : -1);
-      }
-    }
-  }
-  if (trends.length === 0) {
-    const firstPrice = closes[0];
-    const lastPrice = closes[closes.length - 1];
-    const change = (lastPrice - firstPrice) / firstPrice;
-    if (change > 0.01) trends.push(1);
-    else if (change < -0.01) trends.push(-1);
-    else trends.push(0);
-  }
-  const overallTrend = trends.reduce((sum, trend) => sum + trend, 0);
-  let direction;
-  if (overallTrend > 0) direction = "Uptrend";
-  else if (overallTrend < 0) direction = "Downtrend";
-  else direction = "Sideways";
-  let strength;
-  if (data.length >= 10) {
-    strength = Math.abs(overallTrend) > 2 ? "Strong" : "Weak";
-  } else {
-    const firstPrice = closes[0];
-    const lastPrice = closes[closes.length - 1];
-    const change = Math.abs((lastPrice - firstPrice) / firstPrice);
-    strength = change > 0.05 ? "Strong" : "Weak";
-  }
-  let shortTermBias;
-  if (closes.length >= 6) {
-    shortTermBias = closes[closes.length - 1] > closes[closes.length - 6] ? "Bullish" : "Bearish";
-  } else {
-    const midPoint = Math.floor(closes.length / 2);
-    const recentAvg = closes.slice(midPoint).reduce((sum, price) => sum + price, 0) / (closes.length - midPoint);
-    const earlierAvg = closes.slice(0, midPoint).reduce((sum, price) => sum + price, 0) / midPoint;
-    shortTermBias = recentAvg > earlierAvg ? "Bullish" : "Bearish";
-  }
-  return {
-    direction,
-    strength,
-    short_term_bias: shortTermBias,
-    trend_confidence: trends.length > 1 ? "High" : "Moderate"
-  };
-}
-function generateOhlcvInsights(priceAnalysis, volumeAnalysis, volatilityAnalysis, trendAnalysis) {
-  const insights = [];
-  if (parseFloat(priceAnalysis.change_percent) > 5) {
-    insights.push(`Strong hourly movement of ${priceAnalysis.change_percent} indicates significant market activity`);
-  }
-  if (volumeAnalysis.volume_trend === "Increasing") {
-    insights.push("Increasing volume confirms the price movement and suggests continuation");
-  } else if (volumeAnalysis.volume_trend === "Decreasing") {
-    insights.push("Decreasing volume suggests weakening momentum");
-  }
-  if (volatilityAnalysis.level === "Very High") {
-    insights.push("Very high volatility creates both opportunities and risks for intraday trading");
-  } else if (volatilityAnalysis.level === "Very Low") {
-    insights.push("Low volatility suggests consolidation phase or limited trading interest");
-  }
-  if (trendAnalysis.direction === "Uptrend" && trendAnalysis.strength === "Strong") {
-    insights.push("Strong uptrend supported by multiple timeframes favors long positions");
-  } else if (trendAnalysis.direction === "Downtrend" && trendAnalysis.strength === "Strong") {
-    insights.push("Strong downtrend suggests continued selling pressure");
-  }
-  return insights;
-}
-function generateTradingSignals(priceAnalysis, volumeAnalysis, trendAnalysis) {
-  const signals = [];
-  if (trendAnalysis.direction === "Uptrend" && volumeAnalysis.volume_trend === "Increasing") {
-    signals.push({
-      type: "BULLISH",
-      signal: "Uptrend with increasing volume suggests buying opportunity",
-      confidence: "High"
-    });
-  }
-  if (trendAnalysis.direction === "Downtrend" && volumeAnalysis.volume_trend === "Increasing") {
-    signals.push({
-      type: "BEARISH",
-      signal: "Downtrend with increasing volume suggests selling pressure",
-      confidence: "High"
-    });
-  }
-  if (trendAnalysis.direction === "Sideways") {
-    signals.push({
-      type: "NEUTRAL",
-      signal: "Sideways trend suggests range-bound trading opportunities",
-      confidence: "Moderate"
-    });
-  }
-  return {
-    signals,
-    recommendation: signals.length > 0 ? signals[0].type : "HOLD",
-    risk_level: determineRiskLevel(priceAnalysis, volumeAnalysis)
-  };
-}
-function calculateDataCompleteness(data) {
-  if (data.length === 0) return "No data";
-  const requiredFields = ["OPEN", "HIGH", "LOW", "CLOSE", "VOLUME"];
-  let completeness = 0;
-  data.forEach((item) => {
-    const presentFields = requiredFields.filter(
-      (field) => item[field] !== null && item[field] !== void 0 && !isNaN(item[field])
-    );
-    completeness += presentFields.length / requiredFields.length;
-  });
-  const avgCompleteness = completeness / data.length * 100;
-  if (avgCompleteness > 95) return "Excellent";
-  if (avgCompleteness > 85) return "Good";
-  if (avgCompleteness > 70) return "Fair";
-  return "Poor";
-}
-function calculateVolumeConsistency(volumes) {
-  if (volumes.length < 2) return "Insufficient data";
-  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
-  const variance = volumes.reduce((sum, vol) => sum + Math.pow(vol - avgVolume, 2), 0) / volumes.length;
-  const stdDev = Math.sqrt(variance);
-  const coefficientOfVariation = stdDev / avgVolume;
-  if (coefficientOfVariation < 0.5) return "Very Consistent";
-  if (coefficientOfVariation < 1) return "Consistent";
-  if (coefficientOfVariation < 2) return "Moderate";
-  return "Highly Variable";
-}
-function calculateVolatilityTrend(ranges) {
-  if (ranges.length < 3) return "Insufficient data";
-  const recentRanges = ranges.slice(-5);
-  const earlierRanges = ranges.slice(0, 5);
-  const recentAvg = recentRanges.reduce((sum, range) => sum + range, 0) / recentRanges.length;
-  const earlierAvg = earlierRanges.reduce((sum, range) => sum + range, 0) / earlierRanges.length;
-  if (recentAvg > earlierAvg * 1.2) return "Increasing";
-  if (recentAvg < earlierAvg * 0.8) return "Decreasing";
-  return "Stable";
-}
-function determineRiskLevel(priceAnalysis, volumeAnalysis) {
-  const priceVolatility = parseFloat(priceAnalysis.range_percent?.replace("%", "") || "0");
-  const volumeConsistency = volumeAnalysis.volume_consistency;
-  if (priceVolatility > 10 || volumeConsistency === "Highly Variable") return "High";
-  if (priceVolatility > 5 || volumeConsistency === "Moderate") return "Medium";
-  return "Low";
-}
-function calculateTimeframeCoverage(data) {
-  if (data.length === 0) return "No coverage";
-  const hours = data.length;
-  if (hours >= 168) return `${Math.floor(hours / 24)} days`;
-  if (hours >= 24) return `${Math.floor(hours / 24)} days, ${hours % 24} hours`;
-  return `${hours} hours`;
-}
-function generateHourlyTradingRecommendations(trendAnalysis, technicalAnalysis, analysisType) {
-  const recommendations = [];
-  if (trendAnalysis.direction === "Bullish") {
-    recommendations.push("Consider long positions on pullbacks");
-    recommendations.push("Look for breakout opportunities above resistance");
-  } else if (trendAnalysis.direction === "Bearish") {
-    recommendations.push("Consider short positions on rallies");
-    recommendations.push("Look for breakdown opportunities below support");
-  } else {
-    recommendations.push("Range-bound trading strategies may be effective");
-    recommendations.push("Wait for clear directional breakout");
-  }
-  if (analysisType === "scalping") {
-    recommendations.push("Focus on 1-5 minute entries and exits");
-    recommendations.push("Use tight stop losses (0.1-0.3%)");
-    recommendations.push("Target quick profits (0.2-0.5%)");
-  } else if (analysisType === "intraday") {
-    recommendations.push("Plan entries during high volume periods");
-    recommendations.push("Use hourly support/resistance levels");
-    recommendations.push("Consider session-based strategies");
-  }
-  return {
-    primary_recommendations: recommendations.slice(0, 3),
-    risk_management: [
-      "Use appropriate position sizing",
-      "Set stop losses based on volatility",
-      "Monitor volume for confirmation"
-    ],
-    timing_considerations: [
-      "Higher volume hours typically offer better liquidity",
-      "Avoid trading during low volume periods",
-      "Consider market session overlaps"
-    ]
-  };
-}
-function analyzeTechnicalPatterns(data) {
-  if (data.length < 10) {
-    return {
-      patterns_count: 0,
-      key_levels: 0,
-      signals_count: 0,
-      day_trading_setups: 0
-    };
-  }
-  const closes = data.map((d) => d.CLOSE).filter((c) => c);
-  const highs = data.map((d) => d.HIGH).filter((h) => h);
-  const lows = data.map((d) => d.LOW).filter((l) => l);
-  let patternsCount = 0;
-  let signalsCount = 0;
-  for (let i = 2; i < closes.length; i++) {
-    if (closes[i] > closes[i - 1] && closes[i - 1] > closes[i - 2]) {
-      patternsCount++;
-      signalsCount++;
-    }
-    if (closes[i] < closes[i - 1] && closes[i - 1] < closes[i - 2]) {
-      patternsCount++;
-      signalsCount++;
-    }
-  }
-  const keyLevels = findKeyLevels(highs, lows);
-  return {
-    patterns_count: patternsCount,
-    key_levels: keyLevels.length,
-    signals_count: signalsCount,
-    day_trading_setups: Math.floor(patternsCount / 2),
-    support_levels: keyLevels.filter((l) => l.type === "support").length,
-    resistance_levels: keyLevels.filter((l) => l.type === "resistance").length
-  };
-}
-function analyzeScalpingOpportunities(data) {
-  if (data.length < 5) return 0;
-  let opportunities = 0;
-  for (let i = 1; i < data.length; i++) {
-    const priceChange = Math.abs((data[i].CLOSE - data[i - 1].CLOSE) / data[i - 1].CLOSE);
-    const volumeRatio = data[i].VOLUME / (data[i - 1].VOLUME || 1);
-    if (priceChange > 2e-3 && volumeRatio > 1.2) {
-      opportunities++;
-    }
-  }
-  return opportunities;
-}
-function identifyVolumeSpikes(data) {
-  if (data.length < 5) return 0;
-  const volumes = data.map((d) => d.VOLUME).filter((v) => v);
-  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
-  return volumes.filter((vol) => vol > avgVolume * 2).length;
-}
-function generateScalpingSignals(priceAnalysis, volumeAnalysis) {
-  const signals = [];
-  if (priceAnalysis.direction === "Bullish" && volumeAnalysis.volume_trend === "Increasing") {
-    signals.push("Long scalp opportunity on momentum");
-  }
-  if (priceAnalysis.direction === "Bearish" && volumeAnalysis.volume_trend === "Increasing") {
-    signals.push("Short scalp opportunity on momentum");
-  }
-  if (volumeAnalysis.volume_consistency === "Highly Variable") {
-    signals.push("High volatility - good for scalping");
-  }
-  return {
-    active_signals: signals,
-    signal_strength: signals.length > 2 ? "Strong" : signals.length > 0 ? "Moderate" : "Weak"
-  };
-}
-function analyzeIntradayPatterns(data) {
-  if (data.length < 24) {
-    return {
-      session_patterns: "Insufficient data",
-      best_hours: "Unknown",
-      volume_patterns: "Unknown"
-    };
-  }
-  const hourlyData = /* @__PURE__ */ new Map();
-  data.forEach((item) => {
-    const date = new Date(item.DATE || item.TIMESTAMP);
-    const hour = date.getHours();
-    if (!hourlyData.has(hour)) {
-      hourlyData.set(hour, []);
-    }
-    hourlyData.get(hour).push(item);
-  });
-  const hourlyVolumes = Array.from(hourlyData.entries()).map(([hour, items]) => ({
-    hour,
-    avgVolume: items.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / items.length,
-    count: items.length
-  }));
-  const bestHours = hourlyVolumes.sort((a, b) => b.avgVolume - a.avgVolume).slice(0, 3).map((h) => `${h.hour}:00`);
-  return {
-    session_patterns: "Analyzed",
-    best_hours: bestHours.join(", "),
-    volume_patterns: hourlyVolumes.length > 12 ? "Clear patterns" : "Limited patterns",
-    peak_activity_hours: bestHours
-  };
-}
-function analyzeSessionBreakdowns(data) {
-  const sessions = {
-    asian: { start: 0, end: 8, volume: 0, count: 0 },
-    european: { start: 8, end: 16, volume: 0, count: 0 },
-    american: { start: 16, end: 24, volume: 0, count: 0 }
-  };
-  data.forEach((item) => {
-    const date = new Date(item.DATE || item.TIMESTAMP);
-    const hour = date.getUTCHours();
-    const volume = item.VOLUME || 0;
-    if (hour >= sessions.asian.start && hour < sessions.asian.end) {
-      sessions.asian.volume += volume;
-      sessions.asian.count++;
-    } else if (hour >= sessions.european.start && hour < sessions.european.end) {
-      sessions.european.volume += volume;
-      sessions.european.count++;
-    } else {
-      sessions.american.volume += volume;
-      sessions.american.count++;
-    }
-  });
-  Object.keys(sessions).forEach((session) => {
-    const s = sessions[session];
-    s.volume = s.count > 0 ? s.volume / s.count : 0;
-  });
-  return sessions;
-}
-function generateIntradaySignals(priceAnalysis, trendAnalysis) {
-  const signals = [];
-  if (trendAnalysis.direction === "Bullish" && trendAnalysis.strength === "Strong") {
-    signals.push("Strong intraday uptrend - consider long positions");
-  }
-  if (trendAnalysis.direction === "Bearish" && trendAnalysis.strength === "Strong") {
-    signals.push("Strong intraday downtrend - consider short positions");
-  }
-  if (priceAnalysis.direction === "Sideways") {
-    signals.push("Range-bound - consider mean reversion strategies");
-  }
-  return {
-    signals,
-    confidence: signals.length > 1 ? "High" : signals.length > 0 ? "Medium" : "Low"
-  };
-}
-function identifyBestTradingHours(data) {
-  if (data.length < 24) return "Insufficient data";
-  const hourlyActivity = /* @__PURE__ */ new Map();
-  data.forEach((item) => {
-    const date = new Date(item.DATE || item.TIMESTAMP);
-    const hour = date.getHours();
-    if (!hourlyActivity.has(hour)) {
-      hourlyActivity.set(hour, { volume: 0, volatility: 0, count: 0 });
-    }
-    const activity = hourlyActivity.get(hour);
-    activity.volume += item.VOLUME || 0;
-    activity.volatility += Math.abs((item.HIGH - item.LOW) / item.CLOSE) || 0;
-    activity.count++;
-  });
-  const hourlyScores = Array.from(hourlyActivity.entries()).map(([hour, data2]) => ({
-    hour,
-    score: data2.volume / data2.count * (data2.volatility / data2.count)
-  }));
-  const bestHours = hourlyScores.sort((a, b) => b.score - a.score).slice(0, 3).map((h) => `${h.hour}:00`);
-  return bestHours.join(", ");
-}
-function identifyChartPatterns(data) {
-  if (data.length < 10) {
-    return {
-      patterns: [],
-      count: 0
-    };
-  }
-  const patterns = [];
-  const closes = data.map((d) => d.CLOSE);
-  for (let i = 4; i < closes.length - 4; i++) {
-    if (closes[i - 2] < closes[i] && closes[i + 2] < closes[i] && Math.abs(closes[i] - closes[i - 4]) < closes[i] * 0.02) {
-      patterns.push({ type: "Double Top", position: i, strength: "Medium" });
-    }
-    if (closes[i - 2] > closes[i] && closes[i + 2] > closes[i] && Math.abs(closes[i] - closes[i - 4]) < closes[i] * 0.02) {
-      patterns.push({ type: "Double Bottom", position: i, strength: "Medium" });
-    }
-  }
-  return {
-    patterns,
-    count: patterns.length
-  };
-}
-function findHourlyLevels(data) {
-  const levels = findKeyLevels(
-    data.map((d) => d.HIGH).filter((h) => h),
-    data.map((d) => d.LOW).filter((l) => l)
-  );
-  return {
-    support_levels: levels.filter((l) => l.type === "support"),
-    resistance_levels: levels.filter((l) => l.type === "resistance"),
-    total_levels: levels.length
-  };
-}
-function calculateHourlyIndicators(data) {
-  if (data.length < 20) {
-    return {
-      sma_20: null,
-      rsi: null,
-      bollinger_bands: null
-    };
-  }
-  const closes = data.map((d) => d.CLOSE).filter((c) => c);
-  const sma20 = closes.slice(-20).reduce((sum, price) => sum + price, 0) / 20;
-  let gains = 0;
-  let losses = 0;
-  for (let i = 1; i < Math.min(15, closes.length); i++) {
-    const change = closes[i] - closes[i - 1];
-    if (change > 0) gains += change;
-    else losses += Math.abs(change);
-  }
-  const avgGain = gains / 14;
-  const avgLoss = losses / 14;
-  const rs = avgGain / (avgLoss || 1);
-  const rsi = 100 - 100 / (1 + rs);
-  return {
-    sma_20: sma20,
-    rsi,
-    bollinger_bands: {
-      upper: sma20 * 1.02,
-      lower: sma20 * 0.98,
-      middle: sma20
-    }
-  };
-}
-function findKeyLevels(highs, lows) {
-  const levels = [];
-  const sortedHighs = [...highs].sort((a, b) => b - a);
-  const topHighs = sortedHighs.slice(0, 3);
-  topHighs.forEach((high) => {
-    const occurrences = highs.filter((h) => Math.abs(h - high) < high * 5e-3).length;
-    if (occurrences >= 2) {
-      levels.push({ price: high, type: "resistance", strength: occurrences });
-    }
-  });
-  const sortedLows = [...lows].sort((a, b) => a - b);
-  const bottomLows = sortedLows.slice(0, 3);
-  bottomLows.forEach((low) => {
-    const occurrences = lows.filter((l) => Math.abs(l - low) < low * 5e-3).length;
-    if (occurrences >= 2) {
-      levels.push({ price: low, type: "support", strength: occurrences });
-    }
-  });
-  return levels;
-}
-
-// src/actions/getHourlyTradingSignalsAction.ts
-import {
-  elizaLogger as elizaLogger14
-} from "@elizaos/core";
-var HourlyTradingSignalsRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  signal: z.number().optional().describe("Filter by signal type (1=bullish, -1=bearish, 0=neutral)"),
-  startDate: z.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
-  endDate: z.string().optional().describe("End date for data range (YYYY-MM-DD)"),
-  category: z.string().optional().describe("Token category filter"),
-  exchange: z.string().optional().describe("Exchange filter"),
-  marketcap: z.number().optional().describe("Minimum market cap filter"),
-  volume: z.number().optional().describe("Minimum volume filter"),
-  fdv: z.number().optional().describe("Minimum fully diluted valuation filter"),
-  limit: z.number().min(1).max(100).optional().describe("Number of signals to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["active_trading", "scalping", "momentum", "all"]).optional().describe("Type of analysis to focus on")
-});
 var getHourlyTradingSignalsAction = {
   name: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS",
   description: "Get AI-generated hourly trading signals for cryptocurrencies with frequent updates for active trading from TokenMetrics",
@@ -12304,13 +6480,13 @@ var getHourlyTradingSignalsAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get hourly trading signals for Bitcoin"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{user2}}",
         content: {
           text: "I'll get the latest hourly trading signals for Bitcoin from TokenMetrics AI.",
           action: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS"
@@ -12319,13 +6495,13 @@ var getHourlyTradingSignalsAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Show me hourly buy signals for cryptocurrencies"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{user2}}",
         content: {
           text: "I'll retrieve hourly bullish trading signals for active trading opportunities.",
           action: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS"
@@ -12334,13 +6510,13 @@ var getHourlyTradingSignalsAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get scalping signals for ETH"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{user2}}",
         content: {
           text: "I'll get hourly scalping signals for Ethereum optimized for very short-term trading.",
           action: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS"
@@ -12349,80 +6525,131 @@ var getHourlyTradingSignalsAction = {
     ]
   ],
   validate: async (runtime, message, state) => {
-    elizaLogger14.log("\u{1F50D} Validating getHourlyTradingSignalsAction (1.x)");
+    elizaLogger5.log("\u{1F50D} Validating getHourlyTradingSignalsAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger14.error("\u274C Validation failed:", error);
+      elizaLogger5.error("\u274C Validation failed:", error);
       return false;
     }
   },
   handler: async (runtime, message, state, _options, callback) => {
-    const requestId = generateRequestId();
-    elizaLogger14.log("\u{1F680} Starting TokenMetrics hourly trading signals handler (1.x)");
-    elizaLogger14.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger14.log(`\u{1F194} Request ID: ${requestId}`);
     try {
-      validateAndGetApiKey(runtime);
-      if (!state) {
-        state = await runtime.composeState(message);
+      const requestId = generateRequestId();
+      console.log(`[${requestId}] Processing hourly trading signals request...`);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const signalsRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state || await runtime.composeState(message),
+        enhancedTemplate,
+        HourlyTradingSignalsRequestSchema,
+        requestId
+      );
+      console.log(`[${requestId}] Extracted request:`, signalsRequest);
+      let finalRequest = signalsRequest || {};
+      if (finalRequest?.cryptocurrency && !finalRequest?.token_id) {
+        console.log(`[${requestId}] Resolving token: ${finalRequest.cryptocurrency}`);
+        const tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
+        if (tokenInfo?.TOKEN_ID) {
+          finalRequest.token_id = tokenInfo.TOKEN_ID;
+          finalRequest.symbol = tokenInfo.TOKEN_SYMBOL || finalRequest.symbol;
+          console.log(`[${requestId}] \u2705 Resolved ${finalRequest.cryptocurrency} \u2192 ID: ${tokenInfo.TOKEN_ID}, Symbol: ${tokenInfo.TOKEN_SYMBOL}`);
+        }
       }
       const apiParams = {
-        limit: 20,
-        page: 1
+        limit: finalRequest?.limit || 20,
+        page: finalRequest?.page || 1
       };
-      elizaLogger14.log(`\u{1F4E1} Fetching hourly trading signals data`);
-      const signalsData = await callTokenMetricsAPI("/v2/hourly-trading-signals", apiParams, runtime);
-      if (!signalsData) {
-        elizaLogger14.log("\u274C Failed to fetch hourly trading signals data");
-        if (callback) {
-          await callback({
-            text: `\u274C Unable to fetch hourly trading signals data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-
-Please try again in a few moments.`,
-            content: {
-              error: "API fetch failed",
-              request_id: requestId
+      if (finalRequest?.token_id) apiParams.token_id = finalRequest.token_id;
+      if (finalRequest?.symbol) apiParams.symbol = finalRequest.symbol;
+      if (finalRequest?.signal !== void 0) apiParams.signal = finalRequest.signal;
+      if (finalRequest?.startDate) apiParams.startDate = finalRequest.startDate;
+      if (finalRequest?.endDate) apiParams.endDate = finalRequest.endDate;
+      if (finalRequest?.category) apiParams.category = finalRequest.category;
+      if (finalRequest?.exchange) apiParams.exchange = finalRequest.exchange;
+      if (finalRequest?.marketcap) apiParams.marketcap = finalRequest.marketcap;
+      if (finalRequest?.volume) apiParams.volume = finalRequest.volume;
+      if (finalRequest?.fdv) apiParams.fdv = finalRequest.fdv;
+      console.log(`[${requestId}] API parameters:`, apiParams);
+      const response = await callTokenMetricsAPI(
+        "/v2/hourly-trading-signals",
+        apiParams,
+        runtime
+      );
+      console.log(`[${requestId}] API response received, processing data...`);
+      const signals = Array.isArray(response) ? response : response.data || [];
+      console.log(`[${requestId}] \u{1F50D} Raw API response sample:`, JSON.stringify(signals.slice(0, 2), null, 2));
+      console.log(`[${requestId}] \u{1F50D} First signal fields:`, signals[0] ? Object.keys(signals[0]) : "No signals");
+      const signalsAnalysis = analyzeHourlyTradingSignals(signals, finalRequest?.analysisType || "all");
+      const result = {
+        success: true,
+        message: `Successfully retrieved ${signals.length} hourly trading signals`,
+        request_id: requestId,
+        signals_data: signals,
+        analysis: signalsAnalysis,
+        metadata: {
+          endpoint: "hourly-trading-signals",
+          token_info: finalRequest?.cryptocurrency ? {
+            requested_token: finalRequest.cryptocurrency,
+            resolved_token_id: finalRequest?.token_id,
+            symbol: finalRequest?.symbol
+          } : null,
+          filters_applied: {
+            signal_type: finalRequest?.signal,
+            analysis_focus: finalRequest?.analysisType || "all",
+            date_range: {
+              start: finalRequest?.startDate,
+              end: finalRequest?.endDate
             }
-          });
+          },
+          pagination: {
+            page: finalRequest?.page || 1,
+            limit: finalRequest?.limit || 20
+          },
+          data_points: signals.length,
+          api_version: "v2",
+          data_source: "TokenMetrics Hourly Signals Engine"
         }
-        return false;
-      }
-      const signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
-      elizaLogger14.log(`\u{1F50D} Received ${signals.length} hourly trading signals`);
+      };
+      console.log(`[${requestId}] Hourly signals analysis completed successfully`);
       const responseText = formatHourlyTradingSignalsResponse(signals);
-      const analysis = analyzeHourlyTradingSignals(signals, "comprehensive");
-      elizaLogger14.success("\u2705 Successfully processed hourly trading signals request");
       if (callback) {
         await callback({
           text: responseText,
           content: {
             success: true,
-            signals_data: signals,
-            analysis,
-            source: "TokenMetrics Hourly Trading Signals API",
             request_id: requestId,
+            data: result,
             metadata: {
               endpoint: "hourly-trading-signals",
-              data_source: "TokenMetrics API",
-              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-              total_signals: signals.length
+              data_source: "TokenMetrics Official API",
+              api_version: "v2"
             }
           }
         });
       }
-      return true;
+      return createActionResult4({
+        success: true,
+        text: responseText,
+        data: {
+          signals_data: signals,
+          analysis: signalsAnalysis,
+          source: "TokenMetrics Hourly Trading Signals API",
+          request_id: requestId
+        }
+      });
     } catch (error) {
-      elizaLogger14.error("\u274C Error in TokenMetrics hourly trading signals handler:", error);
-      elizaLogger14.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      console.error("Error in getHourlyTradingSignals action:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const reqId = generateRequestId();
       if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         await callback({
           text: `\u274C I encountered an error while fetching hourly trading signals: ${errorMessage}
 
@@ -12437,11 +6664,14 @@ Please check your TokenMetrics API key configuration and try again.`,
             error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
             troubleshooting: true,
-            request_id: requestId
+            request_id: reqId
           }
         });
       }
-      return false;
+      return createActionResult4({
+        success: false,
+        error: errorMessage
+      });
     }
   }
 };
@@ -12458,21 +6688,33 @@ function formatHourlyTradingSignalsResponse(signals) {
   if (signals.length > 0) {
     const recentSignals = signals.slice(0, 5);
     response += `\u{1F4C8} **Recent Signals**:
+
 `;
     recentSignals.forEach((signal, index) => {
-      const symbol = signal.SYMBOL || signal.TOKEN_SYMBOL || "N/A";
-      const action = signal.SIGNAL || signal.ACTION || "HOLD";
-      const confidence = signal.CONFIDENCE || signal.SCORE || "N/A";
-      response += `${index + 1}. **${symbol}**: ${action}`;
-      if (confidence !== "N/A") {
-        response += ` (Confidence: ${confidence})`;
-      }
-      response += `
+      const tokenName = signal.TOKEN_NAME || "Unknown Token";
+      const tokenSymbol = signal.TOKEN_SYMBOL || "N/A";
+      const signalValue = signal.SIGNAL || "N/A";
+      const position = signal.POSITION || "N/A";
+      const timestamp = signal.TIMESTAMP ? new Date(signal.TIMESTAMP).toLocaleString() : "N/A";
+      const price = signal.CLOSE ? `$${parseFloat(signal.CLOSE).toFixed(4)}` : "N/A";
+      let signalDisplay = signalValue;
+      if (signalValue === "1" || signalValue === 1) signalDisplay = "\u{1F7E2} BUY";
+      else if (signalValue === "-1" || signalValue === -1) signalDisplay = "\u{1F534} SELL";
+      else if (signalValue === "0" || signalValue === 0) signalDisplay = "\u26AA NEUTRAL";
+      response += `**${index + 1}. ${tokenName} (${tokenSymbol})**
+`;
+      response += `   Signal: ${signalDisplay}
+`;
+      response += `   Position: ${position}
+`;
+      response += `   Price: ${price}
+`;
+      response += `   Time: ${timestamp}
+
 `;
     });
   }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics Hourly Trading Signals API
+  response += `\u{1F4CA} **Data Source**: TokenMetrics Hourly Trading Signals API
 `;
   response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
 `;
@@ -12543,7 +6785,7 @@ function analyzeHourlyTradingSignals(signalsData, analysisType = "all") {
     trading_opportunities: opportunities,
     signal_quality: quality,
     insights: generateHourlySignalInsights(signalsData, distribution, trends, opportunities),
-    trading_recommendations: generateHourlyTradingRecommendations2(distribution, trends, opportunities, quality),
+    trading_recommendations: generateHourlyTradingRecommendations(distribution, trends, opportunities, quality),
     risk_factors: identifyHourlyRiskFactors(signalsData),
     ...focusedAnalysis,
     data_quality: {
@@ -12561,22 +6803,22 @@ function analyzeHourlySignalDistribution(signalsData) {
   const byHour = {};
   const byToken = {};
   signalsData.forEach((signal) => {
-    if (signal.TRADING_SIGNAL === 1) distribution.bullish++;
-    else if (signal.TRADING_SIGNAL === -1) distribution.bearish++;
+    const signalValue = parseInt(signal.SIGNAL) || 0;
+    if (signalValue === 1) distribution.bullish++;
+    else if (signalValue === -1) distribution.bearish++;
     else distribution.neutral++;
-    if (signal.TIMESTAMP || signal.DATE) {
-      const timestamp = signal.TIMESTAMP || signal.DATE;
-      const hour = new Date(timestamp).getHours();
+    if (signal.TIMESTAMP) {
+      const hour = new Date(signal.TIMESTAMP).getHours();
       if (!byHour[hour]) byHour[hour] = { bullish: 0, bearish: 0, neutral: 0 };
-      if (signal.TRADING_SIGNAL === 1) byHour[hour].bullish++;
-      else if (signal.TRADING_SIGNAL === -1) byHour[hour].bearish++;
+      if (signalValue === 1) byHour[hour].bullish++;
+      else if (signalValue === -1) byHour[hour].bearish++;
       else byHour[hour].neutral++;
     }
-    const token = signal.SYMBOL || signal.TOKEN_ID;
+    const token = signal.TOKEN_SYMBOL || signal.TOKEN_ID;
     if (token) {
       if (!byToken[token]) byToken[token] = { bullish: 0, bearish: 0, neutral: 0 };
-      if (signal.TRADING_SIGNAL === 1) byToken[token].bullish++;
-      else if (signal.TRADING_SIGNAL === -1) byToken[token].bearish++;
+      if (signalValue === 1) byToken[token].bullish++;
+      else if (signalValue === -1) byToken[token].bearish++;
       else byToken[token].neutral++;
     }
   });
@@ -12586,20 +6828,21 @@ function analyzeHourlySignalDistribution(signalsData) {
     bullish_percentage: (distribution.bullish / total * 100).toFixed(1),
     bearish_percentage: (distribution.bearish / total * 100).toFixed(1),
     neutral_percentage: (distribution.neutral / total * 100).toFixed(1),
+    dominant_signal: distribution.bullish > distribution.bearish ? "Bullish" : distribution.bearish > distribution.bullish ? "Bearish" : "Neutral",
     by_hour: byHour,
     by_token: byToken,
     market_sentiment: distribution.bullish > distribution.bearish ? "Bullish" : distribution.bearish > distribution.bullish ? "Bearish" : "Neutral"
   };
 }
 function analyzeHourlyTrends(signalsData) {
-  const sortedData = signalsData.filter((signal) => signal.TIMESTAMP || signal.DATE).sort((a, b) => new Date(a.TIMESTAMP || a.DATE).getTime() - new Date(b.TIMESTAMP || b.DATE).getTime());
+  const sortedData = signalsData.filter((signal) => signal.TIMESTAMP).sort((a, b) => new Date(a.TIMESTAMP).getTime() - new Date(b.TIMESTAMP).getTime());
   if (sortedData.length < 2) {
     return { trend: "Insufficient data for trend analysis" };
   }
   const recentSignals = sortedData.slice(-10);
   const olderSignals = sortedData.slice(0, 10);
-  const recentBullish = recentSignals.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
-  const olderBullish = olderSignals.filter((s) => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+  const recentBullish = recentSignals.filter((s) => parseInt(s.SIGNAL) === 1).length;
+  const olderBullish = olderSignals.filter((s) => parseInt(s.SIGNAL) === 1).length;
   const trendDirection = recentBullish > olderBullish ? "Increasingly Bullish" : recentBullish < olderBullish ? "Increasingly Bearish" : "Stable";
   return {
     trend_direction: trendDirection,
@@ -12611,30 +6854,30 @@ function analyzeHourlyTrends(signalsData) {
 }
 function identifyHourlyOpportunities(signalsData) {
   const opportunities = [];
-  const strongSignals = signalsData.filter(
-    (signal) => signal.AI_CONFIDENCE && signal.AI_CONFIDENCE > 0.7 || signal.SIGNAL_STRENGTH && signal.SIGNAL_STRENGTH > 0.7
-  );
+  const strongSignals = signalsData.filter((signal) => {
+    const signalValue = parseInt(signal.SIGNAL) || 0;
+    return signalValue !== 0;
+  });
   strongSignals.forEach((signal) => {
-    const signalValue = signal.TRADING_SIGNAL || signal.SIGNAL;
+    const signalValue = parseInt(signal.SIGNAL) || 0;
+    const tokenName = signal.TOKEN_NAME || signal.TOKEN_SYMBOL || signal.TOKEN_ID;
     if (signalValue === 1) {
       opportunities.push({
         type: "BUY_OPPORTUNITY",
-        token: signal.SYMBOL || signal.TOKEN_ID,
-        confidence: signal.AI_CONFIDENCE || signal.SIGNAL_STRENGTH || "High",
-        entry_price: signal.ENTRY_PRICE,
-        target_price: signal.TARGET_PRICE,
-        timestamp: signal.TIMESTAMP || signal.DATE,
-        reasoning: signal.REASONING || "Strong bullish signal detected"
+        token: tokenName,
+        confidence: signal.CONFIDENCE || "Standard",
+        entry_price: signal.CLOSE ? parseFloat(signal.CLOSE) : void 0,
+        timestamp: signal.TIMESTAMP || "Unknown",
+        reasoning: "Bullish hourly signal detected"
       });
     } else if (signalValue === -1) {
       opportunities.push({
         type: "SELL_OPPORTUNITY",
-        token: signal.SYMBOL || signal.TOKEN_ID,
-        confidence: signal.AI_CONFIDENCE || signal.SIGNAL_STRENGTH || "High",
-        entry_price: signal.ENTRY_PRICE,
-        stop_loss: signal.STOP_LOSS,
-        timestamp: signal.TIMESTAMP || signal.DATE,
-        reasoning: signal.REASONING || "Strong bearish signal detected"
+        token: tokenName,
+        confidence: signal.CONFIDENCE || "Standard",
+        entry_price: signal.CLOSE ? parseFloat(signal.CLOSE) : void 0,
+        timestamp: signal.TIMESTAMP || "Unknown",
+        reasoning: "Bearish hourly signal detected"
       });
     }
   });
@@ -12705,7 +6948,7 @@ function generateHourlySignalInsights(signalsData, distribution, trends, opportu
   }
   return insights;
 }
-function generateHourlyTradingRecommendations2(distribution, trends, opportunities, quality) {
+function generateHourlyTradingRecommendations(distribution, trends, opportunities, quality) {
   const recommendations = [];
   if (distribution.market_sentiment === "Bullish" && trends.trend_direction.includes("Bullish")) {
     recommendations.push("Consider long positions on tokens with strong hourly bullish signals");
@@ -12946,1158 +7189,742 @@ function identifyBestTradingWindows(signalsData) {
   return peakHours.length > 0 ? [`${peakHours[0]}:00-${peakHours[0] + 2}:00`, "High volume periods"] : ["Standard trading hours"];
 }
 
-// src/actions/getResistanceSupportAction.ts
+// src/actions/getCryptoInvestorsAction.ts
 import {
-  elizaLogger as elizaLogger15
+  elizaLogger as elizaLogger6,
+  createActionResult as createActionResult5
 } from "@elizaos/core";
-var ResistanceSupportRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  limit: z.number().min(1).max(100).optional().describe("Number of levels to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["trading_levels", "breakout_analysis", "risk_management", "all"]).optional().describe("Type of analysis to focus on")
+var CryptoInvestorsRequestSchema = external_exports.object({
+  limit: external_exports.number().min(1).max(1e3).optional().describe("Number of investors to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["performance", "influence", "sentiment", "all"]).optional().describe("Type of analysis to focus on")
 });
-function extractCryptocurrencySimple5(text) {
-  const normalizedText = text.toLowerCase();
-  const patterns = [
-    // Bitcoin patterns
-    { regex: /\b(bitcoin|btc)\b/i, cryptocurrency: "Bitcoin", symbol: "BTC" },
-    // Ethereum patterns  
-    { regex: /\b(ethereum|eth)\b/i, cryptocurrency: "Ethereum", symbol: "ETH" },
-    // Dogecoin patterns
-    { regex: /\b(dogecoin|doge)\b/i, cryptocurrency: "Dogecoin", symbol: "DOGE" },
-    // Solana patterns
-    { regex: /\b(solana|sol)\b/i, cryptocurrency: "Solana", symbol: "SOL" },
-    // Avalanche patterns
-    { regex: /\b(avalanche|avax)\b/i, cryptocurrency: "Avalanche", symbol: "AVAX" },
-    // Cardano patterns
-    { regex: /\b(cardano|ada)\b/i, cryptocurrency: "Cardano", symbol: "ADA" },
-    // Polkadot patterns
-    { regex: /\b(polkadot|dot)\b/i, cryptocurrency: "Polkadot", symbol: "DOT" },
-    // Chainlink patterns
-    { regex: /\b(chainlink|link)\b/i, cryptocurrency: "Chainlink", symbol: "LINK" },
-    // Polygon patterns
-    { regex: /\b(polygon|matic)\b/i, cryptocurrency: "Polygon", symbol: "MATIC" },
-    // Binance Coin patterns
-    { regex: /\b(binance coin|bnb)\b/i, cryptocurrency: "BNB", symbol: "BNB" }
-  ];
-  for (const pattern of patterns) {
-    if (pattern.regex.test(normalizedText)) {
-      return {
-        cryptocurrency: pattern.cryptocurrency,
-        symbol: pattern.symbol
-      };
-    }
-  }
-  return null;
-}
-var RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting resistance and support level requests from natural language.
+var CRYPTO_INVESTORS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting crypto investors data requests from natural language.
 
-CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+The user wants to get information about crypto investors and their market activity. Extract the following information:
 
-The user wants to get historical levels of resistance and support for cryptocurrency technical analysis. Extract the following information:
+1. **limit** (optional, default: 50): How many investors they want to see
+   - Look for numbers like "top 20 investors", "50 investors", "first 100"
+   - Common requests: "top 20" \u2192 20, "50 investors" \u2192 50, "all investors" \u2192 100
+   - Maximum is 1000
 
-1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
-   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH", "Solana", "SOL", "Avalanche", "AVAX"
-   - MUST extract the EXACT name/symbol mentioned by the user
-   - Examples: "Bitcoin" \u2192 "Bitcoin", "BTC" \u2192 "Bitcoin", "ETH" \u2192 "Ethereum", "SOL" \u2192 "Solana", "AVAX" \u2192 "Avalanche"
+2. **page** (optional, default: 1): Which page of results (for pagination)
+   - Usually not mentioned unless they want specific pages
 
-2. **symbol** (optional): Token symbol
-   - Extract symbols like "BTC", "ETH", "ADA", "SOL", "AVAX", "DOGE", etc.
-   - If user says "Bitcoin" \u2192 symbol: "BTC"
-   - If user says "Ethereum" \u2192 symbol: "ETH" 
-   - If user says "Solana" \u2192 symbol: "SOL"
-   - If user says "Avalanche" \u2192 symbol: "AVAX"
-
-3. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
-
-4. **limit** (optional, default: 50): Number of levels to return
-
-5. **page** (optional, default: 1): Page number for pagination
-
-6. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "trading_levels" - focus on key trading levels and entry/exit points
-   - "breakout_analysis" - focus on potential breakout/breakdown scenarios
-   - "risk_management" - focus on stop-loss and risk management levels
-   - "all" - comprehensive resistance and support analysis
+3. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "performance" - focus on investor performance and returns
+   - "influence" - focus on market influence and following
+   - "sentiment" - focus on market sentiment and activity
+   - "all" - comprehensive analysis
 
 Examples:
-- "Get resistance and support levels for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me key trading levels for ETH" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "trading_levels"}
-- "Support and resistance for breakout analysis" \u2192 {analysisType: "breakout_analysis"}
-- "Risk management levels for Solana" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "risk_management"}
-- "Resistance analysis for SOL" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "all"}
-- "Support levels for AVAX" \u2192 {cryptocurrency: "Avalanche", symbol: "AVAX", analysisType: "all"}
+- "Show me crypto investors" \u2192 {limit: 50, page: 1, analysisType: "all"}
+- "Get top 20 crypto investors by performance" \u2192 {limit: 20, page: 1, analysisType: "performance"}
+- "List influential crypto investors" \u2192 {limit: 50, page: 1, analysisType: "influence"}
+- "Crypto investor sentiment analysis" \u2192 {limit: 50, page: 1, analysisType: "sentiment"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<limit>number of investors to return</limit>
+<page>page number for pagination</page>
+<analysisType>performance|influence|sentiment|all</analysisType>
+</response>
 `;
-var getResistanceSupportAction = {
-  name: "GET_RESISTANCE_SUPPORT_TOKENMETRICS",
-  description: "Get historical levels of resistance and support for cryptocurrency tokens from TokenMetrics for technical analysis and trading strategies",
+var getCryptoInvestorsAction = {
+  name: "GET_CRYPTO_INVESTORS_TOKENMETRICS",
+  description: "Get the latest list of crypto investors and their scores from TokenMetrics for market sentiment analysis",
   similes: [
-    "get resistance support",
-    "support resistance levels",
-    "technical levels",
-    "price levels",
-    "key levels",
-    "support resistance analysis",
-    "technical analysis levels",
-    "trading levels",
-    "breakout levels"
+    "get crypto investors",
+    "investor list",
+    "investor scores",
+    "market participants",
+    "investor sentiment",
+    "influential investors",
+    "crypto investor analysis"
   ],
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Get resistance and support levels for Bitcoin"
+          text: "Get crypto investors data"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve the key resistance and support levels for Bitcoin from TokenMetrics technical analysis.",
-          action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
+          text: "I'll fetch the latest crypto investors analysis from TokenMetrics.",
+          action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Show me support and resistance levels for Ethereum"
+          text: "Show me top crypto investors and their scores"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll get the technical support and resistance levels for Ethereum to help with trading decisions.",
-          action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
+          text: "I'll get the comprehensive crypto investors data and analysis for you.",
+          action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Risk management levels for Solana"
+          text: "What are the current crypto market participants?"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll get resistance and support levels for Solana focused on risk management and stop-loss placement.",
-          action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
+          text: "Let me retrieve the latest crypto investors information and market participation data.",
+          action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
         }
       }
     ]
   ],
-  handler: async (runtime, message, state, _options, callback) => {
+  async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing resistance and support levels request...`);
-      const levelsRequest = await extractTokenMetricsRequest(
+      console.log(`[${requestId}] Processing crypto investors request...`);
+      const investorsRequest = await extractTokenMetricsRequest(
         runtime,
         message,
         state || await runtime.composeState(message),
-        RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE,
-        ResistanceSupportRequestSchema,
+        CRYPTO_INVESTORS_EXTRACTION_TEMPLATE,
+        CryptoInvestorsRequestSchema,
         requestId
       );
-      console.log(`[${requestId}] Extracted request:`, levelsRequest);
-      let processedRequest = {
-        cryptocurrency: levelsRequest.cryptocurrency,
-        token_id: levelsRequest.token_id,
-        symbol: levelsRequest.symbol,
-        limit: levelsRequest.limit || 50,
-        page: levelsRequest.page || 1,
-        analysisType: levelsRequest.analysisType || "all"
+      console.log(`[${requestId}] Extracted request:`, investorsRequest);
+      const processedRequest = {
+        limit: investorsRequest?.limit || 50,
+        page: investorsRequest?.page || 1,
+        analysisType: investorsRequest?.analysisType || "all"
       };
-      const userText = message.content.text || "";
-      const regexResult = extractCryptocurrencySimple5(userText);
-      if (regexResult) {
-        const aiExtracted = processedRequest.cryptocurrency?.toLowerCase() || "";
-        const regexExtracted = regexResult.cryptocurrency?.toLowerCase() || "";
-        if (!processedRequest.cryptocurrency || regexExtracted && aiExtracted && !aiExtracted.includes(regexExtracted.split(" ")[0]) && !regexExtracted.includes(aiExtracted)) {
-          console.log(`[${requestId}] Using regex fallback: AI extracted "${processedRequest.cryptocurrency}" but regex found "${regexResult.cryptocurrency}"`);
-          processedRequest.cryptocurrency = regexResult.cryptocurrency;
-          processedRequest.symbol = regexResult.symbol;
-        }
-        if (regexResult.symbol && !processedRequest.symbol) {
-          processedRequest.symbol = regexResult.symbol;
-        }
-      }
-      if (processedRequest.cryptocurrency && !processedRequest.symbol) {
-        const symbolMapping = {
-          "btc": { name: "Bitcoin", symbol: "BTC" },
-          "eth": { name: "Ethereum", symbol: "ETH" },
-          "doge": { name: "Dogecoin", symbol: "DOGE" },
-          "sol": { name: "Solana", symbol: "SOL" },
-          "avax": { name: "Avalanche", symbol: "AVAX" },
-          "ada": { name: "Cardano", symbol: "ADA" },
-          "dot": { name: "Polkadot", symbol: "DOT" },
-          "link": { name: "Chainlink", symbol: "LINK" },
-          "matic": { name: "Polygon", symbol: "MATIC" },
-          "bnb": { name: "BNB", symbol: "BNB" }
-        };
-        const cryptoLower = processedRequest.cryptocurrency.toLowerCase();
-        if (symbolMapping[cryptoLower]) {
-          console.log(`[${requestId}] Converting symbol "${processedRequest.cryptocurrency}" to full name "${symbolMapping[cryptoLower].name}"`);
-          processedRequest.cryptocurrency = symbolMapping[cryptoLower].name;
-          processedRequest.symbol = symbolMapping[cryptoLower].symbol;
-        }
-      }
-      console.log(`[${requestId}] Final processed request:`, processedRequest);
-      let resolvedToken = null;
-      if (processedRequest.cryptocurrency && !processedRequest.token_id) {
-        const isLikelySymbol = processedRequest.cryptocurrency.length <= 5 && processedRequest.cryptocurrency === processedRequest.cryptocurrency.toUpperCase();
-        if (!isLikelySymbol) {
-          try {
-            resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
-            if (resolvedToken) {
-              processedRequest.token_id = resolvedToken.token_id;
-              processedRequest.symbol = resolvedToken.symbol;
-              console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
-            } else {
-              console.log(`[${requestId}] Token resolution returned null for "${processedRequest.cryptocurrency}"`);
-            }
-          } catch (error) {
-            console.log(`[${requestId}] Token resolution failed for "${processedRequest.cryptocurrency}": ${error instanceof Error ? error.message : "Unknown error"}`);
-          }
-        } else {
-          console.log(`[${requestId}] Skipping token resolution for "${processedRequest.cryptocurrency}" (appears to be a symbol)`);
-        }
-      }
       const apiParams = {
         limit: processedRequest.limit,
         page: processedRequest.page
       };
-      if (processedRequest.token_id) {
-        apiParams.token_id = processedRequest.token_id;
-        console.log(`[${requestId}] Using token_id parameter: ${processedRequest.token_id}`);
-      } else if (processedRequest.symbol) {
-        apiParams.symbol = processedRequest.symbol;
-        console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
-      } else if (processedRequest.cryptocurrency) {
-        const symbolMapping = {
-          "bitcoin": "BTC",
-          "ethereum": "ETH",
-          "dogecoin": "DOGE",
-          "solana": "SOL",
-          "avalanche": "AVAX",
-          "cardano": "ADA",
-          "polkadot": "DOT",
-          "chainlink": "LINK",
-          "polygon": "MATIC",
-          "binance coin": "BNB",
-          "bnb": "BNB"
-        };
-        const mappedSymbol = symbolMapping[processedRequest.cryptocurrency.toLowerCase()];
-        if (mappedSymbol) {
-          apiParams.symbol = mappedSymbol;
-          console.log(`[${requestId}] Mapped ${processedRequest.cryptocurrency} to symbol: ${mappedSymbol}`);
-        } else {
-          console.log(`[${requestId}] No symbol mapping found for: ${processedRequest.cryptocurrency}`);
-        }
-      }
-      console.log(`[${requestId}] Final API parameters:`, apiParams);
       const response = await callTokenMetricsAPI(
-        "/v2/resistance-support",
+        "/v2/crypto-investors",
         apiParams,
         runtime
       );
       console.log(`[${requestId}] API response received, processing data...`);
-      let levelsData = [];
-      if (Array.isArray(response)) {
-        levelsData = response;
-      } else if (response.data && Array.isArray(response.data)) {
-        let selectedTokenData = null;
-        if (response.data.length === 1) {
-          selectedTokenData = response.data[0];
-        } else if (response.data.length > 1) {
-          console.log(`[${requestId}] Multiple tokens found with same symbol, selecting main token...`);
-          const mainTokenSelectors = [
-            // For Bitcoin - select the main Bitcoin, not wrapped versions
-            (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
-            // For Dogecoin - select the main Dogecoin, not other DOGE tokens
-            (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
-            // For Ethereum - select the main Ethereum
-            (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
-            // For other tokens - prefer exact name matches or shortest/simplest names
-            (token) => {
-              const name = token.TOKEN_NAME.toLowerCase();
-              const symbol = token.TOKEN_SYMBOL.toLowerCase();
-              const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis"];
-              const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
-              if (hasAvoidKeywords) return false;
-              if (symbol === "btc" && name.includes("bitcoin")) return true;
-              if (symbol === "eth" && name.includes("ethereum")) return true;
-              if (symbol === "doge" && name.includes("dogecoin")) return true;
-              if (symbol === "sol" && name.includes("solana")) return true;
-              if (symbol === "avax" && name.includes("avalanche")) return true;
-              return false;
-            }
-          ];
-          for (const selector of mainTokenSelectors) {
-            const match = response.data.find(selector);
-            if (match) {
-              selectedTokenData = match;
-              console.log(`[${requestId}] Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
-              break;
-            }
-          }
-          if (!selectedTokenData) {
-            selectedTokenData = response.data[0];
-            console.log(`[${requestId}] No main token identified, using first token: ${selectedTokenData.TOKEN_NAME} (${selectedTokenData.TOKEN_SYMBOL})`);
-          }
-        } else {
-          console.log(`[${requestId}] No token data found in response`);
-        }
-        if (selectedTokenData && selectedTokenData.HISTORICAL_RESISTANCE_SUPPORT_LEVELS) {
-          const historicalLevels = selectedTokenData.HISTORICAL_RESISTANCE_SUPPORT_LEVELS;
-          const sortedLevels = historicalLevels.map((level) => ({
-            ...level,
-            price: parseFloat(level.level)
-          })).filter((level) => level.price > 0).sort((a, b) => a.price - b.price);
-          const recentLevels = sortedLevels.filter((level) => new Date(level.date) > /* @__PURE__ */ new Date("2024-01-01")).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          let currentPrice = 0;
-          if (recentLevels.length > 0) {
-            currentPrice = recentLevels[0].price;
-            console.log(`[${requestId}] Using most recent level as current price reference: ${currentPrice} (${recentLevels[0].date})`);
-          } else if (sortedLevels.length > 0) {
-            const medianIndex = Math.floor(sortedLevels.length / 2);
-            currentPrice = sortedLevels[medianIndex].price;
-            console.log(`[${requestId}] Using median level as current price reference: ${currentPrice}`);
-          }
-          levelsData = historicalLevels.map((level, index) => {
-            const price = parseFloat(level.level);
-            const isResistance = price > currentPrice;
-            const isSupport = price <= currentPrice;
-            const levelDate = new Date(level.date);
-            const now = /* @__PURE__ */ new Date();
-            const daysSinceLevel = (now.getTime() - levelDate.getTime()) / (1e3 * 60 * 60 * 24);
-            let strength = Math.max(20, 100 - daysSinceLevel / 10);
-            if (price > currentPrice * 1.5 || price < currentPrice * 0.5) {
-              strength = Math.min(95, strength + 20);
-            }
-            return {
-              LEVEL_TYPE: isResistance ? "RESISTANCE" : "SUPPORT",
-              TYPE: isResistance ? "RESISTANCE" : "SUPPORT",
-              PRICE_LEVEL: price,
-              LEVEL_PRICE: price,
-              STRENGTH: Math.round(strength),
-              LEVEL_STRENGTH: Math.round(strength),
-              DATE: level.date,
-              TIMEFRAME: "daily",
-              TOKEN_ID: selectedTokenData.TOKEN_ID,
-              TOKEN_NAME: selectedTokenData.TOKEN_NAME,
-              TOKEN_SYMBOL: selectedTokenData.TOKEN_SYMBOL,
-              DAYS_SINCE: Math.round(daysSinceLevel),
-              CURRENT_PRICE_REFERENCE: currentPrice
-            };
-          });
-          console.log(`[${requestId}] Processed ${levelsData.length} historical levels for ${selectedTokenData.TOKEN_NAME} (${selectedTokenData.TOKEN_SYMBOL})`);
-          console.log(`[${requestId}] Current price reference: ${currentPrice}, Resistance levels: ${levelsData.filter((l) => l.LEVEL_TYPE === "RESISTANCE").length}, Support levels: ${levelsData.filter((l) => l.LEVEL_TYPE === "SUPPORT").length}`);
-        } else {
-          console.log(`[${requestId}] No HISTORICAL_RESISTANCE_SUPPORT_LEVELS found in selected token data`);
-        }
-      } else {
-        console.log(`[${requestId}] Unexpected response format:`, response);
-      }
-      const levelsAnalysis = analyzeResistanceSupportLevels(levelsData, processedRequest.analysisType);
+      const investorsData = Array.isArray(response) ? response : response.data || [];
+      const investorsAnalysis = analyzeCryptoInvestors(investorsData, processedRequest.analysisType);
+      const responseText = formatCryptoInvestorsResponse(investorsData, investorsAnalysis, processedRequest);
       const result = {
         success: true,
-        message: `Successfully retrieved ${levelsData.length} resistance and support levels from TokenMetrics`,
+        message: `Successfully retrieved ${investorsData.length} crypto investors data`,
         request_id: requestId,
-        resistance_support_levels: levelsData,
-        analysis: levelsAnalysis,
+        crypto_investors: investorsData,
+        analysis: investorsAnalysis,
         metadata: {
-          endpoint: "resistance-support",
-          requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
-          resolved_token: resolvedToken,
-          analysis_focus: processedRequest.analysisType,
+          endpoint: "crypto-investors",
           pagination: {
             page: processedRequest.page,
             limit: processedRequest.limit
           },
-          data_points: levelsData.length,
+          analysis_focus: processedRequest.analysisType,
+          data_points: investorsData.length,
           api_version: "v2",
-          data_source: "TokenMetrics Technical Analysis Engine"
+          data_source: "TokenMetrics Official API"
         },
-        levels_explanation: {
-          purpose: "Identify key price levels where buying or selling pressure typically emerges",
-          resistance_levels: "Price levels where selling pressure historically increases, limiting upward movement",
-          support_levels: "Price levels where buying pressure historically increases, limiting downward movement",
-          usage_guidelines: [
-            "Use support levels as potential entry points for long positions",
-            "Use resistance levels as potential exit points or profit-taking levels",
-            "Monitor level breaks for trend continuation or reversal signals",
-            "Combine with volume analysis for confirmation of level significance"
+        investors_explanation: {
+          purpose: "Track influential crypto investors and their market participation",
+          investor_scores: "Proprietary scoring system based on portfolio performance, influence, and market activity",
+          data_includes: [
+            "Investor names and identification",
+            "Performance scores and rankings",
+            "Investment activity and portfolio insights",
+            "Market influence and sentiment indicators"
           ],
-          trading_applications: [
-            "Set stop-loss orders below support levels",
-            "Set take-profit orders near resistance levels",
-            "Plan position sizes based on distance to key levels",
-            "Identify potential breakout or breakdown scenarios"
+          usage_guidelines: [
+            "Use for understanding market sentiment and investor behavior",
+            "Track influential investors for market timing insights",
+            "Analyze investor concentration and market participation",
+            "Combine with other metrics for comprehensive market analysis"
           ]
         }
       };
-      const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
-      const resistanceLevels = levelsData.filter(
-        (level) => level.LEVEL_TYPE === "RESISTANCE" || level.TYPE === "RESISTANCE"
-      );
-      const supportLevels = levelsData.filter(
-        (level) => level.LEVEL_TYPE === "SUPPORT" || level.TYPE === "SUPPORT"
-      );
-      let responseText = `\u{1F4CA} **Resistance & Support Analysis for ${tokenName}**
-
-`;
-      if (levelsData.length === 0) {
-        responseText += `\u274C No resistance and support levels found for ${tokenName}. This could mean:
-`;
-        responseText += `\u2022 The token may not have sufficient price history
-`;
-        responseText += `\u2022 TokenMetrics may not have performed technical analysis on this token yet
-`;
-        responseText += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
-
-`;
-      } else {
-        responseText += `\u2705 **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)
-
-`;
-        const currentPriceRef = levelsData[0]?.CURRENT_PRICE_REFERENCE;
-        if (currentPriceRef) {
-          responseText += `\u{1F4B0} **Current Price Reference**: ${formatCurrency(currentPriceRef)}
-
-`;
-        }
-        if (resistanceLevels.length > 0) {
-          responseText += `\u{1F534} **Key Resistance Levels** (${resistanceLevels.length} total):
-`;
-          const topResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
-          topResistance.forEach((level, index) => {
-            const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
-            const date = new Date(level.DATE).toLocaleDateString();
-            const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
-            const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
-            responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
-`;
-          });
-          if (resistanceLevels.length > 5) {
-            responseText += `   ... and ${resistanceLevels.length - 5} more resistance levels
-`;
-          }
-          responseText += `
-`;
-        }
-        if (supportLevels.length > 0) {
-          responseText += `\u{1F7E2} **Key Support Levels** (${supportLevels.length} total):
-`;
-          const topSupport = supportLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
-          topSupport.forEach((level, index) => {
-            const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
-            const date = new Date(level.DATE).toLocaleDateString();
-            const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
-            const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
-            responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
-`;
-          });
-          if (supportLevels.length > 5) {
-            responseText += `   ... and ${supportLevels.length - 5} more support levels
-`;
-          }
-          responseText += `
-`;
-        }
-        responseText += `\u{1F4C5} **Recent Historical Levels**:
-`;
-        const recentLevels = levelsData.sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime()).slice(0, 5);
-        recentLevels.forEach((level) => {
-          const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
-          const date = new Date(level.DATE).toLocaleDateString();
-          const type = level.LEVEL_TYPE || level.TYPE;
-          const typeIcon = type === "RESISTANCE" ? "\u{1F534}" : "\u{1F7E2}";
-          const daysAgo = level.DAYS_SINCE ? `(${level.DAYS_SINCE} days ago)` : "";
-          responseText += `\u2022 ${typeIcon} **${price}** - ${date} ${daysAgo}
-`;
-        });
-        responseText += `
-`;
-        if (processedRequest.analysisType === "trading_levels") {
-          responseText += `\u{1F3AF} **Trading Levels Analysis:**
-`;
-          responseText += `\u2022 **Entry Opportunities**: ${supportLevels.length} support levels for potential long positions
-`;
-          responseText += `\u2022 **Exit Targets**: ${resistanceLevels.length} resistance levels for profit-taking
-`;
-          responseText += `\u2022 **Risk Management**: Use support levels for stop-loss placement
-
-`;
-        } else if (processedRequest.analysisType === "breakout_analysis") {
-          responseText += `\u{1F680} **Breakout Analysis:**
-`;
-          const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || 0) > 70);
-          const nearestResistance = resistanceLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
-          responseText += `\u2022 **Breakout Candidates**: ${strongResistance.length} strong resistance levels to watch
-`;
-          if (nearestResistance) {
-            responseText += `\u2022 **Next Key Level**: ${formatCurrency(nearestResistance.PRICE_LEVEL || 0)} resistance
-`;
-          }
-          responseText += `\u2022 **Breakout Strategy**: Monitor volume on approach to resistance levels
-
-`;
-        } else if (processedRequest.analysisType === "risk_management") {
-          responseText += `\u{1F6E1}\uFE0F **Risk Management Guide:**
-`;
-          const nearestSupport = supportLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
-          responseText += `\u2022 **Stop-Loss Zones**: ${supportLevels.length} support levels for protection
-`;
-          if (nearestSupport) {
-            responseText += `\u2022 **Nearest Support**: ${formatCurrency(nearestSupport.PRICE_LEVEL || 0)} for stop placement
-`;
-          }
-          responseText += `\u2022 **Position Sizing**: Adjust based on distance to key support levels
-
-`;
-        } else {
-          responseText += `\u{1F4C8} **Comprehensive Analysis:**
-`;
-          const priceRange = Math.max(...levelsData.map((l) => l.PRICE_LEVEL || 0)) - Math.min(...levelsData.map((l) => l.PRICE_LEVEL || 0));
-          const avgStrength = levelsData.reduce((sum, l) => sum + (l.STRENGTH || 0), 0) / levelsData.length;
-          responseText += `\u2022 **Price Range Covered**: ${formatCurrency(priceRange)} across all levels
-`;
-          responseText += `\u2022 **Average Level Strength**: ${Math.round(avgStrength)}/100
-`;
-          responseText += `\u2022 **Data Timeframe**: ${new Date(Math.min(...levelsData.map((l) => new Date(l.DATE).getTime()))).getFullYear()} - ${(/* @__PURE__ */ new Date()).getFullYear()}
-
-`;
-        }
-        if (levelsAnalysis.insights && levelsAnalysis.insights.length > 0) {
-          responseText += `\u{1F4A1} **Key Insights:**
-`;
-          levelsAnalysis.insights.slice(0, 3).forEach((insight) => {
-            responseText += `\u2022 ${insight}
-`;
-          });
-          responseText += `
-`;
-        }
-        if (levelsAnalysis.technical_outlook) {
-          responseText += `\u{1F52E} **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || "Neutral"}
-
-`;
-        }
-        responseText += `\u{1F4CB} **Trading Guidelines:**
-`;
-        responseText += `\u2022 **Long Entries**: Consider positions near strong support levels
-`;
-        responseText += `\u2022 **Profit Targets**: Set take-profits near resistance levels
-`;
-        responseText += `\u2022 **Stop Losses**: Place stops below key support levels
-`;
-        responseText += `\u2022 **Breakout Plays**: Watch for volume confirmation on level breaks
-`;
-        responseText += `\u2022 **Risk Management**: Size positions based on distance to key levels
-`;
-      }
-      responseText += `
-\u{1F517} **Data Source:** TokenMetrics Technical Analysis Engine (v2)`;
-      console.log(`[${requestId}] Resistance and support analysis completed successfully`);
+      console.log(`[${requestId}] Crypto investors analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
       if (callback) {
         callback({
           text: responseText,
-          content: {
-            success: true,
-            request_id: requestId,
-            data: result,
-            metadata: {
-              endpoint: "resistancesupport",
-              data_source: "TokenMetrics Official API",
-              api_version: "v2"
-            }
-          }
+          content: result
         });
       }
-      return true;
+      return createActionResult5({ success: true, text: responseText });
     } catch (error) {
-      console.error("Error in getResistanceSupportAction:", error);
-      const errorMessage = `\u274C **Failed to get resistance and support levels**
-
-**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}
-
-**Troubleshooting:**
-\u2022 Ensure the token has sufficient price history for technical analysis
-\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
-\u2022 Check if your TokenMetrics subscription includes technical analysis data
-\u2022 Verify the token is actively traded with sufficient volume
-
-**Common Solutions:**
-\u2022 Use full token names instead of symbols (e.g., "Bitcoin" instead of "BTC")
-\u2022 Check if TokenMetrics has performed technical analysis on the requested token
-\u2022 Ensure your API key has access to the resistance-support endpoint`;
+      console.error("Error in getCryptoInvestorsAction:", error);
+      const errorResult = {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        message: "Failed to retrieve crypto investors from TokenMetrics API",
+        troubleshooting: {
+          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/crypto-investors is accessible",
+          parameter_validation: [
+            "Check that pagination parameters (page, limit) are positive integers",
+            "Ensure your API key has access to crypto investors endpoint"
+          ],
+          common_solutions: [
+            "Try with default parameters (no filters)",
+            "Check if your subscription includes crypto investors data access",
+            "Verify TokenMetrics API service status"
+          ]
+        }
+      };
       if (callback) {
         callback({
-          text: errorMessage,
-          content: {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred",
-            message: "Failed to retrieve resistance and support levels from TokenMetrics API"
-          }
+          text: "\u274C Failed to retrieve crypto investors data. Please try again later.",
+          content: errorResult
         });
       }
-      return false;
+      return createActionResult5({ success: false, error: "Failed to process request" });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger15.log("\u{1F50D} Validating getResistanceSupportAction (1.x)");
+    elizaLogger6.log("\u{1F50D} Validating getCryptoInvestorsAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger15.error("\u274C Validation failed:", error);
+      elizaLogger6.error("\u274C Validation failed:", error);
       return false;
     }
   }
 };
-function analyzeResistanceSupportLevels(levelsData, analysisType = "all") {
-  if (!levelsData || levelsData.length === 0) {
+function analyzeCryptoInvestors(investorsData, analysisType = "all") {
+  if (!investorsData || investorsData.length === 0) {
     return {
-      summary: "No resistance and support levels data available for analysis",
-      key_levels: "Cannot identify",
+      summary: "No crypto investors data available for analysis",
+      market_participation: "Cannot assess",
       insights: []
     };
   }
-  const resistanceLevels = levelsData.filter(
-    (level) => level.LEVEL_TYPE === "RESISTANCE" || level.TYPE === "RESISTANCE"
-  );
-  const supportLevels = levelsData.filter(
-    (level) => level.LEVEL_TYPE === "SUPPORT" || level.TYPE === "SUPPORT"
-  );
-  const levelStrength = analyzeLevelStrength(levelsData);
-  const levelProximity = analyzeLevelProximity(levelsData);
-  const tradingOpportunities = identifyTradingOpportunities(resistanceLevels, supportLevels);
-  const riskManagement = generateRiskManagementGuidance(resistanceLevels, supportLevels);
+  const performanceAnalysis = analyzeInvestorPerformance(investorsData);
+  const marketParticipation = analyzeMarketParticipation(investorsData);
+  const influenceAnalysis = analyzeInvestorInfluence(investorsData);
+  const sentimentAnalysis = analyzeInvestorSentiment(investorsData);
+  const insights = generateInvestorInsights(performanceAnalysis, marketParticipation, influenceAnalysis);
   let focusedAnalysis = {};
   switch (analysisType) {
-    case "trading_levels":
+    case "performance":
       focusedAnalysis = {
-        trading_focus: {
-          key_entry_levels: identifyKeyEntryLevels(supportLevels),
-          key_exit_levels: identifyKeyExitLevels(resistanceLevels),
-          optimal_trading_zones: identifyOptimalTradingZones(resistanceLevels, supportLevels),
-          trading_insights: [
-            `\u{1F3AF} Key support levels: ${supportLevels.length}`,
-            `\u{1F6A7} Key resistance levels: ${resistanceLevels.length}`,
-            `\u{1F4CA} Trading opportunities: ${tradingOpportunities.immediate_setups || 0}`
+        performance_focus: {
+          top_performers: identifyTopPerformers(investorsData),
+          performance_distribution: performanceAnalysis,
+          performance_insights: [
+            `\u{1F4C8} Average performance score: ${performanceAnalysis.average_score}`,
+            `\u{1F3C6} High performers: ${performanceAnalysis.high_performers} investors`,
+            `\u{1F4CA} Performance quality: ${performanceAnalysis.overall_performance}`
           ]
         }
       };
       break;
-    case "breakout_analysis":
+    case "influence":
       focusedAnalysis = {
-        breakout_focus: {
-          breakout_candidates: identifyBreakoutCandidates(resistanceLevels, supportLevels),
-          breakdown_risks: identifyBreakdownRisks(supportLevels),
-          momentum_levels: identifyMomentumLevels(levelsData),
-          breakout_insights: [
-            `\u{1F680} Breakout candidates: ${resistanceLevels.filter((r) => r.STRENGTH > 0.7).length}`,
-            `\u26A0\uFE0F Breakdown risks: ${supportLevels.filter((s) => s.STRENGTH < 0.5).length}`,
-            `\u{1F4AA} Strong levels: ${levelStrength.strong_levels || 0}`
+        influence_focus: {
+          market_leaders: identifyMarketLeaders(influenceAnalysis.top_influencers || []),
+          influence_distribution: influenceAnalysis,
+          influence_insights: [
+            `\u{1F31F} Top influencers identified: ${influenceAnalysis.top_influencers?.length || 0}`,
+            `\u{1F4CA} Influence distribution: ${influenceAnalysis.influence_distribution?.level || "Moderate"}`,
+            `\u{1F3AF} Market leadership: ${influenceAnalysis.market_leadership || "Distributed"}`
           ]
         }
       };
       break;
-    case "risk_management":
+    case "sentiment":
       focusedAnalysis = {
-        risk_management_focus: {
-          stop_loss_levels: identifyStopLossLevels(supportLevels),
-          take_profit_levels: identifyTakeProfitLevels(resistanceLevels),
-          risk_reward_ratios: calculateRiskRewardRatios(resistanceLevels, supportLevels),
-          risk_insights: [
-            `\u{1F6E1}\uFE0F Stop-loss levels: ${supportLevels.length}`,
-            `\u{1F3AF} Take-profit levels: ${resistanceLevels.length}`,
-            `\u2696\uFE0F Risk/reward quality: ${riskManagement.overall_assessment || "Unknown"}`
+        sentiment_focus: {
+          market_mood: determinMarketMood(sentimentAnalysis.sentiment, sentimentAnalysis.activity_rate),
+          sentiment_indicators: sentimentAnalysis,
+          sentiment_insights: [
+            `\u{1F60A} Market sentiment: ${sentimentAnalysis.sentiment}`,
+            `\u{1F4CA} Activity rate: ${formatPercentage(sentimentAnalysis.activity_rate)}`,
+            `\u{1F3AF} Market outlook: ${determineMarketOutlook(performanceAnalysis, sentimentAnalysis)}`
           ]
         }
       };
       break;
   }
   return {
-    summary: `Analysis of ${levelsData.length} levels (${resistanceLevels.length} resistance, ${supportLevels.length} support) with ${levelStrength.strong_levels} strong levels identified`,
+    summary: `Analysis of ${investorsData.length} crypto investors shows ${performanceAnalysis.overall_performance} performance with ${marketParticipation.participation_level} market participation`,
     analysis_type: analysisType,
-    level_breakdown: {
-      resistance_levels: resistanceLevels.length,
-      support_levels: supportLevels.length,
-      total_levels: levelsData.length
-    },
-    level_strength: levelStrength,
-    level_proximity: levelProximity,
-    trading_opportunities: tradingOpportunities,
-    risk_management: riskManagement,
-    insights: generateTechnicalInsights(resistanceLevels, supportLevels, levelStrength),
-    technical_outlook: generateTechnicalOutlook(resistanceLevels, supportLevels, levelStrength),
+    performance_analysis: performanceAnalysis,
+    market_participation: marketParticipation,
+    influence_analysis: influenceAnalysis,
+    sentiment_analysis: sentimentAnalysis,
+    insights,
     ...focusedAnalysis,
+    market_implications: generateMarketImplications(performanceAnalysis, sentimentAnalysis),
+    top_performers: identifyTopPerformers(investorsData),
     data_quality: {
-      source: "TokenMetrics Technical Analysis Engine",
-      level_count: levelsData.length,
-      coverage: assessCoverageTimeframe(levelsData),
-      analysis_depth: assessAnalysisDepth(levelsData),
-      reliability: assessReliability(levelStrength.average_strength || 0, levelStrength.strong_levels || 0, levelsData.length)
+      source: "TokenMetrics Official API",
+      investor_count: investorsData.length,
+      data_completeness: assessDataCompleteness(investorsData),
+      coverage_scope: assessCoverageScope2(investorsData)
     },
-    level_classification: classifyLevels(resistanceLevels, supportLevels, analysisType)
+    investment_strategy: suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis),
+    risk_considerations: identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis),
+    opportunities: identifyOpportunities(performanceAnalysis, sentimentAnalysis)
   };
 }
-function analyzeLevelStrength(levelsData) {
-  const strengthScores = levelsData.map((level) => level.STRENGTH || level.LEVEL_STRENGTH).filter((strength) => strength !== null && strength !== void 0);
-  if (strengthScores.length === 0) {
-    return { strong_levels: 0, average_strength: 0 };
+function analyzeInvestorPerformance(investorsData) {
+  const scores = investorsData.map((investor) => investor.ROI_AVERAGE).filter((score) => score !== null && score !== void 0);
+  if (scores.length === 0) {
+    return { overall_performance: "Unknown", average_score: 0 };
   }
-  const averageStrength = strengthScores.reduce((sum, strength) => sum + strength, 0) / strengthScores.length;
-  const strongLevels = strengthScores.filter((s) => s >= 80).length;
-  const moderateLevels = strengthScores.filter((s) => s >= 60 && s < 80).length;
-  const weakLevels = strengthScores.filter((s) => s < 60).length;
+  const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  const maxScore = Math.max(...scores);
+  const minScore = Math.min(...scores);
+  const highPerformers = scores.filter((s) => s >= 0.5).length;
+  const goodPerformers = scores.filter((s) => s >= 0.2 && s < 0.5).length;
+  const averagePerformers = scores.filter((s) => s >= 0 && s < 0.2).length;
+  const poorPerformers = scores.filter((s) => s < 0).length;
+  let overallPerformance;
+  if (averageScore >= 0.5) overallPerformance = "Excellent";
+  else if (averageScore >= 0.2) overallPerformance = "Good";
+  else if (averageScore >= 0) overallPerformance = "Average";
+  else overallPerformance = "Below Average";
   return {
-    average_strength: averageStrength.toFixed(1),
-    strong_levels: strongLevels,
-    moderate_levels: moderateLevels,
-    weak_levels: weakLevels,
-    strength_distribution: {
-      strong: `${strongLevels} (${(strongLevels / strengthScores.length * 100).toFixed(1)}%)`,
-      moderate: `${moderateLevels} (${(moderateLevels / strengthScores.length * 100).toFixed(1)}%)`,
-      weak: `${weakLevels} (${(weakLevels / strengthScores.length * 100).toFixed(1)}%)`
+    overall_performance: overallPerformance,
+    average_score: `${(averageScore * 100).toFixed(1)}%`,
+    max_score: `${(maxScore * 100).toFixed(1)}%`,
+    min_score: `${(minScore * 100).toFixed(1)}%`,
+    score_range: `${((maxScore - minScore) * 100).toFixed(1)}%`,
+    performance_distribution: {
+      high_performers: `${highPerformers} (${(highPerformers / scores.length * 100).toFixed(1)}%)`,
+      good_performers: `${goodPerformers} (${(goodPerformers / scores.length * 100).toFixed(1)}%)`,
+      average_performers: `${averagePerformers} (${(averagePerformers / scores.length * 100).toFixed(1)}%)`,
+      poor_performers: `${poorPerformers} (${(poorPerformers / scores.length * 100).toFixed(1)}%)`
     },
-    reliability_assessment: assessReliability(averageStrength, strongLevels, strengthScores.length)
+    performance_quality: assessPerformanceQuality(averageScore, highPerformers, scores.length)
   };
 }
-function analyzeLevelProximity(levelsData) {
-  const priceLevels = levelsData.map((level) => level.PRICE_LEVEL || level.LEVEL_PRICE).filter((price) => price && price > 0).sort((a, b) => a - b);
-  if (priceLevels.length < 2) {
-    return { level_spacing: "Insufficient data" };
-  }
-  const spacings = [];
-  for (let i = 1; i < priceLevels.length; i++) {
-    const spacing = (priceLevels[i] - priceLevels[i - 1]) / priceLevels[i - 1] * 100;
-    spacings.push(spacing);
-  }
-  const averageSpacing = spacings.reduce((sum, spacing) => sum + spacing, 0) / spacings.length;
-  const minSpacing = Math.min(...spacings);
-  const maxSpacing = Math.max(...spacings);
-  return {
-    average_level_spacing: `${averageSpacing.toFixed(2)}%`,
-    min_spacing: `${minSpacing.toFixed(2)}%`,
-    max_spacing: `${maxSpacing.toFixed(2)}%`,
-    price_range: {
-      lowest_level: formatCurrency(priceLevels[0]),
-      highest_level: formatCurrency(priceLevels[priceLevels.length - 1]),
-      total_range: formatCurrency(priceLevels[priceLevels.length - 1] - priceLevels[0])
-    },
-    level_clustering: assessLevelClustering(spacings)
-  };
-}
-function identifyTradingOpportunities(resistanceLevels, supportLevels) {
-  const opportunities = [];
-  const strongResistance = resistanceLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3);
-  const strongSupport = supportLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3);
-  strongSupport.forEach((level) => {
-    opportunities.push({
-      type: "Long Entry Opportunity",
-      description: `Strong support at ${formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE)}`,
-      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-      strategy: "Consider long positions on bounces from this level",
-      risk_management: "Set stop-loss below support level"
-    });
-  });
-  strongResistance.forEach((level) => {
-    opportunities.push({
-      type: "Short Entry Opportunity",
-      description: `Strong resistance at ${formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE)}`,
-      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-      strategy: "Consider short positions on rejections from this level",
-      risk_management: "Set stop-loss above resistance level"
-    });
-  });
-  if (strongResistance.length > 0) {
-    opportunities.push({
-      type: "Breakout Opportunity",
-      description: "Monitor for resistance level breaks for upside momentum",
-      strategy: "Enter long positions on confirmed breaks above resistance",
-      confirmation_needed: "Volume increase and sustained price action above level"
-    });
-  }
-  if (strongSupport.length > 0) {
-    opportunities.push({
-      type: "Breakdown Opportunity",
-      description: "Monitor for support level breaks for downside momentum",
-      strategy: "Enter short positions on confirmed breaks below support",
-      confirmation_needed: "Volume increase and sustained price action below level"
-    });
+function analyzeMarketParticipation(investorsData) {
+  const totalInvestors = investorsData.length;
+  const activeInvestors = investorsData.filter(
+    (investor) => investor.ROUND_COUNT && parseInt(investor.ROUND_COUNT) > 0
+  ).length;
+  const participationRate = totalInvestors > 0 ? activeInvestors / totalInvestors * 100 : 0;
+  let participationLevel;
+  if (participationRate >= 80) participationLevel = "Very High";
+  else if (participationRate >= 60) participationLevel = "High";
+  else if (participationRate >= 40) participationLevel = "Moderate";
+  else participationLevel = "Low";
+  const roundCounts = investorsData.map((investor) => parseInt(investor.ROUND_COUNT) || 0).filter((count) => count > 0);
+  let roundAnalysis = {};
+  if (roundCounts.length > 0) {
+    const totalRounds = roundCounts.reduce((sum, count) => sum + count, 0);
+    const averageRounds = totalRounds / roundCounts.length;
+    const maxRounds = Math.max(...roundCounts);
+    roundAnalysis = {
+      total_investment_rounds: totalRounds,
+      average_rounds_per_investor: averageRounds.toFixed(1),
+      most_active_investor_rounds: maxRounds,
+      investment_activity: analyzeInvestmentActivity(roundCounts)
+    };
   }
   return {
-    total_opportunities: opportunities.length,
-    opportunities,
-    priority_levels: identifyPriorityLevels(strongResistance, strongSupport),
-    setup_quality: assessSetupQuality(opportunities)
+    participation_level: participationLevel,
+    participation_rate: `${participationRate.toFixed(1)}%`,
+    total_investors: totalInvestors,
+    active_investors: activeInvestors,
+    round_analysis: roundAnalysis,
+    market_coverage: assessMarketCoverage(investorsData)
   };
 }
-function generateRiskManagementGuidance(resistanceLevels, supportLevels) {
-  const guidance = [];
-  if (supportLevels.length > 0) {
-    const nearestSupport = supportLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
-    guidance.push({
-      type: "Stop-Loss Placement",
-      recommendation: `Place stop-losses below ${formatCurrency(nearestSupport.PRICE_LEVEL || nearestSupport.LEVEL_PRICE)} support level`,
-      rationale: "Support break indicates trend reversal or acceleration"
-    });
-  }
-  if (resistanceLevels.length > 0) {
-    const nearestResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
-    guidance.push({
-      type: "Take-Profit Placement",
-      recommendation: `Consider taking profits near ${formatCurrency(nearestResistance.PRICE_LEVEL || nearestResistance.LEVEL_PRICE)} resistance level`,
-      rationale: "Resistance often causes price rejections and profit-taking"
-    });
-  }
-  guidance.push({
-    type: "Position Sizing",
-    recommendation: "Size positions based on distance to nearest support/resistance",
-    calculation: "Risk 1-2% of portfolio per trade based on stop-loss distance"
-  });
-  guidance.push({
-    type: "Risk Monitoring",
-    recommendation: "Monitor for level breaks that invalidate trading thesis",
-    action: "Exit or adjust positions when key levels are broken with volume"
-  });
+function analyzeInvestorInfluence(investorsData) {
+  const influenceMetrics = investorsData.map((investor) => ({
+    name: investor.INVESTOR_NAME || "Unknown",
+    roi_average: investor.ROI_AVERAGE || 0,
+    roi_median: investor.ROI_MEDIAN || 0,
+    round_count: parseInt(investor.ROUND_COUNT) || 0,
+    has_website: !!investor.INVESTOR_WEBSITE,
+    has_twitter: !!investor.INVESTOR_TWITTER,
+    influence_score: calculateInfluenceScore(investor)
+  })).sort((a, b) => b.influence_score - a.influence_score);
+  const topInfluencers = influenceMetrics.slice(0, 10);
+  const averageInfluence = influenceMetrics.reduce((sum, inv) => sum + inv.influence_score, 0) / influenceMetrics.length;
   return {
-    guidance_points: guidance,
-    key_principles: [
-      "Always define risk before entering trades",
-      "Use level strength to determine position confidence",
-      "Monitor volume for level break confirmations",
-      "Adjust position sizes based on level proximity"
-    ],
-    risk_factors: [
-      "False breakouts can trigger stop-losses prematurely",
-      "Market conditions can override technical levels",
-      "High volatility can cause whipsaws around levels"
-    ]
+    top_influencers: topInfluencers.slice(0, 5).map((inv) => ({
+      name: inv.name,
+      influence_score: inv.influence_score.toFixed(1),
+      roi_average: `${(inv.roi_average * 100).toFixed(1)}%`,
+      investment_rounds: inv.round_count,
+      online_presence: (inv.has_website ? "Website " : "") + (inv.has_twitter ? "Twitter" : "")
+    })),
+    average_influence: averageInfluence.toFixed(1),
+    influence_distribution: analyzeInfluenceDistribution(influenceMetrics),
+    market_leaders: identifyMarketLeaders(topInfluencers)
   };
 }
-function generateTechnicalInsights(resistanceLevels, supportLevels, levelAnalysis) {
+function analyzeInvestorSentiment(investorsData) {
+  const recentActivity = investorsData.filter(
+    (investor) => investor.LAST_ACTIVITY && isRecentActivity(investor.LAST_ACTIVITY)
+  ).length;
+  const positivePerformers = investorsData.filter(
+    (investor) => investor.PERFORMANCE_CHANGE && investor.PERFORMANCE_CHANGE > 0
+  ).length;
+  const negativePerformers = investorsData.filter(
+    (investor) => investor.PERFORMANCE_CHANGE && investor.PERFORMANCE_CHANGE < 0
+  ).length;
+  const totalWithPerformanceData = positivePerformers + negativePerformers;
+  let overallSentiment;
+  if (totalWithPerformanceData > 0) {
+    const positiveRatio = positivePerformers / totalWithPerformanceData;
+    if (positiveRatio > 0.6) overallSentiment = "Bullish";
+    else if (positiveRatio < 0.4) overallSentiment = "Bearish";
+    else overallSentiment = "Neutral";
+  } else {
+    overallSentiment = "Unknown";
+  }
+  const activityRate = recentActivity / investorsData.length * 100;
+  return {
+    overall_sentiment: overallSentiment,
+    positive_performers: positivePerformers,
+    negative_performers: negativePerformers,
+    sentiment_ratio: totalWithPerformanceData > 0 ? `${(positivePerformers / totalWithPerformanceData * 100).toFixed(1)}% positive` : "Unknown",
+    recent_activity_rate: `${activityRate.toFixed(1)}%`,
+    market_mood: determinMarketMood(overallSentiment, activityRate)
+  };
+}
+function generateInvestorInsights(performanceAnalysis, marketParticipation, influenceAnalysis) {
   const insights = [];
-  if (levelAnalysis.strong_levels > 0) {
-    insights.push(`${levelAnalysis.strong_levels} high-strength levels identified provide reliable reference points for trading decisions`);
-  } else {
-    insights.push("Limited high-strength levels suggest less reliable technical guidance - use additional analysis");
+  if (performanceAnalysis.overall_performance === "Excellent") {
+    insights.push("Strong investor performance across the board indicates healthy market conditions and skilled participants");
+  } else if (performanceAnalysis.overall_performance === "Below Average") {
+    insights.push("Below-average investor performance suggests challenging market conditions or need for better strategies");
   }
-  if (resistanceLevels.length > supportLevels.length * 1.5) {
-    insights.push("Heavy resistance overhead suggests potential selling pressure and upside challenges");
-  } else if (supportLevels.length > resistanceLevels.length * 1.5) {
-    insights.push("Strong support structure below current levels suggests downside protection");
-  } else {
-    insights.push("Balanced resistance and support structure indicates range-bound trading environment");
+  if (marketParticipation.participation_level === "Very High") {
+    insights.push("Very high market participation indicates strong investor engagement and market liquidity");
+  } else if (marketParticipation.participation_level === "Low") {
+    insights.push("Low market participation may indicate investor caution or market uncertainty");
   }
-  if (levelAnalysis.reliability_assessment === "High") {
-    insights.push("High reliability of technical levels supports confident position sizing and risk management");
-  } else if (levelAnalysis.reliability_assessment === "Low") {
-    insights.push("Low level reliability suggests using conservative position sizes and tight risk controls");
+  const topInfluencerScore = parseFloat(influenceAnalysis.top_influencers[0]?.influence_score || "0");
+  if (topInfluencerScore > 80) {
+    insights.push("High-influence investors present in the market can significantly impact price movements and sentiment");
   }
-  const totalLevels = resistanceLevels.length + supportLevels.length;
-  if (totalLevels > 10) {
-    insights.push("Dense level structure creates multiple trading opportunities but requires careful level selection");
-  } else if (totalLevels < 5) {
-    insights.push("Sparse level structure suggests fewer clear technical reference points");
+  const highPerformerPercent = parseFloat(performanceAnalysis.performance_distribution?.high_performers?.match(/\d+\.\d+/)?.[0] || "0");
+  if (highPerformerPercent > 30) {
+    insights.push(`${highPerformerPercent}% of investors showing excellent performance indicates strong market opportunities`);
+  } else if (highPerformerPercent < 10) {
+    insights.push("Limited high-performing investors suggests selective opportunities or challenging conditions");
   }
   return insights;
 }
-function generateTechnicalOutlook(resistanceLevels, supportLevels, levelAnalysis) {
-  let bias = "Neutral";
-  let outlook = "Range-bound";
-  const strongResistance = resistanceLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).length;
-  const strongSupport = supportLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).length;
-  if (strongSupport > strongResistance) {
-    bias = "Bullish";
-    outlook = "Upside potential with strong support structure";
-  } else if (strongResistance > strongSupport) {
-    bias = "Bearish";
-    outlook = "Downside risk with heavy resistance overhead";
+function generateMarketImplications(performanceAnalysis, sentimentAnalysis) {
+  const implications = [];
+  if (performanceAnalysis.overall_performance === "Excellent") {
+    implications.push("Strong investor performance supports positive market outlook");
+    implications.push("High-quality investor base indicates market maturity and sophistication");
+  } else if (performanceAnalysis.overall_performance === "Below Average") {
+    implications.push("Weak investor performance may signal market headwinds or overvaluation");
+    implications.push("Consider defensive positioning until investor performance improves");
   }
-  const reliability = levelAnalysis.reliability_assessment;
-  const confidence = reliability === "High" ? "High" : reliability === "Medium" ? "Moderate" : "Low";
+  if (sentimentAnalysis.overall_sentiment === "Bullish") {
+    implications.push("Bullish investor sentiment supports risk-on positioning and growth strategies");
+  } else if (sentimentAnalysis.overall_sentiment === "Bearish") {
+    implications.push("Bearish sentiment suggests caution and potential for market correction");
+  }
   return {
-    technical_bias: bias,
-    outlook,
-    confidence_level: confidence,
-    key_factors: [
-      `${strongResistance} strong resistance levels`,
-      `${strongSupport} strong support levels`,
-      `${levelAnalysis.average_strength} average level strength`
-    ],
-    trading_environment: classifyTradingEnvironment(resistanceLevels, supportLevels),
-    next_key_events: identifyKeyEvents(resistanceLevels, supportLevels)
+    market_outlook: determineMarketOutlook(performanceAnalysis, sentimentAnalysis),
+    investment_strategy: suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis),
+    risk_considerations: identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis),
+    opportunities: identifyOpportunities(performanceAnalysis, sentimentAnalysis)
   };
 }
-function assessReliability(averageStrength, strongLevels, totalLevels) {
-  const strongRatio = strongLevels / totalLevels;
-  if (averageStrength > 75 && strongRatio > 0.4) return "High";
-  if (averageStrength > 60 && strongRatio > 0.25) return "Medium";
-  if (averageStrength > 45) return "Low";
-  return "Very Low";
+function identifyTopPerformers(investorsData) {
+  const performers = investorsData.filter((investor) => investor.ROI_AVERAGE !== null && investor.ROI_AVERAGE !== void 0).sort((a, b) => b.ROI_AVERAGE - a.ROI_AVERAGE).slice(0, 10);
+  return {
+    top_10_performers: performers.map((investor, index) => ({
+      rank: index + 1,
+      name: investor.INVESTOR_NAME || `Investor ${index + 1}`,
+      roi_average: `${(investor.ROI_AVERAGE * 100).toFixed(1)}%`,
+      roi_median: investor.ROI_MEDIAN ? `${(investor.ROI_MEDIAN * 100).toFixed(1)}%` : "N/A",
+      round_count: investor.ROUND_COUNT || "N/A",
+      performance_category: categorizePerformance(investor.ROI_AVERAGE)
+    })),
+    performance_gap: performers.length > 1 ? `${((performers[0].ROI_AVERAGE - performers[performers.length - 1].ROI_AVERAGE) * 100).toFixed(1)}%` : "0%",
+    elite_threshold: performers.length > 0 ? `${(performers[0].ROI_AVERAGE * 100).toFixed(1)}%` : "0%"
+  };
 }
-function assessLevelClustering(spacings) {
-  const smallSpacings = spacings.filter((s) => s < 2).length;
-  const clusteringRatio = smallSpacings / spacings.length;
-  if (clusteringRatio > 0.6) return "Highly Clustered";
-  if (clusteringRatio > 0.4) return "Moderately Clustered";
-  if (clusteringRatio > 0.2) return "Some Clustering";
-  return "Well Distributed";
+function calculateInfluenceScore(investor) {
+  let score = 0;
+  if (investor.ROI_AVERAGE) {
+    const roiScore = Math.max(0, investor.ROI_AVERAGE * 100);
+    score += Math.min(roiScore, 50) * 0.4;
+  }
+  if (investor.ROUND_COUNT) {
+    const roundScore = Math.min(parseInt(investor.ROUND_COUNT), 20);
+    score += roundScore * 0.3;
+  }
+  if (investor.INVESTOR_WEBSITE) score += 10 * 0.15;
+  if (investor.INVESTOR_TWITTER) score += 10 * 0.15;
+  return Math.min(score, 100);
 }
-function identifyPriorityLevels(strongResistance, strongSupport) {
-  const allLevels = [
-    ...strongResistance.map((level) => ({ ...level, type: "resistance" })),
-    ...strongSupport.map((level) => ({ ...level, type: "support" }))
-  ];
-  return allLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
-    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-    type: level.type,
-    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-    priority: "High"
-  }));
+function isRecentActivity(lastActivity) {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
+  return new Date(lastActivity) > thirtyDaysAgo;
 }
-function assessSetupQuality(opportunities) {
-  if (opportunities.length === 0) return "No Setups";
-  const highStrengthOpportunities = opportunities.filter(
-    (opp) => opp.strength && opp.strength >= 80
-  ).length;
-  if (highStrengthOpportunities > 2) return "Excellent";
-  if (highStrengthOpportunities > 0) return "Good";
-  if (opportunities.length > 3) return "Moderate";
+function analyzeInvestmentActivity(roundCounts) {
+  const averageRounds = roundCounts.reduce((sum, count) => sum + count, 0) / roundCounts.length;
+  if (averageRounds > 10) return "Very Active";
+  if (averageRounds > 5) return "Active";
+  if (averageRounds > 2) return "Moderate";
   return "Limited";
 }
-function assessCoverageTimeframe(levelsData) {
-  const timeframes = new Set(levelsData.map((level) => level.TIMEFRAME).filter((tf) => tf));
-  if (timeframes.has("daily") && timeframes.has("weekly")) return "Multi-timeframe";
-  if (timeframes.has("daily")) return "Daily";
-  if (timeframes.has("weekly")) return "Weekly";
-  return "Unknown";
+function assessPerformanceQuality(averageScore, highPerformers, totalInvestors) {
+  const highPerformerRatio = highPerformers / totalInvestors;
+  if (averageScore > 0.3 && highPerformerRatio > 0.3) return "Exceptional";
+  if (averageScore > 0.1 && highPerformerRatio > 0.2) return "High Quality";
+  if (averageScore > 0 && highPerformerRatio > 0.1) return "Good Quality";
+  if (averageScore > -0.2) return "Average Quality";
+  return "Below Average Quality";
 }
-function assessAnalysisDepth(levelsData) {
-  const withStrength = levelsData.filter((level) => level.STRENGTH || level.LEVEL_STRENGTH).length;
-  const withTimeframe = levelsData.filter((level) => level.TIMEFRAME).length;
-  const depthScore = (withStrength + withTimeframe) / (levelsData.length * 2);
-  if (depthScore > 0.8) return "Comprehensive";
-  if (depthScore > 0.6) return "Detailed";
-  if (depthScore > 0.4) return "Moderate";
-  return "Basic";
+function categorizePerformance(score) {
+  if (score >= 2) return "Elite";
+  if (score >= 1) return "Excellent";
+  if (score >= 0.5) return "Good";
+  if (score >= 0.2) return "Average";
+  if (score >= 0) return "Below Average";
+  return "Poor";
 }
-function classifyTradingEnvironment(resistanceLevels, supportLevels) {
-  const totalLevels = resistanceLevels.length + supportLevels.length;
-  const strongLevels = [...resistanceLevels, ...supportLevels].filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).length;
-  if (totalLevels > 10 && strongLevels > 5) return "Complex - Many strong levels";
-  if (totalLevels > 6 && strongLevels > 2) return "Active - Good level structure";
-  if (totalLevels > 3) return "Moderate - Some technical guidance";
-  return "Simple - Limited level structure";
-}
-function identifyKeyEvents(resistanceLevels, supportLevels) {
-  const events = [];
-  const strongestResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
-  const strongestSupport = supportLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
-  if (strongestResistance) {
-    events.push(`Break above ${formatCurrency(strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE)} resistance could trigger upside breakout`);
-  }
-  if (strongestSupport) {
-    events.push(`Break below ${formatCurrency(strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE)} support could trigger downside breakdown`);
-  }
-  if (events.length === 0) {
-    events.push("Monitor for clear level breaks to identify directional moves");
-  }
-  return events;
-}
-function identifyKeyEntryLevels(supportLevels) {
-  return supportLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.6).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
-    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-    recommendation: "Strong support level for long entries"
-  }));
-}
-function identifyKeyExitLevels(resistanceLevels) {
-  return resistanceLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.6).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
-    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-    recommendation: "Strong resistance level for profit taking"
-  }));
-}
-function identifyOptimalTradingZones(resistanceLevels, supportLevels) {
-  const zones = [];
-  for (const support of supportLevels.slice(0, 3)) {
-    for (const resistance of resistanceLevels.slice(0, 3)) {
-      const supportPrice = support.PRICE_LEVEL || support.LEVEL_PRICE;
-      const resistancePrice = resistance.PRICE_LEVEL || resistance.LEVEL_PRICE;
-      if (resistancePrice > supportPrice) {
-        const range = (resistancePrice - supportPrice) / supportPrice * 100;
-        if (range > 2 && range < 20) {
-          zones.push({
-            support_level: formatCurrency(supportPrice),
-            resistance_level: formatCurrency(resistancePrice),
-            range_percentage: `${range.toFixed(2)}%`,
-            quality: range > 5 ? "High" : "Medium"
-          });
-        }
-      }
-    }
-  }
-  return zones.slice(0, 3);
-}
-function identifyBreakoutCandidates(resistanceLevels, supportLevels) {
-  const candidates = [];
-  const strongResistance = resistanceLevels.filter(
-    (level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.7
-  );
-  strongResistance.forEach((level) => {
-    candidates.push({
-      type: "Upside Breakout",
-      level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-      probability: level.STRENGTH > 0.8 ? "High" : "Medium"
-    });
+function assessDataCompleteness(investorsData) {
+  const requiredFields = ["INVESTOR_NAME", "ROI_AVERAGE", "ROUND_COUNT"];
+  let completeness = 0;
+  investorsData.forEach((investor) => {
+    const presentFields = requiredFields.filter(
+      (field) => investor[field] !== null && investor[field] !== void 0
+    );
+    completeness += presentFields.length / requiredFields.length;
   });
-  return candidates.slice(0, 3);
+  const avgCompleteness = completeness / investorsData.length * 100;
+  if (avgCompleteness > 80) return "Very Complete";
+  if (avgCompleteness > 60) return "Complete";
+  if (avgCompleteness > 40) return "Moderate";
+  return "Limited";
 }
-function identifyBreakdownRisks(supportLevels) {
+function assessCoverageScope2(investorsData) {
+  const investorCount = investorsData.length;
+  if (investorCount > 100) return "Comprehensive";
+  if (investorCount > 50) return "Broad";
+  if (investorCount > 25) return "Moderate";
+  return "Limited";
+}
+function identifyMarketLeaders(topInfluencers) {
+  return topInfluencers.slice(0, 3).map(
+    (influencer) => `${influencer.name} (Influence: ${influencer.influence_score})`
+  );
+}
+function determinMarketMood(sentiment, activityRate) {
+  if (sentiment === "Bullish" && activityRate > 60) return "Optimistic and Active";
+  if (sentiment === "Bullish" && activityRate < 40) return "Cautiously Optimistic";
+  if (sentiment === "Bearish" && activityRate > 60) return "Actively Concerned";
+  if (sentiment === "Bearish" && activityRate < 40) return "Disengaged and Pessimistic";
+  if (activityRate > 60) return "Highly Active";
+  return "Wait and See";
+}
+function determineMarketOutlook(performanceAnalysis, sentimentAnalysis) {
+  const performance = performanceAnalysis.overall_performance;
+  const sentiment = sentimentAnalysis.overall_sentiment;
+  if (performance === "Excellent" && sentiment === "Bullish") return "Very Positive";
+  if (performance === "Good" && sentiment === "Bullish") return "Positive";
+  if (performance === "Below Average" && sentiment === "Bearish") return "Negative";
+  if (performance === "Average" || sentiment === "Neutral") return "Neutral";
+  return "Mixed Signals";
+}
+function suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis) {
+  const strategies = [];
+  if (performanceAnalysis.overall_performance === "Excellent") {
+    strategies.push("Follow successful investor strategies and allocations");
+    strategies.push("Consider increasing exposure to top-performing investor favorites");
+  }
+  if (sentimentAnalysis.overall_sentiment === "Bullish") {
+    strategies.push("Take advantage of positive sentiment for growth positions");
+  } else if (sentimentAnalysis.overall_sentiment === "Bearish") {
+    strategies.push("Focus on defensive positioning and risk management");
+  }
+  strategies.push("Monitor top investor movements for early trend identification");
+  return strategies;
+}
+function identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis) {
   const risks = [];
-  const weakSupport = supportLevels.filter(
-    (level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) < 0.5
-  );
-  weakSupport.forEach((level) => {
-    risks.push({
-      type: "Downside Breakdown",
-      level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-      risk_level: level.STRENGTH < 0.3 ? "High" : "Medium"
-    });
-  });
-  return risks.slice(0, 3);
-}
-function identifyMomentumLevels(levelsData) {
-  return levelsData.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.75).map((level) => ({
-    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-    type: level.LEVEL_TYPE || level.TYPE || "Unknown",
-    momentum_potential: "High",
-    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0
-  })).slice(0, 3);
-}
-function identifyStopLossLevels(supportLevels) {
-  return supportLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
-    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-    recommendation: "Place stop-loss below this level",
-    risk_level: level.STRENGTH > 0.7 ? "Low" : "Medium"
-  }));
-}
-function identifyTakeProfitLevels(resistanceLevels) {
-  return resistanceLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
-    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
-    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
-    recommendation: "Consider taking profits at this level",
-    probability: level.STRENGTH > 0.7 ? "High" : "Medium"
-  }));
-}
-function calculateRiskRewardRatios(resistanceLevels, supportLevels) {
-  const ratios = [];
-  if (supportLevels.length > 0 && resistanceLevels.length > 0) {
-    const strongestSupport = supportLevels.reduce(
-      (prev, current) => (prev.STRENGTH || prev.LEVEL_STRENGTH || 0) > (current.STRENGTH || current.LEVEL_STRENGTH || 0) ? prev : current
-    );
-    const strongestResistance = resistanceLevels.reduce(
-      (prev, current) => (prev.STRENGTH || prev.LEVEL_STRENGTH || 0) > (current.STRENGTH || current.LEVEL_STRENGTH || 0) ? prev : current
-    );
-    const supportPrice = strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE;
-    const resistancePrice = strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE;
-    if (resistancePrice > supportPrice) {
-      const reward = resistancePrice - supportPrice;
-      const risk = supportPrice * 0.02;
-      const ratio = reward / risk;
-      ratios.push({
-        entry_level: formatCurrency(supportPrice),
-        target_level: formatCurrency(resistancePrice),
-        risk_reward_ratio: `1:${ratio.toFixed(2)}`,
-        quality: ratio > 3 ? "Excellent" : ratio > 2 ? "Good" : "Fair"
-      });
-    }
+  if (performanceAnalysis.overall_performance === "Below Average") {
+    risks.push("Weak investor performance indicates challenging market conditions");
   }
-  return ratios;
+  if (sentimentAnalysis.overall_sentiment === "Bearish") {
+    risks.push("Negative sentiment may lead to increased volatility and selling pressure");
+  }
+  risks.push("Investor behavior can change rapidly based on market events");
+  risks.push("High-influence investors can disproportionately impact market movements");
+  return risks;
 }
-function classifyLevels(resistanceLevels, supportLevels, analysisType) {
-  const classification = {
-    by_strength: {
-      strong_resistance: resistanceLevels.filter((r) => (r.STRENGTH || r.LEVEL_STRENGTH || 0) > 0.7).length,
-      medium_resistance: resistanceLevels.filter((r) => {
-        const strength = r.STRENGTH || r.LEVEL_STRENGTH || 0;
-        return strength >= 0.4 && strength <= 0.7;
-      }).length,
-      weak_resistance: resistanceLevels.filter((r) => (r.STRENGTH || r.LEVEL_STRENGTH || 0) < 0.4).length,
-      strong_support: supportLevels.filter((s) => (s.STRENGTH || s.LEVEL_STRENGTH || 0) > 0.7).length,
-      medium_support: supportLevels.filter((s) => {
-        const strength = s.STRENGTH || s.LEVEL_STRENGTH || 0;
-        return strength >= 0.4 && strength <= 0.7;
-      }).length,
-      weak_support: supportLevels.filter((s) => (s.STRENGTH || s.LEVEL_STRENGTH || 0) < 0.4).length
-    },
-    by_analysis_type: {
-      focus: analysisType,
-      primary_levels: analysisType === "trading_levels" ? "Entry/Exit points" : analysisType === "breakout_analysis" ? "Breakout candidates" : analysisType === "risk_management" ? "Stop-loss/Take-profit" : "All levels",
-      level_priority: determineLevelPriority(resistanceLevels, supportLevels, analysisType)
-    },
-    overall_assessment: {
-      total_levels: resistanceLevels.length + supportLevels.length,
-      balance: Math.abs(resistanceLevels.length - supportLevels.length) < 3 ? "Balanced" : "Imbalanced",
-      market_structure: classifyMarketStructure(resistanceLevels, supportLevels)
-    }
+function identifyOpportunities(performanceAnalysis, sentimentAnalysis) {
+  const opportunities = [];
+  if (performanceAnalysis.overall_performance === "Excellent") {
+    opportunities.push("Learn from and potentially follow high-performing investor strategies");
+  }
+  if (sentimentAnalysis.overall_sentiment === "Bullish") {
+    opportunities.push("Leverage positive sentiment for portfolio growth");
+  }
+  opportunities.push("Identify emerging trends by monitoring investor allocation changes");
+  opportunities.push("Use investor influence data for better market timing");
+  return opportunities;
+}
+function analyzeInfluenceDistribution(influenceMetrics) {
+  const highInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 80).length;
+  const moderateInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 60 && inv.influence_score < 80).length;
+  const lowInfluence = influenceMetrics.filter((inv) => inv.influence_score < 60).length;
+  return {
+    high_influence: `${highInfluence} (${(highInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
+    moderate_influence: `${moderateInfluence} (${(moderateInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
+    low_influence: `${lowInfluence} (${(lowInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
+    influence_concentration: highInfluence > influenceMetrics.length * 0.2 ? "Concentrated" : "Distributed"
   };
-  return classification;
 }
-function determineLevelPriority(resistanceLevels, supportLevels, analysisType) {
-  const avgResistanceStrength = resistanceLevels.length > 0 ? resistanceLevels.reduce((sum, r) => sum + (r.STRENGTH || r.LEVEL_STRENGTH || 0), 0) / resistanceLevels.length : 0;
-  const avgSupportStrength = supportLevels.length > 0 ? supportLevels.reduce((sum, s) => sum + (s.STRENGTH || s.LEVEL_STRENGTH || 0), 0) / supportLevels.length : 0;
-  switch (analysisType) {
-    case "trading_levels":
-      return avgSupportStrength > avgResistanceStrength ? "Support-focused" : "Resistance-focused";
-    case "breakout_analysis":
-      return "Resistance-focused";
-    case "risk_management":
-      return "Support-focused";
-    default:
-      return "Balanced";
+function assessMarketCoverage(investorsData) {
+  const websiteCount = investorsData.filter((inv) => inv.INVESTOR_WEBSITE).length;
+  const twitterCount = investorsData.filter((inv) => inv.INVESTOR_TWITTER).length;
+  const onlinePresence = (websiteCount + twitterCount) / (investorsData.length * 2) * 100;
+  if (onlinePresence > 70) return "High Online Presence";
+  if (onlinePresence > 50) return "Moderate Online Presence";
+  if (onlinePresence > 30) return "Limited Online Presence";
+  return "Minimal Online Presence";
+}
+function formatCryptoInvestorsResponse(investorsData, analysis, request) {
+  if (!investorsData || investorsData.length === 0) {
+    return "\u274C No crypto investors data available at the moment.";
   }
-}
-function classifyMarketStructure(resistanceLevels, supportLevels) {
-  const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || r.LEVEL_STRENGTH || 0) > 0.7).length;
-  const strongSupport = supportLevels.filter((s) => (s.STRENGTH || s.LEVEL_STRENGTH || 0) > 0.7).length;
-  if (strongResistance > strongSupport + 2) return "Resistance-heavy";
-  if (strongSupport > strongResistance + 2) return "Support-heavy";
-  if (strongResistance > 2 && strongSupport > 2) return "Well-defined range";
-  return "Developing structure";
+  const { limit, analysisType } = request;
+  let response = `\u{1F465} **Crypto Investors Analysis** (${investorsData.length} investors)
+
+`;
+  const displayCount = Math.min(investorsData.length, 10);
+  response += `\u{1F3C6} **Top ${displayCount} Investors by ROI:**
+`;
+  const sortedInvestors = [...investorsData].sort((a, b) => (b.ROI_AVERAGE || 0) - (a.ROI_AVERAGE || 0));
+  for (let i = 0; i < displayCount; i++) {
+    const investor = sortedInvestors[i];
+    const rank = i + 1;
+    const name = investor.INVESTOR_NAME || `Investor ${rank}`;
+    const roi = investor.ROI_AVERAGE !== null ? `${(investor.ROI_AVERAGE * 100).toFixed(1)}%` : "N/A";
+    const rounds = investor.ROUND_COUNT || "N/A";
+    response += `${rank}. **${name}** - ROI: ${roi} (${rounds} rounds)
+`;
+  }
+  if (investorsData.length > displayCount) {
+    response += `
+... and ${investorsData.length - displayCount} more investors
+`;
+  }
+  if (analysis?.insights && analysis.insights.length > 0) {
+    response += `
+\u{1F4CA} **Key Insights:**
+`;
+    analysis.insights.slice(0, 4).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  }
+  if (analysis?.performance_analysis) {
+    const perf = analysis.performance_analysis;
+    response += `
+\u{1F4C8} **Performance Overview:**
+`;
+    response += `\u2022 Average ROI: ${perf.average_score}
+`;
+    response += `\u2022 Overall Performance: ${perf.overall_performance}
+`;
+    if (perf.performance_distribution) {
+      response += `\u2022 High Performers (50%+ ROI): ${perf.performance_distribution.high_performers}
+`;
+      response += `\u2022 Poor Performers (Negative ROI): ${perf.performance_distribution.poor_performers}
+`;
+    }
+  }
+  if (analysis?.market_participation) {
+    const market = analysis.market_participation;
+    response += `
+\u{1F3AF} **Market Participation:**
+`;
+    response += `\u2022 Participation Level: ${market.participation_level}
+`;
+    if (market.participation_rate) {
+      response += `\u2022 Active Rate: ${market.participation_rate}
+`;
+    }
+    if (market.round_analysis?.total_investment_rounds) {
+      response += `\u2022 Total Investment Rounds: ${market.round_analysis.total_investment_rounds}
+`;
+    }
+  }
+  if (analysisType === "performance" && analysis?.performance_focus) {
+    response += `
+\u{1F3C6} **Performance Focus:**
+`;
+    analysis.performance_focus.performance_insights?.slice(0, 3).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  } else if (analysisType === "influence" && analysis?.influence_focus) {
+    response += `
+\u{1F31F} **Influence Focus:**
+`;
+    analysis.influence_focus.influence_insights?.slice(0, 3).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  } else if (analysisType === "sentiment" && analysis?.sentiment_focus) {
+    response += `
+\u{1F60A} **Sentiment Focus:**
+`;
+    analysis.sentiment_focus.sentiment_insights?.slice(0, 3).forEach((insight) => {
+      response += `\u2022 ${insight}
+`;
+    });
+  }
+  if (analysis?.investment_strategy && analysis.investment_strategy.length > 0) {
+    response += `
+\u{1F4A1} **Investment Strategy:**
+`;
+    analysis.investment_strategy.slice(0, 3).forEach((strategy) => {
+      response += `\u2022 ${strategy}
+`;
+    });
+  }
+  response += `
+\u{1F4DA} **Note:** ROI scores are based on average returns from investment rounds. Negative values indicate losses.`;
+  return response;
 }
 
 // src/actions/getScenarioAnalysisAction.ts
 import {
-  elizaLogger as elizaLogger16,
-  composeContext as composeContext6,
-  generateObject as generateObject6,
-  ModelClass as ModelClass6
+  elizaLogger as elizaLogger7,
+  composePromptFromState as composePromptFromState2,
+  parseKeyValueXml as parseKeyValueXml2,
+  ModelType as ModelType2,
+  createActionResult as createActionResult6
 } from "@elizaos/core";
-var ScenarioAnalysisRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  limit: z.number().min(1).max(100).optional().describe("Number of scenarios to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["risk_assessment", "portfolio_planning", "stress_testing", "all"]).optional().describe("Type of analysis to focus on")
+var ScenarioAnalysisRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of scenarios to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["risk_assessment", "portfolio_planning", "stress_testing", "all"]).optional().describe("Type of analysis to focus on")
 });
 var scenarioAnalysisTemplate = `# Task: Extract Scenario Analysis Request Information
 
@@ -14138,8 +7965,17 @@ Based on the conversation context, identify the scenario analysis request detail
 - Do not assume or substitute different cryptocurrencies
 - If unclear, extract the exact text mentioned
 
-Extract the scenario analysis request from the user's message:`;
-function extractCryptocurrencySimple6(text) {
+Extract the scenario analysis request from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>exact cryptocurrency name mentioned by user</cryptocurrency>
+<symbol>exact symbol mentioned by user</symbol>
+<analysisType>risk_assessment|portfolio_planning|stress_testing|all</analysisType>
+<limit>number of scenarios to return</limit>
+<page>page number for pagination</page>
+</response>
+`;
+function extractCryptocurrencySimple2(text) {
   const upperText = text.toUpperCase();
   const symbolMap = {
     "BTC": { cryptocurrency: "Bitcoin", symbol: "BTC" },
@@ -14194,28 +8030,28 @@ var getScenarioAnalysisAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get scenario analysis for Bitcoin"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve price scenario analysis for Bitcoin under different market conditions.",
+          text: "I'll analyze potential Bitcoin scenarios and price projections using TokenMetrics.",
           action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Show me risk scenarios for portfolio planning"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll get comprehensive scenario analysis for portfolio risk assessment and planning.",
           action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
@@ -14224,13 +8060,13 @@ var getScenarioAnalysisAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Stress test scenarios for market crash"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll retrieve stress testing scenarios for extreme market conditions.",
           action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
@@ -14256,32 +8092,27 @@ var getScenarioAnalysisAction = {
 USER MESSAGE: "${userMessage}"
 
 Please analyze the CURRENT user message above and extract the relevant information.`;
-      const scenarioRequestResult = await generateObject6({
-        runtime,
-        context: composeContext6({
+      const scenarioRequestResult = await runtime.useModel(ModelType2.TEXT_LARGE, {
+        prompt: composePromptFromState2({
           state: state || await runtime.composeState(message),
           template: enhancedTemplate
-        }),
-        modelClass: ModelClass6.LARGE,
-        // Use GPT-4o for better instruction following
-        schema: ScenarioAnalysisRequestSchema,
-        mode: "json"
+        })
       });
-      let scenarioRequest = scenarioRequestResult.object;
+      const parsedResult = parseKeyValueXml2(scenarioRequestResult);
+      let scenarioRequest = parsedResult || {};
       console.log(`[${requestId}] AI Extracted:`, scenarioRequest);
-      if (!scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+      if (!scenarioRequest?.cryptocurrency && !scenarioRequest?.symbol) {
         console.log(`[${requestId}] AI extraction incomplete, applying regex fallback...`);
-        const regexResult = extractCryptocurrencySimple6(userMessage);
+        const regexResult = extractCryptocurrencySimple2(userMessage);
         if (regexResult.cryptocurrency || regexResult.symbol) {
           scenarioRequest = {
             ...scenarioRequest,
-            cryptocurrency: regexResult.cryptocurrency,
-            symbol: regexResult.symbol
+            ...regexResult
           };
-          console.log(`[${requestId}] Regex fallback result:`, regexResult);
+          console.log(`[${requestId}] Applied regex fallback:`, scenarioRequest);
         }
       }
-      if (scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+      if (scenarioRequest?.cryptocurrency && !scenarioRequest?.symbol) {
         const crypto = scenarioRequest.cryptocurrency.toUpperCase();
         const commonSymbols = ["BTC", "ETH", "DOGE", "AVAX", "SOL", "ADA", "DOT", "MATIC", "LINK", "UNI", "LTC", "XRP", "BNB", "USDT", "USDC", "ATOM", "NEAR", "FTM", "ALGO", "VET", "ICP", "FLOW", "SAND", "MANA", "CRO", "APE", "SHIB", "PEPE", "WIF", "BONK"];
         if (commonSymbols.includes(crypto)) {
@@ -14294,7 +8125,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
           console.log(`[${requestId}] \u{1F527} Corrected to:`, { symbol: crypto });
         }
       }
-      if (scenarioRequest.cryptocurrency || scenarioRequest.symbol) {
+      if (scenarioRequest?.cryptocurrency || scenarioRequest?.symbol) {
         console.log(`[${requestId}] \u2705 Successfully extracted cryptocurrency: ${scenarioRequest.cryptocurrency || scenarioRequest.symbol}`);
       } else {
         console.log(`[${requestId}] \u26A0\uFE0F No specific cryptocurrency extracted, proceeding with general analysis`);
@@ -14350,7 +8181,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
       if (response && response.success === false) {
         console.log(`[${requestId}] \u274C API returned error: ${response.message || "Unknown error"}`);
         if (callback) {
-          callback({
+          await callback({
             text: `\u274C No scenario analysis data available for ${processedRequest.cryptocurrency || processedRequest.symbol || "this token"}.
 
 This could mean:
@@ -14366,7 +8197,10 @@ Try using the full cryptocurrency name instead of the symbol.`,
             }
           });
         }
-        return false;
+        return createActionResult6({
+          success: false,
+          error: "Failed to retrieve scenario analysis data."
+        });
       }
       let scenarioData = [];
       if (Array.isArray(response)) {
@@ -14492,7 +8326,7 @@ Try using the full cryptocurrency name instead of the symbol.`,
       }
       console.log(`[${requestId}] Scenario analysis completed successfully`);
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -14511,28 +8345,40 @@ Try using the full cryptocurrency name instead of the symbol.`,
           }
         });
       }
-      return true;
+      return createActionResult6({
+        success: true,
+        text: responseText,
+        data: {
+          scenario_analysis: scenarioData,
+          analysis: scenarioAnalysis,
+          source: "TokenMetrics Scenario Analysis"
+        }
+      });
     } catch (error) {
       console.error("Error in getScenarioAnalysisAction:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       if (callback) {
-        callback({
-          text: `\u274C Failed to retrieve scenario analysis: ${error instanceof Error ? error.message : "Unknown error"}`,
+        await callback({
+          text: `\u274C Failed to retrieve scenario analysis: ${errorMessage}`,
           content: {
             success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred"
+            error: errorMessage
           }
         });
       }
-      return false;
+      return createActionResult6({
+        success: false,
+        error: errorMessage
+      });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger16.log("\u{1F50D} Validating getScenarioAnalysisAction (1.x)");
+    elizaLogger7.log("\u{1F50D} Validating getScenarioAnalysisAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger16.error("\u274C Validation failed:", error);
+      elizaLogger7.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -15153,123 +8999,161 @@ function analyzeSurvivalProbability(scenarioData) {
   };
 }
 
-// src/actions/getSentimentAction.ts
+// src/actions/getResistanceSupportAction.ts
 import {
-  elizaLogger as elizaLogger17
+  elizaLogger as elizaLogger8,
+  createActionResult as createActionResult7
 } from "@elizaos/core";
-var SentimentRequestSchema = z.object({
-  limit: z.number().min(1).max(100).optional().describe("Number of sentiment data points to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["market_mood", "social_trends", "news_impact", "all"]).optional().describe("Type of sentiment analysis to focus on")
+var ResistanceSupportRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of levels to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["trading_levels", "breakout_analysis", "risk_management", "all"]).optional().describe("Type of analysis to focus on")
 });
-var SENTIMENT_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting sentiment analysis requests from natural language.
+function extractCryptocurrencySimple3(text) {
+  const normalizedText = text.toLowerCase();
+  const patterns = [
+    // Bitcoin patterns
+    { regex: /\b(bitcoin|btc)\b/i, cryptocurrency: "Bitcoin", symbol: "BTC" },
+    // Ethereum patterns  
+    { regex: /\b(ethereum|eth)\b/i, cryptocurrency: "Ethereum", symbol: "ETH" },
+    // Dogecoin patterns
+    { regex: /\b(dogecoin|doge)\b/i, cryptocurrency: "Dogecoin", symbol: "DOGE" },
+    // Solana patterns
+    { regex: /\b(solana|sol)\b/i, cryptocurrency: "Solana", symbol: "SOL" },
+    // Avalanche patterns
+    { regex: /\b(avalanche|avax)\b/i, cryptocurrency: "Avalanche", symbol: "AVAX" },
+    // Cardano patterns
+    { regex: /\b(cardano|ada)\b/i, cryptocurrency: "Cardano", symbol: "ADA" },
+    // Polkadot patterns
+    { regex: /\b(polkadot|dot)\b/i, cryptocurrency: "Polkadot", symbol: "DOT" },
+    // Chainlink patterns
+    { regex: /\b(chainlink|link)\b/i, cryptocurrency: "Chainlink", symbol: "LINK" },
+    // Polygon patterns
+    { regex: /\b(polygon|matic)\b/i, cryptocurrency: "Polygon", symbol: "MATIC" },
+    // Binance Coin patterns
+    { regex: /\b(binance coin|bnb)\b/i, cryptocurrency: "BNB", symbol: "BNB" }
+  ];
+  for (const pattern of patterns) {
+    if (pattern.regex.test(normalizedText)) {
+      return {
+        cryptocurrency: pattern.cryptocurrency,
+        symbol: pattern.symbol
+      };
+    }
+  }
+  return null;
+}
+var RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting resistance and support level requests from natural language.
 
-IMPORTANT: This API provides GENERAL CRYPTO MARKET sentiment and news, NOT token-specific data.
-When users ask for "Bitcoin news" or "Ethereum sentiment", they get overall crypto market sentiment that affects all tokens.
+CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
 
-The user wants to get hourly sentiment scores from Twitter, Reddit, and news sources. Extract the following information:
+The user wants to get historical levels of resistance and support for cryptocurrency technical analysis. Extract the following information:
 
-1. **limit** (optional, default: 24): Number of sentiment data points to return
-   - Look for phrases like "last 24 hours", "past week", "recent sentiment"
-   - 24 = last 24 hours, 168 = last week
+1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
+   - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH", "Solana", "SOL", "Avalanche", "AVAX"
+   - MUST extract the EXACT name/symbol mentioned by the user
+   - Examples: "Bitcoin" \u2192 "Bitcoin", "BTC" \u2192 "Bitcoin", "ETH" \u2192 "Ethereum", "SOL" \u2192 "Solana", "AVAX" \u2192 "Avalanche"
 
-2. **page** (optional, default: 1): Page number for pagination
+2. **symbol** (optional): Token symbol
+   - Extract symbols like "BTC", "ETH", "ADA", "SOL", "AVAX", "DOGE", etc.
+   - If user says "Bitcoin" \u2192 symbol: "BTC"
+   - If user says "Ethereum" \u2192 symbol: "ETH" 
+   - If user says "Solana" \u2192 symbol: "SOL"
+   - If user says "Avalanche" \u2192 symbol: "AVAX"
 
-3. **analysisType** (optional, default: "all"): What type of sentiment analysis they want
-   - "market_mood" - focus on overall market sentiment and emotional indicators
-   - "social_trends" - focus on social media trends and viral content
-   - "news_impact" - focus on news sentiment and media coverage impact
-   - "all" - comprehensive sentiment analysis across all sources
+3. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
+
+4. **limit** (optional, default: 50): Number of levels to return
+
+5. **page** (optional, default: 1): Page number for pagination
+
+6. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "trading_levels" - focus on key trading levels and entry/exit points
+   - "breakout_analysis" - focus on potential breakout/breakdown scenarios
+   - "risk_management" - focus on stop-loss and risk management levels
+   - "all" - comprehensive resistance and support analysis
 
 Examples:
-- "Get market sentiment" \u2192 {analysisType: "all"}
-- "Show me social media sentiment trends" \u2192 {analysisType: "social_trends"}
-- "Check news sentiment impact" \u2192 {analysisType: "news_impact"}
-- "Get news for Bitcoin" \u2192 {analysisType: "news_impact"} (returns general crypto news sentiment)
-- "Bitcoin news sentiment" \u2192 {analysisType: "news_impact"} (returns general crypto news sentiment)
-- "Market mood for the past 24 hours" \u2192 {limit: 24, analysisType: "market_mood"}
-- "Sentiment analysis for the past week" \u2192 {limit: 168, analysisType: "all"}
+- "Get resistance and support levels for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Show me key trading levels for ETH" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "trading_levels"}
+- "Support and resistance for breakout analysis" \u2192 {analysisType: "breakout_analysis"}
+- "Risk management levels for Solana" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "risk_management"}
+- "Resistance analysis for SOL" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "all"}
+- "Support levels for AVAX" \u2192 {cryptocurrency: "Avalanche", symbol: "AVAX", analysisType: "all"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>token name mentioned by user</cryptocurrency>
+<symbol>token symbol (BTC, ETH, SOL, etc.)</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<limit>number of levels to return</limit>
+<page>page number</page>
+<analysisType>trading_levels|breakout_analysis|risk_management|all</analysisType>
+</response>
 `;
-var getSentimentAction = {
-  name: "GET_SENTIMENT_TOKENMETRICS",
-  description: "Get hourly sentiment scores and news analysis from Twitter, Reddit, and crypto news sources with market mood analysis from TokenMetrics",
+var getResistanceSupportAction = {
+  name: "GET_RESISTANCE_SUPPORT_TOKENMETRICS",
+  description: "Get historical levels of resistance and support for cryptocurrency tokens from TokenMetrics for technical analysis and trading strategies",
   similes: [
-    "get sentiment",
-    "market sentiment",
-    "sentiment analysis",
-    "social sentiment",
-    "market mood",
-    "news sentiment",
-    "twitter sentiment",
-    "reddit sentiment",
-    "social media sentiment",
-    "get news",
-    "crypto news",
-    "market news",
-    "news analysis",
-    "news impact"
+    "get resistance support",
+    "support resistance levels",
+    "technical levels",
+    "price levels",
+    "key levels",
+    "support resistance analysis",
+    "technical analysis levels",
+    "trading levels",
+    "breakout levels"
   ],
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Get market sentiment analysis"
+          text: "What are the support and resistance levels for Bitcoin?"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve the latest market sentiment from Twitter, Reddit, and news sources.",
-          action: "GET_SENTIMENT_TOKENMETRICS"
+          text: "I'll get the support and resistance levels for Bitcoin.",
+          action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Show me social media sentiment trends"
+          text: "Show me resistance levels for ETH"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll analyze social media sentiment trends across Twitter and Reddit.",
-          action: "GET_SENTIMENT_TOKENMETRICS"
+          text: "I'll analyze the resistance and support levels for Ethereum.",
+          action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Check news sentiment impact on crypto"
+          text: "Get technical levels for Solana"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll analyze news sentiment and its impact on cryptocurrency markets.",
-          action: "GET_SENTIMENT_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Get news for Bitcoin"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll retrieve the latest crypto market news and sentiment analysis that affects Bitcoin and the broader market.",
-          action: "GET_SENTIMENT_TOKENMETRICS"
+          text: "I'll retrieve the technical support and resistance levels for Solana.",
+          action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
         }
       }
     ]
@@ -15277,154 +9161,2884 @@ var getSentimentAction = {
   handler: async (runtime, message, state, _options, callback) => {
     try {
       const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing sentiment analysis request...`);
-      if (!state) {
-        state = await runtime.composeState(message);
-      }
-      const sentimentRequest = await extractTokenMetricsRequest(
+      console.log(`[${requestId}] Processing resistance and support levels request...`);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const levelsRequest = await extractTokenMetricsRequest(
         runtime,
         message,
-        state,
-        SENTIMENT_EXTRACTION_TEMPLATE,
-        SentimentRequestSchema,
+        state || await runtime.composeState(message),
+        enhancedTemplate,
+        ResistanceSupportRequestSchema,
         requestId
       );
-      console.log(`[${requestId}] Extracted request:`, sentimentRequest);
-      const processedRequest = {
-        limit: sentimentRequest.limit || 24,
-        // Last 24 hours by default
-        page: sentimentRequest.page || 1,
-        analysisType: sentimentRequest.analysisType || "all"
+      console.log(`[${requestId}] Extracted request:`, levelsRequest);
+      let processedRequest = {
+        cryptocurrency: levelsRequest.cryptocurrency,
+        token_id: levelsRequest.token_id,
+        symbol: levelsRequest.symbol,
+        limit: levelsRequest.limit || 50,
+        page: levelsRequest.page || 1,
+        analysisType: levelsRequest.analysisType || "all"
       };
+      const userText = message.content?.text || "" || "";
+      const regexResult = extractCryptocurrencySimple3(userText);
+      if (regexResult) {
+        const aiExtracted = processedRequest.cryptocurrency?.toLowerCase() || "";
+        const regexExtracted = regexResult.cryptocurrency?.toLowerCase() || "";
+        if (!processedRequest.cryptocurrency || regexExtracted && aiExtracted && !aiExtracted.includes(regexExtracted.split(" ")[0]) && !regexExtracted.includes(aiExtracted)) {
+          console.log(`[${requestId}] Using regex fallback: AI extracted "${processedRequest.cryptocurrency}" but regex found "${regexResult.cryptocurrency}"`);
+          processedRequest.cryptocurrency = regexResult.cryptocurrency;
+          processedRequest.symbol = regexResult.symbol;
+        }
+        if (regexResult.symbol && !processedRequest.symbol) {
+          processedRequest.symbol = regexResult.symbol;
+        }
+      }
+      if (processedRequest.cryptocurrency && !processedRequest.symbol) {
+        const symbolMapping = {
+          "btc": { name: "Bitcoin", symbol: "BTC" },
+          "eth": { name: "Ethereum", symbol: "ETH" },
+          "doge": { name: "Dogecoin", symbol: "DOGE" },
+          "sol": { name: "Solana", symbol: "SOL" },
+          "avax": { name: "Avalanche", symbol: "AVAX" },
+          "ada": { name: "Cardano", symbol: "ADA" },
+          "dot": { name: "Polkadot", symbol: "DOT" },
+          "link": { name: "Chainlink", symbol: "LINK" },
+          "matic": { name: "Polygon", symbol: "MATIC" },
+          "bnb": { name: "BNB", symbol: "BNB" }
+        };
+        const cryptoLower = processedRequest.cryptocurrency.toLowerCase();
+        if (symbolMapping[cryptoLower]) {
+          console.log(`[${requestId}] Converting symbol "${processedRequest.cryptocurrency}" to full name "${symbolMapping[cryptoLower].name}"`);
+          processedRequest.cryptocurrency = symbolMapping[cryptoLower].name;
+          processedRequest.symbol = symbolMapping[cryptoLower].symbol;
+        }
+      }
+      console.log(`[${requestId}] Final processed request:`, processedRequest);
+      let resolvedToken = null;
+      if (processedRequest.cryptocurrency && !processedRequest.token_id) {
+        const isLikelySymbol = processedRequest.cryptocurrency.length <= 5 && processedRequest.cryptocurrency === processedRequest.cryptocurrency.toUpperCase();
+        if (!isLikelySymbol) {
+          try {
+            resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+            if (resolvedToken) {
+              processedRequest.token_id = resolvedToken.token_id;
+              processedRequest.symbol = resolvedToken.symbol;
+              console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+            } else {
+              console.log(`[${requestId}] Token resolution returned null for "${processedRequest.cryptocurrency}"`);
+            }
+          } catch (error) {
+            console.log(`[${requestId}] Token resolution failed for "${processedRequest.cryptocurrency}": ${error instanceof Error ? error.message : "Unknown error"}`);
+          }
+        } else {
+          console.log(`[${requestId}] Skipping token resolution for "${processedRequest.cryptocurrency}" (appears to be a symbol)`);
+        }
+      }
       const apiParams = {
         limit: processedRequest.limit,
         page: processedRequest.page
       };
+      if (processedRequest.token_id) {
+        apiParams.token_id = processedRequest.token_id;
+        console.log(`[${requestId}] Using token_id parameter: ${processedRequest.token_id}`);
+      } else if (processedRequest.symbol) {
+        apiParams.symbol = processedRequest.symbol;
+        console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
+      } else if (processedRequest.cryptocurrency) {
+        const symbolMapping = {
+          "bitcoin": "BTC",
+          "ethereum": "ETH",
+          "dogecoin": "DOGE",
+          "solana": "SOL",
+          "avalanche": "AVAX",
+          "cardano": "ADA",
+          "polkadot": "DOT",
+          "chainlink": "LINK",
+          "polygon": "MATIC",
+          "binance coin": "BNB",
+          "bnb": "BNB"
+        };
+        const mappedSymbol = symbolMapping[processedRequest.cryptocurrency.toLowerCase()];
+        if (mappedSymbol) {
+          apiParams.symbol = mappedSymbol;
+          console.log(`[${requestId}] Mapped ${processedRequest.cryptocurrency} to symbol: ${mappedSymbol}`);
+        } else {
+          console.log(`[${requestId}] No symbol mapping found for: ${processedRequest.cryptocurrency}`);
+        }
+      }
+      console.log(`[${requestId}] Final API parameters:`, apiParams);
       const response = await callTokenMetricsAPI(
-        "/v2/sentiments",
+        "/v2/resistance-support",
         apiParams,
         runtime
       );
       console.log(`[${requestId}] API response received, processing data...`);
-      const sentimentData = Array.isArray(response) ? response : response.data || [];
-      const sentimentAnalysis = analyzeSentimentData(sentimentData, processedRequest.analysisType);
+      let levelsData = [];
+      if (Array.isArray(response)) {
+        levelsData = response;
+      } else if (response.data && Array.isArray(response.data)) {
+        let selectedTokenData = null;
+        if (response.data.length === 1) {
+          selectedTokenData = response.data[0];
+        } else if (response.data.length > 1) {
+          console.log(`[${requestId}] Multiple tokens found with same symbol, selecting main token...`);
+          const mainTokenSelectors = [
+            // For Bitcoin - select the main Bitcoin, not wrapped versions
+            (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+            // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+            (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+            // For Ethereum - select the main Ethereum
+            (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+            // For other tokens - prefer exact name matches or shortest/simplest names
+            (token) => {
+              const name = token.TOKEN_NAME.toLowerCase();
+              const symbol = token.TOKEN_SYMBOL.toLowerCase();
+              const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis"];
+              const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
+              if (hasAvoidKeywords) return false;
+              if (symbol === "btc" && name.includes("bitcoin")) return true;
+              if (symbol === "eth" && name.includes("ethereum")) return true;
+              if (symbol === "doge" && name.includes("dogecoin")) return true;
+              if (symbol === "sol" && name.includes("solana")) return true;
+              if (symbol === "avax" && name.includes("avalanche")) return true;
+              return false;
+            }
+          ];
+          for (const selector of mainTokenSelectors) {
+            const match = response.data.find(selector);
+            if (match) {
+              selectedTokenData = match;
+              console.log(`[${requestId}] Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+              break;
+            }
+          }
+          if (!selectedTokenData) {
+            selectedTokenData = response.data[0];
+            console.log(`[${requestId}] No main token identified, using first token: ${selectedTokenData.TOKEN_NAME} (${selectedTokenData.TOKEN_SYMBOL})`);
+          }
+        } else {
+          console.log(`[${requestId}] No token data found in response`);
+        }
+        if (selectedTokenData && selectedTokenData.HISTORICAL_RESISTANCE_SUPPORT_LEVELS) {
+          const historicalLevels = selectedTokenData.HISTORICAL_RESISTANCE_SUPPORT_LEVELS;
+          const sortedLevels = historicalLevels.map((level) => ({
+            ...level,
+            price: parseFloat(level.level)
+          })).filter((level) => level.price > 0).sort((a, b) => a.price - b.price);
+          const recentLevels = sortedLevels.filter((level) => new Date(level.date) > /* @__PURE__ */ new Date("2024-01-01")).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          let currentPrice = 0;
+          if (recentLevels.length > 0) {
+            currentPrice = recentLevels[0].price;
+            console.log(`[${requestId}] Using most recent level as current price reference: ${currentPrice} (${recentLevels[0].date})`);
+          } else if (sortedLevels.length > 0) {
+            const medianIndex = Math.floor(sortedLevels.length / 2);
+            currentPrice = sortedLevels[medianIndex].price;
+            console.log(`[${requestId}] Using median level as current price reference: ${currentPrice}`);
+          }
+          levelsData = historicalLevels.map((level, index) => {
+            const price = parseFloat(level.level);
+            const isResistance = price > currentPrice;
+            const isSupport = price <= currentPrice;
+            const levelDate = new Date(level.date);
+            const now = /* @__PURE__ */ new Date();
+            const daysSinceLevel = (now.getTime() - levelDate.getTime()) / (1e3 * 60 * 60 * 24);
+            let strength = Math.max(20, 100 - daysSinceLevel / 10);
+            if (price > currentPrice * 1.5 || price < currentPrice * 0.5) {
+              strength = Math.min(95, strength + 20);
+            }
+            return {
+              LEVEL_TYPE: isResistance ? "RESISTANCE" : "SUPPORT",
+              TYPE: isResistance ? "RESISTANCE" : "SUPPORT",
+              PRICE_LEVEL: price,
+              LEVEL_PRICE: price,
+              STRENGTH: Math.round(strength),
+              LEVEL_STRENGTH: Math.round(strength),
+              DATE: level.date,
+              TIMEFRAME: "daily",
+              TOKEN_ID: selectedTokenData.TOKEN_ID,
+              TOKEN_NAME: selectedTokenData.TOKEN_NAME,
+              TOKEN_SYMBOL: selectedTokenData.TOKEN_SYMBOL,
+              DAYS_SINCE: Math.round(daysSinceLevel),
+              CURRENT_PRICE_REFERENCE: currentPrice
+            };
+          });
+          console.log(`[${requestId}] Processed ${levelsData.length} historical levels for ${selectedTokenData.TOKEN_NAME} (${selectedTokenData.TOKEN_SYMBOL})`);
+          console.log(`[${requestId}] Current price reference: ${currentPrice}, Resistance levels: ${levelsData.filter((l) => l.LEVEL_TYPE === "RESISTANCE").length}, Support levels: ${levelsData.filter((l) => l.LEVEL_TYPE === "SUPPORT").length}`);
+        } else {
+          console.log(`[${requestId}] No HISTORICAL_RESISTANCE_SUPPORT_LEVELS found in selected token data`);
+        }
+      } else {
+        console.log(`[${requestId}] Unexpected response format:`, response);
+      }
+      const levelsAnalysis = analyzeResistanceSupportLevels(levelsData, processedRequest.analysisType);
       const result = {
         success: true,
-        message: `Successfully retrieved ${sentimentData.length} sentiment data points from TokenMetrics`,
+        message: `Successfully retrieved ${levelsData.length} resistance and support levels from TokenMetrics`,
         request_id: requestId,
-        sentiment_data: sentimentData,
-        analysis: sentimentAnalysis,
+        resistance_support_levels: levelsData,
+        analysis: levelsAnalysis,
         metadata: {
-          endpoint: "sentiments",
+          endpoint: "resistance-support",
+          requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
+          resolved_token: resolvedToken,
           analysis_focus: processedRequest.analysisType,
           pagination: {
             page: processedRequest.page,
             limit: processedRequest.limit
           },
-          data_points: sentimentData.length,
+          data_points: levelsData.length,
           api_version: "v2",
-          data_source: "TokenMetrics Sentiment Engine"
+          data_source: "TokenMetrics Technical Analysis Engine"
         },
-        sentiment_explanation: {
-          SENTIMENT_SCORE: "Overall sentiment score aggregating all sources (-100 to +100)",
-          TWITTER_SENTIMENT: "Sentiment derived from Twitter/X cryptocurrency discussions",
-          REDDIT_SENTIMENT: "Sentiment from Reddit cryptocurrency communities",
-          NEWS_SENTIMENT: "Sentiment from cryptocurrency news articles and media",
-          OVERALL_SENTIMENT: "Qualitative assessment (Bullish/Bearish/Neutral)",
-          interpretation: {
-            "80 to 100": "Extremely Bullish - Very positive market sentiment",
-            "60 to 79": "Bullish - Positive sentiment with optimism",
-            "40 to 59": "Moderately Bullish - Slight positive bias",
-            "20 to 39": "Neutral to Positive - Balanced with slight optimism",
-            "-20 to 19": "Neutral - Balanced sentiment",
-            "-40 to -21": "Moderately Bearish - Slight negative bias",
-            "-60 to -41": "Bearish - Negative sentiment with pessimism",
-            "-100 to -61": "Extremely Bearish - Very negative market sentiment"
-          },
+        levels_explanation: {
+          purpose: "Identify key price levels where buying or selling pressure typically emerges",
+          resistance_levels: "Price levels where selling pressure historically increases, limiting upward movement",
+          support_levels: "Price levels where buying pressure historically increases, limiting downward movement",
           usage_guidelines: [
-            "Use sentiment as a contrarian indicator at extremes",
-            "Combine with technical analysis for better timing",
-            "Monitor sentiment changes for trend reversals",
-            "High sentiment volatility indicates market uncertainty"
+            "Use support levels as potential entry points for long positions",
+            "Use resistance levels as potential exit points or profit-taking levels",
+            "Monitor level breaks for trend continuation or reversal signals",
+            "Combine with volume analysis for confirmation of level significance"
+          ],
+          trading_applications: [
+            "Set stop-loss orders below support levels",
+            "Set take-profit orders near resistance levels",
+            "Plan position sizes based on distance to key levels",
+            "Identify potential breakout or breakdown scenarios"
           ]
         }
       };
-      let responseText = "";
-      if (processedRequest.analysisType === "news_impact") {
-        responseText = `\u{1F4F0} **Crypto Market News & Sentiment Analysis**
+      const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
+      const resistanceLevels = levelsData.filter(
+        (level) => level.LEVEL_TYPE === "RESISTANCE" || level.TYPE === "RESISTANCE"
+      );
+      const supportLevels = levelsData.filter(
+        (level) => level.LEVEL_TYPE === "SUPPORT" || level.TYPE === "SUPPORT"
+      );
+      let responseText = `\u{1F4CA} **Resistance & Support Analysis for ${tokenName}**
 
 `;
-        responseText += `\u2139\uFE0F *Note: This provides general crypto market news sentiment that affects all cryptocurrencies, not token-specific news.*
+      if (levelsData.length === 0) {
+        responseText += `\u274C No resistance and support levels found for ${tokenName}. This could mean:
+`;
+        responseText += `\u2022 The token may not have sufficient price history
+`;
+        responseText += `\u2022 TokenMetrics may not have performed technical analysis on this token yet
+`;
+        responseText += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
 
 `;
       } else {
-        responseText = `\u{1F4CA} **Crypto Market Sentiment Analysis**
+        responseText += `\u2705 **Found ${levelsData.length} key levels** (${resistanceLevels.length} resistance, ${supportLevels.length} support)
 
 `;
-      }
-      if (sentimentData.length === 0) {
-        responseText += `\u274C No sentiment data available at the moment.
-
-`;
-      } else {
-        const latest = sentimentData[0];
-        const marketGrade = latest.MARKET_SENTIMENT_GRADE || 0;
-        const marketLabel = latest.MARKET_SENTIMENT_LABEL || "Unknown";
-        responseText += `\u{1F3AF} **Current Market Sentiment**: ${marketLabel} (${marketGrade})
-
-`;
-        if (latest.TWITTER_SENTIMENT_GRADE !== void 0) {
-          responseText += `\u{1F426} **Twitter**: ${latest.TWITTER_SENTIMENT_LABEL || "Unknown"} (${latest.TWITTER_SENTIMENT_GRADE})
-`;
-        }
-        if (latest.REDDIT_SENTIMENT_GRADE !== void 0) {
-          responseText += `\u{1F4F1} **Reddit**: ${latest.REDDIT_SENTIMENT_LABEL || "Unknown"} (${latest.REDDIT_SENTIMENT_GRADE})
-`;
-        }
-        if (latest.NEWS_SENTIMENT_GRADE !== void 0) {
-          responseText += `\u{1F4F0} **News**: ${latest.NEWS_SENTIMENT_LABEL || "Unknown"} (${latest.NEWS_SENTIMENT_GRADE})
+        const currentPriceRef = levelsData[0]?.CURRENT_PRICE_REFERENCE;
+        if (currentPriceRef) {
+          responseText += `\u{1F4B0} **Current Price Reference**: ${formatCurrency(currentPriceRef)}
 
 `;
         }
-        if (latest.NEWS_SUMMARY) {
-          responseText += `\u{1F4F0} **News Summary**: ${latest.NEWS_SUMMARY}
+        if (resistanceLevels.length > 0) {
+          responseText += `\u{1F534} **Key Resistance Levels** (${resistanceLevels.length} total):
+`;
+          const topResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
+          topResistance.forEach((level, index) => {
+            const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+            const date = new Date(level.DATE).toLocaleDateString();
+            const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
+            const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
+            responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
+`;
+          });
+          if (resistanceLevels.length > 5) {
+            responseText += `   ... and ${resistanceLevels.length - 5} more resistance levels
+`;
+          }
+          responseText += `
+`;
+        }
+        if (supportLevels.length > 0) {
+          responseText += `\u{1F7E2} **Key Support Levels** (${supportLevels.length} total):
+`;
+          const topSupport = supportLevels.sort((a, b) => (b.STRENGTH || 0) - (a.STRENGTH || 0)).slice(0, 5);
+          topSupport.forEach((level, index) => {
+            const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+            const date = new Date(level.DATE).toLocaleDateString();
+            const strength = level.STRENGTH || level.LEVEL_STRENGTH || 0;
+            const strengthIcon = strength > 80 ? "\u{1F525}" : strength > 60 ? "\u{1F4AA}" : "\u{1F4CA}";
+            responseText += `${index + 1}. ${strengthIcon} **${price}** (${date}) - Strength: ${Math.round(strength)}/100
+`;
+          });
+          if (supportLevels.length > 5) {
+            responseText += `   ... and ${supportLevels.length - 5} more support levels
+`;
+          }
+          responseText += `
+`;
+        }
+        responseText += `\u{1F4C5} **Recent Historical Levels**:
+`;
+        const recentLevels = levelsData.sort((a, b) => new Date(b.DATE).getTime() - new Date(a.DATE).getTime()).slice(0, 5);
+        recentLevels.forEach((level) => {
+          const price = formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE);
+          const date = new Date(level.DATE).toLocaleDateString();
+          const type = level.LEVEL_TYPE || level.TYPE;
+          const typeIcon = type === "RESISTANCE" ? "\u{1F534}" : "\u{1F7E2}";
+          const daysAgo = level.DAYS_SINCE ? `(${level.DAYS_SINCE} days ago)` : "";
+          responseText += `\u2022 ${typeIcon} **${price}** - ${date} ${daysAgo}
+`;
+        });
+        responseText += `
+`;
+        if (processedRequest.analysisType === "trading_levels") {
+          responseText += `\u{1F3AF} **Trading Levels Analysis:**
+`;
+          responseText += `\u2022 **Entry Opportunities**: ${supportLevels.length} support levels for potential long positions
+`;
+          responseText += `\u2022 **Exit Targets**: ${resistanceLevels.length} resistance levels for profit-taking
+`;
+          responseText += `\u2022 **Risk Management**: Use support levels for stop-loss placement
+
+`;
+        } else if (processedRequest.analysisType === "breakout_analysis") {
+          responseText += `\u{1F680} **Breakout Analysis:**
+`;
+          const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || 0) > 70);
+          const nearestResistance = resistanceLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
+          responseText += `\u2022 **Breakout Candidates**: ${strongResistance.length} strong resistance levels to watch
+`;
+          if (nearestResistance) {
+            responseText += `\u2022 **Next Key Level**: ${formatCurrency(nearestResistance.PRICE_LEVEL || 0)} resistance
+`;
+          }
+          responseText += `\u2022 **Breakout Strategy**: Monitor volume on approach to resistance levels
+
+`;
+        } else if (processedRequest.analysisType === "risk_management") {
+          responseText += `\u{1F6E1}\uFE0F **Risk Management Guide:**
+`;
+          const nearestSupport = supportLevels.sort((a, b) => Math.abs((a.PRICE_LEVEL || 0) - currentPriceRef) - Math.abs((b.PRICE_LEVEL || 0) - currentPriceRef))[0];
+          responseText += `\u2022 **Stop-Loss Zones**: ${supportLevels.length} support levels for protection
+`;
+          if (nearestSupport) {
+            responseText += `\u2022 **Nearest Support**: ${formatCurrency(nearestSupport.PRICE_LEVEL || 0)} for stop placement
+`;
+          }
+          responseText += `\u2022 **Position Sizing**: Adjust based on distance to key support levels
+
+`;
+        } else {
+          responseText += `\u{1F4C8} **Comprehensive Analysis:**
+`;
+          const priceRange = Math.max(...levelsData.map((l) => l.PRICE_LEVEL || 0)) - Math.min(...levelsData.map((l) => l.PRICE_LEVEL || 0));
+          const avgStrength = levelsData.reduce((sum, l) => sum + (l.STRENGTH || 0), 0) / levelsData.length;
+          responseText += `\u2022 **Price Range Covered**: ${formatCurrency(priceRange)} across all levels
+`;
+          responseText += `\u2022 **Average Level Strength**: ${Math.round(avgStrength)}/100
+`;
+          responseText += `\u2022 **Data Timeframe**: ${new Date(Math.min(...levelsData.map((l) => new Date(l.DATE).getTime()))).getFullYear()} - ${(/* @__PURE__ */ new Date()).getFullYear()}
 
 `;
         }
-        if (latest.TWITTER_SUMMARY) {
-          responseText += `\u{1F426} **Twitter Summary**: ${latest.TWITTER_SUMMARY}
-
+        if (levelsAnalysis.insights && levelsAnalysis.insights.length > 0) {
+          responseText += `\u{1F4A1} **Key Insights:**
 `;
-        }
-        if (latest.REDDIT_SUMMARY) {
-          responseText += `\u{1F4F1} **Reddit Summary**: ${latest.REDDIT_SUMMARY}
-
-`;
-        }
-        if (sentimentAnalysis.insights && sentimentAnalysis.insights.length > 0) {
-          responseText += `\u{1F4A1} **Key Insights**:
-`;
-          sentimentAnalysis.insights.slice(0, 3).forEach((insight, index) => {
-            responseText += `${index + 1}. ${insight}
+          levelsAnalysis.insights.slice(0, 3).forEach((insight) => {
+            responseText += `\u2022 ${insight}
 `;
           });
           responseText += `
 `;
         }
-        if (sentimentAnalysis.trading_implications) {
-          responseText += `\u{1F4C8} **Trading Implications**: ${sentimentAnalysis.trading_implications.recommendation}
-`;
-          responseText += `\u26A0\uFE0F **Risk Level**: ${sentimentAnalysis.trading_implications.risk_level}
+        if (levelsAnalysis.technical_outlook) {
+          responseText += `\u{1F52E} **Technical Outlook:** ${levelsAnalysis.technical_outlook.market_bias || "Neutral"}
 
 `;
         }
+        responseText += `\u{1F4CB} **Trading Guidelines:**
+`;
+        responseText += `\u2022 **Long Entries**: Consider positions near strong support levels
+`;
+        responseText += `\u2022 **Profit Targets**: Set take-profits near resistance levels
+`;
+        responseText += `\u2022 **Stop Losses**: Place stops below key support levels
+`;
+        responseText += `\u2022 **Breakout Plays**: Watch for volume confirmation on level breaks
+`;
+        responseText += `\u2022 **Risk Management**: Size positions based on distance to key levels
+`;
       }
-      responseText += `\u{1F4CA} Retrieved ${sentimentData.length} sentiment data points from TokenMetrics
+      responseText += `
+\u{1F517} **Data Source:** TokenMetrics Technical Analysis Engine (v2)`;
+      console.log(`[${requestId}] Resistance and support analysis completed successfully`);
+      console.log(`[${requestId}] Analysis completed successfully`);
+      if (callback) {
+        callback({
+          text: responseText,
+          content: {
+            success: true,
+            request_id: requestId,
+            data: result,
+            metadata: {
+              endpoint: "resistancesupport",
+              data_source: "TokenMetrics Official API",
+              api_version: "v2"
+            }
+          }
+        });
+      }
+      return createActionResult7({ success: true, text: responseText });
+    } catch (error) {
+      console.error("Error in getResistanceSupportAction:", error);
+      const errorMessage = `\u274C **Failed to get resistance and support levels**
+
+**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}
+
+**Troubleshooting:**
+\u2022 Ensure the token has sufficient price history for technical analysis
+\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+\u2022 Check if your TokenMetrics subscription includes technical analysis data
+\u2022 Verify the token is actively traded with sufficient volume
+
+**Common Solutions:**
+\u2022 Use full token names instead of symbols (e.g., "Bitcoin" instead of "BTC")
+\u2022 Check if TokenMetrics has performed technical analysis on the requested token
+\u2022 Ensure your API key has access to the resistance-support endpoint`;
+      if (callback) {
+        callback({
+          text: errorMessage,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred",
+            message: "Failed to retrieve resistance and support levels from TokenMetrics API"
+          }
+        });
+      }
+      return createActionResult7({ success: false, error: "Failed to process request" });
+    }
+  },
+  validate: async (runtime, message, state) => {
+    elizaLogger8.log("\u{1F50D} Validating getResistanceSupportAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger8.error("\u274C Validation failed:", error);
+      return false;
+    }
+  }
+};
+function analyzeResistanceSupportLevels(levelsData, analysisType = "all") {
+  if (!levelsData || levelsData.length === 0) {
+    return {
+      summary: "No resistance and support levels data available for analysis",
+      key_levels: "Cannot identify",
+      insights: []
+    };
+  }
+  const resistanceLevels = levelsData.filter(
+    (level) => level.LEVEL_TYPE === "RESISTANCE" || level.TYPE === "RESISTANCE"
+  );
+  const supportLevels = levelsData.filter(
+    (level) => level.LEVEL_TYPE === "SUPPORT" || level.TYPE === "SUPPORT"
+  );
+  const levelStrength = analyzeLevelStrength(levelsData);
+  const levelProximity = analyzeLevelProximity(levelsData);
+  const tradingOpportunities = identifyTradingOpportunities(resistanceLevels, supportLevels);
+  const riskManagement = generateRiskManagementGuidance(resistanceLevels, supportLevels);
+  let focusedAnalysis = {};
+  switch (analysisType) {
+    case "trading_levels":
+      focusedAnalysis = {
+        trading_focus: {
+          key_entry_levels: identifyKeyEntryLevels(supportLevels),
+          key_exit_levels: identifyKeyExitLevels(resistanceLevels),
+          optimal_trading_zones: identifyOptimalTradingZones(resistanceLevels, supportLevels),
+          trading_insights: [
+            `\u{1F3AF} Key support levels: ${supportLevels.length}`,
+            `\u{1F6A7} Key resistance levels: ${resistanceLevels.length}`,
+            `\u{1F4CA} Trading opportunities: ${tradingOpportunities.immediate_setups || 0}`
+          ]
+        }
+      };
+      break;
+    case "breakout_analysis":
+      focusedAnalysis = {
+        breakout_focus: {
+          breakout_candidates: identifyBreakoutCandidates(resistanceLevels, supportLevels),
+          breakdown_risks: identifyBreakdownRisks(supportLevels),
+          momentum_levels: identifyMomentumLevels(levelsData),
+          breakout_insights: [
+            `\u{1F680} Breakout candidates: ${resistanceLevels.filter((r) => r.STRENGTH > 0.7).length}`,
+            `\u26A0\uFE0F Breakdown risks: ${supportLevels.filter((s) => s.STRENGTH < 0.5).length}`,
+            `\u{1F4AA} Strong levels: ${levelStrength.strong_levels || 0}`
+          ]
+        }
+      };
+      break;
+    case "risk_management":
+      focusedAnalysis = {
+        risk_management_focus: {
+          stop_loss_levels: identifyStopLossLevels(supportLevels),
+          take_profit_levels: identifyTakeProfitLevels(resistanceLevels),
+          risk_reward_ratios: calculateRiskRewardRatios(resistanceLevels, supportLevels),
+          risk_insights: [
+            `\u{1F6E1}\uFE0F Stop-loss levels: ${supportLevels.length}`,
+            `\u{1F3AF} Take-profit levels: ${resistanceLevels.length}`,
+            `\u2696\uFE0F Risk/reward quality: ${riskManagement.overall_assessment || "Unknown"}`
+          ]
+        }
+      };
+      break;
+  }
+  return {
+    summary: `Analysis of ${levelsData.length} levels (${resistanceLevels.length} resistance, ${supportLevels.length} support) with ${levelStrength.strong_levels} strong levels identified`,
+    analysis_type: analysisType,
+    level_breakdown: {
+      resistance_levels: resistanceLevels.length,
+      support_levels: supportLevels.length,
+      total_levels: levelsData.length
+    },
+    level_strength: levelStrength,
+    level_proximity: levelProximity,
+    trading_opportunities: tradingOpportunities,
+    risk_management: riskManagement,
+    insights: generateTechnicalInsights(resistanceLevels, supportLevels, levelStrength),
+    technical_outlook: generateTechnicalOutlook(resistanceLevels, supportLevels, levelStrength),
+    ...focusedAnalysis,
+    data_quality: {
+      source: "TokenMetrics Technical Analysis Engine",
+      level_count: levelsData.length,
+      coverage: assessCoverageTimeframe(levelsData),
+      analysis_depth: assessAnalysisDepth(levelsData),
+      reliability: assessReliability(levelStrength.average_strength || 0, levelStrength.strong_levels || 0, levelsData.length)
+    },
+    level_classification: classifyLevels(resistanceLevels, supportLevels, analysisType)
+  };
+}
+function analyzeLevelStrength(levelsData) {
+  const strengthScores = levelsData.map((level) => level.STRENGTH || level.LEVEL_STRENGTH).filter((strength) => strength !== null && strength !== void 0);
+  if (strengthScores.length === 0) {
+    return { strong_levels: 0, average_strength: 0 };
+  }
+  const averageStrength = strengthScores.reduce((sum, strength) => sum + strength, 0) / strengthScores.length;
+  const strongLevels = strengthScores.filter((s) => s >= 80).length;
+  const moderateLevels = strengthScores.filter((s) => s >= 60 && s < 80).length;
+  const weakLevels = strengthScores.filter((s) => s < 60).length;
+  return {
+    average_strength: averageStrength.toFixed(1),
+    strong_levels: strongLevels,
+    moderate_levels: moderateLevels,
+    weak_levels: weakLevels,
+    strength_distribution: {
+      strong: `${strongLevels} (${(strongLevels / strengthScores.length * 100).toFixed(1)}%)`,
+      moderate: `${moderateLevels} (${(moderateLevels / strengthScores.length * 100).toFixed(1)}%)`,
+      weak: `${weakLevels} (${(weakLevels / strengthScores.length * 100).toFixed(1)}%)`
+    },
+    reliability_assessment: assessReliability(averageStrength, strongLevels, strengthScores.length)
+  };
+}
+function analyzeLevelProximity(levelsData) {
+  const priceLevels = levelsData.map((level) => level.PRICE_LEVEL || level.LEVEL_PRICE).filter((price) => price && price > 0).sort((a, b) => a - b);
+  if (priceLevels.length < 2) {
+    return { level_spacing: "Insufficient data" };
+  }
+  const spacings = [];
+  for (let i = 1; i < priceLevels.length; i++) {
+    const spacing = (priceLevels[i] - priceLevels[i - 1]) / priceLevels[i - 1] * 100;
+    spacings.push(spacing);
+  }
+  const averageSpacing = spacings.reduce((sum, spacing) => sum + spacing, 0) / spacings.length;
+  const minSpacing = Math.min(...spacings);
+  const maxSpacing = Math.max(...spacings);
+  return {
+    average_level_spacing: `${averageSpacing.toFixed(2)}%`,
+    min_spacing: `${minSpacing.toFixed(2)}%`,
+    max_spacing: `${maxSpacing.toFixed(2)}%`,
+    price_range: {
+      lowest_level: formatCurrency(priceLevels[0]),
+      highest_level: formatCurrency(priceLevels[priceLevels.length - 1]),
+      total_range: formatCurrency(priceLevels[priceLevels.length - 1] - priceLevels[0])
+    },
+    level_clustering: assessLevelClustering(spacings)
+  };
+}
+function identifyTradingOpportunities(resistanceLevels, supportLevels) {
+  const opportunities = [];
+  const strongResistance = resistanceLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3);
+  const strongSupport = supportLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3);
+  strongSupport.forEach((level) => {
+    opportunities.push({
+      type: "Long Entry Opportunity",
+      description: `Strong support at ${formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE)}`,
+      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+      strategy: "Consider long positions on bounces from this level",
+      risk_management: "Set stop-loss below support level"
+    });
+  });
+  strongResistance.forEach((level) => {
+    opportunities.push({
+      type: "Short Entry Opportunity",
+      description: `Strong resistance at ${formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE)}`,
+      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+      strategy: "Consider short positions on rejections from this level",
+      risk_management: "Set stop-loss above resistance level"
+    });
+  });
+  if (strongResistance.length > 0) {
+    opportunities.push({
+      type: "Breakout Opportunity",
+      description: "Monitor for resistance level breaks for upside momentum",
+      strategy: "Enter long positions on confirmed breaks above resistance",
+      confirmation_needed: "Volume increase and sustained price action above level"
+    });
+  }
+  if (strongSupport.length > 0) {
+    opportunities.push({
+      type: "Breakdown Opportunity",
+      description: "Monitor for support level breaks for downside momentum",
+      strategy: "Enter short positions on confirmed breaks below support",
+      confirmation_needed: "Volume increase and sustained price action below level"
+    });
+  }
+  return {
+    total_opportunities: opportunities.length,
+    opportunities,
+    priority_levels: identifyPriorityLevels(strongResistance, strongSupport),
+    setup_quality: assessSetupQuality(opportunities)
+  };
+}
+function generateRiskManagementGuidance(resistanceLevels, supportLevels) {
+  const guidance = [];
+  if (supportLevels.length > 0) {
+    const nearestSupport = supportLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
+    guidance.push({
+      type: "Stop-Loss Placement",
+      recommendation: `Place stop-losses below ${formatCurrency(nearestSupport.PRICE_LEVEL || nearestSupport.LEVEL_PRICE)} support level`,
+      rationale: "Support break indicates trend reversal or acceleration"
+    });
+  }
+  if (resistanceLevels.length > 0) {
+    const nearestResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
+    guidance.push({
+      type: "Take-Profit Placement",
+      recommendation: `Consider taking profits near ${formatCurrency(nearestResistance.PRICE_LEVEL || nearestResistance.LEVEL_PRICE)} resistance level`,
+      rationale: "Resistance often causes price rejections and profit-taking"
+    });
+  }
+  guidance.push({
+    type: "Position Sizing",
+    recommendation: "Size positions based on distance to nearest support/resistance",
+    calculation: "Risk 1-2% of portfolio per trade based on stop-loss distance"
+  });
+  guidance.push({
+    type: "Risk Monitoring",
+    recommendation: "Monitor for level breaks that invalidate trading thesis",
+    action: "Exit or adjust positions when key levels are broken with volume"
+  });
+  return {
+    guidance_points: guidance,
+    key_principles: [
+      "Always define risk before entering trades",
+      "Use level strength to determine position confidence",
+      "Monitor volume for level break confirmations",
+      "Adjust position sizes based on level proximity"
+    ],
+    risk_factors: [
+      "False breakouts can trigger stop-losses prematurely",
+      "Market conditions can override technical levels",
+      "High volatility can cause whipsaws around levels"
+    ]
+  };
+}
+function generateTechnicalInsights(resistanceLevels, supportLevels, levelAnalysis) {
+  const insights = [];
+  if (levelAnalysis.strong_levels > 0) {
+    insights.push(`${levelAnalysis.strong_levels} high-strength levels identified provide reliable reference points for trading decisions`);
+  } else {
+    insights.push("Limited high-strength levels suggest less reliable technical guidance - use additional analysis");
+  }
+  if (resistanceLevels.length > supportLevels.length * 1.5) {
+    insights.push("Heavy resistance overhead suggests potential selling pressure and upside challenges");
+  } else if (supportLevels.length > resistanceLevels.length * 1.5) {
+    insights.push("Strong support structure below current levels suggests downside protection");
+  } else {
+    insights.push("Balanced resistance and support structure indicates range-bound trading environment");
+  }
+  if (levelAnalysis.reliability_assessment === "High") {
+    insights.push("High reliability of technical levels supports confident position sizing and risk management");
+  } else if (levelAnalysis.reliability_assessment === "Low") {
+    insights.push("Low level reliability suggests using conservative position sizes and tight risk controls");
+  }
+  const totalLevels = resistanceLevels.length + supportLevels.length;
+  if (totalLevels > 10) {
+    insights.push("Dense level structure creates multiple trading opportunities but requires careful level selection");
+  } else if (totalLevels < 5) {
+    insights.push("Sparse level structure suggests fewer clear technical reference points");
+  }
+  return insights;
+}
+function generateTechnicalOutlook(resistanceLevels, supportLevels, levelAnalysis) {
+  let bias = "Neutral";
+  let outlook = "Range-bound";
+  const strongResistance = resistanceLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).length;
+  const strongSupport = supportLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).length;
+  if (strongSupport > strongResistance) {
+    bias = "Bullish";
+    outlook = "Upside potential with strong support structure";
+  } else if (strongResistance > strongSupport) {
+    bias = "Bearish";
+    outlook = "Downside risk with heavy resistance overhead";
+  }
+  const reliability = levelAnalysis.reliability_assessment;
+  const confidence = reliability === "High" ? "High" : reliability === "Medium" ? "Moderate" : "Low";
+  return {
+    technical_bias: bias,
+    outlook,
+    confidence_level: confidence,
+    key_factors: [
+      `${strongResistance} strong resistance levels`,
+      `${strongSupport} strong support levels`,
+      `${levelAnalysis.average_strength} average level strength`
+    ],
+    trading_environment: classifyTradingEnvironment(resistanceLevels, supportLevels),
+    next_key_events: identifyKeyEvents(resistanceLevels, supportLevels)
+  };
+}
+function assessReliability(averageStrength, strongLevels, totalLevels) {
+  const strongRatio = strongLevels / totalLevels;
+  if (averageStrength > 75 && strongRatio > 0.4) return "High";
+  if (averageStrength > 60 && strongRatio > 0.25) return "Medium";
+  if (averageStrength > 45) return "Low";
+  return "Very Low";
+}
+function assessLevelClustering(spacings) {
+  const smallSpacings = spacings.filter((s) => s < 2).length;
+  const clusteringRatio = smallSpacings / spacings.length;
+  if (clusteringRatio > 0.6) return "Highly Clustered";
+  if (clusteringRatio > 0.4) return "Moderately Clustered";
+  if (clusteringRatio > 0.2) return "Some Clustering";
+  return "Well Distributed";
+}
+function identifyPriorityLevels(strongResistance, strongSupport) {
+  const allLevels = [
+    ...strongResistance.map((level) => ({ ...level, type: "resistance" })),
+    ...strongSupport.map((level) => ({ ...level, type: "support" }))
+  ];
+  return allLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
+    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+    type: level.type,
+    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+    priority: "High"
+  }));
+}
+function assessSetupQuality(opportunities) {
+  if (opportunities.length === 0) return "No Setups";
+  const highStrengthOpportunities = opportunities.filter(
+    (opp) => opp.strength && opp.strength >= 80
+  ).length;
+  if (highStrengthOpportunities > 2) return "Excellent";
+  if (highStrengthOpportunities > 0) return "Good";
+  if (opportunities.length > 3) return "Moderate";
+  return "Limited";
+}
+function assessCoverageTimeframe(levelsData) {
+  const timeframes = new Set(levelsData.map((level) => level.TIMEFRAME).filter((tf) => tf));
+  if (timeframes.has("daily") && timeframes.has("weekly")) return "Multi-timeframe";
+  if (timeframes.has("daily")) return "Daily";
+  if (timeframes.has("weekly")) return "Weekly";
+  return "Unknown";
+}
+function assessAnalysisDepth(levelsData) {
+  const withStrength = levelsData.filter((level) => level.STRENGTH || level.LEVEL_STRENGTH).length;
+  const withTimeframe = levelsData.filter((level) => level.TIMEFRAME).length;
+  const depthScore = (withStrength + withTimeframe) / (levelsData.length * 2);
+  if (depthScore > 0.8) return "Comprehensive";
+  if (depthScore > 0.6) return "Detailed";
+  if (depthScore > 0.4) return "Moderate";
+  return "Basic";
+}
+function classifyTradingEnvironment(resistanceLevels, supportLevels) {
+  const totalLevels = resistanceLevels.length + supportLevels.length;
+  const strongLevels = [...resistanceLevels, ...supportLevels].filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) >= 70).length;
+  if (totalLevels > 10 && strongLevels > 5) return "Complex - Many strong levels";
+  if (totalLevels > 6 && strongLevels > 2) return "Active - Good level structure";
+  if (totalLevels > 3) return "Moderate - Some technical guidance";
+  return "Simple - Limited level structure";
+}
+function identifyKeyEvents(resistanceLevels, supportLevels) {
+  const events = [];
+  const strongestResistance = resistanceLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
+  const strongestSupport = supportLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0))[0];
+  if (strongestResistance) {
+    events.push(`Break above ${formatCurrency(strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE)} resistance could trigger upside breakout`);
+  }
+  if (strongestSupport) {
+    events.push(`Break below ${formatCurrency(strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE)} support could trigger downside breakdown`);
+  }
+  if (events.length === 0) {
+    events.push("Monitor for clear level breaks to identify directional moves");
+  }
+  return events;
+}
+function identifyKeyEntryLevels(supportLevels) {
+  return supportLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.6).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
+    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+    recommendation: "Strong support level for long entries"
+  }));
+}
+function identifyKeyExitLevels(resistanceLevels) {
+  return resistanceLevels.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.6).sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
+    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+    recommendation: "Strong resistance level for profit taking"
+  }));
+}
+function identifyOptimalTradingZones(resistanceLevels, supportLevels) {
+  const zones = [];
+  for (const support of supportLevels.slice(0, 3)) {
+    for (const resistance of resistanceLevels.slice(0, 3)) {
+      const supportPrice = support.PRICE_LEVEL || support.LEVEL_PRICE;
+      const resistancePrice = resistance.PRICE_LEVEL || resistance.LEVEL_PRICE;
+      if (resistancePrice > supportPrice) {
+        const range = (resistancePrice - supportPrice) / supportPrice * 100;
+        if (range > 2 && range < 20) {
+          zones.push({
+            support_level: formatCurrency(supportPrice),
+            resistance_level: formatCurrency(resistancePrice),
+            range_percentage: `${range.toFixed(2)}%`,
+            quality: range > 5 ? "High" : "Medium"
+          });
+        }
+      }
+    }
+  }
+  return zones.slice(0, 3);
+}
+function identifyBreakoutCandidates(resistanceLevels, supportLevels) {
+  const candidates = [];
+  const strongResistance = resistanceLevels.filter(
+    (level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.7
+  );
+  strongResistance.forEach((level) => {
+    candidates.push({
+      type: "Upside Breakout",
+      level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+      probability: level.STRENGTH > 0.8 ? "High" : "Medium"
+    });
+  });
+  return candidates.slice(0, 3);
+}
+function identifyBreakdownRisks(supportLevels) {
+  const risks = [];
+  const weakSupport = supportLevels.filter(
+    (level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) < 0.5
+  );
+  weakSupport.forEach((level) => {
+    risks.push({
+      type: "Downside Breakdown",
+      level: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+      strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+      risk_level: level.STRENGTH < 0.3 ? "High" : "Medium"
+    });
+  });
+  return risks.slice(0, 3);
+}
+function identifyMomentumLevels(levelsData) {
+  return levelsData.filter((level) => (level.STRENGTH || level.LEVEL_STRENGTH || 0) > 0.75).map((level) => ({
+    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+    type: level.LEVEL_TYPE || level.TYPE || "Unknown",
+    momentum_potential: "High",
+    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0
+  })).slice(0, 3);
+}
+function identifyStopLossLevels(supportLevels) {
+  return supportLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
+    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+    recommendation: "Place stop-loss below this level",
+    risk_level: level.STRENGTH > 0.7 ? "Low" : "Medium"
+  }));
+}
+function identifyTakeProfitLevels(resistanceLevels) {
+  return resistanceLevels.sort((a, b) => (b.STRENGTH || b.LEVEL_STRENGTH || 0) - (a.STRENGTH || a.LEVEL_STRENGTH || 0)).slice(0, 3).map((level) => ({
+    price: formatCurrency(level.PRICE_LEVEL || level.LEVEL_PRICE),
+    strength: level.STRENGTH || level.LEVEL_STRENGTH || 0,
+    recommendation: "Consider taking profits at this level",
+    probability: level.STRENGTH > 0.7 ? "High" : "Medium"
+  }));
+}
+function calculateRiskRewardRatios(resistanceLevels, supportLevels) {
+  const ratios = [];
+  if (supportLevels.length > 0 && resistanceLevels.length > 0) {
+    const strongestSupport = supportLevels.reduce(
+      (prev, current) => (prev.STRENGTH || prev.LEVEL_STRENGTH || 0) > (current.STRENGTH || current.LEVEL_STRENGTH || 0) ? prev : current
+    );
+    const strongestResistance = resistanceLevels.reduce(
+      (prev, current) => (prev.STRENGTH || prev.LEVEL_STRENGTH || 0) > (current.STRENGTH || current.LEVEL_STRENGTH || 0) ? prev : current
+    );
+    const supportPrice = strongestSupport.PRICE_LEVEL || strongestSupport.LEVEL_PRICE;
+    const resistancePrice = strongestResistance.PRICE_LEVEL || strongestResistance.LEVEL_PRICE;
+    if (resistancePrice > supportPrice) {
+      const reward = resistancePrice - supportPrice;
+      const risk = supportPrice * 0.02;
+      const ratio = reward / risk;
+      ratios.push({
+        entry_level: formatCurrency(supportPrice),
+        target_level: formatCurrency(resistancePrice),
+        risk_reward_ratio: `1:${ratio.toFixed(2)}`,
+        quality: ratio > 3 ? "Excellent" : ratio > 2 ? "Good" : "Fair"
+      });
+    }
+  }
+  return ratios;
+}
+function classifyLevels(resistanceLevels, supportLevels, analysisType) {
+  const classification = {
+    by_strength: {
+      strong_resistance: resistanceLevels.filter((r) => (r.STRENGTH || r.LEVEL_STRENGTH || 0) > 0.7).length,
+      medium_resistance: resistanceLevels.filter((r) => {
+        const strength = r.STRENGTH || r.LEVEL_STRENGTH || 0;
+        return strength >= 0.4 && strength <= 0.7;
+      }).length,
+      weak_resistance: resistanceLevels.filter((r) => (r.STRENGTH || r.LEVEL_STRENGTH || 0) < 0.4).length,
+      strong_support: supportLevels.filter((s) => (s.STRENGTH || s.LEVEL_STRENGTH || 0) > 0.7).length,
+      medium_support: supportLevels.filter((s) => {
+        const strength = s.STRENGTH || s.LEVEL_STRENGTH || 0;
+        return strength >= 0.4 && strength <= 0.7;
+      }).length,
+      weak_support: supportLevels.filter((s) => (s.STRENGTH || s.LEVEL_STRENGTH || 0) < 0.4).length
+    },
+    by_analysis_type: {
+      focus: analysisType,
+      primary_levels: analysisType === "trading_levels" ? "Entry/Exit points" : analysisType === "breakout_analysis" ? "Breakout candidates" : analysisType === "risk_management" ? "Stop-loss/Take-profit" : "All levels",
+      level_priority: determineLevelPriority(resistanceLevels, supportLevels, analysisType)
+    },
+    overall_assessment: {
+      total_levels: resistanceLevels.length + supportLevels.length,
+      balance: Math.abs(resistanceLevels.length - supportLevels.length) < 3 ? "Balanced" : "Imbalanced",
+      market_structure: classifyMarketStructure(resistanceLevels, supportLevels)
+    }
+  };
+  return classification;
+}
+function determineLevelPriority(resistanceLevels, supportLevels, analysisType) {
+  const avgResistanceStrength = resistanceLevels.length > 0 ? resistanceLevels.reduce((sum, r) => sum + (r.STRENGTH || r.LEVEL_STRENGTH || 0), 0) / resistanceLevels.length : 0;
+  const avgSupportStrength = supportLevels.length > 0 ? supportLevels.reduce((sum, s) => sum + (s.STRENGTH || s.LEVEL_STRENGTH || 0), 0) / supportLevels.length : 0;
+  switch (analysisType) {
+    case "trading_levels":
+      return avgSupportStrength > avgResistanceStrength ? "Support-focused" : "Resistance-focused";
+    case "breakout_analysis":
+      return "Resistance-focused";
+    case "risk_management":
+      return "Support-focused";
+    default:
+      return "Balanced";
+  }
+}
+function classifyMarketStructure(resistanceLevels, supportLevels) {
+  const strongResistance = resistanceLevels.filter((r) => (r.STRENGTH || r.LEVEL_STRENGTH || 0) > 0.7).length;
+  const strongSupport = supportLevels.filter((s) => (s.STRENGTH || s.LEVEL_STRENGTH || 0) > 0.7).length;
+  if (strongResistance > strongSupport + 2) return "Resistance-heavy";
+  if (strongSupport > strongResistance + 2) return "Support-heavy";
+  if (strongResistance > 2 && strongSupport > 2) return "Well-defined range";
+  return "Developing structure";
+}
+
+// src/actions/getTradingSignalsAction.ts
+import {
+  elizaLogger as elizaLogger9,
+  createActionResult as createActionResult8
+} from "@elizaos/core";
+var tradingSignalsTemplate = `Extract trading signals request information from the user's message.
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
+Trading signals provide:
+- Buy/Sell/Hold recommendations
+- Entry and exit price targets
+- Risk assessment levels
+- Technical indicator analysis
+- Market timing suggestions
+
+Instructions:
+Look for TRADING SIGNALS requests in the user's message, such as:
+- Signal queries ("Trading signals for [TOKEN]", "Buy signals")
+- Entry/exit requests ("When to buy [TOKEN]?", "Entry points")
+- Market timing ("Best time to trade [TOKEN]", "Trading opportunities")
+- Technical analysis ("Technical signals for [TOKEN]")
+
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+
+Examples of request patterns (but extract the actual token from user's message):
+- "Get trading signals for [TOKEN]" \u2192 extract [TOKEN]
+- "Trading signals for [TOKEN]" \u2192 extract [TOKEN]
+- "Should I buy [TOKEN]?" \u2192 extract [TOKEN]
+- "Entry signals for [TOKEN]" \u2192 extract [TOKEN]
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<signal_type>bullish, bearish, buy, sell, hold, or general</signal_type>
+<timeframe>1h, 4h, daily, weekly, or general</timeframe>
+<analysis_depth>basic, detailed, comprehensive</analysis_depth>
+</response>`;
+var TradingSignalsRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("The cryptocurrency symbol or name mentioned"),
+  signal_type: external_exports.string().optional().describe("Type of signal requested"),
+  category: external_exports.string().optional().describe("Token category filter (e.g., defi, layer-1, meme)"),
+  exchange: external_exports.string().optional().describe("Exchange filter"),
+  time_period: external_exports.string().optional().describe("Time period or date range"),
+  market_filter: external_exports.string().optional().describe("Market cap, volume, or other filters")
+});
+async function fetchTradingSignals(params, runtime) {
+  elizaLogger9.log(`\u{1F4E1} Fetching trading signals with params:`, params);
+  try {
+    const data = await callTokenMetricsAPI("/v2/trading-signals", params, runtime);
+    if (!data) {
+      throw new Error("No data received from trading signals API");
+    }
+    elizaLogger9.log(`\u2705 Successfully fetched trading signals data`);
+    return data;
+  } catch (error) {
+    elizaLogger9.error("\u274C Error fetching trading signals:", error);
+    throw error;
+  }
+}
+function formatTradingSignalsResponse(data, tokenInfo) {
+  if (!data || data.length === 0) {
+    return "\u274C No trading signals found for the specified criteria.";
+  }
+  const signals = Array.isArray(data) ? data : [data];
+  const signalCount = signals.length;
+  const bullishSignals = signals.filter((s) => s.TRADING_SIGNAL === 1 || s.TRADING_SIGNAL === "1").length;
+  const bearishSignals = signals.filter((s) => s.TRADING_SIGNAL === -1 || s.TRADING_SIGNAL === "-1").length;
+  const neutralSignals = signals.filter((s) => s.TRADING_SIGNAL === 0 || s.TRADING_SIGNAL === "0").length;
+  let response = `\u{1F4CA} **TokenMetrics Trading Signals Analysis**
+
 `;
-      responseText += `\u{1F550} Analysis focus: ${processedRequest.analysisType}
+  if (tokenInfo) {
+    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
 `;
-      responseText += `\u{1F4C4} Page ${processedRequest.page} (limit: ${processedRequest.limit})`;
-      console.log(`[${requestId}] Sentiment analysis completed successfully`);
+  }
+  response += `\u{1F4C8} **Signal Summary**: ${signalCount} signals analyzed
+`;
+  response += `\u{1F7E2} **Bullish**: ${bullishSignals} signals (${(bullishSignals / signalCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F534} **Bearish**: ${bearishSignals} signals (${(bearishSignals / signalCount * 100).toFixed(1)}%)
+`;
+  response += `\u26AA **Neutral**: ${neutralSignals} signals (${(neutralSignals / signalCount * 100).toFixed(1)}%)
+
+`;
+  const recentSignals = signals.slice(0, 5);
+  response += `\u{1F50D} **Recent Signals**:
+`;
+  recentSignals.forEach((signal, index) => {
+    const signalEmoji = signal.TRADING_SIGNAL === 1 ? "\u{1F7E2}" : signal.TRADING_SIGNAL === -1 ? "\u{1F534}" : "\u26AA";
+    const signalText = signal.TRADING_SIGNAL === 1 ? "BULLISH" : signal.TRADING_SIGNAL === -1 ? "BEARISH" : "NEUTRAL";
+    response += `${signalEmoji} **${signal.TOKEN_SYMBOL || signal.TOKEN_NAME}**: ${signalText}`;
+    if (signal.DATE) {
+      response += ` (${signal.DATE})`;
+    }
+    response += `
+`;
+  });
+  response += `
+\u{1F4A1} **AI Recommendations**:
+`;
+  if (bullishSignals > bearishSignals) {
+    response += `\u2022 Market sentiment is predominantly bullish (${(bullishSignals / signalCount * 100).toFixed(1)}%)
+`;
+    response += `\u2022 Consider long positions on tokens with strong bullish signals
+`;
+    response += `\u2022 Monitor for entry opportunities on pullbacks
+`;
+  } else if (bearishSignals > bullishSignals) {
+    response += `\u2022 Market sentiment is predominantly bearish (${(bearishSignals / signalCount * 100).toFixed(1)}%)
+`;
+    response += `\u2022 Exercise caution with new long positions
+`;
+    response += `\u2022 Consider defensive strategies or short positions
+`;
+  } else {
+    response += `\u2022 Market sentiment is mixed - signals are balanced
+`;
+    response += `\u2022 Wait for clearer directional signals before major moves
+`;
+    response += `\u2022 Focus on risk management and position sizing
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics AI Trading Signals
+`;
+  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
+function analyzeTradingSignals(data) {
+  if (!data || data.length === 0) {
+    return { error: "No data to analyze" };
+  }
+  const signals = Array.isArray(data) ? data : [data];
+  const analysis = {
+    total_signals: signals.length,
+    signal_distribution: {
+      bullish: signals.filter((s) => s.TRADING_SIGNAL === 1 || s.TRADING_SIGNAL === "1").length,
+      bearish: signals.filter((s) => s.TRADING_SIGNAL === -1 || s.TRADING_SIGNAL === "-1").length,
+      neutral: signals.filter((s) => s.TRADING_SIGNAL === 0 || s.TRADING_SIGNAL === "0").length
+    },
+    top_tokens: signals.slice(0, 10).map((s) => ({
+      symbol: s.TOKEN_SYMBOL,
+      name: s.TOKEN_NAME,
+      signal: s.TRADING_SIGNAL,
+      date: s.DATE
+    })),
+    market_sentiment: "neutral"
+  };
+  const { bullish, bearish, neutral } = analysis.signal_distribution;
+  if (bullish > bearish && bullish > neutral) {
+    analysis.market_sentiment = "bullish";
+  } else if (bearish > bullish && bearish > neutral) {
+    analysis.market_sentiment = "bearish";
+  }
+  return analysis;
+}
+var getTradingSignalsAction = {
+  name: "GET_TRADING_SIGNALS_TOKENMETRICS",
+  similes: [
+    "GET_TRADING_SIGNALS",
+    "GET_AI_SIGNALS",
+    "GET_BUY_SELL_SIGNALS",
+    "GET_TRADING_RECOMMENDATIONS",
+    "TRADING_SIGNALS",
+    "AI_SIGNALS",
+    "MARKET_SIGNALS"
+  ],
+  description: "Get AI-generated trading signals and recommendations for cryptocurrencies from TokenMetrics",
+  validate: async (runtime, message, state) => {
+    elizaLogger9.log("\u{1F50D} Validating getTradingSignalsAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger9.error("\u274C Validation failed:", error);
+      return false;
+    }
+  },
+  handler: async (runtime, message, state, _options, callback) => {
+    const requestId = generateRequestId();
+    elizaLogger9.log("\u{1F680} Starting TokenMetrics trading signals handler");
+    elizaLogger9.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger9.log(`\u{1F194} Request ID: ${requestId}`);
+    try {
+      validateAndGetApiKey(runtime);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = tradingSignalsTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const signalsRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state || await runtime.composeState(message),
+        enhancedTemplate,
+        TradingSignalsRequestSchema,
+        requestId
+      );
+      elizaLogger9.log("\u{1F3AF} AI Extracted signals request:", signalsRequest);
+      elizaLogger9.log(`\u{1F194} Request ${requestId}: AI Processing "${signalsRequest?.cryptocurrency || "general market"}"`);
+      elizaLogger9.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${signalsRequest?.cryptocurrency}"`);
+      console.log(`[${requestId}] Extracted request:`, signalsRequest);
+      elizaLogger9.success("\u{1F3AF} Final extraction result:", signalsRequest);
+      const apiParams = {
+        limit: 50,
+        page: 1
+      };
+      let tokenInfo = null;
+      if (signalsRequest?.cryptocurrency) {
+        elizaLogger9.log(`\u{1F50D} Attempting to resolve token for: "${signalsRequest.cryptocurrency}"`);
+        try {
+          tokenInfo = await resolveTokenSmart(signalsRequest.cryptocurrency, runtime);
+          if (tokenInfo) {
+            apiParams.token_id = tokenInfo.TOKEN_ID;
+            elizaLogger9.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+          } else {
+            apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
+            elizaLogger9.log(`\u{1F50D} Using symbol parameter: ${signalsRequest.cryptocurrency}`);
+          }
+        } catch (error) {
+          elizaLogger9.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
+          apiParams.symbol = signalsRequest.cryptocurrency.toUpperCase();
+          elizaLogger9.log(`\u{1F50D} Fallback to symbol parameter: ${signalsRequest.cryptocurrency.toUpperCase()}`);
+        }
+      }
+      if (signalsRequest?.category) {
+        apiParams.category = signalsRequest.category;
+      }
+      if (signalsRequest?.exchange) {
+        apiParams.exchange = signalsRequest.exchange;
+      }
+      elizaLogger9.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger9.log(`\u{1F50D} DEBUG - About to call trading signals API with params:`, JSON.stringify(apiParams, null, 2));
+      elizaLogger9.log(`\u{1F50D} DEBUG - Resolved tokenInfo:`, tokenInfo ? {
+        name: tokenInfo.TOKEN_NAME,
+        symbol: tokenInfo.TOKEN_SYMBOL,
+        id: tokenInfo.TOKEN_ID
+      } : "null");
+      elizaLogger9.log(`\u{1F4E1} Fetching trading signals data`);
+      const signalsData = await fetchTradingSignals(apiParams, runtime);
+      if (!signalsData) {
+        elizaLogger9.log("\u274C Failed to fetch trading signals data");
+        return createActionResult8({
+          success: false,
+          text: `\u274C Unable to fetch trading signals data at the moment. Please try again.`,
+          data: { error: "API fetch failed", request_id: requestId }
+        });
+      }
+      let signals = Array.isArray(signalsData) ? signalsData : signalsData.data || [];
+      elizaLogger9.log(`\u{1F50D} Final signals count: ${signals.length}`);
+      const responseText = formatTradingSignalsResponse(signals, tokenInfo);
+      const analysis = analyzeTradingSignals(signals);
+      elizaLogger9.success("\u2705 Successfully processed trading signals request");
+      if (callback) {
+        callback({
+          text: responseText,
+          data: {
+            success: true,
+            signals_data: signals,
+            analysis,
+            source: "TokenMetrics AI Trading Signals",
+            request_id: requestId
+          }
+        });
+      }
+      return createActionResult8({
+        success: true,
+        text: responseText,
+        data: {
+          success: true,
+          signals_data: signals,
+          analysis,
+          source: "TokenMetrics AI Trading Signals",
+          request_id: requestId
+        }
+      });
+    } catch (error) {
+      elizaLogger9.error("\u274C Error in TokenMetrics trading signals handler:", error);
+      return createActionResult8({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  },
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get trading signals for Bitcoin"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll fetch the latest AI trading signals for Bitcoin from TokenMetrics.",
+          action: "GET_TRADING_SIGNALS_TOKENMETRICS"
+        }
+      }
+    ]
+  ]
+};
+
+// src/actions/getHourlyOhlcvAction.ts
+import { elizaLogger as elizaLogger10, createActionResult as createActionResult9 } from "@elizaos/core";
+var HourlyOhlcvRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  token_name: external_exports.string().optional().describe("Full name of the token"),
+  startDate: external_exports.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
+  endDate: external_exports.string().optional().describe("End date for data range (YYYY-MM-DD)"),
+  limit: external_exports.number().min(1).max(1e3).optional().describe("Number of data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["scalping", "intraday", "technical_patterns", "all"]).optional().describe("Type of analysis to focus on")
+});
+var hourlyOhlcvTemplate = `Extract hourly OHLCV request information from the user's message.
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
+Hourly OHLCV provides:
+- Open, High, Low, Close, Volume data
+- Intraday price movement analysis
+- Volume patterns and trends
+- Technical analysis foundations
+- Short-term trading insights
+- Market microstructure data
+
+Instructions:
+Look for HOURLY OHLCV requests in the user's message, such as:
+- Price data ("Hourly price data", "OHLCV data")
+- Intraday analysis ("Hourly candles", "Intraday charts")
+- Volume analysis ("Hourly volume", "Trading activity")
+- Technical analysis ("Price action", "Candlestick data")
+
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+
+Examples of request patterns (but extract the actual token from user's message):
+- "Get hourly OHLCV for [TOKEN]" \u2192 extract [TOKEN]
+- "Show hourly price data for [TOKEN]" \u2192 extract [TOKEN]
+- "Hourly candles for [TOKEN]" \u2192 extract [TOKEN]
+- "Intraday volume analysis for [TOKEN]" \u2192 extract [TOKEN]
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<timeframe>1h, 4h, 12h, or default</timeframe>
+<analysis_type>price_action, volume, volatility, or all</analysis_type>
+<period>24h, 7d, 30d, or default</period>
+<focus_area>trading, technical, patterns, or general</focus_area>
+</response>`;
+function extractCryptocurrencySimple4(text) {
+  const cryptoPatterns = [
+    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
+    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
+    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
+    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
+    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
+    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
+    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" },
+    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
+    { regex: /\b(binance coin|bnb)\b/i, name: "BNB", symbol: "BNB" },
+    { regex: /\b(ripple|xrp)\b/i, name: "XRP", symbol: "XRP" },
+    { regex: /\b(litecoin|ltc)\b/i, name: "Litecoin", symbol: "LTC" },
+    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
+    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
+    { regex: /\b(shiba inu|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" }
+  ];
+  for (const pattern of cryptoPatterns) {
+    if (pattern.regex.test(text)) {
+      return {
+        cryptocurrency: pattern.name,
+        symbol: pattern.symbol
+      };
+    }
+  }
+  return {};
+}
+var getHourlyOhlcvAction = {
+  name: "GET_HOURLY_OHLCV_TOKENMETRICS",
+  description: "Get hourly OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency tokens from TokenMetrics for intraday analysis",
+  similes: [
+    "get hourly ohlcv",
+    "hourly price data",
+    "hourly candles",
+    "intraday price data",
+    "hourly chart data",
+    "technical analysis data",
+    "hourly trading data",
+    "scalping data"
+  ],
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get hourly OHLCV for Bitcoin"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get the hourly OHLCV data for Bitcoin.",
+          action: "GET_HOURLY_OHLCV_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show hourly price data for ETH"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll retrieve hourly OHLCV data for Ethereum.",
+          action: "GET_HOURLY_OHLCV_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Hourly candles for scalping analysis"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get hourly OHLCV data optimized for scalping analysis.",
+          action: "GET_HOURLY_OHLCV_TOKENMETRICS"
+        }
+      }
+    ]
+  ],
+  handler: async (runtime, message, state, _options, callback) => {
+    try {
+      const requestId = generateRequestId();
+      elizaLogger10.log(`[${requestId}] Processing hourly OHLCV request...`);
+      elizaLogger10.log(`[${requestId}] \u{1F50D} DEBUG: User message: "${message.content?.text}"`);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const ohlcvRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state || await runtime.composeState(message),
+        hourlyOhlcvTemplate,
+        HourlyOhlcvRequestSchema,
+        requestId
+      );
+      elizaLogger10.log(`[${requestId}] \u{1F50D} DEBUG: AI extracted cryptocurrency: "${ohlcvRequest?.cryptocurrency}"`);
+      console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
+      let processedRequest = {
+        cryptocurrency: ohlcvRequest?.cryptocurrency || null,
+        token_id: ohlcvRequest?.token_id || null,
+        symbol: ohlcvRequest?.symbol || null,
+        token_name: ohlcvRequest?.token_name || null,
+        startDate: ohlcvRequest?.startDate || null,
+        endDate: ohlcvRequest?.endDate || null,
+        limit: ohlcvRequest?.limit || 50,
+        // API maximum limit is 50
+        page: ohlcvRequest?.page || 1,
+        analysisType: ohlcvRequest?.analysisType || "all"
+      };
+      if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
+        elizaLogger10.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
+        const regexResult = extractCryptocurrencySimple4(message.content?.text || "");
+        if (regexResult.cryptocurrency) {
+          processedRequest.cryptocurrency = regexResult.cryptocurrency;
+          processedRequest.symbol = regexResult.symbol || null;
+          elizaLogger10.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
+        }
+      }
+      let resolvedToken = null;
+      let finalTokenName = processedRequest.cryptocurrency;
+      if (processedRequest.cryptocurrency) {
+        try {
+          elizaLogger10.log(`[${requestId}] \u{1F504} Step 1: Attempting dynamic token resolution for: "${processedRequest.cryptocurrency}"`);
+          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+          if (resolvedToken) {
+            finalTokenName = resolvedToken.TOKEN_NAME;
+            processedRequest.token_id = resolvedToken.TOKEN_ID;
+            processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+            elizaLogger10.log(`[${requestId}] \u2705 Dynamic resolution successful: "${processedRequest.cryptocurrency}" \u2192 ${resolvedToken.TOKEN_NAME} (ID: ${resolvedToken.TOKEN_ID})`);
+          } else {
+            elizaLogger10.log(`[${requestId}] \u26A0\uFE0F Dynamic resolution returned null for: "${processedRequest.cryptocurrency}"`);
+          }
+        } catch (error) {
+          elizaLogger10.log(`[${requestId}] \u274C Dynamic resolution failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+        }
+        if (!resolvedToken) {
+          elizaLogger10.log(`[${requestId}] \u{1F504} Step 2: Trying hardcoded well-known token resolution...`);
+          const symbol = processedRequest.cryptocurrency.toLowerCase();
+          const wellKnownTokenId = getWellKnownTokenId(symbol);
+          if (wellKnownTokenId) {
+            processedRequest.token_id = wellKnownTokenId;
+            elizaLogger10.log(`[${requestId}] \u2705 Hardcoded resolution successful: "${symbol}" \u2192 Token ID ${wellKnownTokenId}`);
+            const symbolToNameMap = {
+              "btc": "Bitcoin",
+              "eth": "Ethereum",
+              "ada": "Cardano",
+              "dot": "Polkadot",
+              "link": "Chainlink",
+              "matic": "Polygon",
+              "sol": "Solana",
+              "avax": "Avalanche",
+              "atom": "Cosmos",
+              "algo": "Algorand",
+              "xlm": "Stellar",
+              "vet": "VeChain",
+              "icp": "Internet Computer",
+              "ftm": "Fantom",
+              "sand": "The Sandbox",
+              "mana": "Decentraland",
+              "grt": "The Graph",
+              "aave": "Aave",
+              "uni": "Uniswap",
+              "shib": "Shiba Inu"
+            };
+            finalTokenName = symbolToNameMap[symbol] || processedRequest.cryptocurrency;
+          } else {
+            elizaLogger10.log(`[${requestId}] \u26A0\uFE0F No hardcoded mapping found for: "${symbol}"`);
+          }
+        }
+      }
+      processedRequest.cryptocurrency = finalTokenName;
+      elizaLogger10.log(`[${requestId}] \u{1F3AF} Final token for API call: "${processedRequest.cryptocurrency}"`);
+      elizaLogger10.log(`[${requestId}] \u{1F3F7}\uFE0F Display name will be: "${finalTokenName}"`);
+      elizaLogger10.log(`[${requestId}] \u{1F194} Token ID: ${processedRequest.token_id || "none"}`);
+      const apiParams = {
+        limit: processedRequest.limit,
+        page: processedRequest.page
+      };
+      if (resolvedToken?.TOKEN_ID) {
+        apiParams.token_id = resolvedToken.TOKEN_ID;
+        elizaLogger10.log(`[${requestId}] Using token_id parameter: ${resolvedToken.TOKEN_ID} (${resolvedToken.TOKEN_NAME})`);
+      } else if (processedRequest.token_id) {
+        apiParams.token_id = processedRequest.token_id;
+        elizaLogger10.log(`[${requestId}] Using provided token_id: ${processedRequest.token_id}`);
+      } else if (processedRequest.cryptocurrency) {
+        apiParams.token_name = processedRequest.cryptocurrency;
+        elizaLogger10.log(`[${requestId}] Fallback to token_name parameter: ${processedRequest.cryptocurrency}`);
+      }
+      if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
+      if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
+      const response = await callTokenMetricsAPI(
+        "/v2/hourly-ohlcv",
+        apiParams,
+        runtime
+      );
+      elizaLogger10.log(`[${requestId}] API response received, processing data...`);
+      const ohlcvData = Array.isArray(response) ? response : response.data || [];
+      elizaLogger10.log(`[${requestId}] API response received: ${ohlcvData.length} data points`);
+      const validData = ohlcvData.filter((item) => {
+        if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
+          return false;
+        }
+        const priceRange = (item.HIGH - item.LOW) / item.LOW;
+        if (priceRange > 10) {
+          return false;
+        }
+        return true;
+      });
+      elizaLogger10.log(`[${requestId}] Data filtering: ${ohlcvData.length} \u2192 ${validData.length} valid points remaining`);
+      const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+      const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
+      const tokenName = resolvedToken?.TOKEN_NAME || processedRequest.cryptocurrency || processedRequest.symbol || "Unknown Token";
+      elizaLogger10.log(`[${requestId}] \u{1F3AF} Final display name: "${tokenName}"`);
+      let responseText = `\u{1F4CA} **Hourly OHLCV Data for ${tokenName}**
+
+`;
+      if (ohlcvData.length === 0) {
+        responseText += `\u274C No hourly OHLCV data found for ${tokenName}. This could mean:
+`;
+        responseText += `\u2022 The token may not have sufficient trading history
+`;
+        responseText += `\u2022 TokenMetrics may not have hourly data for this token
+`;
+        responseText += `\u2022 Try using a different token name or symbol
+
+`;
+        responseText += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
+      } else {
+        if (ohlcvData.length > sortedData.length) {
+          const qualityFiltered = ohlcvData.length - sortedData.length;
+          responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+
+`;
+        }
+        const recentData = sortedData.slice(-5).reverse();
+        responseText += `\u{1F4C8} **Recent Hourly Data (Last ${recentData.length} hours):**
+`;
+        recentData.forEach((item, index) => {
+          const date = new Date(item.DATE || item.TIMESTAMP);
+          const timeStr = date.toLocaleString();
+          responseText += `
+**Hour ${index + 1}** (${timeStr}):
+`;
+          responseText += `\u2022 Open: ${formatCurrency(item.OPEN)}
+`;
+          responseText += `\u2022 High: ${formatCurrency(item.HIGH)}
+`;
+          responseText += `\u2022 Low: ${formatCurrency(item.LOW)}
+`;
+          responseText += `\u2022 Close: ${formatCurrency(item.CLOSE)}
+`;
+          responseText += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
+`;
+        });
+        if (ohlcvAnalysis && ohlcvAnalysis.summary) {
+          responseText += `
+
+\u{1F4CA} **Analysis Summary:**
+${ohlcvAnalysis.summary}
+`;
+        }
+        if (ohlcvAnalysis?.price_analysis) {
+          const priceAnalysis = ohlcvAnalysis.price_analysis;
+          responseText += `
+\u{1F4B0} **Price Movement:**
+`;
+          responseText += `\u2022 Direction: ${priceAnalysis.direction}
+`;
+          responseText += `\u2022 Change: ${priceAnalysis.price_change} (${priceAnalysis.change_percent})
+`;
+          responseText += `\u2022 Range: ${priceAnalysis.lowest_price} - ${priceAnalysis.highest_price}
+`;
+        }
+        if (ohlcvAnalysis?.volume_analysis) {
+          const volumeAnalysis = ohlcvAnalysis.volume_analysis;
+          responseText += `
+\u{1F4CA} **Volume Analysis:**
+`;
+          responseText += `\u2022 Average Volume: ${volumeAnalysis.average_volume}
+`;
+          responseText += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend}
+`;
+          responseText += `\u2022 Consistency: ${volumeAnalysis.volume_consistency}
+`;
+        }
+        if (ohlcvAnalysis?.trading_signals?.signals?.length > 0) {
+          responseText += `
+\u{1F3AF} **Trading Signals:**
+`;
+          ohlcvAnalysis.trading_signals.signals.forEach((signal) => {
+            responseText += `\u2022 ${signal.type}: ${signal.signal}
+`;
+          });
+        }
+        if (processedRequest.analysisType === "scalping" && ohlcvAnalysis?.scalping_focus) {
+          responseText += `
+\u26A1 **Scalping Insights:**
+`;
+          ohlcvAnalysis.scalping_focus.scalping_insights?.forEach((insight) => {
+            responseText += `\u2022 ${insight}
+`;
+          });
+        } else if (processedRequest.analysisType === "intraday" && ohlcvAnalysis?.intraday_focus) {
+          responseText += `
+\u{1F4C8} **Intraday Insights:**
+`;
+          ohlcvAnalysis.intraday_focus.intraday_insights?.forEach((insight) => {
+            responseText += `\u2022 ${insight}
+`;
+          });
+        } else if (processedRequest.analysisType === "technical_patterns" && ohlcvAnalysis?.technical_focus) {
+          responseText += `
+\u{1F50D} **Technical Analysis:**
+`;
+          ohlcvAnalysis.technical_focus.technical_insights?.forEach((insight) => {
+            responseText += `\u2022 ${insight}
+`;
+          });
+        }
+        responseText += `
+
+\u{1F4CB} **Data Summary:**
+`;
+        responseText += `\u2022 Total Data Points: ${sortedData.length}
+`;
+        responseText += `\u2022 Timeframe: 1 hour intervals
+`;
+        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
+`;
+        responseText += `\u2022 Data Source: TokenMetrics Official API
+`;
+      }
+      const result = {
+        success: true,
+        message: `Successfully retrieved ${sortedData.length} hourly OHLCV data points`,
+        request_id: requestId,
+        ohlcv_data: sortedData,
+        analysis: ohlcvAnalysis,
+        metadata: {
+          endpoint: "hourly-ohlcv",
+          requested_token: processedRequest.cryptocurrency || processedRequest.symbol || processedRequest.token_id,
+          resolved_token: resolvedToken,
+          date_range: {
+            start: processedRequest.startDate,
+            end: processedRequest.endDate
+          },
+          analysis_focus: processedRequest.analysisType,
+          pagination: {
+            page: processedRequest.page,
+            limit: processedRequest.limit
+          },
+          data_points: sortedData.length,
+          timeframe: "1 hour",
+          api_version: "v2",
+          data_source: "TokenMetrics Official API"
+        },
+        ohlcv_explanation: {
+          OPEN: "Opening price at the start of the hour",
+          HIGH: "Highest price during the hour",
+          LOW: "Lowest price during the hour",
+          CLOSE: "Closing price at the end of the hour",
+          VOLUME: "Total trading volume during the hour",
+          usage_tips: [
+            "Use for intraday technical analysis and pattern recognition",
+            "Higher volume confirms price movements",
+            "Compare hourly ranges to identify volatility patterns",
+            "Ideal for scalping and day trading strategies"
+          ]
+        }
+      };
+      elizaLogger10.log(`[${requestId}] Hourly OHLCV analysis completed successfully`);
+      if (callback) {
+        callback({
+          text: responseText,
+          content: result
+        });
+      }
+      return createActionResult9({ success: true, text: responseText });
+    } catch (error) {
+      elizaLogger10.error("Error in getHourlyOhlcvAction:", error);
+      const errorMessage = `\u274C **Failed to retrieve hourly OHLCV data**
+
+`;
+      const errorText = errorMessage + `**Error**: ${error instanceof Error ? error.message : "Unknown error occurred"}
+
+**Troubleshooting Tips:**
+\u2022 Verify the token name or symbol is correct
+\u2022 Check your TokenMetrics API key is valid
+\u2022 Try using major cryptocurrencies like Bitcoin or Ethereum
+\u2022 Ensure your subscription includes OHLCV data access
+
+**Common Solutions:**
+\u2022 Remove date filters to get recent data
+\u2022 Reduce the limit if requesting too much data
+\u2022 Check if the token has sufficient trading history`;
+      const errorResult = {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        message: "Failed to retrieve hourly OHLCV data from TokenMetrics API",
+        troubleshooting: {
+          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/hourly-ohlcv is accessible",
+          parameter_validation: [
+            "Verify token_id is a valid number or symbol is a valid string",
+            "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
+            "Ensure your API key has access to OHLCV data",
+            "Confirm the token has sufficient trading history"
+          ],
+          common_solutions: [
+            "Try using a major token (BTC, ETH) to test functionality",
+            "Remove date filters to get recent data",
+            "Check if your subscription includes OHLCV data access",
+            "Reduce the limit if requesting too much data"
+          ]
+        }
+      };
+      if (callback) {
+        callback({
+          text: errorText,
+          content: errorResult
+        });
+      }
+      return createActionResult9({ success: false, error: "Failed to process request" });
+    }
+  },
+  validate: async (runtime, message, state) => {
+    elizaLogger10.log("\u{1F50D} Validating getHourlyOhlcvAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger10.error("\u274C Validation failed:", error);
+      return false;
+    }
+  }
+};
+function analyzeHourlyOhlcvData(ohlcvData, analysisType = "all") {
+  if (!ohlcvData || ohlcvData.length === 0) {
+    return {
+      summary: "No hourly OHLCV data available for analysis",
+      price_action: "Cannot assess",
+      insights: []
+    };
+  }
+  const sortedData = ohlcvData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+  const priceAnalysis = analyzePriceMovement(sortedData);
+  const volumeAnalysis = analyzeVolumePatterns(sortedData);
+  const volatilityAnalysis = analyzeVolatility(sortedData);
+  const trendAnalysis = analyzeTrend(sortedData);
+  const technicalAnalysis = analyzeTechnicalPatterns(sortedData);
+  let focusedAnalysis = {};
+  switch (analysisType) {
+    case "scalping":
+      focusedAnalysis = {
+        scalping_focus: {
+          micro_movements: analyzeScalpingOpportunities(sortedData),
+          volume_spikes: identifyVolumeSpikes(sortedData),
+          scalping_signals: generateScalpingSignals(priceAnalysis, volumeAnalysis),
+          scalping_insights: [
+            `\u26A1 Micro-movements detected: ${priceAnalysis.micro_movements || 0}`,
+            `\u{1F4CA} Volume spikes: ${volumeAnalysis.volume_spikes || 0}`,
+            `\u{1F3AF} Scalping opportunities: ${priceAnalysis.scalping_opportunities || 0}`
+          ]
+        }
+      };
+      break;
+    case "intraday":
+      focusedAnalysis = {
+        intraday_focus: {
+          day_trading_patterns: analyzeIntradayPatterns(sortedData),
+          session_analysis: analyzeSessionBreakdowns(sortedData),
+          intraday_signals: generateIntradaySignals(priceAnalysis, trendAnalysis),
+          intraday_insights: [
+            `\u{1F4C8} Intraday trend: ${trendAnalysis.direction}`,
+            `\u{1F550} Best trading hours: ${identifyBestTradingHours(sortedData)}`,
+            `\u{1F4B9} Day trading setups: ${technicalAnalysis.day_trading_setups || 0}`
+          ]
+        }
+      };
+      break;
+    case "technical_patterns":
+      focusedAnalysis = {
+        technical_focus: {
+          chart_patterns: identifyChartPatterns(sortedData),
+          support_resistance: findHourlyLevels(sortedData),
+          technical_indicators: calculateHourlyIndicators(sortedData),
+          technical_insights: [
+            `\u{1F4CA} Chart patterns: ${technicalAnalysis.patterns_count || 0}`,
+            `\u{1F3AF} Support/Resistance levels: ${technicalAnalysis.key_levels || 0}`,
+            `\u{1F4C8} Technical signals: ${technicalAnalysis.signals_count || 0}`
+          ]
+        }
+      };
+      break;
+  }
+  return {
+    summary: `Hourly analysis of ${sortedData.length} data points showing ${priceAnalysis.direction || "neutral"} price action with ${volatilityAnalysis.level || "unknown"} volatility`,
+    analysis_type: analysisType,
+    price_analysis: priceAnalysis,
+    volume_analysis: volumeAnalysis,
+    volatility_analysis: volatilityAnalysis,
+    trend_analysis: trendAnalysis,
+    technical_analysis: technicalAnalysis,
+    trading_signals: generateTradingSignals(priceAnalysis, volumeAnalysis, trendAnalysis),
+    insights: generateOhlcvInsights(priceAnalysis, volumeAnalysis, volatilityAnalysis, trendAnalysis),
+    risk_assessment: determineRiskLevel(priceAnalysis, volumeAnalysis),
+    ...focusedAnalysis,
+    data_quality: {
+      source: "TokenMetrics Official API",
+      completeness: calculateDataCompleteness(sortedData),
+      volume_consistency: calculateVolumeConsistency(sortedData.map((d) => d.VOLUME).filter((v) => v)),
+      data_points: sortedData.length,
+      timeframe_coverage: calculateTimeframeCoverage(sortedData)
+    },
+    trading_recommendations: generateHourlyTradingRecommendations2(trendAnalysis, technicalAnalysis, analysisType)
+  };
+}
+function analyzePriceMovement(data) {
+  if (data.length < 2) return { change: 0, change_percent: 0, direction: "Sideways" };
+  const firstPrice = data[0].OPEN;
+  const lastPrice = data[data.length - 1].CLOSE;
+  const highestPrice = Math.max(...data.map((d) => d.HIGH));
+  const lowestPrice = Math.min(...data.map((d) => d.LOW));
+  const priceChange = lastPrice - firstPrice;
+  const changePercent = priceChange / firstPrice * 100;
+  const priceRange = highestPrice - lowestPrice;
+  const rangePercent = priceRange / firstPrice * 100;
+  return {
+    start_price: formatCurrency(firstPrice),
+    end_price: formatCurrency(lastPrice),
+    price_change: formatCurrency(priceChange),
+    change_percent: formatPercentage(changePercent),
+    highest_price: formatCurrency(highestPrice),
+    lowest_price: formatCurrency(lowestPrice),
+    price_range: formatCurrency(priceRange),
+    range_percent: formatPercentage(rangePercent),
+    direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways",
+    overall_direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways"
+    // Add this for backward compatibility
+  };
+}
+function analyzeVolumePatterns(data) {
+  const volumes = data.map((d) => d.VOLUME).filter((v) => v > 0);
+  if (volumes.length === 0) return { average_volume: 0, pattern: "No data" };
+  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+  const maxVolume = Math.max(...volumes);
+  const minVolume = Math.min(...volumes);
+  const firstHalf = volumes.slice(0, Math.floor(volumes.length / 2));
+  const secondHalf = volumes.slice(Math.floor(volumes.length / 2));
+  const firstHalfAvg = firstHalf.reduce((sum, vol) => sum + vol, 0) / firstHalf.length;
+  const secondHalfAvg = secondHalf.reduce((sum, vol) => sum + vol, 0) / secondHalf.length;
+  const volumeTrend = secondHalfAvg > firstHalfAvg * 1.1 ? "Increasing" : secondHalfAvg < firstHalfAvg * 0.9 ? "Decreasing" : "Stable";
+  return {
+    average_volume: formatCurrency(avgVolume),
+    max_volume: formatCurrency(maxVolume),
+    min_volume: formatCurrency(minVolume),
+    volume_trend: volumeTrend,
+    volume_consistency: calculateVolumeConsistency(volumes)
+  };
+}
+function analyzeVolatility(data) {
+  if (data.length < 2) return { level: "Unknown" };
+  const hourlyRanges = data.map((d) => (d.HIGH - d.LOW) / d.OPEN * 100);
+  const avgRange = hourlyRanges.reduce((sum, range) => sum + range, 0) / hourlyRanges.length;
+  let volatilityLevel;
+  if (avgRange > 5) volatilityLevel = "Very High";
+  else if (avgRange > 3) volatilityLevel = "High";
+  else if (avgRange > 2) volatilityLevel = "Moderate";
+  else if (avgRange > 1) volatilityLevel = "Low";
+  else volatilityLevel = "Very Low";
+  return {
+    level: volatilityLevel,
+    average_hourly_range: formatPercentage(avgRange),
+    max_hourly_range: formatPercentage(Math.max(...hourlyRanges)),
+    volatility_trend: calculateVolatilityTrend(hourlyRanges)
+  };
+}
+function analyzeTrend(data) {
+  if (data.length < 2) return { direction: "Insufficient Data" };
+  const closes = data.map((d) => d.CLOSE);
+  const periods = [5, 10, 20];
+  const trends = [];
+  for (const period of periods) {
+    if (closes.length >= period) {
+      const recentMA = closes.slice(-period).reduce((sum, price) => sum + price, 0) / period;
+      if (closes.length >= period * 2) {
+        const earlierMA = closes.slice(-period * 2, -period).reduce((sum, price) => sum + price, 0) / period;
+        trends.push(recentMA > earlierMA ? 1 : -1);
+      } else {
+        const firstPrice = closes[0];
+        trends.push(recentMA > firstPrice ? 1 : -1);
+      }
+    }
+  }
+  if (trends.length === 0) {
+    const firstPrice = closes[0];
+    const lastPrice = closes[closes.length - 1];
+    const change = (lastPrice - firstPrice) / firstPrice;
+    if (change > 0.01) trends.push(1);
+    else if (change < -0.01) trends.push(-1);
+    else trends.push(0);
+  }
+  const overallTrend = trends.reduce((sum, trend) => sum + trend, 0);
+  let direction;
+  if (overallTrend > 0) direction = "Uptrend";
+  else if (overallTrend < 0) direction = "Downtrend";
+  else direction = "Sideways";
+  let strength;
+  if (data.length >= 10) {
+    strength = Math.abs(overallTrend) > 2 ? "Strong" : "Weak";
+  } else {
+    const firstPrice = closes[0];
+    const lastPrice = closes[closes.length - 1];
+    const change = Math.abs((lastPrice - firstPrice) / firstPrice);
+    strength = change > 0.05 ? "Strong" : "Weak";
+  }
+  let shortTermBias;
+  if (closes.length >= 6) {
+    shortTermBias = closes[closes.length - 1] > closes[closes.length - 6] ? "Bullish" : "Bearish";
+  } else {
+    const midPoint = Math.floor(closes.length / 2);
+    const recentAvg = closes.slice(midPoint).reduce((sum, price) => sum + price, 0) / (closes.length - midPoint);
+    const earlierAvg = closes.slice(0, midPoint).reduce((sum, price) => sum + price, 0) / midPoint;
+    shortTermBias = recentAvg > earlierAvg ? "Bullish" : "Bearish";
+  }
+  return {
+    direction,
+    strength,
+    short_term_bias: shortTermBias,
+    trend_confidence: trends.length > 1 ? "High" : "Moderate"
+  };
+}
+function generateOhlcvInsights(priceAnalysis, volumeAnalysis, volatilityAnalysis, trendAnalysis) {
+  const insights = [];
+  if (parseFloat(priceAnalysis.change_percent) > 5) {
+    insights.push(`Strong hourly movement of ${priceAnalysis.change_percent} indicates significant market activity`);
+  }
+  if (volumeAnalysis.volume_trend === "Increasing") {
+    insights.push("Increasing volume confirms the price movement and suggests continuation");
+  } else if (volumeAnalysis.volume_trend === "Decreasing") {
+    insights.push("Decreasing volume suggests weakening momentum");
+  }
+  if (volatilityAnalysis.level === "Very High") {
+    insights.push("Very high volatility creates both opportunities and risks for intraday trading");
+  } else if (volatilityAnalysis.level === "Very Low") {
+    insights.push("Low volatility suggests consolidation phase or limited trading interest");
+  }
+  if (trendAnalysis.direction === "Uptrend" && trendAnalysis.strength === "Strong") {
+    insights.push("Strong uptrend supported by multiple timeframes favors long positions");
+  } else if (trendAnalysis.direction === "Downtrend" && trendAnalysis.strength === "Strong") {
+    insights.push("Strong downtrend suggests continued selling pressure");
+  }
+  return insights;
+}
+function generateTradingSignals(priceAnalysis, volumeAnalysis, trendAnalysis) {
+  const signals = [];
+  if (trendAnalysis.direction === "Uptrend" && volumeAnalysis.volume_trend === "Increasing") {
+    signals.push({
+      type: "BULLISH",
+      signal: "Uptrend with increasing volume suggests buying opportunity",
+      confidence: "High"
+    });
+  }
+  if (trendAnalysis.direction === "Downtrend" && volumeAnalysis.volume_trend === "Increasing") {
+    signals.push({
+      type: "BEARISH",
+      signal: "Downtrend with increasing volume suggests selling pressure",
+      confidence: "High"
+    });
+  }
+  if (trendAnalysis.direction === "Sideways") {
+    signals.push({
+      type: "NEUTRAL",
+      signal: "Sideways trend suggests range-bound trading opportunities",
+      confidence: "Moderate"
+    });
+  }
+  return {
+    signals,
+    recommendation: signals.length > 0 ? signals[0].type : "HOLD",
+    risk_level: determineRiskLevel(priceAnalysis, volumeAnalysis)
+  };
+}
+function calculateDataCompleteness(data) {
+  if (data.length === 0) return "No data";
+  const requiredFields = ["OPEN", "HIGH", "LOW", "CLOSE", "VOLUME"];
+  let completeness = 0;
+  data.forEach((item) => {
+    const presentFields = requiredFields.filter(
+      (field) => item[field] !== null && item[field] !== void 0 && !isNaN(item[field])
+    );
+    completeness += presentFields.length / requiredFields.length;
+  });
+  const avgCompleteness = completeness / data.length * 100;
+  if (avgCompleteness > 95) return "Excellent";
+  if (avgCompleteness > 85) return "Good";
+  if (avgCompleteness > 70) return "Fair";
+  return "Poor";
+}
+function calculateVolumeConsistency(volumes) {
+  if (volumes.length < 2) return "Insufficient data";
+  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+  const variance = volumes.reduce((sum, vol) => sum + Math.pow(vol - avgVolume, 2), 0) / volumes.length;
+  const stdDev = Math.sqrt(variance);
+  const coefficientOfVariation = stdDev / avgVolume;
+  if (coefficientOfVariation < 0.5) return "Very Consistent";
+  if (coefficientOfVariation < 1) return "Consistent";
+  if (coefficientOfVariation < 2) return "Moderate";
+  return "Highly Variable";
+}
+function calculateVolatilityTrend(ranges) {
+  if (ranges.length < 3) return "Insufficient data";
+  const recentRanges = ranges.slice(-5);
+  const earlierRanges = ranges.slice(0, 5);
+  const recentAvg = recentRanges.reduce((sum, range) => sum + range, 0) / recentRanges.length;
+  const earlierAvg = earlierRanges.reduce((sum, range) => sum + range, 0) / earlierRanges.length;
+  if (recentAvg > earlierAvg * 1.2) return "Increasing";
+  if (recentAvg < earlierAvg * 0.8) return "Decreasing";
+  return "Stable";
+}
+function determineRiskLevel(priceAnalysis, volumeAnalysis) {
+  const priceVolatility = parseFloat(priceAnalysis.range_percent?.replace("%", "") || "0");
+  const volumeConsistency = volumeAnalysis.volume_consistency;
+  if (priceVolatility > 10 || volumeConsistency === "Highly Variable") return "High";
+  if (priceVolatility > 5 || volumeConsistency === "Moderate") return "Medium";
+  return "Low";
+}
+function calculateTimeframeCoverage(data) {
+  if (data.length === 0) return "No coverage";
+  const hours = data.length;
+  if (hours >= 168) return `${Math.floor(hours / 24)} days`;
+  if (hours >= 24) return `${Math.floor(hours / 24)} days, ${hours % 24} hours`;
+  return `${hours} hours`;
+}
+function generateHourlyTradingRecommendations2(trendAnalysis, technicalAnalysis, analysisType) {
+  const recommendations = [];
+  if (trendAnalysis.direction === "Bullish") {
+    recommendations.push("Consider long positions on pullbacks");
+    recommendations.push("Look for breakout opportunities above resistance");
+  } else if (trendAnalysis.direction === "Bearish") {
+    recommendations.push("Consider short positions on rallies");
+    recommendations.push("Look for breakdown opportunities below support");
+  } else {
+    recommendations.push("Range-bound trading strategies may be effective");
+    recommendations.push("Wait for clear directional breakout");
+  }
+  if (analysisType === "scalping") {
+    recommendations.push("Focus on 1-5 minute entries and exits");
+    recommendations.push("Use tight stop losses (0.1-0.3%)");
+    recommendations.push("Target quick profits (0.2-0.5%)");
+  } else if (analysisType === "intraday") {
+    recommendations.push("Plan entries during high volume periods");
+    recommendations.push("Use hourly support/resistance levels");
+    recommendations.push("Consider session-based strategies");
+  }
+  return {
+    primary_recommendations: recommendations.slice(0, 3),
+    risk_management: [
+      "Use appropriate position sizing",
+      "Set stop losses based on volatility",
+      "Monitor volume for confirmation"
+    ],
+    timing_considerations: [
+      "Higher volume hours typically offer better liquidity",
+      "Avoid trading during low volume periods",
+      "Consider market session overlaps"
+    ]
+  };
+}
+function analyzeTechnicalPatterns(data) {
+  if (data.length < 10) {
+    return {
+      patterns_count: 0,
+      key_levels: 0,
+      signals_count: 0,
+      day_trading_setups: 0
+    };
+  }
+  const closes = data.map((d) => d.CLOSE).filter((c) => c);
+  const highs = data.map((d) => d.HIGH).filter((h) => h);
+  const lows = data.map((d) => d.LOW).filter((l) => l);
+  let patternsCount = 0;
+  let signalsCount = 0;
+  for (let i = 2; i < closes.length; i++) {
+    if (closes[i] > closes[i - 1] && closes[i - 1] > closes[i - 2]) {
+      patternsCount++;
+      signalsCount++;
+    }
+    if (closes[i] < closes[i - 1] && closes[i - 1] < closes[i - 2]) {
+      patternsCount++;
+      signalsCount++;
+    }
+  }
+  const keyLevels = findKeyLevels(highs, lows);
+  return {
+    patterns_count: patternsCount,
+    key_levels: keyLevels.length,
+    signals_count: signalsCount,
+    day_trading_setups: Math.floor(patternsCount / 2),
+    support_levels: keyLevels.filter((l) => l.type === "support").length,
+    resistance_levels: keyLevels.filter((l) => l.type === "resistance").length
+  };
+}
+function analyzeScalpingOpportunities(data) {
+  if (data.length < 5) return 0;
+  let opportunities = 0;
+  for (let i = 1; i < data.length; i++) {
+    const priceChange = Math.abs((data[i].CLOSE - data[i - 1].CLOSE) / data[i - 1].CLOSE);
+    const volumeRatio = data[i].VOLUME / (data[i - 1].VOLUME || 1);
+    if (priceChange > 2e-3 && volumeRatio > 1.2) {
+      opportunities++;
+    }
+  }
+  return opportunities;
+}
+function identifyVolumeSpikes(data) {
+  if (data.length < 5) return 0;
+  const volumes = data.map((d) => d.VOLUME).filter((v) => v);
+  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+  return volumes.filter((vol) => vol > avgVolume * 2).length;
+}
+function generateScalpingSignals(priceAnalysis, volumeAnalysis) {
+  const signals = [];
+  if (priceAnalysis.direction === "Bullish" && volumeAnalysis.volume_trend === "Increasing") {
+    signals.push("Long scalp opportunity on momentum");
+  }
+  if (priceAnalysis.direction === "Bearish" && volumeAnalysis.volume_trend === "Increasing") {
+    signals.push("Short scalp opportunity on momentum");
+  }
+  if (volumeAnalysis.volume_consistency === "Highly Variable") {
+    signals.push("High volatility - good for scalping");
+  }
+  return {
+    active_signals: signals,
+    signal_strength: signals.length > 2 ? "Strong" : signals.length > 0 ? "Moderate" : "Weak"
+  };
+}
+function analyzeIntradayPatterns(data) {
+  if (data.length < 24) {
+    return {
+      session_patterns: "Insufficient data",
+      best_hours: "Unknown",
+      volume_patterns: "Unknown"
+    };
+  }
+  const hourlyData = /* @__PURE__ */ new Map();
+  data.forEach((item) => {
+    const date = new Date(item.DATE || item.TIMESTAMP);
+    const hour = date.getHours();
+    if (!hourlyData.has(hour)) {
+      hourlyData.set(hour, []);
+    }
+    hourlyData.get(hour).push(item);
+  });
+  const hourlyVolumes = Array.from(hourlyData.entries()).map(([hour, items]) => ({
+    hour,
+    avgVolume: items.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / items.length,
+    count: items.length
+  }));
+  const bestHours = hourlyVolumes.sort((a, b) => b.avgVolume - a.avgVolume).slice(0, 3).map((h) => `${h.hour}:00`);
+  return {
+    session_patterns: "Analyzed",
+    best_hours: bestHours.join(", "),
+    volume_patterns: hourlyVolumes.length > 12 ? "Clear patterns" : "Limited patterns",
+    peak_activity_hours: bestHours
+  };
+}
+function analyzeSessionBreakdowns(data) {
+  const sessions = {
+    asian: { start: 0, end: 8, volume: 0, count: 0 },
+    european: { start: 8, end: 16, volume: 0, count: 0 },
+    american: { start: 16, end: 24, volume: 0, count: 0 }
+  };
+  data.forEach((item) => {
+    const date = new Date(item.DATE || item.TIMESTAMP);
+    const hour = date.getUTCHours();
+    const volume = item.VOLUME || 0;
+    if (hour >= sessions.asian.start && hour < sessions.asian.end) {
+      sessions.asian.volume += volume;
+      sessions.asian.count++;
+    } else if (hour >= sessions.european.start && hour < sessions.european.end) {
+      sessions.european.volume += volume;
+      sessions.european.count++;
+    } else {
+      sessions.american.volume += volume;
+      sessions.american.count++;
+    }
+  });
+  Object.keys(sessions).forEach((session) => {
+    const s = sessions[session];
+    s.volume = s.count > 0 ? s.volume / s.count : 0;
+  });
+  return sessions;
+}
+function generateIntradaySignals(priceAnalysis, trendAnalysis) {
+  const signals = [];
+  if (trendAnalysis.direction === "Bullish" && trendAnalysis.strength === "Strong") {
+    signals.push("Strong intraday uptrend - consider long positions");
+  }
+  if (trendAnalysis.direction === "Bearish" && trendAnalysis.strength === "Strong") {
+    signals.push("Strong intraday downtrend - consider short positions");
+  }
+  if (priceAnalysis.direction === "Sideways") {
+    signals.push("Range-bound - consider mean reversion strategies");
+  }
+  return {
+    signals,
+    confidence: signals.length > 1 ? "High" : signals.length > 0 ? "Medium" : "Low"
+  };
+}
+function identifyBestTradingHours(data) {
+  if (data.length < 24) return "Insufficient data";
+  const hourlyActivity = /* @__PURE__ */ new Map();
+  data.forEach((item) => {
+    const date = new Date(item.DATE || item.TIMESTAMP);
+    const hour = date.getHours();
+    if (!hourlyActivity.has(hour)) {
+      hourlyActivity.set(hour, { volume: 0, volatility: 0, count: 0 });
+    }
+    const activity = hourlyActivity.get(hour);
+    activity.volume += item.VOLUME || 0;
+    activity.volatility += Math.abs((item.HIGH - item.LOW) / item.CLOSE) || 0;
+    activity.count++;
+  });
+  const hourlyScores = Array.from(hourlyActivity.entries()).map(([hour, data2]) => ({
+    hour,
+    score: data2.volume / data2.count * (data2.volatility / data2.count)
+  }));
+  const bestHours = hourlyScores.sort((a, b) => b.score - a.score).slice(0, 3).map((h) => `${h.hour}:00`);
+  return bestHours.join(", ");
+}
+function identifyChartPatterns(data) {
+  if (data.length < 10) {
+    return {
+      patterns: [],
+      count: 0
+    };
+  }
+  const patterns = [];
+  const closes = data.map((d) => d.CLOSE);
+  for (let i = 4; i < closes.length - 4; i++) {
+    if (closes[i - 2] < closes[i] && closes[i + 2] < closes[i] && Math.abs(closes[i] - closes[i - 4]) < closes[i] * 0.02) {
+      patterns.push({ type: "Double Top", position: i, strength: "Medium" });
+    }
+    if (closes[i - 2] > closes[i] && closes[i + 2] > closes[i] && Math.abs(closes[i] - closes[i - 4]) < closes[i] * 0.02) {
+      patterns.push({ type: "Double Bottom", position: i, strength: "Medium" });
+    }
+  }
+  return {
+    patterns,
+    count: patterns.length
+  };
+}
+function findHourlyLevels(data) {
+  const levels = findKeyLevels(
+    data.map((d) => d.HIGH).filter((h) => h),
+    data.map((d) => d.LOW).filter((l) => l)
+  );
+  return {
+    support_levels: levels.filter((l) => l.type === "support"),
+    resistance_levels: levels.filter((l) => l.type === "resistance"),
+    total_levels: levels.length
+  };
+}
+function calculateHourlyIndicators(data) {
+  if (data.length < 20) {
+    return {
+      sma_20: null,
+      rsi: null,
+      bollinger_bands: null
+    };
+  }
+  const closes = data.map((d) => d.CLOSE).filter((c) => c);
+  const sma20 = closes.slice(-20).reduce((sum, price) => sum + price, 0) / 20;
+  let gains = 0;
+  let losses = 0;
+  for (let i = 1; i < Math.min(15, closes.length); i++) {
+    const change = closes[i] - closes[i - 1];
+    if (change > 0) gains += change;
+    else losses += Math.abs(change);
+  }
+  const avgGain = gains / 14;
+  const avgLoss = losses / 14;
+  const rs = avgGain / (avgLoss || 1);
+  const rsi = 100 - 100 / (1 + rs);
+  return {
+    sma_20: sma20,
+    rsi,
+    bollinger_bands: {
+      upper: sma20 * 1.02,
+      lower: sma20 * 0.98,
+      middle: sma20
+    }
+  };
+}
+function findKeyLevels(highs, lows) {
+  const levels = [];
+  const sortedHighs = [...highs].sort((a, b) => b - a);
+  const topHighs = sortedHighs.slice(0, 3);
+  topHighs.forEach((high) => {
+    const occurrences = highs.filter((h) => Math.abs(h - high) < high * 5e-3).length;
+    if (occurrences >= 2) {
+      levels.push({ price: high, type: "resistance", strength: occurrences });
+    }
+  });
+  const sortedLows = [...lows].sort((a, b) => a - b);
+  const bottomLows = sortedLows.slice(0, 3);
+  bottomLows.forEach((low) => {
+    const occurrences = lows.filter((l) => Math.abs(l - low) < low * 5e-3).length;
+    if (occurrences >= 2) {
+      levels.push({ price: low, type: "support", strength: occurrences });
+    }
+  });
+  return levels;
+}
+
+// src/actions/getDailyOhlcvAction.ts
+import {
+  elizaLogger as elizaLogger11,
+  createActionResult as createActionResult10
+} from "@elizaos/core";
+var DailyOhlcvRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  token_name: external_exports.string().optional().describe("Full name of the token"),
+  startDate: external_exports.string().optional().describe("Start date for data range (YYYY-MM-DD)"),
+  endDate: external_exports.string().optional().describe("End date for data range (YYYY-MM-DD)"),
+  limit: external_exports.number().min(1).max(1e3).optional().describe("Number of data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["swing_trading", "trend_analysis", "technical_indicators", "all"]).optional().describe("Type of analysis to focus on")
+});
+var DAILY_OHLCV_EXTRACTION_TEMPLATE = `
+CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+
+You are an AI assistant specialized in extracting daily OHLCV data requests from natural language.
+
+The user wants to get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
+
+1. **cryptocurrency** (required): The EXACT name or symbol of the cryptocurrency mentioned by the user
+   - Bitcoin, BTC \u2192 "Bitcoin"
+   - Ethereum, ETH \u2192 "Ethereum" 
+   - Dogecoin, DOGE \u2192 "Dogecoin"
+   - Solana, SOL \u2192 "Solana"
+   - Avalanche, AVAX \u2192 "Avalanche"
+   - Cardano, ADA \u2192 "Cardano"
+   - Polkadot, DOT \u2192 "Polkadot"
+   - Chainlink, LINK \u2192 "Chainlink"
+   - CRITICAL: Use the EXACT name/symbol the user mentioned
+
+2. **symbol** (optional): Token symbol if mentioned
+   - Extract symbols like "BTC", "ETH", "ADA", etc.
+
+3. **token_id** (optional): Specific token ID if mentioned
+   - Usually a number like "3375" for Bitcoin
+
+4. **token_name** (optional): Full name of the token for API calls
+
+5. **startDate** (optional): Start date for data range
+   - Look for dates in YYYY-MM-DD format
+   - Convert relative dates like "last month", "past 30 days"
+
+6. **endDate** (optional): End date for data range
+   - Look for dates in YYYY-MM-DD format
+
+7. **limit** (optional, default: 50): Number of data points to return
+   - Look for phrases like "50 days", "last 100 candles", "200 data points"
+
+8. **page** (optional, default: 1): Page number for pagination
+
+9. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "swing_trading" - focus on swing trading opportunities and signals
+   - "trend_analysis" - focus on trend identification and direction
+   - "technical_indicators" - focus on technical indicators and patterns
+   - "all" - comprehensive OHLCV analysis
+
+CRITICAL EXAMPLES:
+- "Get daily OHLCV for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Show me daily candles for BTC" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
+- "Daily data for ETH for swing trading" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "swing_trading"}
+- "DOGE daily OHLCV" \u2192 {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
+- "Solana trend analysis" \u2192 {cryptocurrency: "Solana", symbol: "SOL", analysisType: "trend_analysis"}
+
+Extract the request details from the user's message.
+`;
+function extractCryptocurrencySimple5(text) {
+  const cryptoPatterns = [
+    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
+    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
+    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
+    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
+    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
+    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
+    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" },
+    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
+    { regex: /\b(binance coin|bnb)\b/i, name: "BNB", symbol: "BNB" },
+    { regex: /\b(ripple|xrp)\b/i, name: "XRP", symbol: "XRP" },
+    { regex: /\b(litecoin|ltc)\b/i, name: "Litecoin", symbol: "LTC" },
+    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
+    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
+    { regex: /\b(shiba inu|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" }
+  ];
+  for (const pattern of cryptoPatterns) {
+    if (pattern.regex.test(text)) {
+      return {
+        cryptocurrency: pattern.name,
+        symbol: pattern.symbol
+      };
+    }
+  }
+  return {};
+}
+var getDailyOhlcvAction = {
+  name: "GET_DAILY_OHLCV_TOKENMETRICS",
+  description: "Get daily OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency tokens from TokenMetrics",
+  similes: [
+    "get daily ohlcv",
+    "daily price data",
+    "daily candles",
+    "daily chart data",
+    "swing trading data",
+    "daily technical analysis",
+    "daily market data"
+  ],
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get daily OHLCV for Bitcoin"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get the daily OHLCV data for Bitcoin.",
+          action: "GET_DAILY_OHLCV_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show daily price data for ETH"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll retrieve daily OHLCV data for Ethereum.",
+          action: "GET_DAILY_OHLCV_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Daily candles for long-term analysis"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get daily OHLCV data for long-term analysis.",
+          action: "GET_DAILY_OHLCV_TOKENMETRICS"
+        }
+      }
+    ]
+  ],
+  async handler(runtime, message, state, _options, callback) {
+    try {
+      const requestId = generateRequestId();
+      console.log(`[${requestId}] Processing daily OHLCV request...`);
+      const ohlcvRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state || await runtime.composeState(message),
+        DAILY_OHLCV_EXTRACTION_TEMPLATE,
+        DailyOhlcvRequestSchema,
+        requestId
+      );
+      console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
+      let processedRequest = {
+        cryptocurrency: ohlcvRequest?.cryptocurrency || null,
+        token_id: ohlcvRequest?.token_id || null,
+        symbol: ohlcvRequest?.symbol || null,
+        token_name: ohlcvRequest?.token_name || null,
+        startDate: ohlcvRequest?.startDate || null,
+        endDate: ohlcvRequest?.endDate || null,
+        limit: ohlcvRequest?.limit || 50,
+        page: ohlcvRequest?.page || 1,
+        analysisType: ohlcvRequest?.analysisType || "all"
+      };
+      if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes("unknown")) {
+        console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
+        const regexResult = extractCryptocurrencySimple5(message.content?.text || "");
+        if (regexResult.cryptocurrency) {
+          processedRequest.cryptocurrency = regexResult.cryptocurrency;
+          processedRequest.symbol = regexResult.symbol || null;
+          console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
+        }
+      }
+      if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
+        const symbolToNameMap = {
+          "BTC": "Bitcoin",
+          "ETH": "Ethereum",
+          "DOGE": "Dogecoin",
+          "SOL": "Solana",
+          "AVAX": "Avalanche",
+          "ADA": "Cardano",
+          "DOT": "Polkadot",
+          "LINK": "Chainlink",
+          "BNB": "BNB",
+          "XRP": "XRP",
+          "LTC": "Litecoin",
+          "MATIC": "Polygon",
+          "UNI": "Uniswap",
+          "SHIB": "Shiba Inu"
+        };
+        const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
+        if (fullName) {
+          console.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
+          processedRequest.cryptocurrency = fullName;
+          if (!processedRequest.symbol) {
+            processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
+          }
+        }
+      }
+      let resolvedToken = null;
+      if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+        try {
+          resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+          if (resolvedToken) {
+            processedRequest.token_id = resolvedToken.TOKEN_ID;
+            processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.TOKEN_SYMBOL} (ID: ${resolvedToken.TOKEN_ID})`);
+          }
+        } catch (error) {
+          console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+        }
+      }
+      const apiParams = {
+        limit: processedRequest.limit,
+        page: processedRequest.page
+      };
+      if (processedRequest.symbol) {
+        apiParams.symbol = processedRequest.symbol;
+        console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
+      } else if (processedRequest.cryptocurrency) {
+        apiParams.token_name = processedRequest.cryptocurrency;
+        console.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
+      } else if (processedRequest.token_id) {
+        apiParams.token_id = processedRequest.token_id;
+        console.log(`[${requestId}] Using token_id parameter: ${processedRequest.token_id}`);
+      }
+      if (processedRequest.startDate) apiParams.startDate = processedRequest.startDate;
+      if (processedRequest.endDate) apiParams.endDate = processedRequest.endDate;
+      const response = await callTokenMetricsAPI(
+        "/v2/daily-ohlcv",
+        apiParams,
+        runtime
+      );
+      console.log(`[${requestId}] API response received, processing OHLCV data...`);
+      const ohlcvData = Array.isArray(response) ? response : response.data || [];
+      let filteredByToken = ohlcvData;
+      if (ohlcvData.length > 0 && processedRequest.symbol) {
+        const tokenGroups = ohlcvData.reduce((groups, item) => {
+          const tokenId = item.TOKEN_ID;
+          if (!groups[tokenId]) {
+            groups[tokenId] = [];
+          }
+          groups[tokenId].push(item);
+          return groups;
+        }, {});
+        const tokenIds = Object.keys(tokenGroups);
+        console.log(
+          `[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`,
+          tokenIds.map((id) => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`)
+        );
+        if (tokenIds.length > 1) {
+          let selectedTokenId = null;
+          let maxScore = -1;
+          for (const tokenId of tokenIds) {
+            const tokenData = tokenGroups[tokenId];
+            const firstItem = tokenData[0];
+            let score = 0;
+            const avgPrice = tokenData.reduce((sum, item) => sum + (item.CLOSE || 0), 0) / tokenData.length;
+            if (avgPrice > 1e3) score += 100;
+            else if (avgPrice > 100) score += 50;
+            else if (avgPrice > 10) score += 20;
+            else if (avgPrice > 1) score += 10;
+            const avgVolume = tokenData.reduce((sum, item) => sum + (item.VOLUME || 0), 0) / tokenData.length;
+            if (avgVolume > 1e9) score += 50;
+            else if (avgVolume > 1e8) score += 30;
+            else if (avgVolume > 1e7) score += 20;
+            else if (avgVolume > 1e6) score += 10;
+            const tokenName2 = firstItem.TOKEN_NAME?.toLowerCase() || "";
+            const symbol = processedRequest.symbol?.toLowerCase() || "";
+            if (tokenName2 === symbol) score += 30;
+            else if (tokenName2.includes(symbol)) score += 20;
+            else if (symbol === "btc" && tokenName2 === "bitcoin") score += 40;
+            else if (symbol === "eth" && tokenName2 === "ethereum") score += 40;
+            else if (symbol === "doge" && tokenName2 === "dogecoin") score += 40;
+            if (tokenName2.includes("wrapped") || tokenName2.includes("osmosis") || tokenName2.includes("synthetic") || tokenName2.includes("bridged")) {
+              score -= 20;
+            }
+            console.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
+            if (score > maxScore) {
+              maxScore = score;
+              selectedTokenId = tokenId;
+            }
+          }
+          if (selectedTokenId) {
+            filteredByToken = tokenGroups[selectedTokenId];
+            const selectedToken = filteredByToken[0];
+            console.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
+          } else {
+            console.log(`[${requestId}] No clear main token identified, using all data`);
+          }
+        } else {
+          console.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
+        }
+      }
+      const validData = filteredByToken.filter((item) => {
+        if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
+          console.log(`[${requestId}] Filtering out invalid data point:`, item);
+          return false;
+        }
+        const priceRange = (item.HIGH - item.LOW) / item.LOW;
+        if (priceRange > 10) {
+          console.log(`[${requestId}] Filtering out extreme outlier:`, item);
+          return false;
+        }
+        return true;
+      });
+      console.log(`[${requestId}] Token filtering: ${ohlcvData.length} \u2192 ${filteredByToken.length} data points`);
+      console.log(`[${requestId}] Quality filtering: ${filteredByToken.length} \u2192 ${validData.length} valid points remaining`);
+      const sortedData = validData.sort((a, b) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
+      const ohlcvAnalysis = analyzeDailyOhlcvData(sortedData, processedRequest.analysisType);
+      const tokenName = resolvedToken?.name || processedRequest.cryptocurrency || processedRequest.symbol || "the requested token";
+      let responseText = `\u{1F4CA} **Daily OHLCV Data for ${tokenName}**
+
+`;
+      if (sortedData.length === 0) {
+        responseText += `\u274C No valid daily OHLCV data found for ${tokenName}. This could mean:
+`;
+        responseText += `\u2022 The token may not have sufficient trading history
+`;
+        responseText += `\u2022 TokenMetrics may not have daily data for this token
+`;
+        responseText += `\u2022 All data points were filtered out due to quality issues
+`;
+        responseText += `\u2022 Try using a different token name or symbol
+
+`;
+        responseText += `\u{1F4A1} **Suggestion**: Try major cryptocurrencies like Bitcoin, Ethereum, or Solana.`;
+      } else {
+        if (ohlcvData.length > sortedData.length) {
+          const tokenFiltered = ohlcvData.length - filteredByToken.length;
+          const qualityFiltered = filteredByToken.length - sortedData.length;
+          if (tokenFiltered > 0 && qualityFiltered > 0) {
+            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.
+
+`;
+          } else if (tokenFiltered > 0) {
+            responseText += `\u{1F50D} **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.
+
+`;
+          } else if (qualityFiltered > 0) {
+            responseText += `\u{1F50D} **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.
+
+`;
+          }
+        }
+        const recentData = sortedData.slice(-5).reverse();
+        responseText += `\u{1F4C8} **Recent Daily Data (Last ${recentData.length} days):**
+`;
+        recentData.forEach((item, index) => {
+          const date = new Date(item.DATE || item.TIMESTAMP);
+          const dateStr = date.toLocaleDateString();
+          responseText += `
+**Day ${index + 1}** (${dateStr}):
+`;
+          responseText += `\u2022 Open: ${formatCurrency(item.OPEN)}
+`;
+          responseText += `\u2022 High: ${formatCurrency(item.HIGH)}
+`;
+          responseText += `\u2022 Low: ${formatCurrency(item.LOW)}
+`;
+          responseText += `\u2022 Close: ${formatCurrency(item.CLOSE)}
+`;
+          responseText += `\u2022 Volume: ${formatCurrency(item.VOLUME)}
+`;
+        });
+        if (ohlcvAnalysis && ohlcvAnalysis.summary) {
+          responseText += `
+
+\u{1F4CA} **Analysis Summary:**
+${ohlcvAnalysis.summary}
+`;
+        }
+        if (ohlcvAnalysis?.price_analysis) {
+          const priceAnalysis = ohlcvAnalysis.price_analysis;
+          responseText += `
+\u{1F4B0} **Price Movement:**
+`;
+          responseText += `\u2022 Direction: ${priceAnalysis.direction || "Unknown"}
+`;
+          responseText += `\u2022 Change: ${priceAnalysis.price_change || "N/A"} (${priceAnalysis.change_percent || "N/A"})
+`;
+          responseText += `\u2022 Range: ${priceAnalysis.lowest_price || "N/A"} - ${priceAnalysis.highest_price || "N/A"}
+`;
+        }
+        if (ohlcvAnalysis?.trend_analysis) {
+          const trendAnalysis = ohlcvAnalysis.trend_analysis;
+          responseText += `
+\u{1F4C8} **Trend Analysis:**
+`;
+          responseText += `\u2022 Primary Trend: ${trendAnalysis.primary_trend}
+`;
+          responseText += `\u2022 Trend Strength: ${trendAnalysis.trend_strength}
+`;
+          responseText += `\u2022 Momentum: ${trendAnalysis.momentum}
+`;
+        }
+        if (ohlcvAnalysis?.volume_analysis) {
+          const volumeAnalysis = ohlcvAnalysis.volume_analysis;
+          responseText += `
+\u{1F4CA} **Volume Analysis:**
+`;
+          responseText += `\u2022 Average Volume: ${volumeAnalysis.average_volume || "N/A"}
+`;
+          responseText += `\u2022 Volume Trend: ${volumeAnalysis.volume_trend || "Unknown"}
+`;
+          responseText += `\u2022 Volume Pattern: ${volumeAnalysis.volume_pattern || "Unknown"}
+`;
+        }
+        if (ohlcvAnalysis?.trading_recommendations?.primary_recommendations?.length > 0) {
+          responseText += `
+\u{1F3AF} **Trading Recommendations:**
+`;
+          ohlcvAnalysis.trading_recommendations.primary_recommendations.forEach((rec) => {
+            responseText += `\u2022 ${rec}
+`;
+          });
+        }
+        if (processedRequest.analysisType === "swing_trading" && ohlcvAnalysis?.swing_trading_focus) {
+          responseText += `
+\u26A1 **Swing Trading Insights:**
+`;
+          ohlcvAnalysis.swing_trading_focus.insights?.forEach((insight) => {
+            responseText += `\u2022 ${insight}
+`;
+          });
+        } else if (processedRequest.analysisType === "trend_analysis" && ohlcvAnalysis?.trend_focus) {
+          responseText += `
+\u{1F4C8} **Trend Analysis Insights:**
+`;
+          ohlcvAnalysis.trend_focus.insights?.forEach((insight) => {
+            responseText += `\u2022 ${insight}
+`;
+          });
+        } else if (processedRequest.analysisType === "technical_indicators" && ohlcvAnalysis?.technical_focus) {
+          responseText += `
+\u{1F50D} **Technical Analysis:**
+`;
+          ohlcvAnalysis.technical_focus.insights?.forEach((insight) => {
+            responseText += `\u2022 ${insight}
+`;
+          });
+        }
+        responseText += `
+
+\u{1F4CB} **Data Summary:**
+`;
+        responseText += `\u2022 Total Data Points: ${sortedData.length}
+`;
+        responseText += `\u2022 Timeframe: 1 day intervals
+`;
+        responseText += `\u2022 Analysis Type: ${processedRequest.analysisType}
+`;
+        responseText += `\u2022 Data Source: TokenMetrics Official API
+`;
+      }
+      const result = {
+        success: true,
+        message: `Successfully retrieved ${sortedData.length} daily OHLCV data points`,
+        request_id: requestId,
+        ohlcv_data: sortedData,
+        analysis: ohlcvAnalysis,
+        metadata: {
+          endpoint: "daily-ohlcv",
+          requested_token: processedRequest.symbol || processedRequest.cryptocurrency || processedRequest.token_id,
+          date_range: {
+            start: processedRequest.startDate,
+            end: processedRequest.endDate
+          },
+          analysis_focus: processedRequest.analysisType,
+          pagination: {
+            page: processedRequest.page,
+            limit: processedRequest.limit
+          },
+          data_points: sortedData.length,
+          timeframe: "1 day",
+          api_version: "v2",
+          data_source: "TokenMetrics Official API"
+        },
+        ohlcv_explanation: {
+          OPEN: "Opening price at the start of the day",
+          HIGH: "Highest price during the day",
+          LOW: "Lowest price during the day",
+          CLOSE: "Closing price at the end of the day",
+          VOLUME: "Total trading volume during the day",
+          usage_tips: [
+            "Use for swing trading and medium-term technical analysis",
+            "Daily data is ideal for trend identification and support/resistance levels",
+            "Volume analysis helps confirm breakouts and reversals"
+          ]
+        }
+      };
+      console.log(`[${requestId}] Daily OHLCV analysis completed successfully`);
       console.log(`[${requestId}] Analysis completed successfully`);
       if (callback) {
         await callback({
@@ -15434,542 +12048,551 @@ var getSentimentAction = {
             request_id: requestId,
             data: result,
             metadata: {
-              endpoint: "sentiment",
+              endpoint: "daily-ohlcv",
               data_source: "TokenMetrics Official API",
               api_version: "v2"
             }
           }
         });
       }
-      return true;
+      return createActionResult10({ success: true, text: responseText });
     } catch (error) {
-      console.error("Error in getSentimentAction:", error);
+      console.error("Error in getDailyOhlcv action:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const reqId = generateRequestId();
       if (callback) {
         await callback({
-          text: `\u274C I encountered an error while fetching sentiment data: ${error instanceof Error ? error.message : "Unknown error"}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+          text: `\u274C Error fetching daily OHLCV: ${errorMessage}`,
           content: {
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true
+            troubleshooting: true,
+            request_id: reqId
           }
         });
       }
-      return false;
+      return createActionResult10({
+        success: false,
+        error: errorMessage
+      });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger17.log("\u{1F50D} Validating getSentimentAction (1.x)");
+    elizaLogger11.log("\u{1F50D} Validating getDailyOhlcvAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger17.error("\u274C Validation failed:", error);
+      elizaLogger11.error("\u274C Validation failed:", error);
       return false;
     }
   }
 };
-function analyzeSentimentData(sentimentData, analysisType = "all") {
-  if (!sentimentData || sentimentData.length === 0) {
+function analyzeDailyOhlcvData(ohlcvData, analysisType = "all") {
+  if (!ohlcvData || ohlcvData.length === 0) {
     return {
-      summary: "No sentiment data available for analysis",
-      current_mood: "Unknown",
+      summary: "No daily OHLCV data available for analysis",
+      trend_analysis: "Cannot assess",
       insights: []
     };
   }
-  const sortedData = sentimentData.sort((a, b) => new Date(b.DATE || b.TIMESTAMP).getTime() - new Date(a.DATE || a.TIMESTAMP).getTime());
-  const currentSentiment = getCurrentSentimentAnalysis(sortedData);
-  const trendAnalysis = analyzeSentimentTrends(sortedData);
-  const sourceAnalysis = analyzeSentimentSources(sortedData);
-  const extremesAnalysis = analyzeExtremes(sortedData);
-  let focusedAnalysis = {};
-  switch (analysisType) {
-    case "market_mood":
-      focusedAnalysis = {
-        market_mood_focus: {
-          emotional_indicators: analyzeEmotionalIndicators(sortedData),
-          mood_shifts: identifyMoodShifts(sortedData),
-          market_psychology: assessMarketPsychology(currentSentiment, trendAnalysis),
-          mood_insights: [
-            `\u{1F60A} Current mood: ${currentSentiment.overall_mood}`,
-            `\u{1F4CA} Sentiment strength: ${currentSentiment.sentiment_strength}`,
-            `\u{1F504} Mood trend: ${trendAnalysis.trend_direction}`
-          ]
-        }
-      };
-      break;
-    case "social_trends":
-      focusedAnalysis = {
-        social_trends_focus: {
-          viral_content: identifyViralContent(sortedData),
-          platform_comparison: comparePlatforms(sourceAnalysis),
-          trending_topics: extractTrendingTopics(sortedData),
-          social_insights: [
-            `\u{1F4F1} Twitter sentiment: ${currentSentiment.twitter_sentiment}`,
-            `\u{1F534} Reddit sentiment: ${currentSentiment.reddit_sentiment}`,
-            `\u{1F525} Social momentum: ${trendAnalysis.social_momentum || "Neutral"}`
-          ]
-        }
-      };
-      break;
-    case "news_impact":
-      focusedAnalysis = {
-        news_impact_focus: {
-          media_coverage: analyzeMediaCoverage(sortedData),
-          news_correlation: analyzeNewsCorrelation(sortedData),
-          impact_assessment: assessNewsImpact(currentSentiment, sourceAnalysis),
-          news_insights: [
-            `\u{1F4F0} News sentiment: ${currentSentiment.news_sentiment}`,
-            `\u{1F4C8} Media impact: ${sourceAnalysis.news_influence || "Moderate"}`,
-            `\u{1F3AF} Coverage tone: ${sourceAnalysis.coverage_tone || "Neutral"}`
-          ]
-        }
-      };
-      break;
-  }
+  const sortedData = ohlcvData.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
+  const priceAnalysis = analyzeDailyPriceMovement(sortedData);
+  const volumeAnalysis = analyzeDailyVolumePatterns(sortedData);
+  const technicalAnalysis = analyzeTechnicalIndicators(sortedData);
+  const trendAnalysis = analyzeDailyTrend(sortedData);
+  const supportResistanceAnalysis = analyzeSupportResistance(sortedData);
+  const insights = generateDailyInsights(priceAnalysis, volumeAnalysis, technicalAnalysis, trendAnalysis);
   return {
-    summary: `Market sentiment shows ${currentSentiment.overall_mood} mood with ${trendAnalysis.trend_direction} trend over recent periods`,
-    analysis_type: analysisType,
-    current_sentiment: currentSentiment,
+    summary: `Daily analysis of ${sortedData.length} days shows ${trendAnalysis.primary_trend} trend with ${priceAnalysis.volatility_level} volatility`,
+    price_analysis: priceAnalysis,
+    volume_analysis: volumeAnalysis,
+    technical_analysis: technicalAnalysis,
     trend_analysis: trendAnalysis,
-    source_analysis: sourceAnalysis,
-    extremes_analysis: extremesAnalysis,
-    insights: generateSentimentInsights(currentSentiment, trendAnalysis, sourceAnalysis, extremesAnalysis),
-    trading_implications: generateTradingImplications(currentSentiment, trendAnalysis),
-    contrarian_analysis: generateContrarianAnalysis(currentSentiment, trendAnalysis),
-    ...focusedAnalysis,
+    support_resistance: supportResistanceAnalysis,
+    insights,
+    trading_recommendations: generateDailyTradingRecommendations(trendAnalysis, technicalAnalysis, volumeAnalysis),
+    investment_signals: generateInvestmentSignals(priceAnalysis, trendAnalysis, technicalAnalysis),
     data_quality: {
-      source: "TokenMetrics Sentiment Engine",
-      data_points: sentimentData.length,
-      sources_covered: ["Twitter/X", "Reddit", "News Media"],
-      time_coverage: calculateTimeCoverage(sortedData),
-      reliability: "High - Multi-source social and news sentiment"
+      source: "TokenMetrics Official API",
+      timeframe: "1 day",
+      data_points: sortedData.length,
+      date_range: `${sortedData[0]?.DATE || "Unknown"} to ${sortedData[sortedData.length - 1]?.DATE || "Unknown"}`,
+      completeness: calculateDailyDataCompleteness(sortedData)
     }
   };
 }
-function getCurrentSentimentAnalysis(sortedData) {
-  const latest = sortedData[sortedData.length - 1];
-  if (!latest) {
-    return { overall_mood: "Unknown", score: 0 };
-  }
-  const overallScore = latest.SENTIMENT_SCORE || 0;
-  const twitterScore = latest.TWITTER_SENTIMENT || 0;
-  const redditScore = latest.REDDIT_SENTIMENT || 0;
-  const newsScore = latest.NEWS_SENTIMENT || 0;
-  let overallMood;
-  if (overallScore >= 60) overallMood = "Very Bullish";
-  else if (overallScore >= 40) overallMood = "Bullish";
-  else if (overallScore >= 20) overallMood = "Moderately Bullish";
-  else if (overallScore >= -20) overallMood = "Neutral";
-  else if (overallScore >= -40) overallMood = "Moderately Bearish";
-  else if (overallScore >= -60) overallMood = "Bearish";
-  else overallMood = "Very Bearish";
-  const sourceScores = [twitterScore, redditScore, newsScore].filter((score) => score !== 0);
-  const sourceAgreement = calculateSourceAgreement(sourceScores);
+function analyzeDailyPriceMovement(data) {
+  if (data.length < 2) return { change: 0, change_percent: 0 };
+  const firstPrice = data[0].OPEN;
+  const lastPrice = data[data.length - 1].CLOSE;
+  const highestPrice = Math.max(...data.map((d) => d.HIGH));
+  const lowestPrice = Math.min(...data.map((d) => d.LOW));
+  const priceChange = lastPrice - firstPrice;
+  const changePercent = priceChange / firstPrice * 100;
+  const priceRange = highestPrice - lowestPrice;
+  const rangePercent = priceRange / firstPrice * 100;
+  const dailyReturns = data.slice(1).map(
+    (day, i) => (day.CLOSE - data[i].CLOSE) / data[i].CLOSE * 100
+  );
+  const avgDailyReturn = dailyReturns.reduce((sum, ret) => sum + ret, 0) / dailyReturns.length;
+  const volatility = Math.sqrt(dailyReturns.reduce((sum, ret) => sum + Math.pow(ret - avgDailyReturn, 2), 0) / (dailyReturns.length - 1));
+  let volatilityLevel;
+  if (volatility > 8) volatilityLevel = "Very High";
+  else if (volatility > 5) volatilityLevel = "High";
+  else if (volatility > 3) volatilityLevel = "Moderate";
+  else if (volatility > 1.5) volatilityLevel = "Low";
+  else volatilityLevel = "Very Low";
   return {
-    overall_mood: overallMood,
-    overall_score: overallScore,
-    twitter_sentiment: twitterScore,
-    reddit_sentiment: redditScore,
-    news_sentiment: newsScore,
-    date: latest.DATE,
-    source_agreement: sourceAgreement,
-    sentiment_strength: Math.abs(overallScore),
-    confidence_level: assessConfidenceLevel2(sourceAgreement, sourceScores.length)
+    start_price: formatCurrency(firstPrice),
+    end_price: formatCurrency(lastPrice),
+    price_change: formatCurrency(priceChange),
+    change_percent: formatPercentage(changePercent),
+    highest_price: formatCurrency(highestPrice),
+    lowest_price: formatCurrency(lowestPrice),
+    price_range: formatCurrency(priceRange),
+    range_percent: formatPercentage(rangePercent),
+    daily_volatility: formatPercentage(volatility),
+    volatility_level: volatilityLevel,
+    direction: priceChange > 0 ? "Bullish" : priceChange < 0 ? "Bearish" : "Sideways",
+    momentum: calculateMomentum(data)
   };
 }
-function analyzeSentimentTrends(sortedData) {
-  if (sortedData.length < 10) {
-    return { trend_direction: "Insufficient data" };
-  }
-  const recentData = sortedData.slice(-24);
-  const earlierData = sortedData.slice(-48, -24);
-  const recentAvg = calculateAverageSentiment(recentData);
-  const earlierAvg = calculateAverageSentiment(earlierData);
-  const trendChange = recentAvg - earlierAvg;
-  let trendDirection;
-  if (trendChange > 10) trendDirection = "Strongly Improving";
-  else if (trendChange > 5) trendDirection = "Improving";
-  else if (trendChange > -5) trendDirection = "Stable";
-  else if (trendChange > -10) trendDirection = "Declining";
-  else trendDirection = "Strongly Declining";
-  const trendConsistency = calculateTrendConsistency(recentData);
-  const volatility = calculateSentimentVolatility(recentData);
+function analyzeDailyVolumePatterns(data) {
+  const volumes = data.map((d) => d.VOLUME).filter((v) => v > 0);
+  if (volumes.length === 0) return { average_volume: 0, pattern: "No data" };
+  const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+  const maxVolume = Math.max(...volumes);
+  const minVolume = Math.min(...volumes);
+  const priceChanges = data.slice(1).map((day, i) => day.CLOSE - data[i].CLOSE);
+  const volumePriceCorrelation = calculateCorrelation(volumes.slice(1), priceChanges);
+  const recentVolume = volumes.slice(-7).reduce((sum, vol) => sum + vol, 0) / 7;
+  const earlierVolume = volumes.slice(-14, -7).reduce((sum, vol) => sum + vol, 0) / 7;
+  const volumeTrend = recentVolume > earlierVolume * 1.1 ? "Increasing" : recentVolume < earlierVolume * 0.9 ? "Decreasing" : "Stable";
   return {
-    trend_direction: trendDirection,
-    trend_change: trendChange.toFixed(1),
-    trend_consistency: trendConsistency,
-    sentiment_volatility: volatility,
-    recent_average: recentAvg.toFixed(1),
-    earlier_average: earlierAvg.toFixed(1),
-    momentum: assessMomentum(recentData)
+    average_volume: formatCurrency(avgVolume),
+    max_volume: formatCurrency(maxVolume),
+    min_volume: formatCurrency(minVolume),
+    volume_trend: volumeTrend,
+    volume_price_correlation: volumePriceCorrelation.toFixed(3),
+    volume_pattern: classifyVolumePattern(volumes),
+    volume_confirmation: analyzeVolumeConfirmation(data)
   };
 }
-function analyzeSentimentSources(sortedData) {
-  const latest = sortedData[sortedData.length - 1];
-  if (!latest) {
-    return { source_breakdown: "No data available" };
-  }
-  const twitterScore = latest.TWITTER_SENTIMENT || 0;
-  const redditScore = latest.REDDIT_SENTIMENT || 0;
-  const newsScore = latest.NEWS_SENTIMENT || 0;
-  const sourceRankings = [
-    { source: "Twitter/X", score: twitterScore },
-    { source: "Reddit", score: redditScore },
-    { source: "News", score: newsScore }
-  ].sort((a, b) => b.score - a.score);
-  const sourceDivergence = calculateSourceDivergence([twitterScore, redditScore, newsScore]);
+function analyzeTechnicalIndicators(data) {
+  if (data.length < 20) return { status: "Insufficient data for technical analysis" };
+  const closes = data.map((d) => d.CLOSE);
+  const sma20 = calculateSMA(closes, 20);
+  const sma50 = calculateSMA(closes, 50);
+  const currentPrice = closes[closes.length - 1];
+  const rsi = calculateRSI(closes, 14);
+  const ema12 = calculateEMA(closes, 12);
+  const ema26 = calculateEMA(closes, 26);
+  const macd = ema12[ema12.length - 1] - ema26[ema26.length - 1];
   return {
-    most_bullish_source: sourceRankings[0].source,
-    most_bearish_source: sourceRankings[2].source,
-    source_rankings: sourceRankings,
-    source_divergence: sourceDivergence,
-    consensus_level: sourceDivergence < 20 ? "High" : sourceDivergence < 40 ? "Medium" : "Low",
-    source_analysis: {
-      twitter_sentiment: `${twitterScore} - ${interpretSentimentScore(twitterScore)}`,
-      reddit_sentiment: `${redditScore} - ${interpretSentimentScore(redditScore)}`,
-      news_sentiment: `${newsScore} - ${interpretSentimentScore(newsScore)}`
-    }
-  };
-}
-function analyzeExtremes(sortedData) {
-  const sentimentScores = sortedData.map((item) => item.SENTIMENT_SCORE).filter((score) => score !== null && score !== void 0);
-  if (sentimentScores.length === 0) {
-    return { status: "No sentiment scores available" };
-  }
-  const maxSentiment = Math.max(...sentimentScores);
-  const minSentiment = Math.min(...sentimentScores);
-  const currentSentiment = sentimentScores[sentimentScores.length - 1];
-  const veryBullishPeriods = sentimentScores.filter((score) => score > 70).length;
-  const veryBearishPeriods = sentimentScores.filter((score) => score < -70).length;
-  const sentimentRange = maxSentiment - minSentiment;
-  const relativePosition = sentimentRange > 0 ? (currentSentiment - minSentiment) / sentimentRange * 100 : 50;
-  return {
-    max_sentiment: maxSentiment,
-    min_sentiment: minSentiment,
-    current_sentiment: currentSentiment,
-    sentiment_range: sentimentRange,
-    relative_position: `${relativePosition.toFixed(1)}%`,
-    extreme_periods: {
-      very_bullish_periods: veryBullishPeriods,
-      very_bearish_periods: veryBearishPeriods,
-      total_periods: sentimentScores.length
+    moving_averages: {
+      sma_20: formatCurrency(sma20),
+      sma_50: formatCurrency(sma50),
+      price_vs_sma20: currentPrice > sma20 ? "Above" : "Below",
+      price_vs_sma50: currentPrice > sma50 ? "Above" : "Below",
+      ma_alignment: sma20 > sma50 ? "Bullish" : "Bearish"
     },
-    extremes_assessment: assessExtremesSignificance(veryBullishPeriods, veryBearishPeriods, sentimentScores.length),
-    contrarian_signal: generateContrarianSignal(currentSentiment, maxSentiment, minSentiment)
+    momentum_indicators: {
+      rsi: rsi.toFixed(2),
+      rsi_signal: interpretRSI(rsi),
+      macd: macd.toFixed(4),
+      macd_signal: macd > 0 ? "Bullish" : "Bearish"
+    },
+    technical_bias: determineTechnicalBias(currentPrice, sma20, sma50, rsi)
   };
 }
-function generateContrarianAnalysis(currentSentiment, trendAnalysis) {
-  const score = currentSentiment.overall_score;
-  const strength = currentSentiment.sentiment_strength;
-  let contrarianSignal = "Neutral";
-  let reasoning = [];
-  if (score > 70) {
-    contrarianSignal = "Bearish";
-    reasoning.push("Extremely bullish sentiment may indicate market top");
-    reasoning.push("High optimism levels historically precede corrections");
-  } else if (score < -70) {
-    contrarianSignal = "Bullish";
-    reasoning.push("Extremely bearish sentiment may indicate market bottom");
-    reasoning.push("High pessimism levels often precede recoveries");
-  } else if (score > 50 && trendAnalysis.trend_direction === "Strongly Improving") {
-    contrarianSignal = "Caution";
-    reasoning.push("Rapidly improving sentiment approaching extreme levels");
-  } else if (score < -50 && trendAnalysis.trend_direction === "Strongly Declining") {
-    contrarianSignal = "Opportunity";
-    reasoning.push("Rapidly declining sentiment approaching extreme levels");
+function analyzeDailyTrend(data) {
+  if (data.length < 2) return { primary_trend: "Insufficient Data" };
+  const closes = data.map((d) => d.CLOSE);
+  const highs = data.map((d) => d.HIGH);
+  const lows = data.map((d) => d.LOW);
+  let shortTrend, mediumTrend, longTrend;
+  if (closes.length >= 3) {
+    shortTrend = identifyTrend(closes.slice(-3));
+  } else {
+    shortTrend = identifyTrend(closes);
+  }
+  if (closes.length >= 5) {
+    mediumTrend = identifyTrend(closes.slice(-5));
+  } else {
+    mediumTrend = shortTrend;
+  }
+  longTrend = identifyTrend(closes);
+  const analysisWindow = Math.min(10, highs.length);
+  const higherHighs = countHigherHighs(highs.slice(-analysisWindow));
+  const higherLows = countHigherLows(lows.slice(-analysisWindow));
+  let primaryTrend;
+  if (data.length >= 5) {
+    if (shortTrend === "Up" && mediumTrend === "Up") primaryTrend = "Strong Uptrend";
+    else if (shortTrend === "Down" && mediumTrend === "Down") primaryTrend = "Strong Downtrend";
+    else if (shortTrend === "Up") primaryTrend = "Uptrend";
+    else if (shortTrend === "Down") primaryTrend = "Downtrend";
+    else primaryTrend = "Sideways";
+  } else {
+    if (shortTrend === "Up") primaryTrend = "Short-term Uptrend";
+    else if (shortTrend === "Down") primaryTrend = "Short-term Downtrend";
+    else primaryTrend = "Sideways";
   }
   return {
-    contrarian_signal: contrarianSignal,
-    reasoning,
-    sentiment_extreme_level: strength > 60 ? "High" : strength > 40 ? "Medium" : "Low",
-    reversal_probability: calculateReversalProbability(score, strength, trendAnalysis),
-    recommended_action: generateContrarianAction(contrarianSignal, strength)
+    primary_trend: primaryTrend,
+    short_term_trend: shortTrend,
+    medium_term_trend: mediumTrend,
+    long_term_trend: longTrend,
+    trend_strength: calculateTrendStrength(closes),
+    higher_highs: higherHighs,
+    higher_lows: higherLows,
+    trend_consistency: analyzeTrendConsistency(closes),
+    momentum: calculateMomentumFromTrend(closes)
   };
 }
-function generateSentimentInsights(currentSentiment, trendAnalysis, sourceAnalysis, extremesAnalysis) {
+function analyzeSupportResistance(data) {
+  if (data.length < 10) return { levels: "Insufficient data" };
+  const highs = data.map((d) => d.HIGH);
+  const lows = data.map((d) => d.LOW);
+  const closes = data.map((d) => d.CLOSE);
+  const resistanceLevels = findResistanceLevels(highs);
+  const supportLevels = findSupportLevels(lows);
+  const currentPrice = closes[closes.length - 1];
+  return {
+    nearest_resistance: findNearestLevel(currentPrice, resistanceLevels, "resistance"),
+    nearest_support: findNearestLevel(currentPrice, supportLevels, "support"),
+    key_levels: {
+      major_resistance: formatCurrency(Math.max(...resistanceLevels)),
+      major_support: formatCurrency(Math.min(...supportLevels))
+    },
+    level_strength: "Based on price action and volume confirmation"
+  };
+}
+function generateDailyInsights(priceAnalysis, volumeAnalysis, technicalAnalysis, trendAnalysis) {
   const insights = [];
-  if (currentSentiment.overall_mood.includes("Very")) {
-    insights.push(`${currentSentiment.overall_mood} sentiment at ${currentSentiment.overall_score} suggests extreme market emotions`);
+  const changePercent = parseFloat(priceAnalysis.change_percent);
+  if (Math.abs(changePercent) > 20) {
+    insights.push(`Significant price movement of ${priceAnalysis.change_percent} over the analyzed period indicates strong market sentiment`);
   }
-  if (trendAnalysis.trend_direction === "Strongly Improving" || trendAnalysis.trend_direction === "Strongly Declining") {
-    insights.push(`Sentiment is ${trendAnalysis.trend_direction.toLowerCase()} with ${Math.abs(parseFloat(trendAnalysis.trend_change))} point change`);
+  if (trendAnalysis.primary_trend === "Strong Uptrend") {
+    insights.push("Strong uptrend with multiple timeframe confirmation suggests continued bullish momentum");
+  } else if (trendAnalysis.primary_trend === "Strong Downtrend") {
+    insights.push("Strong downtrend across timeframes indicates sustained selling pressure");
   }
-  if (sourceAnalysis.consensus_level === "Low") {
-    insights.push("Low consensus between Twitter, Reddit, and news sources indicates mixed market signals");
-  } else if (sourceAnalysis.consensus_level === "High") {
-    insights.push("High consensus across all sentiment sources strengthens signal reliability");
+  if (volumeAnalysis.volume_trend === "Increasing" && trendAnalysis.primary_trend.includes("Uptrend")) {
+    insights.push("Increasing volume during uptrend confirms buyer interest and trend sustainability");
+  } else if (volumeAnalysis.volume_trend === "Decreasing" && trendAnalysis.primary_trend.includes("Uptrend")) {
+    insights.push("Decreasing volume during uptrend suggests potential weakening momentum");
   }
-  if (extremesAnalysis.relative_position) {
-    const position = parseFloat(extremesAnalysis.relative_position);
-    if (position > 90) {
-      insights.push("Sentiment near historical highs - potential for mean reversion");
-    } else if (position < 10) {
-      insights.push("Sentiment near historical lows - potential for bounce");
-    }
-  }
-  if (currentSentiment.sentiment_strength > 60) {
-    insights.push("High sentiment strength suggests market may be reaching emotional extreme");
+  if (technicalAnalysis.technical_bias === "Strongly Bullish") {
+    insights.push("Technical indicators align bullishly - price above key moving averages with positive momentum");
+  } else if (technicalAnalysis.technical_bias === "Strongly Bearish") {
+    insights.push("Technical indicators show bearish alignment suggesting continued downside pressure");
   }
   return insights;
 }
-function generateTradingImplications(currentSentiment, trendAnalysis) {
-  const implications = [];
-  let overallBias = "Neutral";
-  if (currentSentiment.overall_mood === "Very Bullish") {
-    implications.push("Extreme bullish sentiment - consider profit-taking or defensive positioning");
-    overallBias = "Cautious";
-  } else if (currentSentiment.overall_mood === "Very Bearish") {
-    implications.push("Extreme bearish sentiment - potential buying opportunity for contrarians");
-    overallBias = "Opportunistic";
-  } else if (currentSentiment.overall_mood === "Bullish") {
-    implications.push("Bullish sentiment supports risk-on positioning");
-    overallBias = "Bullish";
-  } else if (currentSentiment.overall_mood === "Bearish") {
-    implications.push("Bearish sentiment suggests defensive positioning");
-    overallBias = "Bearish";
+function generateDailyTradingRecommendations(trendAnalysis, technicalAnalysis, volumeAnalysis) {
+  const recommendations = [];
+  let overallBias = "NEUTRAL";
+  if (trendAnalysis.primary_trend === "Strong Uptrend") {
+    recommendations.push("Consider long positions on pullbacks to support levels");
+    overallBias = "BULLISH";
+  } else if (trendAnalysis.primary_trend === "Strong Downtrend") {
+    recommendations.push("Consider short positions or avoid longs until trend reversal");
+    overallBias = "BEARISH";
   }
-  if (trendAnalysis.trend_direction === "Strongly Improving") {
-    implications.push("Rapidly improving sentiment may create momentum for continued upside");
-  } else if (trendAnalysis.trend_direction === "Strongly Declining") {
-    implications.push("Rapidly declining sentiment may signal further downside pressure");
+  if (technicalAnalysis.momentum_indicators?.rsi_signal === "Oversold") {
+    recommendations.push("RSI oversold condition may present buying opportunity");
+  } else if (technicalAnalysis.momentum_indicators?.rsi_signal === "Overbought") {
+    recommendations.push("RSI overbought condition suggests caution for new long positions");
+  }
+  if (volumeAnalysis.volume_trend === "Increasing") {
+    recommendations.push("Increasing volume supports current trend continuation");
   }
   return {
     overall_bias: overallBias,
-    key_implications: implications,
-    sentiment_timing: assessTimingSignals(currentSentiment, trendAnalysis),
-    risk_considerations: [
-      "Sentiment can change rapidly with market events",
-      "Extreme sentiment levels are often temporary",
-      "Combine sentiment with technical and fundamental analysis"
+    recommendations,
+    risk_management: [
+      "Use appropriate position sizing based on volatility",
+      "Set stop losses at key support/resistance levels",
+      "Monitor volume for trend confirmation"
     ]
   };
 }
-function calculateSourceAgreement(sourceScores) {
-  if (sourceScores.length < 2) return "Insufficient data";
-  const maxDifference = Math.max(...sourceScores) - Math.min(...sourceScores);
-  if (maxDifference < 20) return "High Agreement";
-  if (maxDifference < 40) return "Moderate Agreement";
-  return "Low Agreement";
-}
-function assessConfidenceLevel2(agreement, sourceCount) {
-  if (agreement === "High Agreement" && sourceCount >= 3) return "High";
-  if (agreement === "Moderate Agreement" && sourceCount >= 2) return "Medium";
-  return "Low";
-}
-function calculateAverageSentiment(data) {
-  const scores = data.map((item) => item.SENTIMENT_SCORE).filter((score) => score !== null && score !== void 0);
-  return scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
-}
-function calculateTrendConsistency(data) {
-  if (data.length < 5) return "Insufficient data";
-  let consistentDirection = 0;
-  for (let i = 1; i < data.length; i++) {
-    const currentScore = data[i].SENTIMENT_SCORE || 0;
-    const previousScore = data[i - 1].SENTIMENT_SCORE || 0;
-    const direction = currentScore > previousScore ? 1 : currentScore < previousScore ? -1 : 0;
-    if (i > 1) {
-      const prevDirection = data[i - 1].SENTIMENT_SCORE > data[i - 2].SENTIMENT_SCORE ? 1 : data[i - 1].SENTIMENT_SCORE < data[i - 2].SENTIMENT_SCORE ? -1 : 0;
-      if (direction === prevDirection && direction !== 0) {
-        consistentDirection++;
-      }
-    }
+function generateInvestmentSignals(priceAnalysis, trendAnalysis, technicalAnalysis) {
+  let investmentSignal = "HOLD";
+  const signals = [];
+  if (trendAnalysis.long_term_trend === "Up" && technicalAnalysis.technical_bias === "Bullish") {
+    investmentSignal = "BUY";
+    signals.push("Long-term uptrend with positive technical indicators supports accumulation");
+  } else if (trendAnalysis.long_term_trend === "Down" && technicalAnalysis.technical_bias === "Bearish") {
+    investmentSignal = "SELL";
+    signals.push("Long-term downtrend with negative technicals suggests distribution");
   }
-  const consistency = consistentDirection / (data.length - 2) * 100;
-  if (consistency > 70) return "High";
-  if (consistency > 40) return "Medium";
-  return "Low";
+  if (priceAnalysis.volatility_level === "Very High") {
+    signals.push("High volatility suggests using dollar-cost averaging for entries");
+  }
+  return {
+    signal: investmentSignal,
+    confidence: determineSignalConfidence(trendAnalysis, technicalAnalysis),
+    rationale: signals,
+    time_horizon: "Medium to long-term (weeks to months)"
+  };
 }
-function calculateSentimentVolatility(data) {
-  if (data.length < 2) return "Unknown";
-  const scores = data.map((item) => item.SENTIMENT_SCORE || 0);
-  const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-  const variance = scores.reduce((sum, score) => sum + Math.pow(score - avg, 2), 0) / scores.length;
-  const volatility = Math.sqrt(variance);
-  return volatility > 30 ? "High" : volatility > 15 ? "Moderate" : "Low";
-}
-function assessMomentum(data) {
-  if (data.length < 3) return "Unknown";
-  const recent = data.slice(-3);
-  const scores = recent.map((item) => item.SENTIMENT_SCORE);
-  const momentum = scores[2] - scores[0];
-  if (momentum > 10) return "Strong Positive";
-  if (momentum > 5) return "Positive";
-  if (momentum > -5) return "Neutral";
-  if (momentum > -10) return "Negative";
+function calculateMomentum(data) {
+  if (data.length < 5) return "Unknown";
+  const recentClose = data[data.length - 1].CLOSE;
+  const pastClose = data[data.length - 5].CLOSE;
+  const momentum = (recentClose - pastClose) / pastClose * 100;
+  if (momentum > 5) return "Strong Positive";
+  if (momentum > 2) return "Positive";
+  if (momentum > -2) return "Neutral";
+  if (momentum > -5) return "Negative";
   return "Strong Negative";
 }
-function calculateSourceDivergence(sourceScores) {
-  const validScores = sourceScores.filter((score) => score !== 0);
-  if (validScores.length < 2) return 0;
-  const max = Math.max(...validScores);
-  const min = Math.min(...validScores);
-  return max - min;
+function calculateCorrelation(x, y) {
+  const n = Math.min(x.length, y.length);
+  if (n < 2) return 0;
+  const xMean = x.slice(0, n).reduce((sum, val) => sum + val, 0) / n;
+  const yMean = y.slice(0, n).reduce((sum, val) => sum + val, 0) / n;
+  let numerator = 0;
+  let xSumSquares = 0;
+  let ySumSquares = 0;
+  for (let i = 0; i < n; i++) {
+    const xDiff = x[i] - xMean;
+    const yDiff = y[i] - yMean;
+    numerator += xDiff * yDiff;
+    xSumSquares += xDiff * xDiff;
+    ySumSquares += yDiff * yDiff;
+  }
+  const denominator = Math.sqrt(xSumSquares * ySumSquares);
+  return denominator === 0 ? 0 : numerator / denominator;
 }
-function interpretSentimentScore(score) {
-  if (score >= 60) return "Very Bullish";
-  if (score >= 40) return "Bullish";
-  if (score >= 20) return "Moderately Bullish";
-  if (score >= -20) return "Neutral";
-  if (score >= -40) return "Moderately Bearish";
-  if (score >= -60) return "Bearish";
-  return "Very Bearish";
+function calculateSMA(prices, period) {
+  if (prices.length < period) return prices[prices.length - 1];
+  return prices.slice(-period).reduce((sum, price) => sum + price, 0) / period;
 }
-function assessExtremesSignificance(bullishPeriods, bearishPeriods, totalPeriods) {
-  const extremeRatio = (bullishPeriods + bearishPeriods) / totalPeriods;
-  if (extremeRatio > 0.3) return "High - Frequent extreme sentiment periods";
-  if (extremeRatio > 0.15) return "Medium - Occasional extreme sentiment";
-  return "Low - Rare extreme sentiment periods";
+function calculateEMA(prices, period) {
+  const ema = [];
+  const multiplier = 2 / (period + 1);
+  ema[0] = prices[0];
+  for (let i = 1; i < prices.length; i++) {
+    ema[i] = prices[i] * multiplier + ema[i - 1] * (1 - multiplier);
+  }
+  return ema;
 }
-function generateContrarianSignal(current, max, min) {
-  const range = max - min;
-  const position = (current - min) / range;
-  if (position > 0.9) return "Strong Sell Signal";
-  if (position > 0.8) return "Sell Signal";
-  if (position < 0.1) return "Strong Buy Signal";
-  if (position < 0.2) return "Buy Signal";
-  return "No Clear Signal";
+function calculateRSI(prices, period) {
+  if (prices.length < period + 1) return 50;
+  let gains = 0;
+  let losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = prices[i] - prices[i - 1];
+    if (change > 0) gains += change;
+    else losses -= change;
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+  for (let i = period + 1; i < prices.length; i++) {
+    const change = prices[i] - prices[i - 1];
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? -change : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
 }
-function calculateReversalProbability(score, strength, trendAnalysis) {
-  let probability = 0;
-  if (Math.abs(score) > 70) probability += 40;
-  else if (Math.abs(score) > 50) probability += 20;
-  if (strength > 60) probability += 20;
-  else if (strength > 40) probability += 10;
-  if (trendAnalysis.trend_direction.includes("Strongly")) probability += 15;
-  if (probability > 60) return "High";
-  if (probability > 40) return "Medium";
-  if (probability > 20) return "Low";
-  return "Very Low";
+function interpretRSI(rsi) {
+  if (rsi > 70) return "Overbought";
+  if (rsi < 30) return "Oversold";
+  return "Neutral";
 }
-function generateContrarianAction(signal, strength) {
-  if (signal === "Bearish" && strength > 60) return "Consider taking profits or reducing positions";
-  if (signal === "Bullish" && strength > 60) return "Consider accumulating or increasing positions";
-  if (signal === "Caution") return "Monitor closely for signs of sentiment peak";
-  if (signal === "Opportunity") return "Prepare for potential buying opportunity";
-  return "Maintain current positioning";
+function identifyTrend(prices) {
+  if (prices.length < 3) return "Unknown";
+  const firstPrice = prices[0];
+  const lastPrice = prices[prices.length - 1];
+  const change = (lastPrice - firstPrice) / firstPrice;
+  if (change > 0.02) return "Up";
+  if (change < -0.02) return "Down";
+  return "Sideways";
 }
-function calculateTimeCoverage(sortedData) {
-  if (sortedData.length === 0) return "No data";
-  const latest = new Date(sortedData[0].DATE || sortedData[0].TIMESTAMP);
-  const earliest = new Date(sortedData[sortedData.length - 1].DATE || sortedData[sortedData.length - 1].TIMESTAMP);
-  const hoursDiff = Math.abs(latest.getTime() - earliest.getTime()) / (1e3 * 60 * 60);
-  if (hoursDiff < 24) return `${Math.round(hoursDiff)} hours`;
-  if (hoursDiff < 168) return `${Math.round(hoursDiff / 24)} days`;
-  return `${Math.round(hoursDiff / 168)} weeks`;
+function countHigherHighs(highs) {
+  let count = 0;
+  for (let i = 1; i < highs.length; i++) {
+    if (highs[i] > highs[i - 1]) count++;
+  }
+  return count;
 }
-function assessTimingSignals(currentSentiment, trendAnalysis) {
-  const score = currentSentiment.overall_score;
-  const trend = trendAnalysis.trend_direction;
-  if (score > 60 && trend === "Strongly Improving") return "Near-term top possible";
-  if (score < -60 && trend === "Strongly Declining") return "Near-term bottom possible";
-  if (score > 40 && trend === "Improving") return "Uptrend continuation likely";
-  if (score < -40 && trend === "Declining") return "Downtrend continuation likely";
-  return "No clear timing signal";
+function countHigherLows(lows) {
+  let count = 0;
+  for (let i = 1; i < lows.length; i++) {
+    if (lows[i] > lows[i - 1]) count++;
+  }
+  return count;
 }
-function analyzeEmotionalIndicators(sortedData) {
-  const recent = sortedData.slice(0, 5);
-  const avgSentiment = recent.reduce((sum, item) => sum + (item.SENTIMENT_SCORE || 0), 0) / recent.length;
-  return {
-    emotional_state: avgSentiment > 60 ? "Euphoric" : avgSentiment > 20 ? "Optimistic" : avgSentiment > -20 ? "Neutral" : avgSentiment > -60 ? "Pessimistic" : "Fearful",
-    volatility: calculateSentimentVolatility(recent),
-    stability: recent.length > 3 ? "Stable" : "Insufficient data"
-  };
+function calculateTrendStrength(closes) {
+  if (closes.length < 2) return "Insufficient Data";
+  const firstPrice = closes[0];
+  const lastPrice = closes[closes.length - 1];
+  const change = Math.abs((lastPrice - firstPrice) / firstPrice);
+  if (closes.length >= 10) {
+    if (change > 0.5) return "Very Strong";
+    if (change > 0.3) return "Strong";
+    if (change > 0.1) return "Moderate";
+    return "Weak";
+  } else {
+    if (change > 0.2) return "Strong";
+    if (change > 0.05) return "Moderate";
+    if (change > 0.01) return "Weak";
+    return "Very Weak";
+  }
 }
-function identifyMoodShifts(sortedData) {
-  const shifts = [];
-  for (let i = 1; i < Math.min(sortedData.length, 10); i++) {
-    const current = sortedData[i - 1].SENTIMENT_SCORE || 0;
-    const previous = sortedData[i].SENTIMENT_SCORE || 0;
-    const change = current - previous;
-    if (Math.abs(change) > 20) {
-      shifts.push({
-        timestamp: sortedData[i - 1].DATE || sortedData[i - 1].TIMESTAMP,
-        change: change > 0 ? "Positive shift" : "Negative shift",
-        magnitude: Math.abs(change)
-      });
+function analyzeTrendConsistency(closes) {
+  if (closes.length < 2) return "Insufficient Data";
+  let directionalChanges = 0;
+  let previousDirection = null;
+  for (let i = 1; i < closes.length; i++) {
+    const currentDirection = closes[i] > closes[i - 1] ? "up" : "down";
+    if (previousDirection && currentDirection !== previousDirection) {
+      directionalChanges++;
+    }
+    previousDirection = currentDirection;
+  }
+  const consistency = 1 - directionalChanges / (closes.length - 1);
+  if (consistency > 0.8) return "Very Consistent";
+  if (consistency > 0.6) return "Consistent";
+  if (consistency > 0.4) return "Moderate";
+  return "Inconsistent";
+}
+function calculateMomentumFromTrend(closes) {
+  if (closes.length < 2) return "Unknown";
+  const recentChange = closes[closes.length - 1] - closes[closes.length - 2];
+  const recentPercent = recentChange / closes[closes.length - 2] * 100;
+  if (closes.length >= 3) {
+    const previousChange = closes[closes.length - 2] - closes[closes.length - 3];
+    const previousPercent = previousChange / closes[closes.length - 3] * 100;
+    if (recentPercent > previousPercent && recentPercent > 0) return "Accelerating Upward";
+    if (recentPercent < previousPercent && recentPercent < 0) return "Accelerating Downward";
+    if (recentPercent > 0) return "Positive";
+    if (recentPercent < 0) return "Negative";
+    return "Neutral";
+  } else {
+    if (recentPercent > 2) return "Strong Positive";
+    if (recentPercent > 0) return "Positive";
+    if (recentPercent < -2) return "Strong Negative";
+    if (recentPercent < 0) return "Negative";
+    return "Neutral";
+  }
+}
+function findResistanceLevels(highs) {
+  const levels = [];
+  for (let i = 1; i < highs.length - 1; i++) {
+    if (highs[i] > highs[i - 1] && highs[i] > highs[i + 1]) {
+      levels.push(highs[i]);
     }
   }
-  return shifts.slice(0, 3);
+  return levels.sort((a, b) => b - a).slice(0, 3);
 }
-function assessMarketPsychology(currentSentiment, trendAnalysis) {
-  return {
-    psychological_state: currentSentiment.overall_mood,
-    crowd_behavior: trendAnalysis.trend_direction === "Improving" ? "FOMO building" : trendAnalysis.trend_direction === "Declining" ? "Fear spreading" : "Indecision",
-    market_phase: currentSentiment.sentiment_score > 70 ? "Euphoria" : currentSentiment.sentiment_score > 30 ? "Optimism" : currentSentiment.sentiment_score > -30 ? "Uncertainty" : currentSentiment.sentiment_score > -70 ? "Pessimism" : "Panic"
-  };
+function findSupportLevels(lows) {
+  const levels = [];
+  for (let i = 1; i < lows.length - 1; i++) {
+    if (lows[i] < lows[i - 1] && lows[i] < lows[i + 1]) {
+      levels.push(lows[i]);
+    }
+  }
+  return levels.sort((a, b) => a - b).slice(0, 3);
 }
-function identifyViralContent(sortedData) {
-  return {
-    viral_indicators: "High engagement detected",
-    trending_topics: ["Bitcoin", "Ethereum", "Market Analysis"],
-    social_momentum: "Building",
-    engagement_level: "High"
-  };
+function findNearestLevel(currentPrice, levels, type) {
+  if (levels.length === 0) return "None identified";
+  const nearestLevel = levels.reduce((nearest, level) => {
+    return Math.abs(level - currentPrice) < Math.abs(nearest - currentPrice) ? level : nearest;
+  });
+  const distance = (nearestLevel - currentPrice) / currentPrice * 100;
+  return `${formatCurrency(nearestLevel)} (${distance.toFixed(2)}% ${distance > 0 ? "above" : "below"})`;
 }
-function comparePlatforms(sourceAnalysis) {
-  return {
-    twitter_vs_reddit: "Twitter more bullish",
-    news_vs_social: "Social media leading sentiment",
-    platform_correlation: "Moderate alignment",
-    dominant_platform: "Twitter"
-  };
+function determineTechnicalBias(price, sma20, sma50, rsi) {
+  let score = 0;
+  if (price > sma20) score += 1;
+  if (price > sma50) score += 1;
+  if (sma20 > sma50) score += 1;
+  if (rsi > 50) score += 1;
+  if (score >= 3) return "Bullish";
+  if (score <= 1) return "Bearish";
+  return "Neutral";
 }
-function extractTrendingTopics(sortedData) {
-  return ["Bitcoin ETF", "Ethereum Upgrade", "Market Volatility", "Regulatory News"];
+function classifyVolumePattern(volumes) {
+  const recentAvg = volumes.slice(-5).reduce((sum, vol) => sum + vol, 0) / 5;
+  const overallAvg = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+  if (recentAvg > overallAvg * 1.5) return "High Volume Spike";
+  if (recentAvg > overallAvg * 1.2) return "Above Average";
+  if (recentAvg < overallAvg * 0.8) return "Below Average";
+  return "Normal";
 }
-function analyzeMediaCoverage(sortedData) {
-  return {
-    coverage_volume: "High",
-    coverage_tone: "Mixed",
-    media_sentiment: "Cautiously optimistic",
-    key_themes: ["Regulation", "Adoption", "Technology"]
-  };
+function analyzeVolumeConfirmation(data) {
+  if (data.length < 5) return "Insufficient data";
+  const recentDays = data.slice(-5);
+  let confirmedMoves = 0;
+  for (let i = 1; i < recentDays.length; i++) {
+    const priceChange = recentDays[i].CLOSE - recentDays[i - 1].CLOSE;
+    const volumeIncrease = recentDays[i].VOLUME > recentDays[i - 1].VOLUME;
+    if (Math.abs(priceChange) > 0 && volumeIncrease) {
+      confirmedMoves++;
+    }
+  }
+  const confirmationRate = confirmedMoves / (recentDays.length - 1);
+  if (confirmationRate > 0.6) return "Strong Confirmation";
+  if (confirmationRate > 0.4) return "Moderate Confirmation";
+  return "Weak Confirmation";
 }
-function analyzeNewsCorrelation(sortedData) {
-  return {
-    news_sentiment_correlation: "Strong",
-    price_correlation: "Moderate",
-    leading_indicator: "News leads social sentiment",
-    lag_time: "2-4 hours"
-  };
+function calculateDailyDataCompleteness(data) {
+  const requiredFields = ["OPEN", "HIGH", "LOW", "CLOSE", "VOLUME"];
+  let completeness = 0;
+  data.forEach((item) => {
+    const presentFields = requiredFields.filter((field) => item[field] !== null && item[field] !== void 0);
+    completeness += presentFields.length / requiredFields.length;
+  });
+  const completenessPercent = completeness / data.length * 100;
+  return `${completenessPercent.toFixed(1)}%`;
 }
-function assessNewsImpact(currentSentiment, sourceAnalysis) {
-  return {
-    impact_level: "Significant",
-    news_influence: sourceAnalysis.news_influence || "Moderate",
-    coverage_tone: sourceAnalysis.coverage_tone || "Neutral",
-    market_moving_potential: "High"
-  };
+function determineSignalConfidence(trendAnalysis, technicalAnalysis) {
+  let confidence = 0;
+  if (trendAnalysis.trend_consistency === "Very Consistent") confidence += 2;
+  else if (trendAnalysis.trend_consistency === "Consistent") confidence += 1;
+  if (technicalAnalysis.technical_bias === "Bullish" || technicalAnalysis.technical_bias === "Bearish") {
+    confidence += 1;
+  }
+  if (trendAnalysis.trend_strength === "Strong" || trendAnalysis.trend_strength === "Very Strong") {
+    confidence += 1;
+  }
+  if (confidence >= 3) return "High";
+  if (confidence >= 2) return "Moderate";
+  return "Low";
 }
 
 // src/actions/getTmaiAction.ts
 import {
-  elizaLogger as elizaLogger18
+  elizaLogger as elizaLogger12,
+  createActionResult as createActionResult11
 } from "@elizaos/core";
-var TmaiRequestSchema = z.object({
-  cryptocurrency: z.string().optional().describe("Name or symbol of the cryptocurrency"),
-  token_id: z.number().optional().describe("Specific token ID if known"),
-  symbol: z.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
-  limit: z.number().min(1).max(100).optional().describe("Number of TMAI data points to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["ai_insights", "price_predictions", "market_analysis", "all"]).optional().describe("Type of TMAI analysis to focus on")
+var TmaiRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of TMAI data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["ai_insights", "price_predictions", "market_analysis", "all"]).optional().describe("Type of TMAI analysis to focus on")
 });
 var TMAI_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting TMAI (TokenMetrics AI) analysis requests from natural language.
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
 The user wants to get AI-powered insights and predictions from TokenMetrics' proprietary AI system. Extract the following information:
 
 1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
    - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
    - Can be a specific token or general request
+   - EXTRACTION RULE: Use the EXACT cryptocurrency mentioned by the user
 
 2. **token_id** (optional): Specific token ID if mentioned
    - Usually a number like "3375" for Bitcoin
@@ -15987,11 +12610,11 @@ The user wants to get AI-powered insights and predictions from TokenMetrics' pro
    - "market_analysis" - focus on AI market trend analysis
    - "all" - comprehensive TMAI analysis across all categories
 
-Examples:
-- "Get TMAI analysis for Bitcoin" \u2192 {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me AI insights for ETH" \u2192 {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "ai_insights"}
-- "AI price predictions for crypto" \u2192 {analysisType: "price_predictions"}
-- "TokenMetrics AI market analysis" \u2192 {analysisType: "market_analysis"}
+Examples of request patterns (but extract the actual token from user's message):
+- "Get TMAI analysis for [TOKEN]" \u2192 extract [TOKEN]
+- "Show me AI insights for [TOKEN]" \u2192 extract [TOKEN]
+- "AI price predictions for [TOKEN]" \u2192 extract [TOKEN]
+- "TokenMetrics AI market analysis" \u2192 general analysis
 
 Extract the request details from the user's message.
 `;
@@ -16012,28 +12635,28 @@ var getTmaiAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get TMAI analysis for Bitcoin"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve TokenMetrics AI analysis and insights for Bitcoin.",
+          text: "I'll get the TMAI (TokenMetrics AI) analysis for Bitcoin.",
           action: "GET_TMAI_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Show me AI insights for the crypto market"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll get comprehensive AI-powered market insights from TokenMetrics.",
           action: "GET_TMAI_TOKENMETRICS"
@@ -16042,13 +12665,13 @@ var getTmaiAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "AI price predictions for Ethereum"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll retrieve AI-powered price predictions for Ethereum from TokenMetrics.",
           action: "GET_TMAI_TOKENMETRICS"
@@ -16063,14 +12686,22 @@ var getTmaiAction = {
       if (!state) {
         state = await runtime.composeState(message);
       }
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = TMAI_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
       const tmaiRequest = await extractTokenMetricsRequest(
         runtime,
         message,
         state,
-        TMAI_EXTRACTION_TEMPLATE,
+        enhancedTemplate,
         TmaiRequestSchema,
         requestId
       );
+      elizaLogger12.log("\u{1F3AF} AI Extracted TMAI request:", tmaiRequest);
+      elizaLogger12.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${tmaiRequest?.cryptocurrency}"`);
       console.log(`[${requestId}] Extracted request:`, tmaiRequest);
       const processedRequest = {
         cryptocurrency: tmaiRequest.cryptocurrency,
@@ -16167,37 +12798,50 @@ var getTmaiAction = {
           }
         });
       }
-      return true;
+      return createActionResult11({
+        success: true,
+        text: `\u{1F916} **TMAI Analysis Results**
+
+${tmaiData && tmaiData.length > 0 ? `Found ${tmaiData.length} TMAI data points` : "No TMAI data available"}
+
+\u{1F3AF} **AI Insights**: ${tmaiAnalysis?.ai_recommendation || "No recommendation available"}
+\u{1F4C8} **Analysis Type**: ${tmaiAnalysis?.analysis_type || "General"}
+\u{1F4C5} **Last Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+
+\u{1F4CA} **Data Source**: TokenMetrics TMAI API`,
+        data: {
+          tmai_data: tmaiData,
+          analysis: tmaiAnalysis,
+          source: "TokenMetrics TMAI API",
+          request_id: requestId
+        }
+      });
     } catch (error) {
       console.error("Error in getTmaiAction:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       if (callback) {
         await callback({
-          text: `\u274C I encountered an error while fetching TMAI analysis: ${error instanceof Error ? error.message : "Unknown error"}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+          text: `\u274C Error fetching TMAI analysis: ${errorMessage}`,
           content: {
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: errorMessage,
             error_type: error instanceof Error ? error.constructor.name : "Unknown",
             troubleshooting: true
           }
         });
       }
-      return false;
+      return createActionResult11({
+        success: false,
+        error: errorMessage
+      });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger18.log("\u{1F50D} Validating getTmaiAction (1.x)");
+    elizaLogger12.log("\u{1F50D} Validating getTmaiAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger18.error("\u274C Validation failed:", error);
+      elizaLogger12.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -16428,18 +13072,16 @@ function generateRiskAssessment2(tmaiData, confidenceAnalysis) {
 
 // src/actions/getTokensAction.ts
 import {
-  elizaLogger as elizaLogger19
+  elizaLogger as elizaLogger13,
+  createActionResult as createActionResult12
 } from "@elizaos/core";
-var tokensTemplate = `# Task: Extract Token Search Request Information
+var tokensTemplate = `Extract token search request information from the message.
 
 IMPORTANT: This is for TOKEN SEARCH/DATABASE QUERIES, NOT price requests.
 
 Based on the conversation context, identify what token information the user is requesting.
 
-# Conversation Context:
-{{recentMessages}}
-
-# Instructions:
+Instructions:
 Look for TOKEN SEARCH/DATABASE requests, such as:
 - Token listing requests ("list tokens", "available tokens", "supported cryptocurrencies")
 - Token database searches ("search for [token] information", "find token details", "lookup token")
@@ -16465,17 +13107,23 @@ DO NOT MATCH PRICE REQUESTS:
 - "Get Bitcoin price" (this is a PRICE request)
 - "Show me DOGE price" (this is a PRICE request)
 
-Extract the relevant information for the TOKEN SEARCH request.
+Respond with an XML block containing only the extracted values:
 
-# Response Format:
-Return a structured object with the token search request information.`;
-var TokensRequestSchema = z.object({
-  cryptocurrency: z.string().nullable().describe("The specific cryptocurrency symbol or name mentioned"),
-  category: z.string().nullable().describe("Token category filter (e.g., defi, layer-1, gaming, meme)"),
-  exchange: z.string().nullable().describe("Exchange filter"),
-  market_filter: z.string().nullable().describe("Market cap, volume, or other filters"),
-  search_type: z.enum(["all", "specific", "category", "exchange", "filtered"]).describe("Type of token search"),
-  confidence: z.number().min(0).max(1).describe("Confidence in extraction")
+<response>
+<cryptocurrency>specific token name if mentioned</cryptocurrency>
+<category>category filter if mentioned (e.g., DeFi, gaming, meme)</category>
+<exchange>exchange filter if mentioned</exchange>
+<search_type>general or specific or category or exchange</search_type>
+<market_cap_filter>high, medium, low if mentioned</market_cap_filter>
+<limit>number of results requested (default 20)</limit>
+</response>`;
+var TokensRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().nullable().describe("The specific cryptocurrency symbol or name mentioned"),
+  category: external_exports.string().nullable().describe("Token category filter (e.g., defi, layer-1, gaming, meme)"),
+  exchange: external_exports.string().nullable().describe("Exchange filter"),
+  market_filter: external_exports.string().nullable().describe("Market cap, volume, or other filters"),
+  search_type: external_exports.enum(["all", "specific", "category", "exchange", "filtered"]).describe("Type of token search"),
+  confidence: external_exports.number().min(0).max(1).describe("Confidence in extraction")
 });
 function normalizeCryptocurrencyName(name) {
   const nameMap = {
@@ -16511,16 +13159,16 @@ function normalizeCryptocurrencyName(name) {
   return normalized || name;
 }
 async function fetchTokens(params, runtime) {
-  elizaLogger19.log(`\u{1F4E1} Fetching tokens with params:`, params);
+  elizaLogger13.log(`\u{1F4E1} Fetching tokens with params:`, params);
   try {
     const data = await callTokenMetricsAPI("/v2/tokens", params, runtime);
     if (!data) {
       throw new Error("No data received from tokens API");
     }
-    elizaLogger19.log(`\u2705 Successfully fetched tokens data`);
+    elizaLogger13.log(`\u2705 Successfully fetched tokens data`);
     return data;
   } catch (error) {
-    elizaLogger19.error("\u274C Error fetching tokens:", error);
+    elizaLogger13.error("\u274C Error fetching tokens:", error);
     throw error;
   }
 }
@@ -16674,20 +13322,20 @@ var getTokensAction = {
   ],
   description: "Get list of supported cryptocurrencies and tokens from TokenMetrics database - for searching token information, not prices",
   validate: async (runtime, message, state) => {
-    elizaLogger19.log("\u{1F50D} Validating getTokensAction (1.x)");
+    elizaLogger13.log("\u{1F50D} Validating getTokensAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger19.error("\u274C Validation failed:", error);
+      elizaLogger13.error("\u274C Validation failed:", error);
       return false;
     }
   },
   handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger19.log("\u{1F680} Starting TokenMetrics tokens handler (1.x)");
-    elizaLogger19.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger19.log(`\u{1F194} Request ID: ${requestId}`);
+    elizaLogger13.log("\u{1F680} Starting TokenMetrics tokens handler (1.x)");
+    elizaLogger13.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger13.log(`\u{1F194} Request ID: ${requestId}`);
     try {
       validateAndGetApiKey(runtime);
       if (!state) {
@@ -16701,12 +13349,12 @@ var getTokensAction = {
         TokensRequestSchema,
         requestId
       );
-      elizaLogger19.log(`\u{1F3AF} AI extracted request: ${JSON.stringify(tokensRequest, null, 2)}`);
-      elizaLogger19.log(`\u{1F194} Request ${requestId}: Extracted - ${JSON.stringify(tokensRequest)}`);
+      elizaLogger13.log(`\u{1F3AF} AI extracted request: ${JSON.stringify(tokensRequest, null, 2)}`);
+      elizaLogger13.log(`\u{1F194} Request ${requestId}: Extracted - ${JSON.stringify(tokensRequest)}`);
       const hasValidCriteria = tokensRequest && (tokensRequest.cryptocurrency || tokensRequest.category || tokensRequest.exchange || tokensRequest.search_type === "specific");
       if (!hasValidCriteria) {
-        elizaLogger19.log(`\u{1F504} No specific search criteria found, treating as general tokens list request`);
-        elizaLogger19.log(`\u{1F194} Request ${requestId}: FALLBACK - General token list request`);
+        elizaLogger13.log(`\u{1F504} No specific search criteria found, treating as general tokens list request`);
+        elizaLogger13.log(`\u{1F194} Request ${requestId}: FALLBACK - General token list request`);
         const fallbackRequest = {
           list_request: true,
           limit: 20,
@@ -16734,7 +13382,10 @@ Please try again in a few moments.`,
                 request_id: requestId
               }
             });
-            return false;
+            return createActionResult12({
+              success: false,
+              error: "No tokens data available"
+            });
           }
           const responseText2 = formatTokensResponse(tokens2, "all", requestId);
           await callback({
@@ -16753,7 +13404,21 @@ Please try again in a few moments.`,
             }
           });
         }
-        return true;
+        return createActionResult12({
+          success: true,
+          text: "Successfully retrieved tokens list",
+          data: {
+            tokens_data: [],
+            // Return empty array for fallback
+            search_criteria: fallbackRequest,
+            metadata: {
+              endpoint: "tokens",
+              data_source: "TokenMetrics API",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              total_tokens: 0
+            }
+          }
+        });
       }
       const apiParams = {
         limit: tokensRequest.limit || 20,
@@ -16761,30 +13426,30 @@ Please try again in a few moments.`,
       };
       if (tokensRequest.cryptocurrency) {
         apiParams.token_name = normalizeCryptocurrencyName(tokensRequest.cryptocurrency);
-        elizaLogger19.log(`\u{1F50D} Searching for specific token by name: ${apiParams.token_name}`);
+        elizaLogger13.log(`\u{1F50D} Searching for specific token by name: ${apiParams.token_name}`);
         if (apiParams.token_name.length <= 5) {
           apiParams.symbol = apiParams.token_name.toUpperCase();
-          elizaLogger19.log(`\u{1F50D} Also searching by symbol: ${apiParams.symbol}`);
+          elizaLogger13.log(`\u{1F50D} Also searching by symbol: ${apiParams.symbol}`);
         }
       }
       if (tokensRequest.category) {
         apiParams.category = tokensRequest.category.toLowerCase();
-        elizaLogger19.log(`\u{1F4C2} Filtering by category: ${tokensRequest.category}`);
+        elizaLogger13.log(`\u{1F4C2} Filtering by category: ${tokensRequest.category}`);
       }
       if (tokensRequest.exchange) {
         apiParams.exchange = tokensRequest.exchange;
-        elizaLogger19.log(`\u{1F3EA} Filtering by exchange: ${tokensRequest.exchange}`);
+        elizaLogger13.log(`\u{1F3EA} Filtering by exchange: ${tokensRequest.exchange}`);
       }
       if (tokensRequest.search_type === "all") {
         apiParams.limit = 100;
       } else if (tokensRequest.search_type === "specific") {
         apiParams.limit = 10;
       }
-      elizaLogger19.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger19.log(`\u{1F4E1} Fetching tokens data`);
+      elizaLogger13.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger13.log(`\u{1F4E1} Fetching tokens data`);
       const tokensData = await fetchTokens(apiParams, runtime);
       if (!tokensData) {
-        elizaLogger19.log("\u274C Failed to fetch tokens data");
+        elizaLogger13.log("\u274C Failed to fetch tokens data");
         if (callback) {
           await callback({
             text: `\u274C Unable to fetch tokens data at the moment.
@@ -16802,17 +13467,20 @@ Please try again in a few moments or try with different criteria.`,
             }
           });
         }
-        return false;
+        return createActionResult12({
+          success: false,
+          error: "API fetch failed"
+        });
       }
       const tokens = Array.isArray(tokensData) ? tokensData : tokensData.data || [];
-      elizaLogger19.log(`\u{1F50D} Received ${tokens.length} tokens`);
+      elizaLogger13.log(`\u{1F50D} Received ${tokens.length} tokens`);
       const responseText = formatTokensResponse(tokens, tokensRequest.search_type, {
         cryptocurrency: tokensRequest.cryptocurrency,
         category: tokensRequest.category,
         exchange: tokensRequest.exchange
       });
       const analysis = analyzeTokens(tokens);
-      elizaLogger19.success("\u2705 Successfully processed tokens request");
+      elizaLogger13.success("\u2705 Successfully processed tokens request");
       if (callback) {
         await callback({
           text: responseText,
@@ -16835,12 +13503,30 @@ Please try again in a few moments or try with different criteria.`,
           }
         });
       }
-      return true;
+      return createActionResult12({
+        success: true,
+        text: responseText,
+        data: {
+          tokens_data: tokens,
+          analysis,
+          source: "TokenMetrics Token Database",
+          query_details: {
+            search_type: tokensRequest.search_type,
+            cryptocurrency: tokensRequest.cryptocurrency,
+            category: tokensRequest.category,
+            exchange: tokensRequest.exchange,
+            confidence: tokensRequest.confidence,
+            data_freshness: "real-time",
+            request_id: requestId,
+            extraction_method: "ai_with_cache_busting"
+          }
+        }
+      });
     } catch (error) {
-      elizaLogger19.error("\u274C Error in TokenMetrics tokens handler:", error);
-      elizaLogger19.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      elizaLogger13.error("\u274C Error in TokenMetrics tokens handler:", error);
+      elizaLogger13.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         await callback({
           text: `\u274C I encountered an error while fetching tokens: ${errorMessage}
 
@@ -16859,19 +13545,22 @@ Please check your TokenMetrics API key configuration and try again.`,
           }
         });
       }
-      return false;
+      return createActionResult12({
+        success: false,
+        error: errorMessage
+      });
     }
   },
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "List all available tokens"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll fetch all available cryptocurrencies from TokenMetrics database.",
           action: "GET_TOKENS_TOKENMETRICS"
@@ -16880,13 +13569,13 @@ Please check your TokenMetrics API key configuration and try again.`,
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Show me DeFi tokens"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll get all DeFi category tokens from TokenMetrics database.",
           action: "GET_TOKENS_TOKENMETRICS"
@@ -16895,13 +13584,13 @@ Please check your TokenMetrics API key configuration and try again.`,
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Search for Bitcoin token information"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll search for Bitcoin token details in TokenMetrics database.",
           action: "GET_TOKENS_TOKENMETRICS"
@@ -16910,13 +13599,13 @@ Please check your TokenMetrics API key configuration and try again.`,
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Find token details for Ethereum"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll look up Ethereum token information from TokenMetrics database.",
           action: "GET_TOKENS_TOKENMETRICS"
@@ -16925,13 +13614,13 @@ Please check your TokenMetrics API key configuration and try again.`,
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get supported cryptocurrencies list"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll retrieve the complete list of supported cryptocurrencies from TokenMetrics.",
           action: "GET_TOKENS_TOKENMETRICS"
@@ -16940,13 +13629,13 @@ Please check your TokenMetrics API key configuration and try again.`,
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Search token database for Solana"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll search the TokenMetrics database for Solana token information.",
           action: "GET_TOKENS_TOKENMETRICS"
@@ -16958,12 +13647,13 @@ Please check your TokenMetrics API key configuration and try again.`,
 
 // src/actions/getTopMarketCapAction.ts
 import {
-  elizaLogger as elizaLogger20
+  elizaLogger as elizaLogger14,
+  createActionResult as createActionResult13
 } from "@elizaos/core";
-var TopMarketCapRequestSchema = z.object({
-  top_k: z.number().min(1).max(1e3).optional().describe("Number of top tokens to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["ranking", "concentration", "performance", "all"]).optional().describe("Type of analysis to focus on")
+var TopMarketCapRequestSchema = external_exports.object({
+  top_k: external_exports.number().min(1).max(1e3).optional().describe("Number of top tokens to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["ranking", "concentration", "performance", "all"]).optional().describe("Type of analysis to focus on")
 });
 var TOP_MARKET_CAP_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting top market cap cryptocurrency requests from natural language.
@@ -16990,7 +13680,13 @@ Examples:
 - "Get top 50 tokens with concentration analysis" \u2192 {top_k: 50, page: 1, analysisType: "concentration"}
 - "Top crypto market cap leaders" \u2192 {top_k: 10, page: 1, analysisType: "all"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<top_k>number (1-1000)</top_k>
+<page>number (default: 1)</page>
+<analysisType>ranking|concentration|performance|all</analysisType>
+</response>
 `;
 var getTopMarketCapAction = {
   name: "GET_TOP_MARKET_CAP_TOKENMETRICS",
@@ -17006,28 +13702,28 @@ var getTopMarketCapAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Show me the top 10 cryptocurrencies by market cap"
+          text: "Show me top market cap cryptocurrencies"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll get the top 10 cryptocurrencies by market capitalization from TokenMetrics.",
+          text: "I'll get the top cryptocurrencies by market capitalization.",
           action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "What are the largest crypto assets right now?"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll retrieve the largest cryptocurrency assets by market cap.",
           action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
@@ -17036,13 +13732,13 @@ var getTopMarketCapAction = {
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
           text: "Get top 20 tokens with concentration analysis"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
           text: "I'll get the top 20 tokens by market cap and analyze market concentration.",
           action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
@@ -17054,14 +13750,22 @@ var getTopMarketCapAction = {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing top market cap request...`);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = TOP_MARKET_CAP_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
       const marketCapRequest = await extractTokenMetricsRequest(
         runtime,
         message,
         state || await runtime.composeState(message),
-        TOP_MARKET_CAP_EXTRACTION_TEMPLATE,
+        enhancedTemplate,
         TopMarketCapRequestSchema,
         requestId
       );
+      elizaLogger14.log("\u{1F3AF} AI Extracted market cap request:", marketCapRequest);
+      elizaLogger14.log(`\u{1F50D} DEBUG: AI extracted top_k: "${marketCapRequest?.top_k}"`);
       console.log(`[${requestId}] Extracted request:`, marketCapRequest);
       const processedRequest = {
         top_k: marketCapRequest.top_k || 10,
@@ -17072,11 +13776,58 @@ var getTopMarketCapAction = {
         top_k: processedRequest.top_k,
         page: processedRequest.page
       };
-      const response = await callTokenMetricsAPI(
-        "/v2/top-market-cap-tokens",
-        apiParams,
-        runtime
-      );
+      elizaLogger14.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger14.log(`\u{1F4E1} About to call TokenMetrics API: /v2/top-market-cap-tokens`);
+      elizaLogger14.log(`\u{1F4CA} Request params: top_k=${apiParams.top_k}, page=${apiParams.page}`);
+      let response;
+      try {
+        response = await callTokenMetricsAPI(
+          "/v2/top-market-cap-tokens",
+          apiParams,
+          runtime
+        );
+        elizaLogger14.log(`\u2705 API call successful, response type: ${typeof response}`);
+        elizaLogger14.log(`\u{1F4CA} Response keys: ${response ? Object.keys(response) : "null response"}`);
+      } catch (error) {
+        elizaLogger14.error(`\u274C API call failed with error:`, error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown API error";
+        if (callback) {
+          await callback({
+            text: `\u274C Failed to retrieve top market cap data from TokenMetrics API.
+
+**Error Details:** ${errorMessage}
+
+**Possible causes:**
+\u2022 API key doesn't have access to top-market-cap-tokens endpoint
+\u2022 TokenMetrics API service temporarily unavailable
+\u2022 Network connectivity issues
+\u2022 Rate limiting
+
+**Solutions:**
+\u2022 Verify your API key has the correct permissions
+\u2022 Check TokenMetrics service status
+\u2022 Try again in a few moments
+
+\u{1F527} **Debug Info:** Endpoint: /v2/top-market-cap-tokens, Params: ${JSON.stringify(apiParams)}`,
+            content: {
+              error: errorMessage,
+              endpoint: "/v2/top-market-cap-tokens",
+              params: apiParams,
+              request_id: requestId
+            }
+          });
+        }
+        return createActionResult13({
+          success: false,
+          text: `\u274C Failed to retrieve top market cap data: ${errorMessage}`,
+          data: {
+            error: errorMessage,
+            endpoint: "/v2/top-market-cap-tokens",
+            params: apiParams,
+            request_id: requestId
+          }
+        });
+      }
       console.log(`[${requestId}] API response received, processing data...`);
       const topTokens = Array.isArray(response) ? response : response.data || [];
       const marketAnalysis = analyzeTopTokensRanking(topTokens, processedRequest.top_k, processedRequest.analysisType);
@@ -17115,7 +13866,7 @@ var getTopMarketCapAction = {
           content: result
         });
       }
-      return true;
+      return createActionResult13(result);
     } catch (error) {
       console.error("Error in getTopMarketCapAction:", error);
       const errorResult = {
@@ -17143,16 +13894,16 @@ var getTopMarketCapAction = {
           content: errorResult
         });
       }
-      return false;
+      return createActionResult13(errorResult);
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger20.log("\u{1F50D} Validating getTopMarketCapAction (1.x)");
+    elizaLogger14.log("\u{1F50D} Validating getTopMarketCapAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger20.error("\u274C Validation failed:", error);
+      elizaLogger14.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -17342,97 +14093,1780 @@ function formatTopMarketCapResponse(topTokens, analysis, request) {
   return response;
 }
 
-// src/actions/getCryptoInvestorsAction.ts
+// src/actions/getTraderGradesAction.ts
 import {
-  elizaLogger as elizaLogger21
+  elizaLogger as elizaLogger15,
+  createActionResult as createActionResult14
 } from "@elizaos/core";
-var CryptoInvestorsRequestSchema = z.object({
-  limit: z.number().min(1).max(1e3).optional().describe("Number of investors to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["performance", "influence", "sentiment", "all"]).optional().describe("Type of analysis to focus on")
+var traderGradesTemplate = `Extract trader grades request information from the message.
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
+Trader grades provide:
+- Short-term trading scores (A+ to F grades)
+- Quick profit potential ratings
+- Day trading recommendations
+- Swing trading assessments
+- Technical analysis scores
+- Trading momentum indicators
+
+Instructions:
+Look for TRADER GRADES requests, such as:
+- Trading grade queries ("What's the trader grade for [TOKEN]?", "Show me trading ratings")
+- Short-term trading assessment ("Good for day trading?", "Trading opportunities")
+- Quick profit queries ("Fast gains potential?", "Trading profit opportunities")
+- Technical analysis requests ("Technical grade", "Trading signals grade")
+
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+
+Examples of request patterns (but extract the actual token from user's message):
+- "What's the trader grade for [TOKEN]?" \u2192 extract [TOKEN]
+- "Show me trading grades for [TOKEN]" \u2192 extract [TOKEN]
+- "Good trading opportunities in [TOKEN]?" \u2192 extract [TOKEN]
+- "Get trader grades for [TOKEN]" \u2192 extract [TOKEN]
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<trading_style>day, swing, scalp, or general</trading_style>
+<timeframe>1h, 4h, daily, or general</timeframe>
+<grade_filter>A+, A, B+, B, C+, C, D+, D, F or all</grade_filter>
+<risk_tolerance>high, medium, low, or general</risk_tolerance>
+<limit>number of results requested (default 10)</limit>
+</response>`;
+var TraderGradesRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
+  grade_filter: external_exports.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
+  category: external_exports.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
+  exchange: external_exports.string().nullable().describe("Exchange filter"),
+  time_period: external_exports.string().nullable().describe("Time period or date range"),
+  market_filter: external_exports.string().nullable().describe("Market cap, volume, or other filters"),
+  confidence: external_exports.number().min(0).max(1).describe("Confidence in extraction")
 });
-var CRYPTO_INVESTORS_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting crypto investors data requests from natural language.
+async function fetchTraderGrades(params, runtime) {
+  elizaLogger15.log(`\u{1F4E1} Fetching trader grades with params:`, params);
+  try {
+    const data = await callTokenMetricsAPI("/v2/trader-grades", params, runtime);
+    if (!data) {
+      throw new Error("No data received from trader grades API");
+    }
+    elizaLogger15.log(`\u2705 Successfully fetched trader grades data`);
+    return data;
+  } catch (error) {
+    elizaLogger15.error("\u274C Error fetching trader grades:", error);
+    throw error;
+  }
+}
+function convertToLetterGrade(numericGrade) {
+  if (numericGrade >= 90) return "A";
+  if (numericGrade >= 80) return "B";
+  if (numericGrade >= 70) return "C";
+  if (numericGrade >= 60) return "D";
+  return "F";
+}
+function formatTraderGradesResponse(data, tokenInfo) {
+  if (!data || data.length === 0) {
+    return "\u274C No trader grades found for the specified criteria.";
+  }
+  const grades = Array.isArray(data) ? data : [data];
+  const gradeCount = grades.length;
+  const gradeDistribution = {
+    A: 0,
+    B: 0,
+    C: 0,
+    D: 0,
+    F: 0
+  };
+  const processedGrades = grades.map((item) => {
+    const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+    const letterGrade = convertToLetterGrade(numericGrade);
+    gradeDistribution[letterGrade]++;
+    return {
+      ...item,
+      LETTER_GRADE: letterGrade,
+      NUMERIC_GRADE: numericGrade
+    };
+  });
+  let response = `\u{1F4CA} **TokenMetrics Trader Grades Analysis**
 
-The user wants to get information about crypto investors and their market activity. Extract the following information:
+`;
+  if (tokenInfo) {
+    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
+`;
+  }
+  response += `\u{1F4C8} **Grade Summary**: ${gradeCount} tokens analyzed
+`;
+  response += `\u{1F7E2} **A Grade**: ${gradeDistribution.A} tokens (${(gradeDistribution.A / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F535} **B Grade**: ${gradeDistribution.B} tokens (${(gradeDistribution.B / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F7E1} **C Grade**: ${gradeDistribution.C} tokens (${(gradeDistribution.C / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F7E0} **D Grade**: ${gradeDistribution.D} tokens (${(gradeDistribution.D / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F534} **F Grade**: ${gradeDistribution.F} tokens (${(gradeDistribution.F / gradeCount * 100).toFixed(1)}%)
 
-1. **limit** (optional, default: 50): How many investors they want to see
-   - Look for numbers like "top 20 investors", "50 investors", "first 100"
-   - Common requests: "top 20" \u2192 20, "50 investors" \u2192 50, "all investors" \u2192 100
-   - Maximum is 1000
+`;
+  const topGrades = processedGrades.filter((g) => g.LETTER_GRADE === "A").sort((a, b) => b.NUMERIC_GRADE - a.NUMERIC_GRADE).slice(0, 5);
+  if (topGrades.length > 0) {
+    response += `\u{1F3C6} **Top A-Grade Tokens**:
+`;
+    topGrades.forEach((grade, index) => {
+      response += `${index + 1}. **${grade.TOKEN_SYMBOL}** (${grade.TOKEN_NAME}): Grade ${grade.LETTER_GRADE} (${grade.NUMERIC_GRADE.toFixed(1)})`;
+      if (grade.TM_TRADER_GRADE_24H_PCT_CHANGE) {
+        const change = grade.TM_TRADER_GRADE_24H_PCT_CHANGE;
+        const changeIcon = change > 0 ? "\u{1F4C8}" : change < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
+        response += ` ${changeIcon} ${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
+      }
+      response += `
+`;
+    });
+    response += `
+`;
+  }
+  if (gradeCount === 1 && tokenInfo) {
+    const token = processedGrades[0];
+    response += `\u{1F4CB} **Detailed Analysis for ${token.TOKEN_SYMBOL}**:
+`;
+    response += `\u2022 **Overall Grade**: ${token.LETTER_GRADE} (${token.NUMERIC_GRADE.toFixed(1)}/100)
+`;
+    if (token.TA_GRADE) response += `\u2022 **Technical Analysis**: ${convertToLetterGrade(token.TA_GRADE)} (${token.TA_GRADE.toFixed(1)}/100)
+`;
+    if (token.QUANT_GRADE) response += `\u2022 **Quantitative Analysis**: ${convertToLetterGrade(token.QUANT_GRADE)} (${token.QUANT_GRADE.toFixed(1)}/100)
+`;
+    if (token.TM_TRADER_GRADE_24H_PCT_CHANGE) {
+      const change = token.TM_TRADER_GRADE_24H_PCT_CHANGE;
+      const changeIcon = change > 0 ? "\u{1F4C8}" : change < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
+      response += `\u2022 **24h Change**: ${changeIcon} ${change > 0 ? "+" : ""}${change.toFixed(2)}%
+`;
+    }
+    response += `\u2022 **Last Updated**: ${new Date(token.DATE).toLocaleDateString()}
 
-2. **page** (optional, default: 1): Which page of results (for pagination)
-   - Usually not mentioned unless they want specific pages
+`;
+  }
+  response += `\u{1F4A1} **AI Trading Recommendations**:
+`;
+  const aGradePercentage = gradeDistribution.A / gradeCount * 100;
+  const fGradePercentage = gradeDistribution.F / gradeCount * 100;
+  if (aGradePercentage > 30) {
+    response += `\u2022 Strong market with ${aGradePercentage.toFixed(1)}% A-grade tokens
+`;
+    response += `\u2022 Consider increasing exposure to top-rated cryptocurrencies
+`;
+    response += `\u2022 Focus on A and B grade tokens for long positions
+`;
+  } else if (fGradePercentage > 30) {
+    response += `\u2022 Weak market with ${fGradePercentage.toFixed(1)}% F-grade tokens
+`;
+    response += `\u2022 Exercise caution with new positions
+`;
+    response += `\u2022 Consider defensive strategies or cash positions
+`;
+  } else {
+    response += `\u2022 Mixed market conditions - selective approach recommended
+`;
+    response += `\u2022 Focus on highest-grade tokens with strong fundamentals
+`;
+    response += `\u2022 Avoid D and F grade tokens for new positions
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics AI Trader Grades
+`;
+  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
+function analyzeTraderGrades(data) {
+  if (!data || data.length === 0) {
+    return { error: "No data to analyze" };
+  }
+  const grades = Array.isArray(data) ? data : [data];
+  const gradeDistribution = {
+    A: 0,
+    B: 0,
+    C: 0,
+    D: 0,
+    F: 0
+  };
+  const processedGrades = grades.map((item) => {
+    const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+    const letterGrade = convertToLetterGrade(numericGrade);
+    gradeDistribution[letterGrade]++;
+    return {
+      symbol: item.TOKEN_SYMBOL,
+      name: item.TOKEN_NAME,
+      grade: letterGrade,
+      score: numericGrade,
+      date: item.DATE,
+      ta_grade: item.TA_GRADE,
+      quant_grade: item.QUANT_GRADE,
+      trader_grade: item.TM_TRADER_GRADE,
+      change_24h: item.TM_TRADER_GRADE_24H_PCT_CHANGE
+    };
+  });
+  const analysis = {
+    total_tokens: grades.length,
+    grade_distribution: gradeDistribution,
+    top_tokens: processedGrades.filter((g) => g.grade === "A").sort((a, b) => b.score - a.score).slice(0, 10),
+    market_quality: "neutral"
+  };
+  const aPercentage = gradeDistribution.A / grades.length * 100;
+  const fPercentage = gradeDistribution.F / grades.length * 100;
+  if (aPercentage > 40) {
+    analysis.market_quality = "excellent";
+  } else if (aPercentage > 25) {
+    analysis.market_quality = "good";
+  } else if (fPercentage > 40) {
+    analysis.market_quality = "poor";
+  } else {
+    analysis.market_quality = "fair";
+  }
+  return analysis;
+}
+var getTraderGradesAction = {
+  name: "GET_TRADER_GRADES_TOKENMETRICS",
+  similes: [
+    "GET_TRADER_GRADES",
+    "GET_AI_GRADES",
+    "GET_TOKEN_GRADES",
+    "GET_TRADING_GRADES",
+    "TRADER_GRADES",
+    "AI_GRADES",
+    "TOKEN_RATINGS"
+  ],
+  description: "Get AI-generated trader grades and ratings for cryptocurrencies from TokenMetrics",
+  validate: async (runtime, message, state) => {
+    elizaLogger15.log("\u{1F50D} Validating getTraderGradesAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger15.error("\u274C Validation failed:", error);
+      return false;
+    }
+  },
+  handler: async (runtime, message, state, _options, callback) => {
+    const requestId = generateRequestId();
+    elizaLogger15.log("\u{1F680} Starting TokenMetrics trader grades handler (1.x)");
+    elizaLogger15.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger15.log(`\u{1F194} Request ID: ${requestId}`);
+    try {
+      validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = traderGradesTemplate + `
 
-3. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "performance" - focus on investor performance and returns
-   - "influence" - focus on market influence and following
-   - "sentiment" - focus on market sentiment and activity
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const gradesRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state,
+        enhancedTemplate,
+        TraderGradesRequestSchema,
+        requestId
+      );
+      elizaLogger15.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
+      elizaLogger15.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || "general market"}"`);
+      elizaLogger15.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${gradesRequest?.cryptocurrency}"`);
+      console.log(`[${requestId}] Extracted request:`, gradesRequest);
+      if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
+        elizaLogger15.log("\u274C AI extraction failed or insufficient information");
+        if (callback) {
+          await callback({
+            text: `\u274C I couldn't identify specific trader grades criteria from your request.
+
+I can get AI trader grades for:
+\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+\u2022 Grade filters (A, B, C, D, F grades)
+\u2022 Token categories (DeFi, Layer-1, meme tokens)
+\u2022 Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+\u2022 "Get trader grades for Bitcoin"
+\u2022 "Show me A-grade tokens"
+\u2022 "What are the current AI grades?"
+\u2022 "Get trading grades for DeFi tokens"`,
+            data: {
+              error: "Insufficient trader grades criteria",
+              confidence: gradesRequest?.confidence || 0,
+              request_id: requestId
+            }
+          });
+        }
+        return createActionResult14({
+          success: false,
+          text: `\u274C I couldn't identify specific trader grades criteria from your request.
+
+I can get AI trader grades for:
+\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+\u2022 Grade filters (A, B, C, D, F grades)
+\u2022 Token categories (DeFi, Layer-1, meme tokens)
+\u2022 Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+\u2022 "Get trader grades for Bitcoin"
+\u2022 "Show me A-grade tokens"
+\u2022 "What are the current AI grades?"
+\u2022 "Get trading grades for DeFi tokens"`,
+          data: {
+            error: "Insufficient trader grades criteria",
+            confidence: gradesRequest?.confidence || 0,
+            request_id: requestId
+          }
+        });
+      }
+      elizaLogger15.success("\u{1F3AF} Final extraction result:", gradesRequest);
+      const apiParams = {
+        limit: 50,
+        page: 1
+      };
+      let tokenInfo = null;
+      if (gradesRequest.cryptocurrency) {
+        elizaLogger15.log(`\u{1F50D} Resolving token for: "${gradesRequest.cryptocurrency}"`);
+        tokenInfo = await resolveTokenSmart(gradesRequest.cryptocurrency, runtime);
+        if (tokenInfo) {
+          apiParams.token_id = tokenInfo.TOKEN_ID;
+          elizaLogger15.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+        } else {
+          apiParams.symbol = gradesRequest.cryptocurrency.toUpperCase();
+          elizaLogger15.log(`\u{1F50D} Using symbol: ${gradesRequest.cryptocurrency}`);
+        }
+      }
+      if (gradesRequest.grade_filter && gradesRequest.grade_filter !== "any") {
+        apiParams.grade = gradesRequest.grade_filter;
+      }
+      if (gradesRequest.category) {
+        apiParams.category = gradesRequest.category;
+      }
+      if (gradesRequest.exchange) {
+        apiParams.exchange = gradesRequest.exchange;
+      }
+      elizaLogger15.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger15.log(`\u{1F4E1} Fetching trader grades data`);
+      const gradesData = await fetchTraderGrades(apiParams, runtime);
+      if (!gradesData) {
+        elizaLogger15.log("\u274C Failed to fetch trader grades data");
+        if (callback) {
+          await callback({
+            text: `\u274C Unable to fetch trader grades data at the moment.
+
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
+\u2022 No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+            data: {
+              error: "API fetch failed",
+              request_id: requestId
+            }
+          });
+        }
+        return createActionResult14({
+          success: false,
+          text: `\u274C Unable to fetch trader grades data at the moment.
+
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
+\u2022 No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+          data: {
+            error: "API fetch failed",
+            request_id: requestId
+          }
+        });
+      }
+      const grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
+      elizaLogger15.log(`\u{1F50D} Received ${grades.length} trader grades`);
+      const responseText = formatTraderGradesResponse(grades, tokenInfo);
+      const analysis = analyzeTraderGrades(grades);
+      elizaLogger15.success("\u2705 Successfully processed trader grades request");
+      if (callback) {
+        await callback({
+          text: responseText,
+          data: {
+            success: true,
+            grades_data: grades,
+            analysis,
+            source: "TokenMetrics AI Trader Grades",
+            request_id: requestId,
+            query_details: {
+              original_request: gradesRequest.cryptocurrency || "general market",
+              grade_filter: gradesRequest.grade_filter,
+              category: gradesRequest.category,
+              confidence: gradesRequest.confidence,
+              data_freshness: "real-time",
+              request_id: requestId,
+              extraction_method: "ai_with_cache_busting"
+            }
+          }
+        });
+      }
+      return createActionResult14({
+        success: true,
+        text: responseText,
+        data: {
+          success: true,
+          grades_data: grades,
+          analysis,
+          source: "TokenMetrics AI Trader Grades",
+          request_id: requestId,
+          query_details: {
+            original_request: gradesRequest.cryptocurrency || "general market",
+            grade_filter: gradesRequest.grade_filter,
+            category: gradesRequest.category,
+            confidence: gradesRequest.confidence,
+            data_freshness: "real-time",
+            request_id: requestId,
+            extraction_method: "ai_with_cache_busting"
+          }
+        }
+      });
+    } catch (error) {
+      elizaLogger15.error("\u274C Error in TokenMetrics trader grades handler:", error);
+      elizaLogger15.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      if (callback) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        await callback({
+          text: `\u274C I encountered an error while fetching trader grades: ${errorMessage}
+
+This could be due to:
+\u2022 Network connectivity issues
+\u2022 TokenMetrics API service problems
+\u2022 Invalid API key or authentication issues
+\u2022 Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+          data: {
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true,
+            request_id: requestId
+          }
+        });
+      }
+      return createActionResult14({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
+  },
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get trader grades for Bitcoin"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll fetch the latest AI trader grades for Bitcoin from TokenMetrics.",
+          action: "GET_TRADER_GRADES_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show me A-grade tokens"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get all A-grade tokens from TokenMetrics AI trader grades.",
+          action: "GET_TRADER_GRADES_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "What are the current AI trading grades?"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "Let me fetch the latest AI trader grades and ratings from TokenMetrics.",
+          action: "GET_TRADER_GRADES_TOKENMETRICS"
+        }
+      }
+    ]
+  ]
+};
+
+// src/actions/getInvestorGradesAction.ts
+import {
+  elizaLogger as elizaLogger16,
+  createActionResult as createActionResult15
+} from "@elizaos/core";
+var investorGradesTemplate = `Extract investor grades request information from the message.
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
+Investor grades provide:
+- Professional investment analysis scores (A+ to F grades)
+- Risk assessment ratings
+- Investment recommendation levels
+- Portfolio allocation guidance
+- Institutional-grade analysis for crypto assets
+
+Instructions:
+Look for INVESTOR GRADES requests, such as:
+- Investment grade queries ("What's the investor grade for [TOKEN]?", "Show me investment ratings")
+- Risk assessment requests ("How risky is [TOKEN]?", "Investment risk for [TOKEN]")
+- Portfolio allocation questions ("Should I invest in [TOKEN]?", "Investment recommendation for [TOKEN]")
+- Professional analysis requests ("Give me institutional analysis", "Investment grade scores")
+
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+
+Examples of request patterns (but extract the actual token from user's message):
+- "What's the investor grade for [TOKEN]?" \u2192 extract [TOKEN]
+- "Show me investment ratings for [TOKEN]" \u2192 extract [TOKEN]
+- "How does [TOKEN] rate for investors?" \u2192 extract [TOKEN]
+- "Get investment analysis for [TOKEN]" \u2192 extract [TOKEN]
+- "Get investor grades for [TOKEN]" \u2192 extract [TOKEN]
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<analysis_type>specific or general or portfolio</analysis_type>
+<risk_focus>high, medium, low, or general</risk_focus>
+<investment_horizon>short, medium, long, or general</investment_horizon>
+<grade_filter>A+, A, B+, B, C+, C, D+, D, F or all</grade_filter>
+<limit>number of results requested (default 10)</limit>
+</response>`;
+var InvestorGradesRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
+  symbol: external_exports.string().nullable().describe("The cryptocurrency symbol if identified"),
+  grade_filter: external_exports.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
+  category: external_exports.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
+  confidence: external_exports.number().min(0).max(1).describe("Confidence in extraction")
+});
+function extractCryptocurrencySimple6(text) {
+  const cryptoPatterns = [
+    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
+    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
+    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
+    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
+    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
+    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
+    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
+    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
+    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
+    { regex: /\b(shiba|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" },
+    { regex: /\b(pepe)\b/i, name: "Pepe", symbol: "PEPE" },
+    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" }
+  ];
+  for (const pattern of cryptoPatterns) {
+    if (pattern.regex.test(text)) {
+      return { cryptocurrency: pattern.name, symbol: pattern.symbol };
+    }
+  }
+  return null;
+}
+function convertToLetterGrade2(numericGrade) {
+  if (numericGrade >= 90) return "A";
+  if (numericGrade >= 80) return "B";
+  if (numericGrade >= 70) return "C";
+  if (numericGrade >= 60) return "D";
+  return "F";
+}
+async function fetchInvestorGrades(params, runtime) {
+  elizaLogger16.log(`\u{1F4E1} Fetching investor grades with params:`, params);
+  try {
+    const data = await callTokenMetricsAPI("/v2/investor-grades", params, runtime);
+    if (!data) {
+      throw new Error("No data received from investor grades API");
+    }
+    elizaLogger16.log(`\u2705 Successfully fetched investor grades data`);
+    return data;
+  } catch (error) {
+    elizaLogger16.error("\u274C Error fetching investor grades:", error);
+    throw error;
+  }
+}
+function formatInvestorGradesResponse(data, tokenInfo) {
+  if (!data || data.length === 0) {
+    return "\u274C No investor grades found for the specified criteria.";
+  }
+  const grades = Array.isArray(data) ? data : [data];
+  const gradeCount = grades.length;
+  const gradeDistribution = {
+    A: 0,
+    B: 0,
+    C: 0,
+    D: 0,
+    F: 0
+  };
+  grades.forEach((item) => {
+    const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+    const letterGrade = convertToLetterGrade2(numericGrade);
+    gradeDistribution[letterGrade]++;
+  });
+  let response = `\u{1F4CA} **TokenMetrics Investor Grades Analysis**
+
+`;
+  if (tokenInfo) {
+    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
+`;
+  }
+  response += `\u{1F4C8} **Grade Summary**: ${gradeCount} tokens analyzed
+`;
+  response += `\u{1F7E2} **A Grade**: ${gradeDistribution.A} tokens (${(gradeDistribution.A / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F535} **B Grade**: ${gradeDistribution.B} tokens (${(gradeDistribution.B / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F7E1} **C Grade**: ${gradeDistribution.C} tokens (${(gradeDistribution.C / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F7E0} **D Grade**: ${gradeDistribution.D} tokens (${(gradeDistribution.D / gradeCount * 100).toFixed(1)}%)
+`;
+  response += `\u{1F534} **F Grade**: ${gradeDistribution.F} tokens (${(gradeDistribution.F / gradeCount * 100).toFixed(1)}%)
+
+`;
+  if (tokenInfo && grades.length === 1) {
+    const grade = grades[0];
+    const numericGrade = grade.TM_INVESTOR_GRADE || grade.INVESTOR_GRADE || grade.TA_GRADE || grade.QUANT_GRADE || 0;
+    const letterGrade = convertToLetterGrade2(numericGrade);
+    response += `\u{1F4CB} **Detailed Analysis for ${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL}**:
+`;
+    response += `\u2022 **Overall Grade**: ${letterGrade} (${numericGrade.toFixed(1)}/100)
+`;
+    if (grade.TA_GRADE) {
+      response += `\u2022 **Technical Analysis**: ${convertToLetterGrade2(grade.TA_GRADE)} (${grade.TA_GRADE.toFixed(1)}/100)
+`;
+    }
+    if (grade.QUANT_GRADE) {
+      response += `\u2022 **Quantitative Analysis**: ${convertToLetterGrade2(grade.QUANT_GRADE)} (${grade.QUANT_GRADE.toFixed(1)}/100)
+`;
+    }
+    if (grade.CHANGE_24H) {
+      const changeIcon = grade.CHANGE_24H >= 0 ? "\u{1F4C8}" : "\u{1F4C9}";
+      response += `\u2022 **24h Change**: ${changeIcon} ${grade.CHANGE_24H > 0 ? "+" : ""}${grade.CHANGE_24H.toFixed(2)}%
+`;
+    }
+    if (grade.DATE) {
+      response += `\u2022 **Last Updated**: ${grade.DATE}
+`;
+    }
+    response += `
+`;
+  } else {
+    const topGrades = grades.map((item) => ({
+      ...item,
+      numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
+    })).filter((g) => g.numericGrade >= 90).sort((a, b) => b.numericGrade - a.numericGrade).slice(0, 5);
+    if (topGrades.length > 0) {
+      response += `\u{1F3C6} **Top A-Grade Investment Tokens**:
+`;
+      topGrades.forEach((grade, index) => {
+        const letterGrade = convertToLetterGrade2(grade.numericGrade);
+        response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${letterGrade} (${grade.numericGrade.toFixed(1)})`;
+        if (grade.CHANGE_24H) {
+          const changeIcon = grade.CHANGE_24H >= 0 ? "\u{1F4C8}" : "\u{1F4C9}";
+          response += ` ${changeIcon} ${grade.CHANGE_24H > 0 ? "+" : ""}${grade.CHANGE_24H.toFixed(2)}%`;
+        }
+        response += `
+`;
+      });
+      response += `
+`;
+    }
+  }
+  response += `\u{1F4A1} **AI Investment Recommendations**:
+`;
+  const aGradePercentage = gradeDistribution.A / gradeCount * 100;
+  const fGradePercentage = gradeDistribution.F / gradeCount * 100;
+  if (aGradePercentage > 30) {
+    response += `\u2022 Strong investment environment with ${aGradePercentage.toFixed(1)}% A-grade tokens
+`;
+    response += `\u2022 Consider building long-term positions in top-rated cryptocurrencies
+`;
+    response += `\u2022 Focus on A and B grade tokens for portfolio allocation
+`;
+  } else if (fGradePercentage > 30) {
+    response += `\u2022 Challenging investment environment with ${fGradePercentage.toFixed(1)}% F-grade tokens
+`;
+    response += `\u2022 Exercise extreme caution with new investments
+`;
+    response += `\u2022 Consider dollar-cost averaging or waiting for better conditions
+`;
+  } else {
+    response += `\u2022 Mixed investment conditions - selective approach recommended
+`;
+    response += `\u2022 Focus on highest-grade tokens with strong fundamentals
+`;
+    response += `\u2022 Avoid D and F grade tokens for long-term holdings
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
+`;
+  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
+function analyzeInvestorGrades(data) {
+  if (!data || data.length === 0) {
+    return { error: "No data to analyze" };
+  }
+  const grades = Array.isArray(data) ? data : [data];
+  const gradeDistribution = {
+    A: 0,
+    B: 0,
+    C: 0,
+    D: 0,
+    F: 0
+  };
+  grades.forEach((item) => {
+    const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
+    const letterGrade = convertToLetterGrade2(numericGrade);
+    gradeDistribution[letterGrade]++;
+  });
+  const analysis = {
+    total_tokens: grades.length,
+    grade_distribution: gradeDistribution,
+    top_investments: grades.map((item) => ({
+      ...item,
+      numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
+    })).filter((g) => g.numericGrade >= 90).sort((a, b) => b.numericGrade - a.numericGrade).slice(0, 10).map((g) => ({
+      symbol: g.TOKEN_SYMBOL || g.SYMBOL,
+      name: g.TOKEN_NAME || g.NAME,
+      grade: convertToLetterGrade2(g.numericGrade),
+      score: g.numericGrade,
+      date: g.DATE
+    })),
+    investment_quality: "neutral"
+  };
+  const aPercentage = gradeDistribution.A / grades.length * 100;
+  const fPercentage = gradeDistribution.F / grades.length * 100;
+  if (aPercentage > 40) {
+    analysis.investment_quality = "excellent";
+  } else if (aPercentage > 25) {
+    analysis.investment_quality = "good";
+  } else if (fPercentage > 40) {
+    analysis.investment_quality = "poor";
+  } else {
+    analysis.investment_quality = "fair";
+  }
+  return analysis;
+}
+var getInvestorGradesAction = {
+  name: "GET_INVESTOR_GRADES_TOKENMETRICS",
+  similes: [
+    "GET_INVESTOR_GRADES",
+    "GET_INVESTMENT_GRADES",
+    "GET_LONG_TERM_GRADES",
+    "GET_INVESTMENT_RATINGS",
+    "INVESTOR_GRADES",
+    "INVESTMENT_GRADES",
+    "LONG_TERM_RATINGS"
+  ],
+  description: "Get AI-generated investor grades and ratings for long-term cryptocurrency investments from TokenMetrics",
+  validate: async (runtime, message, state) => {
+    elizaLogger16.log("\u{1F50D} Validating getInvestorGradesAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger16.error("\u274C Validation failed:", error);
+      return false;
+    }
+  },
+  handler: async (runtime, message, state, _options, callback) => {
+    const requestId = generateRequestId();
+    elizaLogger16.log("\u{1F680} Starting TokenMetrics investor grades handler (1.x)");
+    elizaLogger16.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
+    elizaLogger16.log(`\u{1F194} Request ID: ${requestId}`);
+    try {
+      validateAndGetApiKey(runtime);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = investorGradesTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const gradesRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state,
+        enhancedTemplate,
+        InvestorGradesRequestSchema,
+        requestId
+      );
+      elizaLogger16.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
+      elizaLogger16.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest?.cryptocurrency || "general market"}"`);
+      elizaLogger16.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${gradesRequest?.cryptocurrency}"`);
+      console.log(`[${requestId}] Extracted request:`, gradesRequest);
+      let finalRequest = gradesRequest || {};
+      if (!gradesRequest?.cryptocurrency || (gradesRequest?.confidence || 0) < 0.5) {
+        elizaLogger16.log("\u{1F504} Applying regex fallback for cryptocurrency extraction");
+        const regexResult = extractCryptocurrencySimple6(message.content?.text || "");
+        if (regexResult) {
+          finalRequest = {
+            ...gradesRequest,
+            cryptocurrency: regexResult.cryptocurrency,
+            symbol: regexResult.symbol,
+            confidence: Math.max(gradesRequest?.confidence || 0, 0.8)
+          };
+          elizaLogger16.log("\u2705 Regex fallback successful:", regexResult);
+        }
+      }
+      if (!finalRequest?.cryptocurrency && !finalRequest?.grade_filter && !finalRequest?.category && (finalRequest?.confidence || 0) < 0.3) {
+        elizaLogger16.log("\u274C AI extraction failed or insufficient information");
+        if (callback) {
+          await callback({
+            text: `\u274C I couldn't identify specific investor grades criteria from your request.
+
+I can get AI investor grades for:
+\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+\u2022 Grade filters (A, B, C, D, F grades)
+\u2022 Token categories (DeFi, Layer-1, meme tokens)
+\u2022 Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+\u2022 "Get investor grades for Bitcoin"
+\u2022 "Show me A-grade investment tokens"
+\u2022 "What are the current long-term grades?"
+\u2022 "Get investment grades for DeFi tokens"`,
+            content: {
+              error: "Insufficient investor grades criteria",
+              confidence: finalRequest?.confidence || 0,
+              request_id: requestId
+            }
+          });
+        }
+        return createActionResult15({
+          success: false,
+          text: `\u274C I couldn't identify specific investor grades criteria from your request.
+
+I can get AI investor grades for:
+\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+\u2022 Grade filters (A, B, C, D, F grades)
+\u2022 Token categories (DeFi, Layer-1, meme tokens)
+\u2022 Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+\u2022 "Get investor grades for Bitcoin"
+\u2022 "Show me A-grade investment tokens"
+\u2022 "What are the current long-term grades?"
+\u2022 "Get investment grades for DeFi tokens"`,
+          data: {
+            error: "Insufficient investor grades criteria",
+            confidence: finalRequest?.confidence || 0,
+            request_id: requestId
+          }
+        });
+      }
+      elizaLogger16.success("\u{1F3AF} Final extraction result:", finalRequest);
+      const apiParams = {
+        limit: 50,
+        page: 1
+      };
+      let tokenInfo = null;
+      if (finalRequest?.cryptocurrency) {
+        elizaLogger16.log(`\u{1F50D} Resolving token for: "${finalRequest.cryptocurrency}"`);
+        try {
+          tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
+          if (tokenInfo) {
+            apiParams.token_id = tokenInfo.TOKEN_ID;
+            elizaLogger16.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
+          } else {
+            apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
+            elizaLogger16.log(`\u{1F50D} Using symbol: ${finalRequest.cryptocurrency}`);
+          }
+        } catch (error) {
+          elizaLogger16.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
+          apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
+          elizaLogger16.log(`\u{1F50D} Fallback to symbol parameter: ${finalRequest.cryptocurrency.toUpperCase()}`);
+        }
+      }
+      if (finalRequest?.grade_filter && finalRequest.grade_filter !== "any") {
+        elizaLogger16.log(`\u{1F50D} Grade filter requested: ${finalRequest.grade_filter} (will filter results post-API)`);
+      }
+      if (finalRequest?.category) {
+        apiParams.category = finalRequest.category;
+      }
+      elizaLogger16.log(`\u{1F4E1} API parameters:`, apiParams);
+      elizaLogger16.log(`\u{1F4E1} Fetching investor grades data`);
+      const gradesData = await fetchInvestorGrades(apiParams, runtime);
+      if (!gradesData) {
+        elizaLogger16.log("\u274C Failed to fetch investor grades data");
+        if (callback) {
+          await callback({
+            text: `\u274C Unable to fetch investor grades data at the moment.
+
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
+\u2022 No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+            content: {
+              error: "API fetch failed",
+              request_id: requestId
+            }
+          });
+        }
+        return createActionResult15({
+          success: false,
+          text: `\u274C Unable to fetch investor grades data at the moment.
+
+This could be due to:
+\u2022 TokenMetrics API connectivity issues
+\u2022 Temporary service interruption  
+\u2022 Rate limiting
+\u2022 No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+          data: {
+            error: "API fetch failed",
+            request_id: requestId
+          }
+        });
+      }
+      let grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
+      if (finalRequest?.grade_filter && finalRequest.grade_filter !== "any") {
+        elizaLogger16.log(`\u{1F50D} Applying grade filter: ${finalRequest.grade_filter}`);
+        const gradeRanges = {
+          "A": [90, 100],
+          "B": [80, 89.99],
+          "C": [70, 79.99],
+          "D": [60, 69.99],
+          "F": [0, 59.99]
+        };
+        const [minGrade, maxGrade] = gradeRanges[finalRequest.grade_filter] || [0, 100];
+        const originalCount = grades.length;
+        grades = grades.filter((token) => {
+          const numericGrade = token.TM_INVESTOR_GRADE || token.INVESTOR_GRADE || token.TA_GRADE || token.QUANT_GRADE || 0;
+          return numericGrade >= minGrade && numericGrade <= maxGrade;
+        });
+        elizaLogger16.log(`\u{1F50D} Grade filtering: ${originalCount} \u2192 ${grades.length} tokens (${finalRequest.grade_filter}-grade: ${minGrade}-${maxGrade})`);
+        if (grades.length === 0) {
+          elizaLogger16.log(`\u274C No ${finalRequest.grade_filter}-grade tokens found`);
+          if (callback) {
+            await callback({
+              text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
+
+I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
+
+**${finalRequest.grade_filter}-Grade Requirements:**
+\u2022 Grade range: ${minGrade} - ${maxGrade}
+\u2022 Current market conditions may not have tokens in this range
+
+**Suggestions:**
+\u2022 Try a different grade range (A, B, C, D, F)
+\u2022 Check general market grades: "Show me current investor grades"
+\u2022 Look for specific tokens: "Get investor grades for Bitcoin"
+
+\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
+\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+              content: {
+                error: "No tokens found for grade filter",
+                grade_filter: finalRequest.grade_filter,
+                grade_range: [minGrade, maxGrade],
+                request_id: requestId
+              }
+            });
+          }
+          return createActionResult15({
+            success: false,
+            text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
+
+I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
+
+**${finalRequest.grade_filter}-Grade Requirements:**
+\u2022 Grade range: ${minGrade} - ${maxGrade}
+\u2022 Current market conditions may not have tokens in this range
+
+**Suggestions:**
+\u2022 Try a different grade range (A, B, C, D, F)
+\u2022 Check general market grades: "Show me current investor grades"
+\u2022 Look for specific tokens: "Get investor grades for Bitcoin"
+
+\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
+\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
+            data: {
+              error: "No tokens found for grade filter",
+              grade_filter: finalRequest.grade_filter,
+              grade_range: [minGrade, maxGrade],
+              request_id: requestId
+            }
+          });
+        }
+      }
+      if (grades.length > 1 && apiParams.symbol) {
+        elizaLogger16.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
+        const mainTokenSelectors = [
+          // For Bitcoin - select the main Bitcoin, not wrapped versions
+          (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
+          // For Dogecoin - select the main Dogecoin, not other DOGE tokens
+          (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
+          // For Ethereum - select the main Ethereum
+          (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
+          // For Avalanche - select the main Avalanche, not wrapped versions
+          (token) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
+          // For other tokens - prefer exact name matches or shortest/simplest names
+          (token) => {
+            const name = token.TOKEN_NAME?.toLowerCase() || "";
+            const symbol = token.TOKEN_SYMBOL?.toLowerCase() || "";
+            const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis", "wormhole", "beam"];
+            const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
+            if (hasAvoidKeywords) return false;
+            if (symbol === "btc" && name.includes("bitcoin")) return true;
+            if (symbol === "eth" && name.includes("ethereum")) return true;
+            if (symbol === "doge" && name.includes("dogecoin")) return true;
+            if (symbol === "sol" && name.includes("solana")) return true;
+            if (symbol === "avax" && name.includes("avalanche")) return true;
+            return false;
+          }
+        ];
+        let selectedToken = null;
+        for (const selector of mainTokenSelectors) {
+          const match = grades.find(selector);
+          if (match) {
+            selectedToken = match;
+            elizaLogger16.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
+            break;
+          }
+        }
+        if (selectedToken) {
+          grades = [selectedToken];
+          elizaLogger16.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
+        } else {
+          elizaLogger16.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${grades[0]?.TOKEN_NAME || "unknown"}`);
+        }
+      }
+      elizaLogger16.log(`\u{1F50D} Final grades count: ${grades.length}`);
+      const responseText = formatInvestorGradesResponse(grades, tokenInfo);
+      const analysis = analyzeInvestorGrades(grades);
+      elizaLogger16.success("\u2705 Successfully processed investor grades request");
+      if (callback) {
+        await callback({
+          text: responseText,
+          content: {
+            success: true,
+            grades_data: grades,
+            analysis,
+            source: "TokenMetrics AI Investor Grades",
+            request_id: requestId,
+            query_details: {
+              original_request: finalRequest?.cryptocurrency || "general market",
+              grade_filter: finalRequest?.grade_filter,
+              category: finalRequest?.category,
+              confidence: finalRequest?.confidence,
+              data_freshness: "real-time",
+              request_id: requestId,
+              extraction_method: "ai_with_cache_busting_and_regex_fallback"
+            }
+          }
+        });
+      }
+      return createActionResult15({
+        success: true,
+        text: responseText,
+        data: {
+          success: true,
+          grades_data: grades,
+          analysis,
+          source: "TokenMetrics AI Investor Grades",
+          request_id: requestId,
+          query_details: {
+            original_request: finalRequest?.cryptocurrency || "general market",
+            grade_filter: finalRequest?.grade_filter,
+            category: finalRequest?.category,
+            confidence: finalRequest?.confidence,
+            data_freshness: "real-time",
+            request_id: requestId,
+            extraction_method: "ai_with_cache_busting_and_regex_fallback"
+          }
+        }
+      });
+    } catch (error) {
+      elizaLogger16.error("\u274C Error in TokenMetrics investor grades handler:", error);
+      elizaLogger16.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      if (callback) {
+        await callback({
+          text: `\u274C I encountered an error while fetching investor grades: ${errorMessage}
+
+This could be due to:
+\u2022 Network connectivity issues
+\u2022 TokenMetrics API service problems
+\u2022 Invalid API key or authentication issues
+\u2022 Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+          content: {
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true,
+            request_id: requestId
+          }
+        });
+      }
+      return createActionResult15({
+        success: false,
+        error: errorMessage
+      });
+    }
+  },
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get investor grades for Bitcoin"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll fetch the latest AI investor grades for Bitcoin from TokenMetrics.",
+          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show me A-grade investment tokens"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get all A-grade tokens for long-term investment from TokenMetrics.",
+          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "What are the current long-term investment grades?"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "Let me fetch the latest AI investor grades and ratings from TokenMetrics.",
+          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
+        }
+      }
+    ]
+  ]
+};
+
+// src/actions/getMarketMetricsAction.ts
+import { elizaLogger as elizaLogger17, createActionResult as createActionResult16 } from "@elizaos/core";
+var marketMetricsTemplate = `Extract market metrics request information from the message.
+
+Market metrics provide comprehensive market analysis including:
+- Overall market trends and sentiment
+- Market capitalization data
+- Volume analysis and liquidity metrics
+- Price movement patterns
+- Market dominance statistics
+- Fear & Greed index
+- Market volatility measurements
+
+Instructions:
+Look for MARKET METRICS requests, such as:
+- General market analysis ("What's the market doing?", "How's the crypto market?")
+- Market cap queries ("Total crypto market cap", "Market capitalization analysis")
+- Volume analysis ("Market volume trends", "Trading volume analysis")
+- Market sentiment ("Market sentiment today", "Fear and greed index")
+- Market trends ("Market trend analysis", "Overall market performance")
+
+EXAMPLES:
+- "How's the crypto market performing today?"
+- "What's the total market cap?"
+- "Show me market volume trends"
+- "Get market sentiment analysis"
+- "Market metrics overview"
+- "Current market trends"
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<analysis_type>general or sentiment or volume or trends or dominance</analysis_type>
+<timeframe>hourly or daily or weekly or monthly</timeframe>
+<market_focus>total or defi or layer1 or altcoins or all</market_focus>
+<metrics_requested>cap, volume, sentiment, trends, volatility, or all</metrics_requested>
+<comparison_period>24h or 7d or 30d or 1y or none</comparison_period>
+</response>`;
+var MarketMetricsRequestSchema = external_exports.object({
+  start_date: external_exports.string().optional().describe("Start date in YYYY-MM-DD format"),
+  end_date: external_exports.string().optional().describe("End date in YYYY-MM-DD format"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysis_focus: external_exports.array(external_exports.enum([
+    "market_sentiment",
+    "trend_analysis",
+    "strategic_insights",
+    "current_status"
+  ])).optional().describe("Types of analysis to focus on")
+});
+var handler = async (runtime, message, state, _options, callback) => {
+  elizaLogger17.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
+  try {
+    const extractedRequest = await extractTokenMetricsRequest(
+      runtime,
+      message,
+      state || await runtime.composeState(message),
+      marketMetricsTemplate,
+      MarketMetricsRequestSchema,
+      generateRequestId()
+    );
+    elizaLogger17.info("\u{1F4CA} Extracted market metrics request:", extractedRequest);
+    const processedRequest = {
+      start_date: extractedRequest.start_date,
+      end_date: extractedRequest.end_date,
+      limit: extractedRequest.limit || 50,
+      page: extractedRequest.page || 1,
+      analysis_focus: extractedRequest.analysis_focus || ["current_status"]
+    };
+    const apiParams = {
+      limit: processedRequest.limit,
+      page: processedRequest.page
+    };
+    if (processedRequest.start_date) {
+      apiParams.startDate = processedRequest.start_date;
+    }
+    if (processedRequest.end_date) {
+      apiParams.endDate = processedRequest.end_date;
+    }
+    const response = await callTokenMetricsAPI(
+      "/v2/market-metrics",
+      apiParams,
+      runtime
+    );
+    if (!response || response.error && !response.data) {
+      throw new Error(response?.error || "Failed to fetch market metrics data");
+    }
+    const marketMetrics = Array.isArray(response) ? response : response.data || [];
+    const marketAnalysis = analyzeMarketMetrics(marketMetrics);
+    const currentStatus = getCurrentMarketStatus(marketMetrics);
+    let responseText = "\u{1F4CA} **TokenMetrics Market Analytics**\n\n";
+    if (processedRequest.analysis_focus.includes("current_status")) {
+      responseText += `\u{1F3AF} **Current Market Status**: ${currentStatus.sentiment_description}
+`;
+      responseText += `\u{1F4C8} **Market Direction**: ${currentStatus.direction}
+`;
+      responseText += `\u{1F4AA} **Signal Strength**: ${currentStatus.strength}/10
+
+`;
+    }
+    if (processedRequest.analysis_focus.includes("market_sentiment")) {
+      responseText += `\u{1F50D} **Market Sentiment Analysis**:
+`;
+      responseText += `\u2022 Bullish/Bearish Indicator: ${marketAnalysis.overall_sentiment}
+`;
+      responseText += `\u2022 Confidence Level: ${marketAnalysis.confidence_level}%
+`;
+      responseText += `\u2022 Market Phase: ${marketAnalysis.market_phase}
+
+`;
+    }
+    if (processedRequest.analysis_focus.includes("trend_analysis")) {
+      responseText += `\u{1F4C8} **Trend Analysis**:
+`;
+      responseText += `\u2022 Primary Trend: ${marketAnalysis.trend_direction}
+`;
+      responseText += `\u2022 Trend Strength: ${marketAnalysis.trend_strength}
+`;
+      responseText += `\u2022 Momentum: ${marketAnalysis.momentum}
+
+`;
+    }
+    if (processedRequest.analysis_focus.includes("strategic_insights")) {
+      responseText += `\u{1F4A1} **Strategic Insights**:
+`;
+      if (marketAnalysis.strategic_implications) {
+        marketAnalysis.strategic_implications.forEach((insight, index) => {
+          responseText += `${index + 1}. ${insight}
+`;
+        });
+      }
+      responseText += "\n";
+    }
+    responseText += `\u{1F4CB} **Key Metrics Summary**:
+`;
+    responseText += `\u2022 Data Points Analyzed: ${marketMetrics.length}
+`;
+    responseText += `\u2022 Total Crypto Market Cap: ${formatCurrency(marketMetrics[0]?.TOTAL_CRYPTO_MCAP || 0)}
+`;
+    responseText += `\u2022 High-Grade Coins: ${formatPercentage(marketMetrics[0]?.TM_GRADE_PERC_HIGH_COINS || 0)}%
+`;
+    responseText += `\u2022 Current Signal: ${getSignalDescription(marketMetrics[0]?.TM_GRADE_SIGNAL || 0)}
+`;
+    responseText += `\u2022 Previous Signal: ${getSignalDescription(marketMetrics[0]?.LAST_TM_GRADE_SIGNAL || 0)}
+`;
+    if (marketAnalysis.recommendations && marketAnalysis.recommendations.length > 0) {
+      responseText += `
+\u{1F3AF} **Recommendations**:
+`;
+      marketAnalysis.recommendations.forEach((rec, index) => {
+        responseText += `${index + 1}. ${rec}
+`;
+      });
+    }
+    if (callback) {
+      callback({
+        text: responseText,
+        content: {
+          success: true,
+          data: {
+            market_metrics: marketMetrics,
+            analysis: marketAnalysis,
+            current_status: currentStatus,
+            metadata: {
+              endpoint: "/v2/market-metrics",
+              data_points: marketMetrics.length,
+              analysis_focus: processedRequest.analysis_focus,
+              date_range: {
+                start: processedRequest.start_date,
+                end: processedRequest.end_date
+              }
+            }
+          }
+        }
+      });
+    }
+    return createActionResult16({
+      success: true,
+      text: responseText,
+      data: {
+        market_metrics: marketMetrics,
+        analysis: marketAnalysis,
+        source: "TokenMetrics Market Analytics"
+      }
+    });
+  } catch (error) {
+    elizaLogger17.error("\u274C Error in market metrics handler:", error);
+    const errorText = `\u274C Unable to fetch market metrics: ${error instanceof Error ? error.message : "Unknown error"}`;
+    if (callback) {
+      await callback({
+        text: errorText,
+        content: { error: "Market metrics fetch failed" }
+      });
+    }
+    return createActionResult16({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+};
+function getSignalDescription(signal) {
+  switch (signal) {
+    case 1:
+      return "\u{1F7E2} Bullish";
+    case -1:
+      return "\u{1F534} Bearish";
+    case 0:
+      return "\u{1F7E1} Neutral";
+    default:
+      return "\u2753 Unknown";
+  }
+}
+var validate = async (runtime, message, state) => {
+  elizaLogger17.log("\u{1F50D} Validating getMarketMetricsAction (1.x)");
+  try {
+    validateAndGetApiKey(runtime);
+    return true;
+  } catch (error) {
+    elizaLogger17.error("\u274C Validation failed:", error);
+    return false;
+  }
+};
+var examples = [
+  [
+    {
+      name: "{{user1}}",
+      content: {
+        text: "What's the current crypto market sentiment?"
+      }
+    },
+    {
+      name: "{{agent}}",
+      content: {
+        text: "I'll analyze the current crypto market sentiment using TokenMetrics market metrics.",
+        action: "GET_MARKET_METRICS_TOKENMETRICS"
+      }
+    }
+  ],
+  [
+    {
+      name: "{{user1}}",
+      content: {
+        text: "Show me market trends analysis"
+      }
+    },
+    {
+      name: "{{agent}}",
+      content: {
+        text: "Let me fetch comprehensive market trends analysis from TokenMetrics.",
+        action: "GET_MARKET_METRICS_TOKENMETRICS"
+      }
+    }
+  ],
+  [
+    {
+      name: "{{user1}}",
+      content: {
+        text: "Is the market bullish or bearish right now?"
+      }
+    },
+    {
+      name: "{{agent}}",
+      content: {
+        text: "I'll check the current bullish/bearish market indicators for you.",
+        action: "GET_MARKET_METRICS_TOKENMETRICS"
+      }
+    }
+  ]
+];
+var getMarketMetricsAction = {
+  name: "GET_MARKET_METRICS_TOKENMETRICS",
+  description: "Get TokenMetrics market analytics including bullish/bearish market indicator and comprehensive market insights",
+  similes: [
+    "get market metrics",
+    "check market sentiment",
+    "get market analytics",
+    "bullish bearish indicator",
+    "get market direction",
+    "crypto market analysis",
+    "market sentiment analysis"
+  ],
+  handler,
+  validate,
+  examples
+};
+function analyzeMarketMetrics(marketData) {
+  if (!marketData || marketData.length === 0) {
+    return {
+      overall_sentiment: "Neutral",
+      confidence_level: 0,
+      market_phase: "Unknown",
+      trend_direction: "Sideways",
+      trend_strength: "Weak",
+      momentum: "Neutral",
+      strategic_implications: ["Insufficient data for analysis"],
+      recommendations: ["Wait for more market data"]
+    };
+  }
+  const latestData = marketData[0] || {};
+  const recentData = marketData.slice(0, Math.min(7, marketData.length));
+  const signalAnalysis = analyzeSignalDistribution(marketData);
+  const trendAnalysis = analyzeTrendPatterns(recentData);
+  const strengthAssessment = assessMarketStrength(signalAnalysis, trendAnalysis);
+  const strategicImplications = generateStrategicImplications(latestData, trendAnalysis, signalAnalysis);
+  const recommendations = generateMarketRecommendations(latestData, trendAnalysis, strengthAssessment);
+  return {
+    overall_sentiment: getCurrentSentimentDescription(latestData),
+    confidence_level: Math.round(strengthAssessment.confidence * 100),
+    market_phase: strengthAssessment.phase,
+    trend_direction: trendAnalysis.primary_direction,
+    trend_strength: trendAnalysis.strength,
+    momentum: trendAnalysis.momentum,
+    market_cap_trend: trendAnalysis.market_cap_trend,
+    volatility_level: strengthAssessment.volatility,
+    strategic_implications: strategicImplications,
+    recommendations,
+    signal_distribution: signalAnalysis,
+    trend_analysis: trendAnalysis,
+    strength_assessment: strengthAssessment
+  };
+}
+function getCurrentSentimentDescription(metrics) {
+  if (!metrics) return "Neutral";
+  const bullishIndicators = metrics.bullish_score || metrics.bullish_indicator || 0;
+  const bearishIndicators = metrics.bearish_score || metrics.bearish_indicator || 0;
+  if (bullishIndicators > bearishIndicators * 1.2) return "Bullish";
+  if (bearishIndicators > bullishIndicators * 1.2) return "Bearish";
+  return "Neutral";
+}
+function getCurrentMarketStatus(data) {
+  if (!data || data.length === 0) {
+    return {
+      sentiment_description: "Unknown",
+      direction: "Sideways",
+      strength: 5,
+      confidence: 0
+    };
+  }
+  const latest = data[0];
+  const sentiment = getCurrentSentimentDescription(latest);
+  let strength = 5;
+  if (latest.market_strength) {
+    strength = Math.round(latest.market_strength * 10);
+  } else if (latest.bullish_score && latest.bearish_score) {
+    const diff = Math.abs(latest.bullish_score - latest.bearish_score);
+    strength = Math.min(10, Math.max(1, Math.round(5 + diff * 5)));
+  }
+  return {
+    sentiment_description: sentiment,
+    direction: sentiment === "Neutral" ? "Sideways" : sentiment,
+    strength: Math.min(10, Math.max(1, strength)),
+    confidence: data.length >= 7 ? 0.8 : 0.5,
+    last_updated: latest.date || latest.timestamp || (/* @__PURE__ */ new Date()).toISOString()
+  };
+}
+function analyzeSignalDistribution(data) {
+  if (!data || data.length === 0) {
+    return {
+      bullish_percentage: 50,
+      bearish_percentage: 50,
+      neutral_percentage: 0,
+      signal_consistency: 0,
+      dominant_signal: "Neutral"
+    };
+  }
+  let bullishCount = 0;
+  let bearishCount = 0;
+  let neutralCount = 0;
+  data.forEach((item) => {
+    const sentiment = getCurrentSentimentDescription(item);
+    if (sentiment === "Bullish") bullishCount++;
+    else if (sentiment === "Bearish") bearishCount++;
+    else neutralCount++;
+  });
+  const total = data.length;
+  const bullishPct = Math.round(bullishCount / total * 100);
+  const bearishPct = Math.round(bearishCount / total * 100);
+  const neutralPct = Math.round(neutralCount / total * 100);
+  let dominantSignal = "Neutral";
+  if (bullishPct > bearishPct && bullishPct > neutralPct) dominantSignal = "Bullish";
+  else if (bearishPct > bullishPct && bearishPct > neutralPct) dominantSignal = "Bearish";
+  const consistency = Math.max(bullishPct, bearishPct, neutralPct) / 100;
+  return {
+    bullish_percentage: bullishPct,
+    bearish_percentage: bearishPct,
+    neutral_percentage: neutralPct,
+    signal_consistency: Math.round(consistency * 100),
+    dominant_signal: dominantSignal
+  };
+}
+function analyzeTrendPatterns(recentData) {
+  if (!recentData || recentData.length < 2) {
+    return {
+      primary_direction: "Sideways",
+      strength: "Weak",
+      momentum: "Neutral",
+      market_cap_trend: "Stable"
+    };
+  }
+  const values = recentData.map(
+    (item) => item.total_market_cap || item.market_cap || item.price || 0
+  ).filter((val) => val > 0);
+  if (values.length < 2) {
+    return {
+      primary_direction: "Sideways",
+      strength: "Weak",
+      momentum: "Neutral",
+      market_cap_trend: "Stable"
+    };
+  }
+  const first = values[values.length - 1];
+  const last = values[0];
+  const change = (last - first) / first * 100;
+  let direction = "Sideways";
+  let strength = "Weak";
+  let momentum = "Neutral";
+  if (Math.abs(change) > 5) {
+    direction = change > 0 ? "Upward" : "Downward";
+    strength = Math.abs(change) > 15 ? "Strong" : "Moderate";
+  }
+  if (values.length >= 4) {
+    const recentChange = (values[0] - values[1]) / values[1] * 100;
+    const earlierChange = (values[2] - values[3]) / values[3] * 100;
+    if (Math.abs(recentChange) > Math.abs(earlierChange) * 1.2) {
+      momentum = "Accelerating";
+    } else if (Math.abs(recentChange) < Math.abs(earlierChange) * 0.8) {
+      momentum = "Decelerating";
+    }
+  }
+  return {
+    primary_direction: direction,
+    strength,
+    momentum,
+    market_cap_trend: direction === "Sideways" ? "Stable" : direction,
+    change_percentage: Math.round(change * 100) / 100
+  };
+}
+function assessMarketStrength(signalAnalysis, trendAnalysis) {
+  const signalStrength = signalAnalysis.signal_consistency / 100;
+  const trendStrength = trendAnalysis.strength === "Strong" ? 0.8 : trendAnalysis.strength === "Moderate" ? 0.6 : 0.4;
+  const overallStrength = (signalStrength + trendStrength) / 2;
+  let phase = "Consolidation";
+  if (overallStrength > 0.7) phase = "Trending";
+  else if (overallStrength < 0.4) phase = "Uncertain";
+  let volatility = "Medium";
+  if (trendAnalysis.change_percentage && Math.abs(trendAnalysis.change_percentage) > 10) {
+    volatility = "High";
+  } else if (trendAnalysis.change_percentage && Math.abs(trendAnalysis.change_percentage) < 3) {
+    volatility = "Low";
+  }
+  return {
+    confidence: overallStrength,
+    phase,
+    volatility,
+    overall_score: Math.round(overallStrength * 10)
+  };
+}
+function generateStrategicImplications(currentMetrics, trendAnalysis, signalAnalysis) {
+  const implications = [];
+  if (signalAnalysis.dominant_signal === "Bullish" && signalAnalysis.signal_consistency > 60) {
+    implications.push("Strong bullish sentiment suggests favorable conditions for crypto exposure");
+  } else if (signalAnalysis.dominant_signal === "Bearish" && signalAnalysis.signal_consistency > 60) {
+    implications.push("Bearish sentiment indicates defensive positioning may be prudent");
+  } else {
+    implications.push("Mixed signals suggest maintaining balanced portfolio allocation");
+  }
+  if (trendAnalysis.primary_direction === "Upward" && trendAnalysis.strength === "Strong") {
+    implications.push("Strong upward trend supports momentum-based strategies");
+  } else if (trendAnalysis.primary_direction === "Downward" && trendAnalysis.strength === "Strong") {
+    implications.push("Strong downward trend suggests waiting for reversal signals");
+  }
+  if (trendAnalysis.momentum === "Accelerating") {
+    implications.push("Accelerating momentum may indicate trend continuation");
+  } else if (trendAnalysis.momentum === "Decelerating") {
+    implications.push("Decelerating momentum suggests potential trend reversal");
+  }
+  return implications.length > 0 ? implications : ["Market conditions require careful monitoring"];
+}
+function generateMarketRecommendations(currentMetrics, trendAnalysis, strengthAssessment) {
+  const recommendations = [];
+  if (strengthAssessment.phase === "Trending") {
+    recommendations.push("Consider trend-following strategies with appropriate risk management");
+  } else if (strengthAssessment.phase === "Consolidation") {
+    recommendations.push("Range-bound strategies may be more effective in current conditions");
+  } else {
+    recommendations.push("Exercise caution and wait for clearer market signals");
+  }
+  if (strengthAssessment.volatility === "High") {
+    recommendations.push("High volatility requires smaller position sizes and tighter stops");
+  } else if (strengthAssessment.volatility === "Low") {
+    recommendations.push("Low volatility environment may favor larger position sizes");
+  }
+  if (strengthAssessment.confidence > 0.7) {
+    recommendations.push("High confidence signals support more aggressive positioning");
+  } else if (strengthAssessment.confidence < 0.4) {
+    recommendations.push("Low confidence suggests conservative approach until clarity improves");
+  }
+  return recommendations.length > 0 ? recommendations : ["Monitor market conditions closely before making major decisions"];
+}
+
+// src/actions/getIndicesAction.ts
+import {
+  elizaLogger as elizaLogger18,
+  createActionResult as createActionResult17
+} from "@elizaos/core";
+var IndicesRequestSchema = external_exports.object({
+  indicesType: external_exports.string().nullable().optional().describe("Type of indices to filter (active, passive, etc.)"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of indices to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["performance", "risk", "diversification", "all"]).optional().describe("Type of analysis to focus on")
+});
+var INDICES_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting crypto indices analysis requests from natural language.
+
+The user wants to get information about crypto indices. Extract the following information:
+
+1. **indicesType** (optional): Type of indices they're interested in
+   - "active" for actively managed indices
+   - "passive" for passive/index tracking
+   - Leave null for all types
+
+2. **limit** (default: 50): How many indices to return (1-100)
+
+3. **page** (default: 1): Which page of results (for pagination)
+
+4. **analysisType** (default: "all"): What type of analysis they want
+   - "performance" - focus on returns and performance metrics
+   - "risk" - focus on volatility and risk metrics  
+   - "diversification" - focus on portfolio diversification
    - "all" - comprehensive analysis
 
 Examples:
-- "Show me crypto investors" \u2192 {limit: 50, page: 1, analysisType: "all"}
-- "Get top 20 crypto investors by performance" \u2192 {limit: 20, page: 1, analysisType: "performance"}
-- "List influential crypto investors" \u2192 {limit: 50, page: 1, analysisType: "influence"}
-- "Crypto investor sentiment analysis" \u2192 {limit: 50, page: 1, analysisType: "sentiment"}
+- "Show me crypto indices" \u2192 {indicesType: null, limit: 50, page: 1, analysisType: "all"}
+- "Get active crypto index funds" \u2192 {indicesType: "active", limit: 50, page: 1, analysisType: "all"}
+- "What are the best performing passive indices?" \u2192 {indicesType: "passive", limit: 50, page: 1, analysisType: "performance"}
+- "Show me 20 indices focused on risk analysis" \u2192 {indicesType: null, limit: 20, page: 1, analysisType: "risk"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<indicesType>active|passive|null</indicesType>
+<limit>number of indices to return</limit>
+<page>page number for pagination</page>
+<analysisType>performance|risk|diversification|all</analysisType>
+</response>
 `;
-var getCryptoInvestorsAction = {
-  name: "GET_CRYPTO_INVESTORS_TOKENMETRICS",
-  description: "Get the latest list of crypto investors and their scores from TokenMetrics for market sentiment analysis",
+var getIndicesAction = {
+  name: "GET_INDICES_TOKENMETRICS",
+  description: "Get active and passive crypto indices with performance and market data from TokenMetrics for index-based investment analysis",
   similes: [
-    "get crypto investors",
-    "investor list",
-    "investor scores",
-    "market participants",
-    "investor sentiment",
-    "influential investors",
-    "crypto investor analysis"
+    "get indices",
+    "crypto indices",
+    "index funds",
+    "passive indices",
+    "active indices",
+    "index performance",
+    "crypto index analysis",
+    "index investment opportunities"
   ],
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Show me the latest crypto investors data"
+          text: "Get index performance comparison"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll retrieve the latest crypto investors list and their scores from TokenMetrics.",
-          action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+          text: "I'll get comprehensive index performance data for comparison.",
+          action: "GET_INDICES_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Get top 20 crypto investors by performance"
+          text: "Show index portfolio compositions"
         }
       },
       {
-        user: "{{user2}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll get the top 20 crypto investors ranked by their performance scores.",
-          action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
-        }
-      }
-    ],
-    [
-      {
-        user: "{{user1}}",
-        content: {
-          text: "Analyze influential crypto investors"
-        }
-      },
-      {
-        user: "{{user2}}",
-        content: {
-          text: "I'll analyze the most influential crypto investors and their market impact.",
-          action: "GET_CRYPTO_INVESTORS_TOKENMETRICS"
+          text: "I'll retrieve the detailed portfolio compositions of available indices.",
+          action: "GET_INDICES_TOKENMETRICS"
         }
       }
     ]
@@ -17440,673 +15874,903 @@ var getCryptoInvestorsAction = {
   async handler(runtime, message, state, _options, callback) {
     try {
       const requestId = generateRequestId();
-      console.log(`[${requestId}] Processing crypto investors request...`);
-      const investorsRequest = await extractTokenMetricsRequest(
+      console.log(`[${requestId}] Processing indices request...`);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = INDICES_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const indicesRequest = await extractTokenMetricsRequest(
         runtime,
         message,
         state || await runtime.composeState(message),
-        CRYPTO_INVESTORS_EXTRACTION_TEMPLATE,
-        CryptoInvestorsRequestSchema,
+        enhancedTemplate,
+        IndicesRequestSchema,
         requestId
       );
-      console.log(`[${requestId}] Extracted request:`, investorsRequest);
+      console.log(`[${requestId}] Extracted request:`, indicesRequest);
       const processedRequest = {
-        limit: investorsRequest.limit || 50,
-        page: investorsRequest.page || 1,
-        analysisType: investorsRequest.analysisType || "all"
+        indicesType: indicesRequest?.indicesType,
+        limit: indicesRequest?.limit || 50,
+        page: indicesRequest?.page || 1,
+        analysisType: indicesRequest?.analysisType || "all"
       };
       const apiParams = {
         limit: processedRequest.limit,
         page: processedRequest.page
       };
+      if (processedRequest.indicesType && processedRequest.indicesType !== null) {
+        apiParams.indicesType = processedRequest.indicesType;
+      }
       const response = await callTokenMetricsAPI(
-        "/v2/crypto-investors",
+        "/v2/indices",
         apiParams,
         runtime
       );
       console.log(`[${requestId}] API response received, processing data...`);
-      const investorsData = Array.isArray(response) ? response : response.data || [];
-      const investorsAnalysis = analyzeCryptoInvestors(investorsData, processedRequest.analysisType);
-      const responseText = formatCryptoInvestorsResponse(investorsData, investorsAnalysis, processedRequest);
+      const indices = Array.isArray(response) ? response : response.data || [];
+      console.log(`[${requestId}] Raw API response:`, JSON.stringify(response, null, 2));
+      console.log(`[${requestId}] Processed indices array:`, JSON.stringify(indices.slice(0, 2), null, 2));
+      const indicesAnalysis = analyzeIndicesData(indices, processedRequest.analysisType);
       const result = {
         success: true,
-        message: `Successfully retrieved ${investorsData.length} crypto investors data`,
+        message: `Successfully retrieved ${indices.length} crypto indices`,
         request_id: requestId,
-        crypto_investors: investorsData,
-        analysis: investorsAnalysis,
+        indices_data: indices,
+        analysis: indicesAnalysis,
         metadata: {
-          endpoint: "crypto-investors",
+          endpoint: "indices",
+          filters_applied: {
+            indices_type: processedRequest.indicesType,
+            analysis_focus: processedRequest.analysisType
+          },
           pagination: {
             page: processedRequest.page,
             limit: processedRequest.limit
           },
-          analysis_focus: processedRequest.analysisType,
-          data_points: investorsData.length,
+          data_points: indices.length,
           api_version: "v2",
-          data_source: "TokenMetrics Official API"
+          data_source: "TokenMetrics Indices Engine"
         },
-        investors_explanation: {
-          purpose: "Track influential crypto investors and their market participation",
-          investor_scores: "Proprietary scoring system based on portfolio performance, influence, and market activity",
-          data_includes: [
-            "Investor names and identification",
-            "Performance scores and rankings",
-            "Investment activity and portfolio insights",
-            "Market influence and sentiment indicators"
+        indices_explanation: {
+          purpose: "Crypto indices provide diversified exposure to cryptocurrency markets through professionally managed baskets",
+          index_types: [
+            "Active Indices - Professionally managed with dynamic allocation strategies",
+            "Passive Indices - Market-cap weighted or rule-based allocation strategies",
+            "Sector Indices - Focused on specific crypto sectors (DeFi, Layer 1, etc.)",
+            "Thematic Indices - Based on investment themes and market trends"
+          ],
+          key_metrics: [
+            "Total Return - Overall performance since inception",
+            "Annual Return - Annualized performance metrics",
+            "Volatility - Risk measurement for the index",
+            "Sharpe Ratio - Risk-adjusted return measurement",
+            "Max Drawdown - Worst-case scenario loss measurement",
+            "Assets Count - Number of tokens in the index"
           ],
           usage_guidelines: [
-            "Use for understanding market sentiment and investor behavior",
-            "Track influential investors for market timing insights",
-            "Analyze investor concentration and market participation",
-            "Combine with other metrics for comprehensive market analysis"
+            "Use for diversified crypto exposure without picking individual tokens",
+            "Compare active vs passive strategies for your investment goals",
+            "Consider volatility and Sharpe ratio for risk assessment",
+            "Review assets count for diversification level",
+            "Monitor total return and max drawdown for performance evaluation"
           ]
         }
       };
-      console.log(`[${requestId}] Crypto investors analysis completed successfully`);
+      console.log(`[${requestId}] Indices analysis completed successfully`);
+      const responseText = formatIndicesResponse(result, processedRequest.limit);
       console.log(`[${requestId}] Analysis completed successfully`);
       if (callback) {
         callback({
           text: responseText,
-          content: result
+          content: {
+            success: true,
+            request_id: requestId,
+            data: result,
+            metadata: {
+              endpoint: "indices",
+              data_source: "TokenMetrics Official API",
+              api_version: "v2"
+            }
+          }
         });
       }
-      return true;
+      return createActionResult17(result);
     } catch (error) {
-      console.error("Error in getCryptoInvestorsAction:", error);
-      const errorResult = {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        message: "Failed to retrieve crypto investors from TokenMetrics API",
-        troubleshooting: {
-          endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/crypto-investors is accessible",
-          parameter_validation: [
-            "Check that pagination parameters (page, limit) are positive integers",
-            "Ensure your API key has access to crypto investors endpoint"
-          ],
-          common_solutions: [
-            "Try with default parameters (no filters)",
-            "Check if your subscription includes crypto investors data access",
-            "Verify TokenMetrics API service status"
-          ]
-        }
-      };
+      console.error("Error in getIndices action:", error);
       if (callback) {
         callback({
-          text: "\u274C Failed to retrieve crypto investors data. Please try again later.",
-          content: errorResult
+          text: `\u274C Failed to retrieve indices data: ${error instanceof Error ? error.message : "Unknown error"}`,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred"
+          }
         });
       }
-      return false;
+      return createActionResult17({
+        success: false,
+        error: `Failed to retrieve indices data: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger21.log("\u{1F50D} Validating getCryptoInvestorsAction (1.x)");
+    elizaLogger18.log("\u{1F50D} Validating getIndicesAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger21.error("\u274C Validation failed:", error);
+      elizaLogger18.error("\u274C Validation failed:", error);
       return false;
     }
   }
 };
-function analyzeCryptoInvestors(investorsData, analysisType = "all") {
-  if (!investorsData || investorsData.length === 0) {
+function analyzeIndicesData(indices, analysisType = "all") {
+  if (!indices || indices.length === 0) {
     return {
-      summary: "No crypto investors data available for analysis",
-      market_participation: "Cannot assess",
-      insights: []
+      summary: "No indices data available for analysis",
+      insights: [],
+      recommendations: []
     };
   }
-  const performanceAnalysis = analyzeInvestorPerformance(investorsData);
-  const marketParticipation = analyzeMarketParticipation(investorsData);
-  const influenceAnalysis = analyzeInvestorInfluence(investorsData);
-  const sentimentAnalysis = analyzeInvestorSentiment(investorsData);
-  const insights = generateInvestorInsights(performanceAnalysis, marketParticipation, influenceAnalysis);
+  const activeIndices = [];
+  const passiveIndices = [];
+  const validAllTimeReturns = indices.filter((index) => index.ALL_TIME !== void 0 && index.ALL_TIME !== null);
+  const avgAllTimeReturn = validAllTimeReturns.length > 0 ? validAllTimeReturns.reduce((sum, index) => sum + index.ALL_TIME, 0) / validAllTimeReturns.length : 0;
+  const valid1MReturns = indices.filter((index) => index["1M"] !== void 0 && index["1M"] !== null);
+  const avg1MReturn = valid1MReturns.length > 0 ? valid1MReturns.reduce((sum, index) => sum + index["1M"], 0) / valid1MReturns.length : 0;
+  const validGrades = indices.filter((index) => index.INDEX_GRADE !== void 0 && index.INDEX_GRADE !== null);
+  const avgIndexGrade = validGrades.length > 0 ? validGrades.reduce((sum, index) => sum + index.INDEX_GRADE, 0) / validGrades.length : 0;
+  const topPerformers = indices.filter((index) => index.ALL_TIME !== void 0 && index.ALL_TIME !== null).sort((a, b) => b.ALL_TIME - a.ALL_TIME).slice(0, 3);
+  const bestRecentPerformers = indices.filter((index) => index["1M"] !== void 0 && index["1M"] !== null).sort((a, b) => b["1M"] - a["1M"]).slice(0, 3);
+  const insights = [
+    `\u{1F4CA} Total Indices Available: ${indices.length}`,
+    `\u{1F4C8} Average All-Time Return: ${formatPercentage(avgAllTimeReturn)}`,
+    `\u{1F4C5} Average 1-Month Return: ${formatPercentage(avg1MReturn)}`,
+    `\u{1F3AF} Average Index Grade: ${avgIndexGrade.toFixed(1)}/100`,
+    `\u{1F3C6} Top All-Time Performer: ${topPerformers[0]?.NAME} (${formatPercentage(topPerformers[0]?.ALL_TIME)})`
+  ];
+  const recommendations = [
+    indices.length > 10 ? `\u{1F3AF} Good Selection: ${indices.length} indices available for diversified crypto exposure` : `\u26A0\uFE0F Limited Selection: Only ${indices.length} indices currently available`,
+    avgIndexGrade > 50 ? `\u2705 Strong Quality: Average index grade of ${avgIndexGrade.toFixed(1)}/100 indicates good quality indices` : `\u26A0\uFE0F Consider Quality: Lower average grade suggests careful selection needed`,
+    avg1MReturn > 0 ? `\u{1F4C8} Positive Momentum: Average 1-month return of ${formatPercentage(avg1MReturn)} shows recent strength` : `\u{1F4C9} Recent Weakness: Negative 1-month returns suggest market challenges`,
+    topPerformers.length > 0 ? `\u{1F680} Strong Leaders: Top performer ${topPerformers[0]?.NAME} shows ${formatPercentage(topPerformers[0]?.ALL_TIME)} all-time returns` : `\u26A0\uFE0F No clear leaders identified`
+  ];
   let focusedAnalysis = {};
   switch (analysisType) {
     case "performance":
       focusedAnalysis = {
         performance_focus: {
-          top_performers: identifyTopPerformers(investorsData),
-          performance_distribution: performanceAnalysis,
+          top_all_time_performers: topPerformers.slice(0, 5),
+          recent_performers: bestRecentPerformers.slice(0, 5),
+          performance_distribution: {
+            positive_all_time: indices.filter((i) => (i.ALL_TIME || 0) > 0).length,
+            negative_all_time: indices.filter((i) => (i.ALL_TIME || 0) < 0).length,
+            positive_1m: indices.filter((i) => (i["1M"] || 0) > 0).length,
+            negative_1m: indices.filter((i) => (i["1M"] || 0) < 0).length
+          },
           performance_insights: [
-            `\u{1F4C8} Average performance score: ${performanceAnalysis.average_score}`,
-            `\u{1F3C6} High performers: ${performanceAnalysis.high_performers} investors`,
-            `\u{1F4CA} Performance quality: ${performanceAnalysis.overall_performance}`
+            `\u{1F680} ${indices.filter((i) => (i.ALL_TIME || 0) > 100).length} indices with >100% all-time returns`,
+            `\u{1F4C8} ${indices.filter((i) => (i["1M"] || 0) > 0).length}/${indices.length} indices showing positive 1-month returns`,
+            `\u2B50 Best all-time: ${topPerformers[0]?.NAME} at ${formatPercentage(topPerformers[0]?.ALL_TIME)}`
           ]
         }
       };
       break;
-    case "influence":
+    case "risk":
+      const lowRiskIndices = indices.filter((i) => (i.INDEX_GRADE || 0) > 70).slice(0, 5);
+      const highRiskIndices = indices.filter((i) => (i.INDEX_GRADE || 0) < 30).slice(0, 5);
       focusedAnalysis = {
-        influence_focus: {
-          market_leaders: identifyMarketLeaders(influenceAnalysis.top_influencers || []),
-          influence_distribution: influenceAnalysis,
-          influence_insights: [
-            `\u{1F31F} Top influencers identified: ${influenceAnalysis.top_influencers?.length || 0}`,
-            `\u{1F4CA} Influence distribution: ${influenceAnalysis.influence_distribution?.level || "Moderate"}`,
-            `\u{1F3AF} Market leadership: ${influenceAnalysis.market_leadership || "Distributed"}`
+        risk_focus: {
+          high_grade_indices: lowRiskIndices,
+          low_grade_indices: highRiskIndices,
+          risk_distribution: {
+            high_grade: indices.filter((i) => (i.INDEX_GRADE || 0) > 70).length,
+            medium_grade: indices.filter((i) => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length,
+            low_grade: indices.filter((i) => (i.INDEX_GRADE || 0) < 30).length
+          },
+          risk_insights: [
+            `\u{1F6E1}\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) > 70).length} high-grade indices (grade >70)`,
+            `\u2696\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) >= 30 && (i.INDEX_GRADE || 0) <= 70).length} medium-grade indices`,
+            `\u26A0\uFE0F ${indices.filter((i) => (i.INDEX_GRADE || 0) < 30).length} low-grade indices (grade <30)`
           ]
         }
       };
       break;
-    case "sentiment":
+    case "diversification":
       focusedAnalysis = {
-        sentiment_focus: {
-          market_mood: determinMarketMood(sentimentAnalysis.sentiment, sentimentAnalysis.activity_rate),
-          sentiment_indicators: sentimentAnalysis,
-          sentiment_insights: [
-            `\u{1F60A} Market sentiment: ${sentimentAnalysis.sentiment}`,
-            `\u{1F4CA} Activity rate: ${formatPercentage(sentimentAnalysis.activity_rate)}`,
-            `\u{1F3AF} Market outlook: ${determineMarketOutlook(performanceAnalysis, sentimentAnalysis)}`
+        diversification_focus: {
+          by_coin_count: indices.sort((a, b) => (b.COINS || 0) - (a.COINS || 0)).slice(0, 5),
+          diversification_levels: {
+            highly_diversified: indices.filter((i) => (i.COINS || 0) > 20).length,
+            moderately_diversified: indices.filter((i) => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length,
+            focused: indices.filter((i) => (i.COINS || 0) < 10).length
+          },
+          diversification_insights: [
+            `\u{1F310} ${indices.filter((i) => (i.COINS || 0) > 20).length} highly diversified indices (>20 coins)`,
+            `\u{1F4CA} ${indices.filter((i) => (i.COINS || 0) >= 10 && (i.COINS || 0) <= 20).length} moderately diversified indices`,
+            `\u{1F3AF} ${indices.filter((i) => (i.COINS || 0) < 10).length} focused indices (<10 coins)`
           ]
         }
       };
       break;
   }
   return {
-    summary: `Analysis of ${investorsData.length} crypto investors shows ${performanceAnalysis.overall_performance} performance with ${marketParticipation.participation_level} market participation`,
+    summary: `Analysis of ${indices.length} crypto indices showing ${formatPercentage(avgAllTimeReturn)} average all-time return with ${avgIndexGrade.toFixed(1)}/100 average grade`,
     analysis_type: analysisType,
-    performance_analysis: performanceAnalysis,
-    market_participation: marketParticipation,
-    influence_analysis: influenceAnalysis,
-    sentiment_analysis: sentimentAnalysis,
+    performance_metrics: {
+      total_indices: indices.length,
+      active_indices: 0,
+      // Not available in API
+      passive_indices: 0,
+      // Not available in API
+      avg_all_time_return: avgAllTimeReturn,
+      avg_1m_return: avg1MReturn,
+      avg_index_grade: avgIndexGrade,
+      avg_sharpe_ratio: 0
+      // Not available in API
+    },
+    top_performers: topPerformers.map((index) => ({
+      name: index.NAME,
+      ticker: index.TICKER,
+      all_time_return: index.ALL_TIME,
+      one_month_return: index["1M"],
+      index_grade: index.INDEX_GRADE,
+      coins: index.COINS
+    })),
+    best_recent_performers: bestRecentPerformers.map((index) => ({
+      name: index.NAME,
+      ticker: index.TICKER,
+      one_month_return: index["1M"],
+      all_time_return: index.ALL_TIME,
+      index_grade: index.INDEX_GRADE
+    })),
     insights,
+    recommendations,
     ...focusedAnalysis,
-    market_implications: generateMarketImplications(performanceAnalysis, sentimentAnalysis),
-    top_performers: identifyTopPerformers(investorsData),
-    data_quality: {
-      source: "TokenMetrics Official API",
-      investor_count: investorsData.length,
-      data_completeness: assessDataCompleteness(investorsData),
-      coverage_scope: assessCoverageScope2(investorsData)
-    },
-    investment_strategy: suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis),
-    risk_considerations: identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis),
-    opportunities: identifyOpportunities(performanceAnalysis, sentimentAnalysis)
+    investment_considerations: [
+      "\u{1F4C8} Compare all-time returns vs recent performance trends",
+      "\u{1F3AF} Consider index grade as quality indicator (higher is better)",
+      "\u{1F504} Review coin count for diversification level",
+      "\u{1F4B0} Factor in 24H volume for liquidity assessment",
+      "\u{1F4CA} Analyze market cap for index size and stability",
+      "\u2696\uFE0F Balance between focused and diversified strategies"
+    ]
   };
 }
-function analyzeInvestorPerformance(investorsData) {
-  const scores = investorsData.map((investor) => investor.ROI_AVERAGE).filter((score) => score !== null && score !== void 0);
-  if (scores.length === 0) {
-    return { overall_performance: "Unknown", average_score: 0 };
-  }
-  const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-  const maxScore = Math.max(...scores);
-  const minScore = Math.min(...scores);
-  const highPerformers = scores.filter((s) => s >= 0.5).length;
-  const goodPerformers = scores.filter((s) => s >= 0.2 && s < 0.5).length;
-  const averagePerformers = scores.filter((s) => s >= 0 && s < 0.2).length;
-  const poorPerformers = scores.filter((s) => s < 0).length;
-  let overallPerformance;
-  if (averageScore >= 0.5) overallPerformance = "Excellent";
-  else if (averageScore >= 0.2) overallPerformance = "Good";
-  else if (averageScore >= 0) overallPerformance = "Average";
-  else overallPerformance = "Below Average";
-  return {
-    overall_performance: overallPerformance,
-    average_score: `${(averageScore * 100).toFixed(1)}%`,
-    max_score: `${(maxScore * 100).toFixed(1)}%`,
-    min_score: `${(minScore * 100).toFixed(1)}%`,
-    score_range: `${((maxScore - minScore) * 100).toFixed(1)}%`,
-    performance_distribution: {
-      high_performers: `${highPerformers} (${(highPerformers / scores.length * 100).toFixed(1)}%)`,
-      good_performers: `${goodPerformers} (${(goodPerformers / scores.length * 100).toFixed(1)}%)`,
-      average_performers: `${averagePerformers} (${(averagePerformers / scores.length * 100).toFixed(1)}%)`,
-      poor_performers: `${poorPerformers} (${(poorPerformers / scores.length * 100).toFixed(1)}%)`
-    },
-    performance_quality: assessPerformanceQuality(averageScore, highPerformers, scores.length)
-  };
-}
-function analyzeMarketParticipation(investorsData) {
-  const totalInvestors = investorsData.length;
-  const activeInvestors = investorsData.filter(
-    (investor) => investor.ROUND_COUNT && parseInt(investor.ROUND_COUNT) > 0
-  ).length;
-  const participationRate = totalInvestors > 0 ? activeInvestors / totalInvestors * 100 : 0;
-  let participationLevel;
-  if (participationRate >= 80) participationLevel = "Very High";
-  else if (participationRate >= 60) participationLevel = "High";
-  else if (participationRate >= 40) participationLevel = "Moderate";
-  else participationLevel = "Low";
-  const roundCounts = investorsData.map((investor) => parseInt(investor.ROUND_COUNT) || 0).filter((count) => count > 0);
-  let roundAnalysis = {};
-  if (roundCounts.length > 0) {
-    const totalRounds = roundCounts.reduce((sum, count) => sum + count, 0);
-    const averageRounds = totalRounds / roundCounts.length;
-    const maxRounds = Math.max(...roundCounts);
-    roundAnalysis = {
-      total_investment_rounds: totalRounds,
-      average_rounds_per_investor: averageRounds.toFixed(1),
-      most_active_investor_rounds: maxRounds,
-      investment_activity: analyzeInvestmentActivity(roundCounts)
-    };
-  }
-  return {
-    participation_level: participationLevel,
-    participation_rate: `${participationRate.toFixed(1)}%`,
-    total_investors: totalInvestors,
-    active_investors: activeInvestors,
-    round_analysis: roundAnalysis,
-    market_coverage: assessMarketCoverage(investorsData)
-  };
-}
-function analyzeInvestorInfluence(investorsData) {
-  const influenceMetrics = investorsData.map((investor) => ({
-    name: investor.INVESTOR_NAME || "Unknown",
-    roi_average: investor.ROI_AVERAGE || 0,
-    roi_median: investor.ROI_MEDIAN || 0,
-    round_count: parseInt(investor.ROUND_COUNT) || 0,
-    has_website: !!investor.INVESTOR_WEBSITE,
-    has_twitter: !!investor.INVESTOR_TWITTER,
-    influence_score: calculateInfluenceScore(investor)
-  })).sort((a, b) => b.influence_score - a.influence_score);
-  const topInfluencers = influenceMetrics.slice(0, 10);
-  const averageInfluence = influenceMetrics.reduce((sum, inv) => sum + inv.influence_score, 0) / influenceMetrics.length;
-  return {
-    top_influencers: topInfluencers.slice(0, 5).map((inv) => ({
-      name: inv.name,
-      influence_score: inv.influence_score.toFixed(1),
-      roi_average: `${(inv.roi_average * 100).toFixed(1)}%`,
-      investment_rounds: inv.round_count,
-      online_presence: (inv.has_website ? "Website " : "") + (inv.has_twitter ? "Twitter" : "")
-    })),
-    average_influence: averageInfluence.toFixed(1),
-    influence_distribution: analyzeInfluenceDistribution(influenceMetrics),
-    market_leaders: identifyMarketLeaders(topInfluencers)
-  };
-}
-function analyzeInvestorSentiment(investorsData) {
-  const recentActivity = investorsData.filter(
-    (investor) => investor.LAST_ACTIVITY && isRecentActivity(investor.LAST_ACTIVITY)
-  ).length;
-  const positivePerformers = investorsData.filter(
-    (investor) => investor.PERFORMANCE_CHANGE && investor.PERFORMANCE_CHANGE > 0
-  ).length;
-  const negativePerformers = investorsData.filter(
-    (investor) => investor.PERFORMANCE_CHANGE && investor.PERFORMANCE_CHANGE < 0
-  ).length;
-  const totalWithPerformanceData = positivePerformers + negativePerformers;
-  let overallSentiment;
-  if (totalWithPerformanceData > 0) {
-    const positiveRatio = positivePerformers / totalWithPerformanceData;
-    if (positiveRatio > 0.6) overallSentiment = "Bullish";
-    else if (positiveRatio < 0.4) overallSentiment = "Bearish";
-    else overallSentiment = "Neutral";
-  } else {
-    overallSentiment = "Unknown";
-  }
-  const activityRate = recentActivity / investorsData.length * 100;
-  return {
-    overall_sentiment: overallSentiment,
-    positive_performers: positivePerformers,
-    negative_performers: negativePerformers,
-    sentiment_ratio: totalWithPerformanceData > 0 ? `${(positivePerformers / totalWithPerformanceData * 100).toFixed(1)}% positive` : "Unknown",
-    recent_activity_rate: `${activityRate.toFixed(1)}%`,
-    market_mood: determinMarketMood(overallSentiment, activityRate)
-  };
-}
-function generateInvestorInsights(performanceAnalysis, marketParticipation, influenceAnalysis) {
-  const insights = [];
-  if (performanceAnalysis.overall_performance === "Excellent") {
-    insights.push("Strong investor performance across the board indicates healthy market conditions and skilled participants");
-  } else if (performanceAnalysis.overall_performance === "Below Average") {
-    insights.push("Below-average investor performance suggests challenging market conditions or need for better strategies");
-  }
-  if (marketParticipation.participation_level === "Very High") {
-    insights.push("Very high market participation indicates strong investor engagement and market liquidity");
-  } else if (marketParticipation.participation_level === "Low") {
-    insights.push("Low market participation may indicate investor caution or market uncertainty");
-  }
-  const topInfluencerScore = parseFloat(influenceAnalysis.top_influencers[0]?.influence_score || "0");
-  if (topInfluencerScore > 80) {
-    insights.push("High-influence investors present in the market can significantly impact price movements and sentiment");
-  }
-  const highPerformerPercent = parseFloat(performanceAnalysis.performance_distribution?.high_performers?.match(/\d+\.\d+/)?.[0] || "0");
-  if (highPerformerPercent > 30) {
-    insights.push(`${highPerformerPercent}% of investors showing excellent performance indicates strong market opportunities`);
-  } else if (highPerformerPercent < 10) {
-    insights.push("Limited high-performing investors suggests selective opportunities or challenging conditions");
-  }
-  return insights;
-}
-function generateMarketImplications(performanceAnalysis, sentimentAnalysis) {
-  const implications = [];
-  if (performanceAnalysis.overall_performance === "Excellent") {
-    implications.push("Strong investor performance supports positive market outlook");
-    implications.push("High-quality investor base indicates market maturity and sophistication");
-  } else if (performanceAnalysis.overall_performance === "Below Average") {
-    implications.push("Weak investor performance may signal market headwinds or overvaluation");
-    implications.push("Consider defensive positioning until investor performance improves");
-  }
-  if (sentimentAnalysis.overall_sentiment === "Bullish") {
-    implications.push("Bullish investor sentiment supports risk-on positioning and growth strategies");
-  } else if (sentimentAnalysis.overall_sentiment === "Bearish") {
-    implications.push("Bearish sentiment suggests caution and potential for market correction");
-  }
-  return {
-    market_outlook: determineMarketOutlook(performanceAnalysis, sentimentAnalysis),
-    investment_strategy: suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis),
-    risk_considerations: identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis),
-    opportunities: identifyOpportunities(performanceAnalysis, sentimentAnalysis)
-  };
-}
-function identifyTopPerformers(investorsData) {
-  const performers = investorsData.filter((investor) => investor.ROI_AVERAGE !== null && investor.ROI_AVERAGE !== void 0).sort((a, b) => b.ROI_AVERAGE - a.ROI_AVERAGE).slice(0, 10);
-  return {
-    top_10_performers: performers.map((investor, index) => ({
-      rank: index + 1,
-      name: investor.INVESTOR_NAME || `Investor ${index + 1}`,
-      roi_average: `${(investor.ROI_AVERAGE * 100).toFixed(1)}%`,
-      roi_median: investor.ROI_MEDIAN ? `${(investor.ROI_MEDIAN * 100).toFixed(1)}%` : "N/A",
-      round_count: investor.ROUND_COUNT || "N/A",
-      performance_category: categorizePerformance(investor.ROI_AVERAGE)
-    })),
-    performance_gap: performers.length > 1 ? `${((performers[0].ROI_AVERAGE - performers[performers.length - 1].ROI_AVERAGE) * 100).toFixed(1)}%` : "0%",
-    elite_threshold: performers.length > 0 ? `${(performers[0].ROI_AVERAGE * 100).toFixed(1)}%` : "0%"
-  };
-}
-function calculateInfluenceScore(investor) {
-  let score = 0;
-  if (investor.ROI_AVERAGE) {
-    const roiScore = Math.max(0, investor.ROI_AVERAGE * 100);
-    score += Math.min(roiScore, 50) * 0.4;
-  }
-  if (investor.ROUND_COUNT) {
-    const roundScore = Math.min(parseInt(investor.ROUND_COUNT), 20);
-    score += roundScore * 0.3;
-  }
-  if (investor.INVESTOR_WEBSITE) score += 10 * 0.15;
-  if (investor.INVESTOR_TWITTER) score += 10 * 0.15;
-  return Math.min(score, 100);
-}
-function isRecentActivity(lastActivity) {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  return new Date(lastActivity) > thirtyDaysAgo;
-}
-function analyzeInvestmentActivity(roundCounts) {
-  const averageRounds = roundCounts.reduce((sum, count) => sum + count, 0) / roundCounts.length;
-  if (averageRounds > 10) return "Very Active";
-  if (averageRounds > 5) return "Active";
-  if (averageRounds > 2) return "Moderate";
-  return "Limited";
-}
-function assessPerformanceQuality(averageScore, highPerformers, totalInvestors) {
-  const highPerformerRatio = highPerformers / totalInvestors;
-  if (averageScore > 0.3 && highPerformerRatio > 0.3) return "Exceptional";
-  if (averageScore > 0.1 && highPerformerRatio > 0.2) return "High Quality";
-  if (averageScore > 0 && highPerformerRatio > 0.1) return "Good Quality";
-  if (averageScore > -0.2) return "Average Quality";
-  return "Below Average Quality";
-}
-function categorizePerformance(score) {
-  if (score >= 2) return "Elite";
-  if (score >= 1) return "Excellent";
-  if (score >= 0.5) return "Good";
-  if (score >= 0.2) return "Average";
-  if (score >= 0) return "Below Average";
-  return "Poor";
-}
-function assessDataCompleteness(investorsData) {
-  const requiredFields = ["INVESTOR_NAME", "ROI_AVERAGE", "ROUND_COUNT"];
-  let completeness = 0;
-  investorsData.forEach((investor) => {
-    const presentFields = requiredFields.filter(
-      (field) => investor[field] !== null && investor[field] !== void 0
-    );
-    completeness += presentFields.length / requiredFields.length;
-  });
-  const avgCompleteness = completeness / investorsData.length * 100;
-  if (avgCompleteness > 80) return "Very Complete";
-  if (avgCompleteness > 60) return "Complete";
-  if (avgCompleteness > 40) return "Moderate";
-  return "Limited";
-}
-function assessCoverageScope2(investorsData) {
-  const investorCount = investorsData.length;
-  if (investorCount > 100) return "Comprehensive";
-  if (investorCount > 50) return "Broad";
-  if (investorCount > 25) return "Moderate";
-  return "Limited";
-}
-function identifyMarketLeaders(topInfluencers) {
-  return topInfluencers.slice(0, 3).map(
-    (influencer) => `${influencer.name} (Influence: ${influencer.influence_score})`
-  );
-}
-function determinMarketMood(sentiment, activityRate) {
-  if (sentiment === "Bullish" && activityRate > 60) return "Optimistic and Active";
-  if (sentiment === "Bullish" && activityRate < 40) return "Cautiously Optimistic";
-  if (sentiment === "Bearish" && activityRate > 60) return "Actively Concerned";
-  if (sentiment === "Bearish" && activityRate < 40) return "Disengaged and Pessimistic";
-  if (activityRate > 60) return "Highly Active";
-  return "Wait and See";
-}
-function determineMarketOutlook(performanceAnalysis, sentimentAnalysis) {
-  const performance = performanceAnalysis.overall_performance;
-  const sentiment = sentimentAnalysis.overall_sentiment;
-  if (performance === "Excellent" && sentiment === "Bullish") return "Very Positive";
-  if (performance === "Good" && sentiment === "Bullish") return "Positive";
-  if (performance === "Below Average" && sentiment === "Bearish") return "Negative";
-  if (performance === "Average" || sentiment === "Neutral") return "Neutral";
-  return "Mixed Signals";
-}
-function suggestInvestmentStrategy(performanceAnalysis, sentimentAnalysis) {
-  const strategies = [];
-  if (performanceAnalysis.overall_performance === "Excellent") {
-    strategies.push("Follow successful investor strategies and allocations");
-    strategies.push("Consider increasing exposure to top-performing investor favorites");
-  }
-  if (sentimentAnalysis.overall_sentiment === "Bullish") {
-    strategies.push("Take advantage of positive sentiment for growth positions");
-  } else if (sentimentAnalysis.overall_sentiment === "Bearish") {
-    strategies.push("Focus on defensive positioning and risk management");
-  }
-  strategies.push("Monitor top investor movements for early trend identification");
-  return strategies;
-}
-function identifyRiskConsiderations(performanceAnalysis, sentimentAnalysis) {
-  const risks = [];
-  if (performanceAnalysis.overall_performance === "Below Average") {
-    risks.push("Weak investor performance indicates challenging market conditions");
-  }
-  if (sentimentAnalysis.overall_sentiment === "Bearish") {
-    risks.push("Negative sentiment may lead to increased volatility and selling pressure");
-  }
-  risks.push("Investor behavior can change rapidly based on market events");
-  risks.push("High-influence investors can disproportionately impact market movements");
-  return risks;
-}
-function identifyOpportunities(performanceAnalysis, sentimentAnalysis) {
-  const opportunities = [];
-  if (performanceAnalysis.overall_performance === "Excellent") {
-    opportunities.push("Learn from and potentially follow high-performing investor strategies");
-  }
-  if (sentimentAnalysis.overall_sentiment === "Bullish") {
-    opportunities.push("Leverage positive sentiment for portfolio growth");
-  }
-  opportunities.push("Identify emerging trends by monitoring investor allocation changes");
-  opportunities.push("Use investor influence data for better market timing");
-  return opportunities;
-}
-function analyzeInfluenceDistribution(influenceMetrics) {
-  const highInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 80).length;
-  const moderateInfluence = influenceMetrics.filter((inv) => inv.influence_score >= 60 && inv.influence_score < 80).length;
-  const lowInfluence = influenceMetrics.filter((inv) => inv.influence_score < 60).length;
-  return {
-    high_influence: `${highInfluence} (${(highInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
-    moderate_influence: `${moderateInfluence} (${(moderateInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
-    low_influence: `${lowInfluence} (${(lowInfluence / influenceMetrics.length * 100).toFixed(1)}%)`,
-    influence_concentration: highInfluence > influenceMetrics.length * 0.2 ? "Concentrated" : "Distributed"
-  };
-}
-function assessMarketCoverage(investorsData) {
-  const websiteCount = investorsData.filter((inv) => inv.INVESTOR_WEBSITE).length;
-  const twitterCount = investorsData.filter((inv) => inv.INVESTOR_TWITTER).length;
-  const onlinePresence = (websiteCount + twitterCount) / (investorsData.length * 2) * 100;
-  if (onlinePresence > 70) return "High Online Presence";
-  if (onlinePresence > 50) return "Moderate Online Presence";
-  if (onlinePresence > 30) return "Limited Online Presence";
-  return "Minimal Online Presence";
-}
-function formatCryptoInvestorsResponse(investorsData, analysis, request) {
-  if (!investorsData || investorsData.length === 0) {
-    return "\u274C No crypto investors data available at the moment.";
-  }
-  const { limit, analysisType } = request;
-  let response = `\u{1F465} **Crypto Investors Analysis** (${investorsData.length} investors)
+function formatIndicesResponse(result, requestedLimit) {
+  const { indices_data, analysis } = result;
+  let response = `\u{1F4CA} **Crypto Indices Analysis**
 
 `;
-  const displayCount = Math.min(investorsData.length, 10);
-  response += `\u{1F3C6} **Top ${displayCount} Investors by ROI:**
+  if (indices_data && indices_data.length > 0) {
+    response += `\u{1F3AF} **Found ${indices_data.length} Indices**
+
 `;
-  const sortedInvestors = [...investorsData].sort((a, b) => (b.ROI_AVERAGE || 0) - (a.ROI_AVERAGE || 0));
-  for (let i = 0; i < displayCount; i++) {
-    const investor = sortedInvestors[i];
-    const rank = i + 1;
-    const name = investor.INVESTOR_NAME || `Investor ${rank}`;
-    const roi = investor.ROI_AVERAGE !== null ? `${(investor.ROI_AVERAGE * 100).toFixed(1)}%` : "N/A";
-    const rounds = investor.ROUND_COUNT || "N/A";
-    response += `${rank}. **${name}** - ROI: ${roi} (${rounds} rounds)
+    const displayLimit = requestedLimit || indices_data.length;
+    const topIndices = indices_data.filter((index) => index.ALL_TIME !== void 0).sort((a, b) => (b.ALL_TIME || 0) - (a.ALL_TIME || 0)).slice(0, Math.min(displayLimit, indices_data.length));
+    if (topIndices.length > 0) {
+      response += `\u{1F3C6} **Top Performing Indices:**
 `;
-  }
-  if (investorsData.length > displayCount) {
-    response += `
-... and ${investorsData.length - displayCount} more investors
+      topIndices.forEach((index, i) => {
+        const name = index.NAME || `Index ${i + 1}`;
+        const ticker = index.TICKER || "";
+        const allTimeReturn = index.ALL_TIME ? formatPercentage(index.ALL_TIME) : "N/A";
+        const oneMonthReturn = index["1M"] ? formatPercentage(index["1M"]) : "N/A";
+        const indexGrade = index.INDEX_GRADE ? formatPercentage(index.INDEX_GRADE) : "N/A";
+        response += `${i + 1}. **${name}** ${ticker ? `(${ticker})` : ""}
 `;
-  }
-  if (analysis?.insights && analysis.insights.length > 0) {
-    response += `
-\u{1F4CA} **Key Insights:**
+        response += `   \u2022 All-Time Return: ${allTimeReturn}
 `;
-    analysis.insights.slice(0, 4).forEach((insight) => {
-      response += `\u2022 ${insight}
+        response += `   \u2022 1-Month Return: ${oneMonthReturn}
 `;
-    });
-  }
-  if (analysis?.performance_analysis) {
-    const perf = analysis.performance_analysis;
-    response += `
-\u{1F4C8} **Performance Overview:**
+        response += `   \u2022 Index Grade: ${indexGrade}
 `;
-    response += `\u2022 Average ROI: ${perf.average_score}
+        response += `
 `;
-    response += `\u2022 Overall Performance: ${perf.overall_performance}
+      });
+    }
+    if (analysis && analysis.insights) {
+      response += `\u{1F4A1} **Key Insights:**
 `;
-    if (perf.performance_distribution) {
-      response += `\u2022 High Performers (50%+ ROI): ${perf.performance_distribution.high_performers}
+      analysis.insights.slice(0, 5).forEach((insight) => {
+        response += `\u2022 ${insight}
 `;
-      response += `\u2022 Poor Performers (Negative ROI): ${perf.performance_distribution.poor_performers}
+      });
+      response += `
 `;
     }
-  }
-  if (analysis?.market_participation) {
-    const market = analysis.market_participation;
-    response += `
-\u{1F3AF} **Market Participation:**
+    if (analysis && analysis.performance_metrics) {
+      const metrics = analysis.performance_metrics;
+      response += `\u{1F4C8} **Market Overview:**
 `;
-    response += `\u2022 Participation Level: ${market.participation_level}
+      response += `\u2022 Total Indices: ${metrics.total_indices || 0}
 `;
-    if (market.participation_rate) {
-      response += `\u2022 Active Rate: ${market.participation_rate}
+      response += `\u2022 Active Indices: ${metrics.active_indices || 0}
+`;
+      response += `\u2022 Passive Indices: ${metrics.passive_indices || 0}
+`;
+      if (metrics.avg_all_time_return !== void 0) {
+        response += `\u2022 Average All-Time Return: ${formatPercentage(metrics.avg_all_time_return)}
+`;
+      }
+      if (metrics.avg_1m_return !== void 0) {
+        response += `\u2022 Average 1-Month Return: ${formatPercentage(metrics.avg_1m_return)}
+`;
+      }
+      response += `
 `;
     }
-    if (market.round_analysis?.total_investment_rounds) {
-      response += `\u2022 Total Investment Rounds: ${market.round_analysis.total_investment_rounds}
+    if (analysis && analysis.recommendations) {
+      response += `\u{1F3AF} **Recommendations:**
 `;
+      analysis.recommendations.slice(0, 3).forEach((rec) => {
+        response += `\u2022 ${rec}
+`;
+      });
     }
-  }
-  if (analysisType === "performance" && analysis?.performance_focus) {
-    response += `
-\u{1F3C6} **Performance Focus:**
+  } else {
+    response += `\u274C No indices data found.
+
 `;
-    analysis.performance_focus.performance_insights?.slice(0, 3).forEach((insight) => {
-      response += `\u2022 ${insight}
+    response += `This could be due to:
 `;
-    });
-  } else if (analysisType === "influence" && analysis?.influence_focus) {
-    response += `
-\u{1F31F} **Influence Focus:**
+    response += `\u2022 API connectivity issues
 `;
-    analysis.influence_focus.influence_insights?.slice(0, 3).forEach((insight) => {
-      response += `\u2022 ${insight}
+    response += `\u2022 Invalid filter parameters
 `;
-    });
-  } else if (analysisType === "sentiment" && analysis?.sentiment_focus) {
-    response += `
-\u{1F60A} **Sentiment Focus:**
+    response += `\u2022 Temporary service unavailability
 `;
-    analysis.sentiment_focus.sentiment_insights?.slice(0, 3).forEach((insight) => {
-      response += `\u2022 ${insight}
-`;
-    });
-  }
-  if (analysis?.investment_strategy && analysis.investment_strategy.length > 0) {
-    response += `
-\u{1F4A1} **Investment Strategy:**
-`;
-    analysis.investment_strategy.slice(0, 3).forEach((strategy) => {
-      response += `\u2022 ${strategy}
-`;
-    });
   }
   response += `
-\u{1F4DA} **Note:** ROI scores are based on average returns from investment rounds. Negative values indicate losses.`;
+\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
+  return response;
+}
+
+// src/actions/getIndicesHoldingsAction.ts
+import {
+  elizaLogger as elizaLogger19,
+  createActionResult as createActionResult18
+} from "@elizaos/core";
+var IndicesHoldingsRequestSchema = external_exports.object({
+  indexId: external_exports.number().min(1).describe("The ID of the index to get holdings for"),
+  analysisType: external_exports.enum(["composition", "risk", "performance", "all"]).optional().describe("Type of analysis to focus on")
+});
+var indicesHoldingsTemplate = `Extract indices holdings request information from the message.
+
+IMPORTANT: The user MUST specify an index ID number. Look for phrases like:
+- "index 1", "index ID 1", "crypto index 3"  
+- "holdings of index 5", "index number 2"
+- "DeFi index" (may refer to a specific numbered index)
+
+Index holdings provide:
+- Portfolio composition and token allocation
+- Weight percentages and allocation values
+- Risk concentration analysis
+- Performance attribution
+- Diversification insights
+- Rebalancing information
+
+Instructions:
+Look for INDEX HOLDINGS requests, such as:
+- Holdings composition ("Holdings of index 1", "Index composition")
+- Portfolio allocation ("Token allocation", "Index weights")
+- Risk analysis ("Holdings risk", "Concentration analysis")
+- Performance attribution ("Holdings performance", "Asset contribution")
+
+EXAMPLES (extract the exact index number):
+- "Show me holdings of index 1" \u2192 indexId: 1
+- "What tokens are in crypto index 5?" \u2192 indexId: 5
+- "Get risk analysis for index 3 holdings" \u2192 indexId: 3
+- "Index 2 composition and performance" \u2192 indexId: 2
+- "DeFi index holdings" \u2192 indexId: (look for any number mentioned, or leave empty if no specific number)
+
+CRITICAL: If no specific index number is mentioned, leave indexId empty so we can prompt the user to specify one.
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<indexId>numeric ID of the index</indexId>
+<analysisType>composition|risk|performance|all</analysisType>
+<focusArea>allocation|diversification|concentration|general</focusArea>
+</response>`;
+var getIndicesHoldingsAction = {
+  name: "GET_INDICES_HOLDINGS_TOKENMETRICS",
+  description: "Get the current holdings of a crypto index with weight percentages and allocation details from TokenMetrics",
+  similes: [
+    "get index holdings",
+    "index composition",
+    "index allocations",
+    "index weights",
+    "index portfolio",
+    "index assets",
+    "index breakdown",
+    "index constituents"
+  ],
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show me holdings of index 1"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get the holdings composition for index 1.",
+          action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "What tokens are in the DeFi index and their weights?"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "Let me show you the token composition and weight allocation for the DeFi index.",
+          action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get risk analysis for index 3 holdings"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll analyze the holdings composition and risk metrics for index 3.",
+          action: "GET_INDICES_HOLDINGS_TOKENMETRICS"
+        }
+      }
+    ]
+  ],
+  async handler(runtime, message, state, _options, callback) {
+    try {
+      const requestId = generateRequestId();
+      console.log(`[${requestId}] Processing indices holdings request...`);
+      const holdingsRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state || await runtime.composeState(message),
+        indicesHoldingsTemplate,
+        IndicesHoldingsRequestSchema,
+        requestId
+      );
+      console.log(`[${requestId}] Extracted request:`, holdingsRequest);
+      const processedRequest = {
+        indexId: holdingsRequest?.indexId,
+        analysisType: holdingsRequest?.analysisType || "all"
+      };
+      if (!processedRequest.indexId) {
+        const errorMessage = '\u26A0\uFE0F **Index ID Required**\n\nThe indices holdings endpoint requires a specific index ID. Please specify which index you want to analyze.\n\n**Examples:**\n\u2022 "Show me holdings of index 1"\n\u2022 "Get holdings for index 5"\n\u2022 "What tokens are in crypto index 3?"\n\n**Common Index IDs:**\n\u2022 Index 1: Often the main crypto index\n\u2022 Index 3: May be DeFi-focused index\n\u2022 Index 5: Could be large-cap index\n\nPlease try again with a specific index number.';
+        console.log(`[${requestId}] \u274C No index ID provided in request`);
+        if (callback) {
+          await callback({
+            text: errorMessage,
+            content: {
+              success: false,
+              error: "Missing required index ID",
+              request_id: requestId,
+              help: "Specify an index ID (e.g., 'holdings of index 1')"
+            }
+          });
+        }
+        return createActionResult18({
+          success: false,
+          error: "Index ID is required for holdings lookup"
+        });
+      }
+      const apiParams = {
+        id: processedRequest.indexId
+      };
+      const response = await callTokenMetricsAPI(
+        "/v2/indices-holdings",
+        apiParams,
+        runtime
+      );
+      console.log(`[${requestId}] API response received, processing data...`);
+      const holdings = Array.isArray(response) ? response : response.data || [];
+      const holdingsAnalysis = analyzeHoldingsData(holdings, processedRequest.analysisType);
+      const result = {
+        success: true,
+        message: `Successfully retrieved holdings for index ${processedRequest.indexId} with ${holdings.length} assets`,
+        request_id: requestId,
+        indices_holdings: holdings,
+        analysis: holdingsAnalysis,
+        metadata: {
+          endpoint: "indices-holdings",
+          index_id: processedRequest.indexId,
+          analysis_focus: processedRequest.analysisType,
+          total_holdings: holdings.length,
+          api_version: "v2",
+          data_source: "TokenMetrics Indices Engine"
+        },
+        holdings_explanation: {
+          purpose: "Index holdings show the exact composition and allocation strategy of crypto indices",
+          key_metrics: [
+            "Weight Percentage - Allocation percentage of each token in the index",
+            "Allocation Value - Dollar value allocated to each token",
+            "Price - Current market price of each holding",
+            "Market Cap - Market capitalization of each token",
+            "24h Change - Recent price performance of holdings"
+          ],
+          allocation_insights: [
+            "Higher weight percentages indicate core positions in the index strategy",
+            "Diversification can be measured by the distribution of weights",
+            "Recent price changes affect the current allocation balance",
+            "Market cap correlation shows if the index follows market-cap weighting"
+          ],
+          usage_guidelines: [
+            "Review weight distribution for diversification assessment",
+            "Monitor large allocations for concentration risk",
+            "Compare holdings to your existing portfolio for overlap analysis",
+            "Track price changes to understand index performance drivers",
+            "Use allocation values to understand absolute exposure levels"
+          ]
+        }
+      };
+      console.log(`[${requestId}] Holdings analysis completed successfully`);
+      const responseText = formatIndicesHoldingsResponse(result);
+      console.log(`[${requestId}] Analysis completed successfully`);
+      elizaLogger19.success("\u2705 Successfully processed indices holdings request");
+      if (callback) {
+        await callback({
+          text: responseText,
+          content: {
+            success: true,
+            holdings_data: holdings,
+            analysis: holdingsAnalysis,
+            source: "TokenMetrics Indices Holdings API",
+            request_id: requestId,
+            metadata: {
+              endpoint: "indices-holdings",
+              data_source: "TokenMetrics API",
+              timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+              total_holdings: holdings.length
+            }
+          }
+        });
+      }
+      return createActionResult18({
+        success: true,
+        text: responseText,
+        data: {
+          holdings_data: holdings,
+          analysis: holdingsAnalysis,
+          source: "TokenMetrics Indices Holdings API",
+          request_id: requestId
+        }
+      });
+    } catch (error) {
+      console.error("Error in getIndicesHoldings action:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const reqId = generateRequestId();
+      if (callback) {
+        await callback({
+          text: `\u274C Error fetching indices holdings: ${errorMessage}`,
+          content: {
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true,
+            request_id: reqId
+          }
+        });
+      }
+      return createActionResult18({
+        success: false,
+        error: errorMessage
+      });
+    }
+  },
+  validate: async (runtime, message, state) => {
+    elizaLogger19.log("\u{1F50D} Validating getIndicesHoldingsAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger19.error("\u274C Validation failed:", error);
+      return false;
+    }
+  }
+};
+function analyzeHoldingsData(holdings, analysisType = "all") {
+  if (!holdings || holdings.length === 0) {
+    return {
+      summary: "No holdings data available for analysis",
+      insights: [],
+      recommendations: []
+    };
+  }
+  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
+  const totalValue = holdings.reduce((sum, holding) => {
+    const weight = holding.WEIGHT || 0;
+    const price = holding.PRICE || 0;
+    const marketCap = holding.MARKET_CAP || 0;
+    return sum + weight * marketCap;
+  }, 0);
+  const topHoldings = holdings.filter((holding) => holding.WEIGHT !== void 0).sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0)).map((holding) => ({
+    ...holding,
+    WEIGHT_PERCENTAGE: (holding.WEIGHT || 0) * 100,
+    // Convert to percentage for display
+    ALLOCATION_VALUE: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0)
+  }));
+  const top3Weight = topHoldings.slice(0, 3).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
+  const top5Weight = topHoldings.slice(0, 5).reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0) * 100;
+  const holdingsWithROI = holdings.filter((holding) => holding.CURRENT_ROI !== void 0);
+  const avgROI = holdingsWithROI.length > 0 ? holdingsWithROI.reduce((sum, holding) => sum + (holding.CURRENT_ROI || 0), 0) / holdingsWithROI.length : 0;
+  const largeCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e10);
+  const midCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) > 1e9 && (holding.MARKET_CAP || 0) <= 1e10);
+  const smallCapHoldings = holdings.filter((holding) => (holding.MARKET_CAP || 0) <= 1e9);
+  const insights = [
+    `\u{1F4CA} Total Holdings: ${holdings.length} tokens`,
+    `\u2696\uFE0F Total Weight: ${formatPercentage(totalWeight)}`,
+    `\u{1F4B0} Total Allocation Value: ${formatCurrency(totalValue)}`,
+    `\u{1F3C6} Largest Holding: ${topHoldings[0]?.TOKEN_NAME} (${formatPercentage((topHoldings[0]?.WEIGHT || 0) * 100)})`,
+    `\u{1F4C8} Top 3 Concentration: ${formatPercentage(top3Weight)}`,
+    `\u{1F4CA} Top 5 Concentration: ${formatPercentage(top5Weight)}`,
+    `\u{1F4C8} Average ROI: ${formatPercentage(avgROI * 100)}`
+  ];
+  const recommendations = [
+    top3Weight > 60 ? "\u26A0\uFE0F High Concentration: Top 3 holdings represent significant portion - consider concentration risk" : "\u2705 Balanced Allocation: Good diversification across top holdings",
+    holdings.length > 20 ? "\u2705 Well Diversified: Large number of holdings provides good diversification" : holdings.length < 10 ? "\u26A0\uFE0F Limited Diversification: Consider if concentration aligns with your risk tolerance" : "\u{1F4CA} Moderate Diversification: Reasonable number of holdings for focused strategy",
+    largeCapHoldings.length > holdings.length * 0.7 ? "\u{1F3DB}\uFE0F Large Cap Focus: Index heavily weighted toward established cryptocurrencies" : smallCapHoldings.length > holdings.length * 0.5 ? "\u{1F680} Small Cap Exposure: Higher risk/reward profile with smaller market cap tokens" : "\u2696\uFE0F Balanced Market Cap: Mix of large and smaller market cap exposures"
+  ];
+  let focusedAnalysis = {};
+  switch (analysisType) {
+    case "composition":
+      focusedAnalysis = {
+        composition_focus: {
+          weight_distribution: {
+            top_10_percent: holdings.filter((h) => (h.WEIGHT || 0) * 100 > 10).length,
+            mid_range: holdings.filter((h) => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length,
+            small_positions: holdings.filter((h) => (h.WEIGHT || 0) * 100 < 1).length
+          },
+          sector_analysis: analyzeSectorDistribution(holdings),
+          composition_insights: [
+            `\u{1F3AF} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 > 10).length} major positions (>10% weight)`,
+            `\u{1F4CA} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 >= 1 && (h.WEIGHT || 0) * 100 <= 10).length} medium positions (1-10% weight)`,
+            `\u{1F50D} ${holdings.filter((h) => (h.WEIGHT || 0) * 100 < 1).length} small positions (<1% weight)`
+          ]
+        }
+      };
+      break;
+    case "risk":
+      focusedAnalysis = {
+        risk_focus: {
+          concentration_risk: {
+            herfindahl_index: calculateHerfindahlIndex(holdings),
+            concentration_level: top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"
+          },
+          volatility_analysis: {
+            high_roi_holdings: holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) > 0.5).length,
+            stable_holdings: holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) < 0.1).length
+          },
+          risk_insights: [
+            `\u26A0\uFE0F Concentration Risk: ${top3Weight > 60 ? "High" : top3Weight > 40 ? "Medium" : "Low"} (top 3: ${formatPercentage(top3Weight)})`,
+            `\u{1F4CA} High ROI Holdings: ${holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) > 0.5).length} holdings with significant ROI`,
+            `\u{1F6E1}\uFE0F Stable Holdings: ${holdings.filter((h) => Math.abs(h.CURRENT_ROI || 0) < 0.1).length} holdings with stable performance`
+          ]
+        }
+      };
+      break;
+    case "performance":
+      const topPerformers = holdings.filter((h) => h.CURRENT_ROI !== void 0).sort((a, b) => (b.CURRENT_ROI || 0) - (a.CURRENT_ROI || 0)).slice(0, 5);
+      const worstPerformers = holdings.filter((h) => h.CURRENT_ROI !== void 0).sort((a, b) => (a.CURRENT_ROI || 0) - (b.CURRENT_ROI || 0)).slice(0, 5);
+      focusedAnalysis = {
+        performance_focus: {
+          top_performers: topPerformers,
+          worst_performers: worstPerformers,
+          performance_insights: [
+            `\u{1F680} Best performer: ${topPerformers[0]?.TOKEN_NAME} (${formatPercentage((topPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
+            `\u{1F4C9} Worst performer: ${worstPerformers[0]?.TOKEN_NAME} (${formatPercentage((worstPerformers[0]?.CURRENT_ROI || 0) * 100)})`,
+            `\u{1F4CA} ${holdings.filter((h) => (h.CURRENT_ROI || 0) > 0).length}/${holdings.length} holdings showing positive ROI`
+          ]
+        }
+      };
+      break;
+  }
+  return {
+    summary: `Index contains ${holdings.length} holdings with ${formatPercentage(top3Weight)} concentration in top 3 positions`,
+    analysis_type: analysisType,
+    portfolio_metrics: {
+      total_holdings: holdings.length,
+      total_weight: totalWeight,
+      total_value: totalValue,
+      top_3_concentration: top3Weight,
+      top_5_concentration: top5Weight,
+      avg_roi: avgROI
+    },
+    market_cap_distribution: {
+      large_cap: largeCapHoldings.length,
+      mid_cap: midCapHoldings.length,
+      small_cap: smallCapHoldings.length
+    },
+    top_holdings: topHoldings.map((holding) => ({
+      token_name: holding.TOKEN_NAME,
+      symbol: holding.TOKEN_SYMBOL,
+      weight_percentage: (holding.WEIGHT || 0) * 100,
+      allocation_value: (holding.WEIGHT || 0) * (holding.MARKET_CAP || 0),
+      price: holding.PRICE,
+      current_roi: holding.CURRENT_ROI
+    })),
+    insights,
+    recommendations,
+    ...focusedAnalysis,
+    risk_considerations: [
+      "\u{1F4CA} Monitor concentration risk in top holdings",
+      "\u{1F504} Track rebalancing frequency and methodology",
+      "\u{1F4B0} Consider correlation with your existing portfolio",
+      "\u{1F4C8} Evaluate performance attribution by holding",
+      "\u26A0\uFE0F Assess liquidity risk in smaller holdings",
+      "\u{1F3AF} Review alignment with investment objectives"
+    ]
+  };
+}
+function analyzeSectorDistribution(holdings) {
+  return {
+    sectors_identified: "Analysis requires sector classification data",
+    diversification_score: holdings.length > 15 ? "High" : holdings.length > 8 ? "Medium" : "Low"
+  };
+}
+function calculateHerfindahlIndex(holdings) {
+  const totalWeight = holdings.reduce((sum, holding) => sum + (holding.WEIGHT || 0), 0);
+  if (totalWeight === 0) return 0;
+  const herfindahl = holdings.reduce((sum, holding) => {
+    const normalizedWeight = (holding.WEIGHT || 0) / totalWeight;
+    return sum + normalizedWeight * normalizedWeight;
+  }, 0);
+  return Math.round(herfindahl * 1e4);
+}
+function formatIndicesHoldingsResponse(result) {
+  const { indices_holdings, analysis, metadata } = result;
+  let response = `\u{1F4CA} **Index Holdings Analysis**
+
+`;
+  if (indices_holdings && indices_holdings.length > 0) {
+    response += `\u{1F3AF} **Index ${metadata.index_id} Holdings (${indices_holdings.length} assets)**
+
+`;
+    const topHoldings = indices_holdings.filter((holding) => holding.WEIGHT !== void 0).sort((a, b) => (b.WEIGHT || 0) - (a.WEIGHT || 0)).slice(0, 10);
+    if (topHoldings.length > 0) {
+      response += `\u{1F3C6} **Top Holdings:**
+`;
+      topHoldings.forEach((holding, i) => {
+        const name = holding.TOKEN_NAME || holding.TOKEN_SYMBOL || `Token ${i + 1}`;
+        const symbol = holding.TOKEN_SYMBOL || "";
+        const weight = holding.WEIGHT ? formatPercentage(holding.WEIGHT * 100) : "N/A";
+        const price = holding.PRICE ? formatCurrency(holding.PRICE) : "N/A";
+        const currentROI = holding.CURRENT_ROI ? formatPercentage(holding.CURRENT_ROI * 100) : "N/A";
+        response += `${i + 1}. **${name}** ${symbol ? `(${symbol})` : ""}
+`;
+        response += `   \u2022 Weight: ${weight}
+`;
+        response += `   \u2022 Price: ${price}
+`;
+        response += `   \u2022 Current ROI: ${currentROI}
+`;
+        response += `
+`;
+      });
+    }
+    if (analysis && analysis.insights) {
+      response += `\u{1F4A1} **Key Insights:**
+`;
+      analysis.insights.slice(0, 5).forEach((insight) => {
+        response += `\u2022 ${insight}
+`;
+      });
+      response += `
+`;
+    }
+    if (analysis && analysis.portfolio_metrics) {
+      const metrics = analysis.portfolio_metrics;
+      response += `\u{1F4C8} **Portfolio Metrics:**
+`;
+      response += `\u2022 Total Holdings: ${metrics.total_holdings || 0}
+`;
+      if (metrics.top_3_concentration !== void 0) {
+        response += `\u2022 Top 3 Concentration: ${formatPercentage(metrics.top_3_concentration)}
+`;
+      }
+      if (metrics.top_5_concentration !== void 0) {
+        response += `\u2022 Top 5 Concentration: ${formatPercentage(metrics.top_5_concentration)}
+`;
+      }
+      if (metrics.avg_roi !== void 0) {
+        response += `\u2022 Average ROI: ${formatPercentage(metrics.avg_roi * 100)}
+`;
+      }
+      response += `
+`;
+    }
+    if (analysis && analysis.recommendations) {
+      response += `\u{1F3AF} **Recommendations:**
+`;
+      analysis.recommendations.slice(0, 3).forEach((rec) => {
+        response += `\u2022 ${rec}
+`;
+      });
+    }
+  } else {
+    response += `\u274C No holdings data found for index ${metadata.index_id}.
+
+`;
+    response += `This could be due to:
+`;
+    response += `\u2022 Invalid index ID
+`;
+    response += `\u2022 Index has no current holdings
+`;
+    response += `\u2022 API connectivity issues
+`;
+  }
+  response += `
+\u{1F4CA} **Data Source**: TokenMetrics Indices Engine
+`;
+  response += `\u23F0 **Updated**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
+`;
   return response;
 }
 
 // src/actions/getIndicesPerformanceAction.ts
 import {
-  elizaLogger as elizaLogger22
+  elizaLogger as elizaLogger20,
+  createActionResult as createActionResult19
 } from "@elizaos/core";
-var IndicesPerformanceRequestSchema = z.object({
-  indexId: z.number().min(1).describe("The ID of the index to get performance data for"),
-  startDate: z.string().optional().describe("Start date for performance data (YYYY-MM-DD format)"),
-  endDate: z.string().optional().describe("End date for performance data (YYYY-MM-DD format)"),
-  limit: z.number().min(1).max(1e3).optional().describe("Number of data points to return"),
-  page: z.number().min(1).optional().describe("Page number for pagination"),
-  analysisType: z.enum(["returns", "risk", "comparison", "all"]).optional().describe("Type of analysis to focus on")
+var IndicesPerformanceRequestSchema = external_exports.object({
+  indexId: external_exports.number().min(1).describe("The ID of the index to get performance data for"),
+  startDate: external_exports.string().optional().describe("Start date for performance data (YYYY-MM-DD format)"),
+  endDate: external_exports.string().optional().describe("End date for performance data (YYYY-MM-DD format)"),
+  limit: external_exports.number().min(1).max(1e3).optional().describe("Number of data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["returns", "risk", "comparison", "all"]).optional().describe("Type of analysis to focus on")
 });
-var INDICES_PERFORMANCE_EXTRACTION_TEMPLATE = `
-You are an AI assistant specialized in extracting crypto index performance requests from natural language.
+var indicesPerformanceTemplate = `Extract indices performance request information from the message.
 
-The user wants to get historical performance data for a specific crypto index. Extract the following information:
+IMPORTANT: Extract the EXACT index number mentioned by the user in their message.
 
-1. **indexId** (required): The ID number of the index they want performance data for
-   - Look for phrases like "index 1", "index ID 5", "index number 3"
-   - Extract the numeric ID from the request
-   - This is required - if no ID is found, ask for clarification
+Index performance provides:
+- Historical returns and performance metrics
+- Risk-adjusted performance analysis
+- Benchmark comparisons
+- Volatility and drawdown metrics
+- Sharpe and Sortino ratios
+- Performance attribution
 
-2. **startDate** (optional): Start date for the performance period
-   - Look for phrases like "since January 2024", "from 2024-01-01", "last 3 months"
-   - Convert relative dates to YYYY-MM-DD format if possible
-   - If not specified, will use default range
+Instructions:
+Look for INDEX PERFORMANCE requests, such as:
+- Performance analysis ("Performance of index [NUMBER]", "Index returns")
+- Risk metrics ("Risk analysis", "Volatility metrics")
+- Benchmark comparison ("Index vs market", "Performance comparison")
+- Historical analysis ("Historical performance", "Long-term returns")
 
-3. **endDate** (optional): End date for the performance period
-   - Look for phrases like "until today", "to 2024-12-31", "through December"
-   - Convert to YYYY-MM-DD format if possible
-   - If not specified, will use current date
+EXAMPLES (extract the actual index number from user's message):
+- "Show me performance of index [X]" \u2192 extract X as indexId
+- "Get performance metrics for crypto index [Y]" \u2192 extract Y as indexId
+- "Index [Z] risk and return analysis" \u2192 extract Z as indexId
+- "Compare index performance to market" \u2192 no specific index mentioned
 
-4. **limit** (optional, default: 50): Number of data points to return
-   - Look for phrases like "50 data points", "100 records", "daily data"
+Respond with an XML block containing only the extracted values:
 
-5. **page** (optional, default: 1): Page number for pagination
-
-6. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "returns" - focus on return metrics and performance
-   - "risk" - focus on volatility and risk metrics
-   - "comparison" - focus on benchmark comparisons
-   - "all" - comprehensive analysis
-
-Examples:
-- "Show me performance of index 1" \u2192 {indexId: 1, analysisType: "all"}
-- "Get index 3 returns since January 2024" \u2192 {indexId: 3, startDate: "2024-01-01", analysisType: "returns"}
-- "Risk analysis for index 2 last 6 months" \u2192 {indexId: 2, analysisType: "risk"}
-- "Compare index 1 performance to benchmarks" \u2192 {indexId: 1, analysisType: "comparison"}
-
-Extract the request details from the user's message.
-`;
+<response>
+<indexId>numeric ID of the index</indexId>
+<analysisType>returns|risk|comparison|all</analysisType>
+<timeframe>short_term|medium_term|long_term|all</timeframe>
+<focusArea>performance|volatility|risk_adjusted|general</focusArea>
+</response>`;
 var getIndicesPerformanceAction = {
   name: "GET_INDICES_PERFORMANCE_TOKENMETRICS",
   description: "Get historical performance data of a crypto index including returns, volatility, and benchmark comparisons from TokenMetrics",
@@ -18123,45 +16787,45 @@ var getIndicesPerformanceAction = {
   examples: [
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Show me the performance of crypto index 1"
+          text: "Show me performance of index 1"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll get the historical performance data for that crypto index including returns and volatility metrics.",
+          text: "I'll get the performance metrics for index 1.",
           action: "GET_INDICES_PERFORMANCE_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "How has the DeFi index performed over the last 3 months?"
+          text: "Get performance metrics for crypto index 5"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
-          text: "Let me analyze the DeFi index performance data over the specified time period.",
+          text: "I'll retrieve comprehensive performance analysis for index 5.",
           action: "GET_INDICES_PERFORMANCE_TOKENMETRICS"
         }
       }
     ],
     [
       {
-        user: "{{user1}}",
+        name: "{{user1}}",
         content: {
-          text: "Get risk analysis for index 2 performance"
+          text: "Index 3 risk and return analysis"
         }
       },
       {
-        user: "{{agent}}",
+        name: "{{agent}}",
         content: {
-          text: "I'll analyze the risk metrics and volatility for index 2's historical performance.",
+          text: "I'll analyze both risk and return metrics for index 3.",
           action: "GET_INDICES_PERFORMANCE_TOKENMETRICS"
         }
       }
@@ -18171,23 +16835,48 @@ var getIndicesPerformanceAction = {
     try {
       const requestId = generateRequestId();
       console.log(`[${requestId}] Processing indices performance request...`);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = indicesPerformanceTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
       const performanceRequest = await extractTokenMetricsRequest(
         runtime,
         message,
         state || await runtime.composeState(message),
-        INDICES_PERFORMANCE_EXTRACTION_TEMPLATE,
+        enhancedTemplate,
         IndicesPerformanceRequestSchema,
         requestId
       );
       console.log(`[${requestId}] Extracted request:`, performanceRequest);
       const processedRequest = {
-        indexId: performanceRequest.indexId,
-        startDate: performanceRequest.startDate,
-        endDate: performanceRequest.endDate,
-        limit: performanceRequest.limit || 50,
-        page: performanceRequest.page || 1,
-        analysisType: performanceRequest.analysisType || "all"
+        indexId: performanceRequest?.indexId,
+        startDate: performanceRequest?.startDate,
+        endDate: performanceRequest?.endDate,
+        limit: performanceRequest?.limit || 50,
+        page: performanceRequest?.page || 1,
+        analysisType: performanceRequest?.analysisType || "all"
       };
+      if (!processedRequest.indexId) {
+        const errorMessage = '\u26A0\uFE0F **Index ID Required**\n\nThe indices performance endpoint requires a specific index ID. Please specify which index you want to analyze.\n\n**Examples:**\n\u2022 "Show me performance of index 1"\n\u2022 "Get performance for index 3"\n\u2022 "Index 5 performance metrics"\n\n**Common Index IDs:**\n\u2022 Index 1: Often the main crypto index\n\u2022 Index 3: May be DeFi-focused index\n\u2022 Index 5: Could be large-cap index\n\nPlease try again with a specific index number.';
+        console.log(`[${requestId}] \u274C No index ID provided in request`);
+        if (callback) {
+          await callback({
+            text: errorMessage,
+            content: {
+              success: false,
+              error: "Missing required index ID",
+              request_id: requestId,
+              help: "Specify an index ID (e.g., 'performance of index 1')"
+            }
+          });
+        }
+        return createActionResult19({
+          success: false,
+          error: "Index ID is required for performance lookup"
+        });
+      }
       const apiParams = {
         id: processedRequest.indexId,
         limit: processedRequest.limit,
@@ -18206,6 +16895,14 @@ var getIndicesPerformanceAction = {
       );
       console.log(`[${requestId}] API response received, processing data...`);
       const performance = Array.isArray(response) ? response : response.data || [];
+      if (performance.length > 0) {
+        const firstDataPoint = performance[0];
+        const returnedIndexId = firstDataPoint?.ID || firstDataPoint?.INDEX_ID;
+        console.log(`[${requestId}] \u{1F50D} Requested Index: ${processedRequest.indexId}, API Returned Index: ${returnedIndexId}`);
+        if (returnedIndexId && returnedIndexId !== processedRequest.indexId) {
+          console.log(`[${requestId}] \u26A0\uFE0F INDEX MISMATCH: Requested ${processedRequest.indexId} but got ${returnedIndexId}`);
+        }
+      }
       const performanceAnalysis = analyzePerformanceData(performance, processedRequest.analysisType);
       const result = {
         success: true,
@@ -18257,7 +16954,7 @@ var getIndicesPerformanceAction = {
       const responseText = formatIndicesPerformanceResponse(result);
       console.log(`[${requestId}] Analysis completed successfully`);
       if (callback) {
-        callback({
+        await callback({
           text: responseText,
           content: {
             success: true,
@@ -18271,28 +16968,44 @@ var getIndicesPerformanceAction = {
           }
         });
       }
-      return true;
+      return createActionResult19({
+        success: true,
+        text: responseText,
+        data: {
+          performance_data: performance,
+          analysis: performanceAnalysis,
+          source: "TokenMetrics Indices Performance API",
+          request_id: requestId
+        }
+      });
     } catch (error) {
       console.error("Error in getIndicesPerformance action:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const reqId = generateRequestId();
       if (callback) {
-        callback({
-          text: `\u274C Failed to retrieve indices performance data: ${error instanceof Error ? error.message : "Unknown error"}`,
+        await callback({
+          text: `\u274C Error fetching indices performance: ${errorMessage}`,
           content: {
-            success: false,
-            error: error instanceof Error ? error.message : "Unknown error occurred"
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true,
+            request_id: reqId
           }
         });
       }
-      return false;
+      return createActionResult19({
+        success: false,
+        error: errorMessage
+      });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger22.log("\u{1F50D} Validating getIndicesPerformanceAction (1.x)");
+    elizaLogger20.log("\u{1F50D} Validating getIndicesPerformanceAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger22.error("\u274C Validation failed:", error);
+      elizaLogger20.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -18447,7 +17160,19 @@ function formatIndicesPerformanceResponse(result) {
 
 `;
   if (indices_performance && indices_performance.length > 0) {
-    response += `\u{1F3AF} **Index ${metadata.index_id} Performance (${indices_performance.length} data points)**
+    const firstDataPoint = indices_performance[0];
+    const returnedIndexId = firstDataPoint?.ID || firstDataPoint?.INDEX_ID;
+    const requestedIndexId = metadata.index_id;
+    response += `\u{1F3AF} **Requested Index:** ${requestedIndexId}
+`;
+    if (returnedIndexId && returnedIndexId !== requestedIndexId) {
+      response += `\u26A0\uFE0F **API Returned Index:** ${returnedIndexId} (Mismatch detected!)
+`;
+    } else if (returnedIndexId) {
+      response += `\u2705 **Confirmed Index:** ${returnedIndexId}
+`;
+    }
+    response += `\u{1F4CA} **Data Points:** ${indices_performance.length}
 
 `;
     if (analysis && analysis.performance_metrics) {
@@ -18551,6 +17276,1563 @@ This could be due to:
   return response;
 }
 
+// src/actions/getAiReportsAction.ts
+import {
+  elizaLogger as elizaLogger21,
+  createActionResult as createActionResult20
+} from "@elizaos/core";
+var AiReportsRequestSchema = external_exports.object({
+  token_id: external_exports.number().min(1).optional().describe("The ID of the token to get AI reports for"),
+  symbol: external_exports.string().optional().describe("The symbol of the token to get AI reports for"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of reports to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["investment", "technical", "comprehensive", "all"]).optional().describe("Type of analysis to focus on")
+});
+var AI_REPORTS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting AI reports requests from natural language.
+
+The user wants to get AI-generated reports for cryptocurrency analysis. Extract the following information:
+
+1. **token_id** (optional): Numeric ID of the token
+   - Only extract if explicitly mentioned as a number
+
+2. **symbol** (optional): Token symbol like BTC, ETH, etc.
+   - Look for cryptocurrency symbols or names
+   - Convert names to symbols if possible (Bitcoin \u2192 BTC, Ethereum \u2192 ETH)
+
+3. **limit** (optional, default: 50): Number of reports to return
+   - Look for phrases like "50 reports", "top 20", "first 100"
+
+4. **page** (optional, default: 1): Page number for pagination
+
+5. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "investment" - focus on investment recommendations and analysis
+   - "technical" - focus on technical analysis and code reviews
+   - "comprehensive" - focus on deep dive comprehensive reports
+   - "all" - all types of AI reports
+
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
+Examples of request patterns (but extract the actual token from user's message):
+- "Get AI reports for [TOKEN]" \u2192 extract [TOKEN]
+- "Show me investment analysis for [TOKEN]" \u2192 extract [TOKEN]
+- "Get comprehensive AI reports" \u2192 general analysis
+- "Technical analysis reports for token 123" \u2192 specific token ID
+
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<token_id>specific token ID if mentioned</token_id>
+<symbol>token symbol mentioned by user</symbol>
+<limit>number of reports to return</limit>
+<page>page number for pagination</page>
+<analysisType>investment|technical|comprehensive|all</analysisType>
+</response>
+`;
+var getAiReportsAction = {
+  name: "GET_AI_REPORTS_TOKENMETRICS",
+  description: "Retrieve AI-generated reports providing comprehensive analyses of cryptocurrency tokens, including deep dives, investment analyses, and code reviews from TokenMetrics",
+  similes: [
+    "get ai reports",
+    "ai analysis reports",
+    "deep dive analysis",
+    "investment analysis",
+    "code reviews",
+    "comprehensive token analysis",
+    "ai generated insights"
+  ],
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get AI report for Bitcoin"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get the AI-generated report for Bitcoin.",
+          action: "GET_AI_REPORTS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show me AI insights for the crypto market"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll retrieve AI-powered market insights and analysis.",
+          action: "GET_AI_REPORTS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "AI analysis for Ethereum investment"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll generate an AI analysis for Ethereum investment opportunities.",
+          action: "GET_AI_REPORTS_TOKENMETRICS"
+        }
+      }
+    ]
+  ],
+  async handler(runtime, message, state, _options, callback) {
+    try {
+      const requestId = generateRequestId();
+      console.log(`[${requestId}] Processing AI reports request...`);
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = AI_REPORTS_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const aiReportsRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state || await runtime.composeState(message),
+        enhancedTemplate,
+        AiReportsRequestSchema,
+        requestId
+      );
+      elizaLogger21.log("\u{1F3AF} AI Extracted AI reports request:", aiReportsRequest);
+      console.log(`[${requestId}] Extracted request:`, aiReportsRequest);
+      const processedRequest = {
+        token_id: aiReportsRequest?.token_id,
+        symbol: aiReportsRequest?.symbol,
+        limit: aiReportsRequest?.limit || 50,
+        page: aiReportsRequest?.page || 1,
+        analysisType: aiReportsRequest?.analysisType || "all"
+      };
+      const apiParams = {
+        limit: processedRequest.limit,
+        page: processedRequest.page
+      };
+      if (processedRequest.token_id) {
+        apiParams.token_id = processedRequest.token_id;
+      }
+      if (processedRequest.symbol) {
+        apiParams.symbol = processedRequest.symbol;
+      }
+      const response = await callTokenMetricsAPI(
+        "/v2/ai-reports",
+        apiParams,
+        runtime
+      );
+      console.log(`[${requestId}] API response received, processing data...`);
+      const aiReports = Array.isArray(response) ? response : response.data || [];
+      const reportsAnalysis = analyzeAiReports(aiReports, processedRequest.analysisType);
+      const result = {
+        success: true,
+        message: `Successfully retrieved ${aiReports.length} AI-generated reports`,
+        request_id: requestId,
+        ai_reports: aiReports,
+        analysis: reportsAnalysis,
+        metadata: {
+          endpoint: "ai-reports",
+          requested_token: processedRequest.symbol || processedRequest.token_id,
+          pagination: {
+            page: processedRequest.page,
+            limit: processedRequest.limit
+          },
+          analysis_focus: processedRequest.analysisType,
+          data_points: aiReports.length,
+          api_version: "v2",
+          data_source: "TokenMetrics AI Engine"
+        },
+        reports_explanation: {
+          purpose: "AI-generated comprehensive analyses providing deep insights into cryptocurrency projects",
+          report_types: [
+            "Deep dive analyses - Comprehensive project evaluation",
+            "Investment analyses - Risk/reward assessment and recommendations",
+            "Code reviews - Technical evaluation of smart contracts and protocols",
+            "Market analysis - Competitive positioning and market dynamics"
+          ],
+          usage_guidelines: [
+            "Use for due diligence and investment research",
+            "Combine with quantitative metrics for complete picture",
+            "Review report generation date for relevance",
+            "Consider reports as one input in investment decision process"
+          ]
+        }
+      };
+      const tokenName = processedRequest.symbol || processedRequest.token_id || "various tokens";
+      let responseText = `\u{1F916} **AI Reports Analysis${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}**
+
+`;
+      if (aiReports.length === 0) {
+        responseText += `\u274C No AI reports found${tokenName !== "various tokens" ? ` for ${tokenName}` : ""}. This could mean:
+`;
+        responseText += `\u2022 TokenMetrics AI hasn't analyzed this token yet
+`;
+        responseText += `\u2022 The token may not meet criteria for AI analysis
+`;
+        responseText += `\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+
+`;
+      } else {
+        responseText += `\u2705 **Found ${aiReports.length} comprehensive AI-generated reports**
+
+`;
+        const reportTypes = reportsAnalysis.report_coverage.report_types;
+        if (reportTypes && reportTypes.length > 0) {
+          responseText += `\u{1F4CA} **Available Report Types:**
+`;
+          reportTypes.forEach((type) => {
+            responseText += `\u2022 ${type.type}: ${type.count} reports (${type.percentage}%)
+`;
+          });
+          responseText += `
+`;
+        }
+        if (processedRequest.analysisType === "investment" && reportsAnalysis.investment_focus) {
+          responseText += `\u{1F4B0} **Investment Analysis Focus:**
+`;
+          responseText += `\u2022 Investment analyses available: ${reportsAnalysis.investment_focus.investment_reports}
+`;
+          if (reportsAnalysis.investment_focus.key_investment_points && reportsAnalysis.investment_focus.key_investment_points.length > 0) {
+            responseText += `
+\u{1F4A1} **Key Investment Insights:**
+`;
+            reportsAnalysis.investment_focus.key_investment_points.slice(0, 3).forEach((point) => {
+              responseText += `\u2022 ${point}
+`;
+            });
+          }
+        } else if (processedRequest.analysisType === "technical" && reportsAnalysis.technical_focus) {
+          responseText += `\u{1F527} **Technical Analysis Focus:**
+`;
+          responseText += `\u2022 Code reviews available: ${reportsAnalysis.technical_focus.code_reviews}
+`;
+          if (reportsAnalysis.technical_focus.technical_highlights && reportsAnalysis.technical_focus.technical_highlights.length > 0) {
+            responseText += `
+\u{1F50D} **Technical Highlights:**
+`;
+            reportsAnalysis.technical_focus.technical_highlights.slice(0, 3).forEach((highlight) => {
+              responseText += `\u2022 ${highlight}
+`;
+            });
+          }
+        } else if (processedRequest.analysisType === "comprehensive" && reportsAnalysis.comprehensive_focus) {
+          responseText += `\u{1F4DA} **Comprehensive Analysis Focus:**
+`;
+          responseText += `\u2022 Deep dive reports: ${reportsAnalysis.comprehensive_focus.deep_dive_reports}
+`;
+          if (reportsAnalysis.comprehensive_focus.comprehensive_highlights && reportsAnalysis.comprehensive_focus.comprehensive_highlights.length > 0) {
+            responseText += `
+\u{1F4D6} **Comprehensive Highlights:**
+`;
+            reportsAnalysis.comprehensive_focus.comprehensive_highlights.slice(0, 3).forEach((highlight) => {
+              responseText += `\u2022 ${highlight}
+`;
+            });
+          }
+        } else {
+          responseText += `\u{1F4CA} **Comprehensive AI Analysis:**
+`;
+          responseText += `\u2022 ${reportsAnalysis.summary}
+`;
+          if (reportsAnalysis.report_content) {
+            const content = reportsAnalysis.report_content;
+            if (content.investment_analyses && content.investment_analyses.length > 0) {
+              responseText += `
+\u{1F4B0} **Investment Analysis Available** (${content.investment_analyses.length} reports)
+`;
+              const firstAnalysis = content.investment_analyses[0];
+              if (firstAnalysis.content && firstAnalysis.content.length > 100) {
+                const preview = firstAnalysis.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+            if (content.deep_dive_reports && content.deep_dive_reports.length > 0) {
+              responseText += `
+\u{1F4DA} **Deep Dive Reports Available** (${content.deep_dive_reports.length} reports)
+`;
+              const firstDeepDive = content.deep_dive_reports[0];
+              if (firstDeepDive.content && firstDeepDive.content.length > 100) {
+                const preview = firstDeepDive.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+            if (content.code_reviews && content.code_reviews.length > 0) {
+              responseText += `
+\u{1F527} **Code Reviews Available** (${content.code_reviews.length} reports)
+`;
+              const firstCodeReview = content.code_reviews[0];
+              if (firstCodeReview.content && firstCodeReview.content.length > 100) {
+                const preview = firstCodeReview.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+            if (content.executive_summaries && content.executive_summaries.length > 0) {
+              responseText += `
+\u{1F4CB} **Executive Summaries Available** (${content.executive_summaries.length} reports)
+`;
+              const firstSummary = content.executive_summaries[0];
+              if (firstSummary.content && firstSummary.content.length > 100) {
+                const preview = firstSummary.content.substring(0, 300).replace(/\n/g, " ").trim();
+                responseText += `\u{1F4DD} Preview: "${preview}..."
+`;
+              }
+            }
+          }
+        }
+        if (reportsAnalysis.research_themes && reportsAnalysis.research_themes.length > 0) {
+          responseText += `
+\u{1F50D} **Key Research Themes:**
+`;
+          reportsAnalysis.research_themes.slice(0, 4).forEach((theme) => {
+            responseText += `\u2022 ${theme}
+`;
+          });
+        }
+        if (reportsAnalysis.data_quality) {
+          responseText += `
+\u{1F4C8} **Data Quality Assessment:**
+`;
+          responseText += `\u2022 Coverage: ${reportsAnalysis.data_quality.coverage_breadth}
+`;
+          responseText += `\u2022 Completeness: ${reportsAnalysis.data_quality.completeness}
+`;
+          responseText += `\u2022 Freshness: ${reportsAnalysis.data_quality.freshness}
+`;
+        }
+        responseText += `
+\u{1F4CB} **Usage Guidelines:**
+`;
+        responseText += `\u2022 Use for due diligence and investment research
+`;
+        responseText += `\u2022 Combine with quantitative metrics for complete picture
+`;
+        responseText += `\u2022 Review report generation date for relevance
+`;
+        responseText += `\u2022 Consider reports as one input in investment decision process
+`;
+      }
+      responseText += `
+\u{1F517} **Data Source:** TokenMetrics AI Engine (v2)`;
+      console.log(`[${requestId}] AI reports analysis completed successfully`);
+      console.log(`[${requestId}] Analysis completed successfully`);
+      if (callback) {
+        await callback({
+          text: responseText,
+          content: {
+            success: true,
+            request_id: requestId,
+            data: result,
+            metadata: {
+              endpoint: "aireports",
+              data_source: "TokenMetrics Official API",
+              api_version: "v2"
+            }
+          }
+        });
+      }
+      return createActionResult20({ success: true, text: responseText });
+    } catch (error) {
+      console.error("Error in getAiReports action:", error);
+      const errorMessage = `\u274C **Failed to get AI reports**
+
+**Error:** ${error instanceof Error ? error.message : "Unknown error occurred"}
+
+**Troubleshooting:**
+\u2022 Ensure TokenMetrics AI has analyzed the requested token
+\u2022 Try using a major cryptocurrency like Bitcoin or Ethereum
+\u2022 Check if your TokenMetrics subscription includes AI reports
+\u2022 Verify the token meets criteria for AI analysis
+
+**Common Solutions:**
+\u2022 Use full token names or symbols (e.g., "Bitcoin" or "BTC")
+\u2022 Check if TokenMetrics has generated reports for the requested token
+\u2022 Ensure your API key has access to the ai-reports endpoint`;
+      if (callback) {
+        await callback({
+          text: errorMessage,
+          content: {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error occurred",
+            message: "Failed to retrieve AI reports from TokenMetrics API"
+          }
+        });
+      }
+      return createActionResult20({ success: false, error: "Failed to process request" });
+    }
+  },
+  validate: async (runtime, message, state) => {
+    elizaLogger21.log("\u{1F50D} Validating getAiReportsAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger21.error("\u274C Validation failed:", error);
+      return false;
+    }
+  }
+};
+function analyzeAiReports(reportsData, analysisType = "all") {
+  if (!reportsData || reportsData.length === 0) {
+    return {
+      summary: "No AI reports available for analysis",
+      report_coverage: "No data",
+      insights: []
+    };
+  }
+  const reportContent = extractReportContent(reportsData);
+  const reportCoverage = analyzeReportCoverage(reportsData);
+  const contentAnalysis = analyzeReportContent(reportsData);
+  const qualityAssessment = assessReportQuality(reportsData);
+  const topInsights = extractTopInsights(reportsData);
+  let focusedAnalysis = {};
+  switch (analysisType) {
+    case "investment":
+      focusedAnalysis = {
+        investment_focus: {
+          investment_reports: reportsData.filter((r) => r.INVESTMENT_ANALYSIS || r.INVESTMENT_ANALYSIS_POINTER).length,
+          key_investment_points: extractInvestmentHighlights(reportsData),
+          investment_insights: [
+            `\u{1F4C8} Investment analyses available: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS).length}`,
+            `\u{1F3AF} Executive summaries: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS_POINTER).length}`,
+            `\u{1F4B0} Market analysis included: ${reportsData.filter((r) => r.INVESTMENT_ANALYSIS?.includes("Market Analysis")).length}`
+          ]
+        }
+      };
+      break;
+    case "technical":
+      focusedAnalysis = {
+        technical_focus: {
+          code_reviews: reportsData.filter((r) => r.CODE_REVIEW).length,
+          technical_highlights: extractTechnicalHighlights(reportsData),
+          technical_insights: [
+            `\u{1F527} Code reviews available: ${reportsData.filter((r) => r.CODE_REVIEW).length}`,
+            `\u{1F4CA} Architecture analysis: ${reportsData.filter((r) => r.CODE_REVIEW?.includes("Architecture")).length}`,
+            `\u{1F6E1}\uFE0F Security assessments: ${reportsData.filter((r) => r.CODE_REVIEW?.includes("security")).length}`
+          ]
+        }
+      };
+      break;
+    case "comprehensive":
+      focusedAnalysis = {
+        comprehensive_focus: {
+          deep_dive_reports: reportsData.filter((r) => r.DEEP_DIVE).length,
+          comprehensive_highlights: extractComprehensiveHighlights(reportsData),
+          comprehensive_insights: [
+            `\u{1F4DA} Deep dive reports: ${reportsData.filter((r) => r.DEEP_DIVE).length}`,
+            `\u{1F50D} Multi-faceted analysis: ${reportsData.filter((r) => r.DEEP_DIVE && r.INVESTMENT_ANALYSIS && r.CODE_REVIEW).length}`,
+            `\u{1F4D6} Detailed evaluations: ${reportsData.filter((r) => r.DEEP_DIVE?.length > 1e3).length}`
+          ]
+        }
+      };
+      break;
+  }
+  return {
+    summary: `AI analysis covering ${reportsData.length} comprehensive reports for ${reportCoverage.unique_tokens} tokens`,
+    analysis_type: analysisType,
+    report_content: reportContent,
+    report_coverage: reportCoverage,
+    content_analysis: contentAnalysis,
+    quality_assessment: qualityAssessment,
+    top_insights: topInsights,
+    research_themes: identifyResearchThemes(reportsData),
+    actionable_intelligence: generateActionableIntelligence(reportsData),
+    ...focusedAnalysis,
+    data_quality: {
+      source: "TokenMetrics AI Engine",
+      total_reports: reportsData.length,
+      coverage_breadth: assessCoverageBreadth(reportsData),
+      freshness: assessReportFreshness(reportsData),
+      completeness: assessActualReportCompleteness(reportsData)
+    },
+    investment_considerations: [
+      "\u{1F4CA} Use AI reports as part of comprehensive due diligence",
+      "\u{1F3AF} Cross-reference recommendations with quantitative metrics",
+      "\u{1F4C5} Consider report generation date for relevance",
+      "\u{1F50D} Focus on reports matching your investment timeline",
+      "\u2696\uFE0F Balance AI insights with fundamental analysis",
+      "\u{1F4C8} Track report accuracy over time for validation"
+    ]
+  };
+}
+function extractReportContent(reportsData) {
+  const content = {
+    investment_analyses: [],
+    deep_dive_reports: [],
+    code_reviews: [],
+    executive_summaries: []
+  };
+  reportsData.forEach((report) => {
+    if (report.INVESTMENT_ANALYSIS) {
+      content.investment_analyses.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.INVESTMENT_ANALYSIS,
+        length: report.INVESTMENT_ANALYSIS.length
+      });
+    }
+    if (report.DEEP_DIVE) {
+      content.deep_dive_reports.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.DEEP_DIVE,
+        length: report.DEEP_DIVE.length
+      });
+    }
+    if (report.CODE_REVIEW) {
+      content.code_reviews.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.CODE_REVIEW,
+        length: report.CODE_REVIEW.length
+      });
+    }
+    if (report.INVESTMENT_ANALYSIS_POINTER) {
+      content.executive_summaries.push({
+        token: report.TOKEN_SYMBOL || report.TOKEN_NAME,
+        content: report.INVESTMENT_ANALYSIS_POINTER,
+        length: report.INVESTMENT_ANALYSIS_POINTER.length
+      });
+    }
+  });
+  return content;
+}
+function extractInvestmentHighlights(reportsData) {
+  const highlights = [];
+  reportsData.forEach((report) => {
+    if (report.INVESTMENT_ANALYSIS) {
+      const analysis = report.INVESTMENT_ANALYSIS;
+      if (analysis.includes("Executive Summary")) {
+        const summaryMatch = analysis.match(/## Executive Summary\n(.*?)(?=\n##|$)/s);
+        if (summaryMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL}: ${summaryMatch[1].substring(0, 200)}...`);
+        }
+      }
+      if (analysis.includes("Conclusion")) {
+        const conclusionMatch = analysis.match(/## Conclusion\n(.*?)(?=\n##|$)/s);
+        if (conclusionMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Outlook: ${conclusionMatch[1].substring(0, 150)}...`);
+        }
+      }
+    }
+    if (report.INVESTMENT_ANALYSIS_POINTER) {
+      const pointer = report.INVESTMENT_ANALYSIS_POINTER;
+      const bulletPoints = pointer.match(/- .+/g);
+      if (bulletPoints && bulletPoints.length > 0) {
+        highlights.push(`${report.TOKEN_SYMBOL}: ${bulletPoints[0].substring(2, 150)}...`);
+      }
+    }
+  });
+  return highlights.slice(0, 5);
+}
+function extractTechnicalHighlights(reportsData) {
+  const highlights = [];
+  reportsData.forEach((report) => {
+    if (report.CODE_REVIEW) {
+      const review = report.CODE_REVIEW;
+      if (review.includes("Innovation")) {
+        const innovationMatch = review.match(/## Innovation\n(.*?)(?=\n##|$)/s);
+        if (innovationMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Innovation: ${innovationMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (review.includes("Architecture")) {
+        const archMatch = review.match(/## Architecture\n(.*?)(?=\n##|$)/s);
+        if (archMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Architecture: ${archMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (review.includes("Code Quality")) {
+        const qualityMatch = review.match(/## Code Quality\n(.*?)(?=\n##|$)/s);
+        if (qualityMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Code Quality: ${qualityMatch[1].substring(0, 150)}...`);
+        }
+      }
+    }
+  });
+  return highlights.slice(0, 5);
+}
+function extractComprehensiveHighlights(reportsData) {
+  const highlights = [];
+  reportsData.forEach((report) => {
+    if (report.DEEP_DIVE) {
+      const deepDive = report.DEEP_DIVE;
+      if (deepDive.includes("Vision")) {
+        const visionMatch = deepDive.match(/### Vision\n(.*?)(?=\n###|$)/s);
+        if (visionMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Vision: ${visionMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (deepDive.includes("Problem")) {
+        const problemMatch = deepDive.match(/### Problem\n(.*?)(?=\n###|$)/s);
+        if (problemMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Problem Solved: ${problemMatch[1].substring(0, 150)}...`);
+        }
+      }
+      if (deepDive.includes("Market Analysis")) {
+        const marketMatch = deepDive.match(/## Market Analysis\n(.*?)(?=\n##|$)/s);
+        if (marketMatch) {
+          highlights.push(`${report.TOKEN_SYMBOL} Market: ${marketMatch[1].substring(0, 150)}...`);
+        }
+      }
+    }
+  });
+  return highlights.slice(0, 5);
+}
+function analyzeReportCoverage(reportsData) {
+  const uniqueTokens = new Set(reportsData.map((r) => r.TOKEN_SYMBOL || r.TOKEN_NAME).filter((s) => s)).size;
+  const tokenCoverage = /* @__PURE__ */ new Map();
+  reportsData.forEach((report) => {
+    const symbol = report.TOKEN_SYMBOL || report.TOKEN_NAME || "Unknown";
+    if (!tokenCoverage.has(symbol)) {
+      tokenCoverage.set(symbol, {
+        reports: [],
+        report_types: /* @__PURE__ */ new Set()
+      });
+    }
+    const tokenData = tokenCoverage.get(symbol);
+    tokenData.reports.push(report);
+    if (report.INVESTMENT_ANALYSIS) tokenData.report_types.add("Investment Analysis");
+    if (report.DEEP_DIVE) tokenData.report_types.add("Deep Dive");
+    if (report.CODE_REVIEW) tokenData.report_types.add("Code Review");
+    if (report.INVESTMENT_ANALYSIS_POINTER) tokenData.report_types.add("Executive Summary");
+  });
+  const mostAnalyzed = Array.from(tokenCoverage.entries()).sort((a, b) => b[1].reports.length - a[1].reports.length).slice(0, 5).map(([symbol, data]) => ({
+    symbol,
+    report_count: data.reports.length,
+    report_types: Array.from(data.report_types),
+    token_id: data.reports[0]?.TOKEN_ID || "Unknown"
+  }));
+  const reportTypes = /* @__PURE__ */ new Map();
+  reportsData.forEach((report) => {
+    if (report.INVESTMENT_ANALYSIS) reportTypes.set("Investment Analysis", (reportTypes.get("Investment Analysis") || 0) + 1);
+    if (report.DEEP_DIVE) reportTypes.set("Deep Dive", (reportTypes.get("Deep Dive") || 0) + 1);
+    if (report.CODE_REVIEW) reportTypes.set("Code Review", (reportTypes.get("Code Review") || 0) + 1);
+    if (report.INVESTMENT_ANALYSIS_POINTER) reportTypes.set("Executive Summary", (reportTypes.get("Executive Summary") || 0) + 1);
+  });
+  return {
+    unique_tokens: uniqueTokens,
+    total_reports: reportsData.length,
+    most_analyzed_tokens: mostAnalyzed,
+    report_types: Array.from(reportTypes.entries()).map(([type, count]) => ({
+      type,
+      count,
+      percentage: (count / reportsData.length * 100).toFixed(1)
+    })),
+    coverage_depth: uniqueTokens > 0 ? (reportsData.length / uniqueTokens).toFixed(1) : "0"
+  };
+}
+function assessActualReportCompleteness(reportsData) {
+  const requiredFields = ["INVESTMENT_ANALYSIS", "DEEP_DIVE", "CODE_REVIEW", "INVESTMENT_ANALYSIS_POINTER"];
+  let completeness = 0;
+  reportsData.forEach((report) => {
+    const presentFields = requiredFields.filter(
+      (field) => report[field] && report[field].length > 0
+    );
+    completeness += presentFields.length / requiredFields.length;
+  });
+  const avgCompleteness = completeness / reportsData.length * 100;
+  if (avgCompleteness > 80) return "Very Complete";
+  if (avgCompleteness > 60) return "Complete";
+  if (avgCompleteness > 40) return "Moderate";
+  return "Limited";
+}
+function analyzeReportContent(reportsData) {
+  const sentimentAnalysis = analyzeSentiment(reportsData);
+  const commonThemes = extractCommonThemes(reportsData);
+  const keywordFrequency = analyzeKeywords(reportsData);
+  return {
+    sentiment_distribution: sentimentAnalysis,
+    common_themes: commonThemes,
+    trending_keywords: keywordFrequency.slice(0, 10),
+    content_depth: assessContentDepth(reportsData),
+    analysis_focus: identifyAnalysisFocus(reportsData)
+  };
+}
+function assessReportQuality(reportsData) {
+  let qualityScore = 0;
+  let detailedReports = 0;
+  let recentReports = 0;
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
+  reportsData.forEach((report) => {
+    if (report.REPORT_CONTENT && report.REPORT_CONTENT.length > 500) {
+      detailedReports++;
+      qualityScore += 2;
+    }
+    if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS) && report.KEY_INSIGHTS.length > 0) {
+      qualityScore += 1;
+    }
+    if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS) && report.RECOMMENDATIONS.length > 0) {
+      qualityScore += 1;
+    }
+    if (report.GENERATED_DATE && new Date(report.GENERATED_DATE) > thirtyDaysAgo) {
+      recentReports++;
+      qualityScore += 1;
+    }
+  });
+  const avgQualityScore = reportsData.length > 0 ? qualityScore / reportsData.length : 0;
+  let qualityRating;
+  if (avgQualityScore > 4) qualityRating = "Excellent";
+  else if (avgQualityScore > 3) qualityRating = "Good";
+  else if (avgQualityScore > 2) qualityRating = "Fair";
+  else qualityRating = "Basic";
+  return {
+    quality_rating: qualityRating,
+    average_quality_score: avgQualityScore.toFixed(1),
+    detailed_reports: detailedReports,
+    detailed_percentage: (detailedReports / reportsData.length * 100).toFixed(1),
+    recent_reports: recentReports,
+    freshness_percentage: (recentReports / reportsData.length * 100).toFixed(1),
+    completeness: assessReportCompleteness(reportsData)
+  };
+}
+function extractTopInsights(reportsData) {
+  const allInsights = [];
+  const allRecommendations = [];
+  reportsData.forEach((report) => {
+    if (report.KEY_INSIGHTS && Array.isArray(report.KEY_INSIGHTS)) {
+      allInsights.push(...report.KEY_INSIGHTS.map((insight) => ({
+        insight,
+        token: report.SYMBOL || "Unknown",
+        report_date: report.GENERATED_DATE || "Unknown"
+      })));
+    }
+    if (report.RECOMMENDATIONS && Array.isArray(report.RECOMMENDATIONS)) {
+      allRecommendations.push(...report.RECOMMENDATIONS.map((rec) => ({
+        recommendation: rec,
+        token: report.SYMBOL || "Unknown",
+        report_date: report.GENERATED_DATE || "Unknown"
+      })));
+    }
+  });
+  return {
+    total_insights: allInsights.length,
+    total_recommendations: allRecommendations.length,
+    recent_insights: allInsights.slice(-5),
+    // Last 5 insights
+    key_recommendations: allRecommendations.slice(-5),
+    // Last 5 recommendations
+    insight_themes: categorizeInsights(allInsights),
+    recommendation_types: categorizeRecommendations(allRecommendations)
+  };
+}
+function identifyResearchThemes(reportsData) {
+  const themes = /* @__PURE__ */ new Map();
+  reportsData.forEach((report) => {
+    if (report.REPORT_CONTENT) {
+      const content = report.REPORT_CONTENT.toLowerCase();
+      const themeKeywords = [
+        "defi",
+        "nft",
+        "layer 2",
+        "scaling",
+        "interoperability",
+        "staking",
+        "governance",
+        "yield farming",
+        "liquidity",
+        "smart contracts",
+        "consensus",
+        "privacy",
+        "institutional adoption",
+        "regulation",
+        "market making",
+        "derivatives",
+        "lending",
+        "synthetic assets"
+      ];
+      themeKeywords.forEach((keyword) => {
+        if (content.includes(keyword)) {
+          themes.set(keyword, (themes.get(keyword) || 0) + 1);
+        }
+      });
+    }
+  });
+  return Array.from(themes.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([theme, count]) => `${theme} (${count} reports)`);
+}
+function generateActionableIntelligence(reportsData) {
+  const intelligence = {
+    investment_signals: [],
+    risk_alerts: [],
+    opportunity_highlights: [],
+    market_insights: []
+  };
+  reportsData.forEach((report) => {
+    if (report.RECOMMENDATIONS) {
+      report.RECOMMENDATIONS.forEach((rec) => {
+        const recLower = rec.toLowerCase();
+        if (recLower.includes("buy") || recLower.includes("accumulate")) {
+          intelligence.investment_signals.push({
+            type: "Bullish",
+            signal: rec,
+            token: report.SYMBOL
+          });
+        } else if (recLower.includes("sell") || recLower.includes("avoid")) {
+          intelligence.investment_signals.push({
+            type: "Bearish",
+            signal: rec,
+            token: report.SYMBOL
+          });
+        }
+        if (recLower.includes("risk") || recLower.includes("caution")) {
+          intelligence.risk_alerts.push({
+            alert: rec,
+            token: report.SYMBOL
+          });
+        }
+        if (recLower.includes("opportunity") || recLower.includes("potential")) {
+          intelligence.opportunity_highlights.push({
+            opportunity: rec,
+            token: report.SYMBOL
+          });
+        }
+      });
+    }
+    if (report.KEY_INSIGHTS) {
+      report.KEY_INSIGHTS.forEach((insight) => {
+        const insightLower = insight.toLowerCase();
+        if (insightLower.includes("market") || insightLower.includes("trend")) {
+          intelligence.market_insights.push({
+            insight,
+            token: report.SYMBOL
+          });
+        }
+      });
+    }
+  });
+  return {
+    investment_signals: intelligence.investment_signals.slice(0, 10),
+    risk_alerts: intelligence.risk_alerts.slice(0, 5),
+    opportunity_highlights: intelligence.opportunity_highlights.slice(0, 5),
+    market_insights: intelligence.market_insights.slice(0, 8),
+    summary: generateIntelligenceSummary(intelligence)
+  };
+}
+function analyzeSentiment(reportsData) {
+  let bullish = 0;
+  let bearish = 0;
+  let neutral = 0;
+  reportsData.forEach((report) => {
+    if (report.REPORT_CONTENT || report.KEY_INSIGHTS || report.RECOMMENDATIONS) {
+      const content = [
+        report.REPORT_CONTENT || "",
+        ...report.KEY_INSIGHTS || [],
+        ...report.RECOMMENDATIONS || []
+      ].join(" ").toLowerCase();
+      const positiveWords = ["bullish", "positive", "growth", "opportunity", "strong", "buy", "accumulate"];
+      const negativeWords = ["bearish", "negative", "decline", "risk", "weak", "sell", "avoid"];
+      const positiveScore = positiveWords.reduce((score, word) => {
+        return score + (content.split(word).length - 1);
+      }, 0);
+      const negativeScore = negativeWords.reduce((score, word) => {
+        return score + (content.split(word).length - 1);
+      }, 0);
+      if (positiveScore > negativeScore) bullish++;
+      else if (negativeScore > positiveScore) bearish++;
+      else neutral++;
+    }
+  });
+  const total = bullish + bearish + neutral;
+  return {
+    bullish,
+    bearish,
+    neutral,
+    bullish_percentage: total > 0 ? (bullish / total * 100).toFixed(1) : "0",
+    bearish_percentage: total > 0 ? (bearish / total * 100).toFixed(1) : "0",
+    overall_sentiment: bullish > bearish ? "Bullish" : bearish > bullish ? "Bearish" : "Neutral"
+  };
+}
+function extractCommonThemes(reportsData) {
+  const themeCount = /* @__PURE__ */ new Map();
+  const commonThemes = [
+    "scalability",
+    "adoption",
+    "partnerships",
+    "technology",
+    "team",
+    "roadmap",
+    "competition",
+    "valuation",
+    "use case",
+    "governance",
+    "tokenomics",
+    "ecosystem",
+    "development",
+    "community",
+    "security"
+  ];
+  reportsData.forEach((report) => {
+    const content = [
+      report.REPORT_CONTENT || "",
+      ...report.KEY_INSIGHTS || [],
+      ...report.RECOMMENDATIONS || []
+    ].join(" ").toLowerCase();
+    commonThemes.forEach((theme) => {
+      if (content.includes(theme)) {
+        themeCount.set(theme, (themeCount.get(theme) || 0) + 1);
+      }
+    });
+  });
+  return Array.from(themeCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([theme, count]) => `${theme} (${count})`);
+}
+function analyzeKeywords(reportsData) {
+  const keywordCount = /* @__PURE__ */ new Map();
+  reportsData.forEach((report) => {
+    const content = [
+      report.REPORT_CONTENT || "",
+      ...report.KEY_INSIGHTS || [],
+      ...report.RECOMMENDATIONS || []
+    ].join(" ").toLowerCase();
+    const words = content.match(/\b[a-z]{4,}\b/g) || [];
+    const excludeWords = ["that", "this", "with", "from", "they", "have", "will", "been", "were", "would", "could", "should"];
+    words.forEach((word) => {
+      if (!excludeWords.includes(word)) {
+        keywordCount.set(word, (keywordCount.get(word) || 0) + 1);
+      }
+    });
+  });
+  return Array.from(keywordCount.entries()).sort((a, b) => b[1] - a[1]).slice(0, 20).map(([keyword, count]) => ({ keyword, frequency: count }));
+}
+function assessContentDepth(reportsData) {
+  const avgContentLength = reportsData.reduce((sum, report) => {
+    return sum + (report.REPORT_CONTENT ? report.REPORT_CONTENT.length : 0);
+  }, 0) / reportsData.length;
+  if (avgContentLength > 2e3) return "Comprehensive";
+  if (avgContentLength > 1e3) return "Detailed";
+  if (avgContentLength > 500) return "Moderate";
+  return "Brief";
+}
+function identifyAnalysisFocus(reportsData) {
+  const focusAreas = /* @__PURE__ */ new Map();
+  const analysisTypes = [
+    "fundamental analysis",
+    "technical analysis",
+    "on-chain analysis",
+    "competitive analysis",
+    "market analysis",
+    "risk analysis",
+    "valuation analysis",
+    "team analysis",
+    "technology review"
+  ];
+  reportsData.forEach((report) => {
+    const content = [
+      report.REPORT_CONTENT || "",
+      report.REPORT_TYPE || ""
+    ].join(" ").toLowerCase();
+    analysisTypes.forEach((type) => {
+      if (content.includes(type.split(" ")[0])) {
+        focusAreas.set(type, (focusAreas.get(type) || 0) + 1);
+      }
+    });
+  });
+  return Array.from(focusAreas.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([focus, count]) => `${focus} (${count})`);
+}
+function assessCoverageBreadth(reportsData) {
+  const categories = new Set(reportsData.map((r) => r.CATEGORY).filter((c) => c));
+  const symbols = new Set(reportsData.map((r) => r.SYMBOL).filter((s) => s));
+  if (categories.size > 8 && symbols.size > 20) return "Very Broad";
+  if (categories.size > 5 && symbols.size > 15) return "Broad";
+  if (categories.size > 3 && symbols.size > 10) return "Moderate";
+  return "Narrow";
+}
+function assessReportFreshness(reportsData) {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
+  const recentReports = reportsData.filter(
+    (r) => r.GENERATED_DATE && new Date(r.GENERATED_DATE) > thirtyDaysAgo
+  ).length;
+  const freshnessPercent = recentReports / reportsData.length * 100;
+  if (freshnessPercent > 60) return "Very Fresh";
+  if (freshnessPercent > 40) return "Fresh";
+  if (freshnessPercent > 20) return "Moderate";
+  return "Dated";
+}
+function assessReportCompleteness(reportsData) {
+  const requiredFields = ["REPORT_CONTENT", "KEY_INSIGHTS", "RECOMMENDATIONS"];
+  let completeness = 0;
+  reportsData.forEach((report) => {
+    const presentFields = requiredFields.filter(
+      (field) => report[field] && (Array.isArray(report[field]) ? report[field].length > 0 : report[field].length > 0)
+    );
+    completeness += presentFields.length / requiredFields.length;
+  });
+  const avgCompleteness = completeness / reportsData.length * 100;
+  if (avgCompleteness > 80) return "Very Complete";
+  if (avgCompleteness > 60) return "Complete";
+  if (avgCompleteness > 40) return "Moderate";
+  return "Limited";
+}
+function categorizeInsights(insights) {
+  const categories = /* @__PURE__ */ new Map();
+  insights.forEach(({ insight }) => {
+    const insightLower = insight.toLowerCase();
+    if (insightLower.includes("technical") || insightLower.includes("technology")) {
+      categories.set("Technical", (categories.get("Technical") || 0) + 1);
+    } else if (insightLower.includes("market") || insightLower.includes("price")) {
+      categories.set("Market", (categories.get("Market") || 0) + 1);
+    } else if (insightLower.includes("fundamental") || insightLower.includes("business")) {
+      categories.set("Fundamental", (categories.get("Fundamental") || 0) + 1);
+    } else if (insightLower.includes("risk") || insightLower.includes("concern")) {
+      categories.set("Risk", (categories.get("Risk") || 0) + 1);
+    } else {
+      categories.set("General", (categories.get("General") || 0) + 1);
+    }
+  });
+  return Array.from(categories.entries()).map(([category, count]) => ({
+    category,
+    count,
+    percentage: (count / insights.length * 100).toFixed(1)
+  }));
+}
+function categorizeRecommendations(recommendations) {
+  const categories = /* @__PURE__ */ new Map();
+  recommendations.forEach(({ recommendation }) => {
+    const recLower = recommendation.toLowerCase();
+    if (recLower.includes("buy") || recLower.includes("accumulate")) {
+      categories.set("Buy/Accumulate", (categories.get("Buy/Accumulate") || 0) + 1);
+    } else if (recLower.includes("sell") || recLower.includes("reduce")) {
+      categories.set("Sell/Reduce", (categories.get("Sell/Reduce") || 0) + 1);
+    } else if (recLower.includes("hold") || recLower.includes("maintain")) {
+      categories.set("Hold/Maintain", (categories.get("Hold/Maintain") || 0) + 1);
+    } else if (recLower.includes("watch") || recLower.includes("monitor")) {
+      categories.set("Watch/Monitor", (categories.get("Watch/Monitor") || 0) + 1);
+    } else {
+      categories.set("General Advice", (categories.get("General Advice") || 0) + 1);
+    }
+  });
+  return Array.from(categories.entries()).map(([category, count]) => ({
+    category,
+    count,
+    percentage: (count / recommendations.length * 100).toFixed(1)
+  }));
+}
+function generateIntelligenceSummary(intelligence) {
+  const { recommendations, insights, risk_factors } = intelligence;
+  let summary = "\u{1F4CA} **AI Intelligence Summary**\n\n";
+  if (recommendations && recommendations.length > 0) {
+    summary += `\u{1F3AF} **Key Recommendations**: ${recommendations.slice(0, 3).join(", ")}
+`;
+  }
+  if (insights && insights.length > 0) {
+    summary += `\u{1F4A1} **Top Insights**: ${insights.slice(0, 3).join(", ")}
+`;
+  }
+  if (risk_factors && risk_factors.length > 0) {
+    summary += `\u26A0\uFE0F **Risk Factors**: ${risk_factors.slice(0, 2).join(", ")}
+`;
+  }
+  return summary;
+}
+
+// src/actions/getMoonshotTokensAction.ts
+import {
+  elizaLogger as elizaLogger22,
+  createActionResult as createActionResult21
+} from "@elizaos/core";
+var MoonshotTokensRequestSchema = external_exports.object({
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of moonshot tokens to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  type: external_exports.enum(["active", "past", "all"]).optional().describe("Type of moonshot tokens to fetch"),
+  analysisType: external_exports.enum(["market_trends", "breakout_potential", "ai_picks", "all"]).optional().describe("Type of analysis to focus on")
+});
+var MOONSHOT_TOKENS_EXTRACTION_TEMPLATE = `
+You are an AI assistant specialized in extracting moonshot tokens and market trend requests from natural language.
+
+IMPORTANT: This API provides AI-curated token picks with high breakout potential, market trends, and sentiment-like insights.
+When users ask for "market sentiment" or "trending tokens", they get moonshot tokens with breakout potential analysis.
+
+The user wants to get AI-curated token picks and market trend insights. Extract the following information:
+
+1. **limit** (optional, default: 50): Number of moonshot tokens to return
+   - Look for phrases like "top 10", "show me 20", "get 50 tokens"
+   - 50 = default, 100 = maximum
+
+2. **page** (optional, default: 1): Page number for pagination
+
+3. **type** (optional, default: "active"): What type of moonshot tokens they want
+   - "active" - currently active moonshot picks
+   - "past" - historical moonshot picks
+   - "all" - all moonshot picks
+
+4. **analysisType** (optional, default: "all"): What type of analysis they want
+   - "market_trends" - focus on overall market trends and momentum
+   - "breakout_potential" - focus on tokens with high breakout potential
+   - "ai_picks" - focus on AI-curated recommendations
+   - "all" - comprehensive analysis across all factors
+
+Examples:
+- "Get market sentiment" \u2192 {analysisType: "market_trends"}
+- "Show me trending tokens" \u2192 {analysisType: "market_trends"}
+- "What tokens have breakout potential?" \u2192 {analysisType: "breakout_potential"}
+- "Get AI token recommendations" \u2192 {analysisType: "ai_picks"}
+- "Show me moonshot tokens" \u2192 {analysisType: "all"}
+- "Market trends for the past week" \u2192 {type: "all", analysisType: "market_trends"}
+
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<limit>number of tokens to return</limit>
+<page>page number for pagination</page>
+<type>active|past|all</type>
+<analysisType>market_trends|breakout_potential|ai_picks|all</analysisType>
+</response>
+`;
+var getMoonshotTokensAction = {
+  name: "GET_MOONSHOT_TOKENS_TOKENMETRICS",
+  description: "Get AI-curated moonshot tokens with high breakout potential and market trend insights from TokenMetrics (includes sentiment-like analysis)",
+  similes: [
+    "get sentiment",
+    "market sentiment",
+    "sentiment analysis",
+    "market trends",
+    "trending tokens",
+    "moonshot tokens",
+    "breakout potential",
+    "ai recommendations",
+    "market momentum",
+    "hot tokens",
+    "rising tokens",
+    "market picks",
+    "get moonshot tokens",
+    "show moonshot picks"
+  ],
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Get market sentiment"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll analyze market trends and show you AI-curated tokens with high breakout potential.",
+          action: "GET_MOONSHOT_TOKENS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Show me trending tokens"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get the trending moonshot tokens with high market momentum.",
+          action: "GET_MOONSHOT_TOKENS_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "What tokens have breakout potential?"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll find AI-curated tokens with the highest breakout potential.",
+          action: "GET_MOONSHOT_TOKENS_TOKENMETRICS"
+        }
+      }
+    ]
+  ],
+  handler: async (runtime, message, state, _options, callback) => {
+    try {
+      const requestId = generateRequestId();
+      console.log(`[${requestId}] Processing moonshot tokens request...`);
+      if (!state) {
+        state = await runtime.composeState(message);
+      }
+      const userMessage = message.content?.text || "";
+      const enhancedTemplate = MOONSHOT_TOKENS_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+      const moonshotRequest = await extractTokenMetricsRequest(
+        runtime,
+        message,
+        state,
+        enhancedTemplate,
+        MoonshotTokensRequestSchema,
+        requestId
+      );
+      console.log(`[${requestId}] Extracted request:`, moonshotRequest);
+      const processedRequest = {
+        limit: moonshotRequest?.limit || 50,
+        page: moonshotRequest?.page || 1,
+        type: moonshotRequest?.type || "active",
+        analysisType: moonshotRequest?.analysisType || "all"
+      };
+      const apiParams = {
+        limit: processedRequest.limit,
+        page: processedRequest.page
+      };
+      if (processedRequest.type !== "all") {
+        apiParams.type = processedRequest.type;
+      }
+      const response = await callTokenMetricsAPI(
+        "/v2/moonshot-tokens",
+        apiParams,
+        runtime
+      );
+      console.log(`[${requestId}] API response received, processing data...`);
+      const moonshotData = Array.isArray(response) ? response : response.data || [];
+      const moonshotAnalysis = analyzeMoonshotData(moonshotData, processedRequest.analysisType);
+      const result = {
+        success: true,
+        message: `Successfully retrieved ${moonshotData.length} moonshot tokens from TokenMetrics`,
+        request_id: requestId,
+        moonshot_data: moonshotData,
+        analysis: moonshotAnalysis,
+        metadata: {
+          endpoint: "moonshot-tokens",
+          analysis_focus: processedRequest.analysisType,
+          type_filter: processedRequest.type,
+          pagination: {
+            page: processedRequest.page,
+            limit: processedRequest.limit
+          },
+          data_points: moonshotData.length,
+          api_version: "v2",
+          data_source: "TokenMetrics AI Curation Engine"
+        }
+      };
+      let responseText = `\u{1F680} **AI-Curated Moonshot Tokens & Market Trends**
+
+`;
+      responseText += `\u2139\uFE0F *These are AI-selected tokens with high breakout potential based on grades, sentiment, volume, and on-chain data.*
+
+`;
+      if (moonshotData.length === 0) {
+        responseText += `\u274C No moonshot tokens available at the moment.
+
+`;
+      } else {
+        responseText += `\u{1F3AF} **Top ${Math.min(moonshotData.length, 10)} Moonshot Tokens**:
+
+`;
+        const topTokens = moonshotData.slice(0, 10);
+        topTokens.forEach((token, index) => {
+          const name = token.TOKEN_NAME || "Unknown";
+          const symbol = token.TOKEN_SYMBOL || "N/A";
+          const grade = token.TM_TRADER_GRADE || 0;
+          const priceChange = token.PRICE_CHANGE_PERCENTAGE_7D_IN_CURRENCY || 0;
+          const gradeIcon = grade >= 80 ? "\u{1F525}" : grade >= 60 ? "\u{1F4AA}" : "\u{1F4CA}";
+          const changeIcon = priceChange > 0 ? "\u{1F4C8}" : priceChange < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
+          responseText += `${index + 1}. ${gradeIcon} **${name}** (${symbol})
+`;
+          responseText += `   \u2022 Grade: ${Math.round(grade)}/100
+`;
+          responseText += `   \u2022 7D Change: ${changeIcon} ${formatPercentage(priceChange)}
+`;
+          if (token.MARKET_CAP) {
+            responseText += `   \u2022 Market Cap: ${formatCurrency(token.MARKET_CAP)}
+`;
+          }
+          responseText += `
+`;
+        });
+        if (moonshotAnalysis.insights && moonshotAnalysis.insights.length > 0) {
+          responseText += `\u{1F4A1} **Market Insights**:
+`;
+          moonshotAnalysis.insights.slice(0, 3).forEach((insight, index) => {
+            responseText += `${index + 1}. ${insight}
+`;
+          });
+          responseText += `
+`;
+        }
+        if (moonshotAnalysis.trading_implications) {
+          responseText += `\u{1F4C8} **Trading Outlook**: ${moonshotAnalysis.trading_implications.market_bias}
+`;
+          responseText += `\u{1F3AF} **Opportunity Level**: ${moonshotAnalysis.trading_implications.opportunity_level}
+
+`;
+        }
+        responseText += `\u26A0\uFE0F **Risk Warning**: Moonshot tokens are high-risk, high-reward investments. Always do your own research and never invest more than you can afford to lose.
+
+`;
+      }
+      responseText += `\u{1F4CA} Retrieved ${moonshotData.length} AI-curated tokens
+`;
+      responseText += `\u{1F3AF} Analysis focus: ${processedRequest.analysisType}
+`;
+      responseText += `\u{1F4C4} Page ${processedRequest.page} (limit: ${processedRequest.limit})`;
+      console.log(`[${requestId}] Moonshot tokens analysis completed successfully`);
+      if (callback) {
+        await callback({
+          text: responseText,
+          content: {
+            success: true,
+            request_id: requestId,
+            data: result,
+            metadata: {
+              endpoint: "moonshot-tokens",
+              data_source: "TokenMetrics Official API",
+              api_version: "v2"
+            }
+          }
+        });
+      }
+      return createActionResult21({
+        success: true,
+        text: responseText,
+        data: {
+          moonshot_data: moonshotData,
+          analysis: moonshotAnalysis,
+          source: "TokenMetrics Moonshot API",
+          request_id: requestId
+        }
+      });
+    } catch (error) {
+      console.error("Error in getMoonshotTokensAction:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      if (callback) {
+        await callback({
+          text: `\u274C Error fetching moonshot tokens: ${errorMessage}`,
+          content: {
+            error: errorMessage,
+            error_type: error instanceof Error ? error.constructor.name : "Unknown",
+            troubleshooting: true
+          }
+        });
+      }
+      return createActionResult21({
+        success: false,
+        error: errorMessage
+      });
+    }
+  },
+  validate: async (runtime, message, state) => {
+    elizaLogger22.log("\u{1F50D} Validating getMoonshotTokensAction (1.x)");
+    try {
+      validateAndGetApiKey(runtime);
+      return true;
+    } catch (error) {
+      elizaLogger22.error("\u274C Validation failed:", error);
+      return false;
+    }
+  }
+};
+function analyzeMoonshotData(moonshotData, analysisType = "all") {
+  if (!moonshotData || moonshotData.length === 0) {
+    return {
+      summary: "No moonshot tokens data available for analysis",
+      market_sentiment: "Unknown",
+      insights: []
+    };
+  }
+  const gradeAnalysis = analyzeGrades(moonshotData);
+  const performanceAnalysis = analyzePerformance(moonshotData);
+  const marketAnalysis = analyzeMarketTrends(moonshotData);
+  let focusedAnalysis = {};
+  switch (analysisType) {
+    case "market_trends":
+      focusedAnalysis = {
+        market_trends_focus: {
+          trending_direction: marketAnalysis.overall_trend,
+          momentum_level: marketAnalysis.momentum_level,
+          trend_insights: [
+            `\u{1F4C8} Market momentum: ${marketAnalysis.momentum_level}`,
+            `\u{1F3AF} Trending direction: ${marketAnalysis.overall_trend}`,
+            `\u{1F4AA} Strong performers: ${gradeAnalysis.high_grade_count}`
+          ]
+        }
+      };
+      break;
+    case "breakout_potential":
+      focusedAnalysis = {
+        breakout_focus: {
+          high_potential_tokens: identifyBreakoutCandidates2(moonshotData),
+          breakout_signals: assessBreakoutSignals(moonshotData),
+          breakout_insights: [
+            `\u{1F680} High-potential tokens: ${identifyBreakoutCandidates2(moonshotData).length}`,
+            `\u{1F4CA} Average grade: ${gradeAnalysis.average_grade}`,
+            `\u{1F48E} Top performers: ${gradeAnalysis.top_performers}`
+          ]
+        }
+      };
+      break;
+    case "ai_picks":
+      focusedAnalysis = {
+        ai_picks_focus: {
+          ai_confidence: gradeAnalysis.grade_distribution,
+          recommendation_strength: assessRecommendationStrength(gradeAnalysis),
+          ai_insights: [
+            `\u{1F916} AI confidence level: ${assessRecommendationStrength(gradeAnalysis)}`,
+            `\u{1F4CA} Quality distribution: ${gradeAnalysis.grade_quality}`,
+            `\u{1F3AF} Success probability: ${calculateSuccessProbability(gradeAnalysis)}`
+          ]
+        }
+      };
+      break;
+  }
+  return {
+    summary: `Analysis of ${moonshotData.length} AI-curated moonshot tokens showing ${marketAnalysis.overall_trend} market trend`,
+    analysis_type: analysisType,
+    market_sentiment: deriveSentimentFromData(gradeAnalysis, performanceAnalysis),
+    grade_analysis: gradeAnalysis,
+    performance_analysis: performanceAnalysis,
+    market_analysis: marketAnalysis,
+    insights: generateInsights(gradeAnalysis, performanceAnalysis, marketAnalysis),
+    trading_implications: generateTradingImplications(gradeAnalysis, performanceAnalysis, marketAnalysis),
+    ...focusedAnalysis,
+    data_quality: {
+      source: "TokenMetrics AI Curation Engine",
+      token_count: moonshotData.length,
+      analysis_depth: "Comprehensive with AI scoring",
+      reliability: "High - AI-curated selections"
+    }
+  };
+}
+function analyzeGrades(data) {
+  const grades = data.map((token) => token.TM_TRADER_GRADE || 0).filter((g) => g > 0);
+  const avgGrade = grades.length > 0 ? grades.reduce((sum, g) => sum + g, 0) / grades.length : 0;
+  const highGradeCount = grades.filter((g) => g >= 80).length;
+  const topPerformers = grades.filter((g) => g >= 90).length;
+  return {
+    average_grade: Math.round(avgGrade),
+    high_grade_count: highGradeCount,
+    top_performers: topPerformers,
+    grade_quality: avgGrade >= 70 ? "High" : avgGrade >= 50 ? "Medium" : "Low",
+    grade_distribution: `${topPerformers} excellent, ${highGradeCount} strong, ${grades.length - highGradeCount} moderate`
+  };
+}
+function analyzePerformance(data) {
+  const changes = data.map((token) => token.PRICE_CHANGE_PERCENTAGE_7D_IN_CURRENCY || 0);
+  const positiveChanges = changes.filter((c) => c > 0).length;
+  const avgChange = changes.length > 0 ? changes.reduce((sum, c) => sum + c, 0) / changes.length : 0;
+  return {
+    average_performance: avgChange,
+    positive_performers: positiveChanges,
+    performance_ratio: Math.round(positiveChanges / changes.length * 100),
+    performance_trend: avgChange > 5 ? "Strong Positive" : avgChange > 0 ? "Positive" : avgChange > -5 ? "Neutral" : "Negative"
+  };
+}
+function analyzeMarketTrends(data) {
+  const grades = data.map((token) => token.TM_TRADER_GRADE || 0);
+  const avgGrade = grades.reduce((sum, g) => sum + g, 0) / grades.length;
+  const changes = data.map((token) => token.PRICE_CHANGE_PERCENTAGE_7D_IN_CURRENCY || 0);
+  const avgChange = changes.reduce((sum, c) => sum + c, 0) / changes.length;
+  let overallTrend = "Neutral";
+  if (avgGrade > 70 && avgChange > 5) overallTrend = "Strongly Bullish";
+  else if (avgGrade > 60 && avgChange > 0) overallTrend = "Bullish";
+  else if (avgGrade < 40 && avgChange < -5) overallTrend = "Bearish";
+  else if (avgChange > 0) overallTrend = "Cautiously Optimistic";
+  return {
+    overall_trend: overallTrend,
+    momentum_level: avgChange > 10 ? "High" : avgChange > 0 ? "Moderate" : "Low",
+    market_strength: avgGrade > 70 ? "Strong" : avgGrade > 50 ? "Moderate" : "Weak"
+  };
+}
+function identifyBreakoutCandidates2(data) {
+  return data.filter(
+    (token) => (token.TM_TRADER_GRADE || 0) >= 70 && (token.PRICE_CHANGE_PERCENTAGE_7D_IN_CURRENCY || 0) > 0
+  ).slice(0, 5);
+}
+function assessBreakoutSignals(data) {
+  const strongCandidates = identifyBreakoutCandidates2(data);
+  return strongCandidates.length > 5 ? "Strong" : strongCandidates.length > 2 ? "Moderate" : "Weak";
+}
+function assessRecommendationStrength(gradeAnalysis) {
+  if (gradeAnalysis.average_grade > 75) return "Very High";
+  if (gradeAnalysis.average_grade > 60) return "High";
+  if (gradeAnalysis.average_grade > 45) return "Moderate";
+  return "Low";
+}
+function calculateSuccessProbability(gradeAnalysis) {
+  const avgGrade = gradeAnalysis.average_grade;
+  if (avgGrade > 80) return "High (70-85%)";
+  if (avgGrade > 65) return "Good (55-70%)";
+  if (avgGrade > 50) return "Moderate (40-55%)";
+  return "Low (25-40%)";
+}
+function deriveSentimentFromData(gradeAnalysis, performanceAnalysis) {
+  const avgGrade = gradeAnalysis.average_grade;
+  const avgPerformance = performanceAnalysis.average_performance;
+  if (avgGrade > 70 && avgPerformance > 5) return "Very Bullish";
+  if (avgGrade > 60 && avgPerformance > 0) return "Bullish";
+  if (avgGrade > 50) return "Cautiously Optimistic";
+  if (avgGrade > 40) return "Neutral";
+  return "Bearish";
+}
+function generateInsights(gradeAnalysis, performanceAnalysis, marketAnalysis) {
+  const insights = [];
+  if (gradeAnalysis.average_grade > 70) {
+    insights.push(`Strong AI confidence with ${gradeAnalysis.average_grade}/100 average grade suggests quality opportunities`);
+  }
+  if (performanceAnalysis.positive_performers > performanceAnalysis.performance_ratio * 0.6) {
+    insights.push(`${performanceAnalysis.positive_performers} tokens showing positive momentum indicates healthy market interest`);
+  }
+  if (marketAnalysis.overall_trend.includes("Bullish")) {
+    insights.push(`${marketAnalysis.overall_trend} trend supported by ${marketAnalysis.momentum_level.toLowerCase()} momentum levels`);
+  }
+  if (gradeAnalysis.top_performers > 0) {
+    insights.push(`${gradeAnalysis.top_performers} tokens with 90+ grades represent premium AI picks with highest conviction`);
+  }
+  return insights;
+}
+function generateTradingImplications(gradeAnalysis, performanceAnalysis, marketAnalysis) {
+  let marketBias = "Neutral";
+  let opportunityLevel = "Moderate";
+  if (gradeAnalysis.average_grade > 70 && performanceAnalysis.average_performance > 0) {
+    marketBias = "Bullish";
+    opportunityLevel = "High";
+  } else if (gradeAnalysis.average_grade > 60) {
+    marketBias = "Cautiously Optimistic";
+    opportunityLevel = "Good";
+  } else if (gradeAnalysis.average_grade < 40) {
+    marketBias = "Defensive";
+    opportunityLevel = "Low";
+  }
+  return {
+    market_bias: marketBias,
+    opportunity_level: opportunityLevel,
+    recommended_approach: generateRecommendedApproach(marketBias, opportunityLevel),
+    risk_assessment: assessRiskLevel(gradeAnalysis, performanceAnalysis)
+  };
+}
+function generateRecommendedApproach(bias, opportunity) {
+  if (bias === "Bullish" && opportunity === "High") {
+    return "Active position taking with disciplined risk management";
+  } else if (bias === "Cautiously Optimistic") {
+    return "Selective positioning in highest-grade tokens";
+  } else if (bias === "Defensive") {
+    return "Wait for better opportunities or focus on top-tier picks only";
+  }
+  return "Balanced approach with careful token selection";
+}
+function assessRiskLevel(gradeAnalysis, performanceAnalysis) {
+  if (gradeAnalysis.average_grade > 75 && performanceAnalysis.performance_ratio > 60) {
+    return "Moderate - Strong AI backing reduces risk";
+  } else if (gradeAnalysis.average_grade > 60) {
+    return "Medium-High - Standard moonshot risk with AI guidance";
+  }
+  return "High - Higher risk due to lower AI confidence";
+}
+
+// src/actions/action.ts
+import axios from "axios";
+var DEFAULT_BASE_URL = process.env.TOKENMETRICS_BASE_URL || "https://api.tokenmetrics.com";
+var DEFAULT_API_VERSION = process.env.TOKENMETRICS_API_VERSION || "v2";
+var DEFAULT_PAGE_LIMIT = Number.parseInt(process.env.TOKENMETRICS_PAGE_LIMIT || "50", 10);
+
 // src/index.ts
 elizaLogger23.log("\n=======================================");
 elizaLogger23.log("   TokenMetrics Plugin Loading...     ");
@@ -18584,57 +18866,29 @@ elizaLogger23.log("=======================================\n");
 var tokenmetricsPlugin = {
   name: "tokenmetrics",
   description: "Complete TokenMetrics integration providing comprehensive cryptocurrency market data, analysis, and insights with advanced AI-powered natural language processing across 21 specialized endpoints (1.x compatible)",
-  // All 21 updated actions with 1.x callback pattern
+  // All 21 updated actions with ElizaOS 1.x patterns
   actions: [
-    // Core Market Data Actions
     getPriceAction,
-    // Real-time price data
     getTokensAction,
-    // Token information
     getTopMarketCapAction,
-    // Top market cap tokens
-    // Trading & Technical Analysis Actions
     getTradingSignalsAction,
-    // Trading signals
     getHourlyTradingSignalsAction,
-    // Hourly trading signals
     getDailyOhlcvAction,
-    // Daily OHLCV data
     getHourlyOhlcvAction,
-    // Hourly OHLCV data
     getResistanceSupportAction,
-    // Support/resistance levels
-    // Grades & Investment Analysis Actions
     getTraderGradesAction,
-    // Trader grades
     getInvestorGradesAction,
-    // Investor grades
     getQuantmetricsAction,
-    // Quantitative metrics
-    // Market & Exchange Analysis Actions
     getMarketMetricsAction,
-    // Market metrics (exchange flow, historical)
     getCorrelationAction,
-    // Correlation analysis
-    // Portfolio & Index Actions
     getIndicesAction,
-    // Market indices
     getIndicesHoldingsAction,
-    // Portfolio holdings
     getIndicesPerformanceAction,
-    // Index performance
-    // News & Sentiment Actions
     getAiReportsAction,
-    // AI reports and news analysis
-    getSentimentAction,
-    // Sentiment analysis
-    // Advanced Analysis Actions
+    getMoonshotTokensAction,
     getScenarioAnalysisAction,
-    // Scenario analysis
     getCryptoInvestorsAction,
-    // Crypto investors data
     getTmaiAction
-    // TMAI AI insights
   ],
   // Initialize provider system for 1.x compatibility
   providers: [],

@@ -1,14 +1,16 @@
 import {
     type Action,
+    type ActionResult,
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
     type ActionExample,
     elizaLogger,
-    composeContext,
-    generateObject,
-    ModelClass
+    composePromptFromState,
+    parseKeyValueXml,
+    ModelType,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -21,54 +23,44 @@ import {
     resolveTokenSmart
 } from "./aiActionHelper";
 
-// Enhanced template for extracting investor grades information from conversations
-const investorGradesTemplate = `# Task: Extract Investor Grades Request Information
+// Enhanced template for extracting investor grades information from conversations (Updated to XML format)
+const investorGradesTemplate = `Extract investor grades request information from the message.
 
-Based on the conversation context, identify what investor grades information the user is requesting.
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-# Conversation Context:
-{{recentMessages}}
+Investor grades provide:
+- Professional investment analysis scores (A+ to F grades)
+- Risk assessment ratings
+- Investment recommendation levels
+- Portfolio allocation guidance
+- Institutional-grade analysis for crypto assets
 
-# CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+Instructions:
+Look for INVESTOR GRADES requests, such as:
+- Investment grade queries ("What's the investor grade for [TOKEN]?", "Show me investment ratings")
+- Risk assessment requests ("How risky is [TOKEN]?", "Investment risk for [TOKEN]")
+- Portfolio allocation questions ("Should I invest in [TOKEN]?", "Investment recommendation for [TOKEN]")
+- Professional analysis requests ("Give me institutional analysis", "Investment grade scores")
 
-# Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, DOGE, SHIB, PEPE, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, Dogecoin, etc.)
-- Investor grade requests ("investor grades", "investment grades", "long-term grades", "investment ratings")
-- Grade types ("A", "B", "C", "D", "F" grades)
-- Investment timeframes ("long-term", "investment horizon", "hodl")
-- Market filters (category, exchange, market cap, volume)
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
 
-PATTERN RECOGNITION:
-- "Bitcoin" or "BTC" → cryptocurrency: "Bitcoin", symbol: "BTC"
-- "Ethereum" or "ETH" → cryptocurrency: "Ethereum", symbol: "ETH"  
-- "Solana" or "SOL" → cryptocurrency: "Solana", symbol: "SOL"
-- "Dogecoin" or "DOGE" → cryptocurrency: "Dogecoin", symbol: "DOGE"
-- "Avalanche" or "AVAX" → cryptocurrency: "Avalanche", symbol: "AVAX"
+Examples of request patterns (but extract the actual token from user's message):
+- "What's the investor grade for [TOKEN]?" → extract [TOKEN]
+- "Show me investment ratings for [TOKEN]" → extract [TOKEN]
+- "How does [TOKEN] rate for investors?" → extract [TOKEN]
+- "Get investment analysis for [TOKEN]" → extract [TOKEN]
+- "Get investor grades for [TOKEN]" → extract [TOKEN]
 
-The user might say things like:
-- "Get investor grades for Bitcoin"
-- "Show me long-term investment grades"
-- "What are the current investor ratings?"
-- "Get A-grade tokens for investment"
-- "Show investment grades for DeFi tokens"
-- "Get grades for long-term holding"
-- "What tokens have A+ investor grades?"
-- "Investment rating for SOL"
-- "Show me investment grades for AVAX"
+Respond with an XML block containing only the extracted values:
 
-Extract the relevant information for the investor grades request.
-
-# Response Format:
-Return a structured object with the investor grades request information.
-
-# Cache Busting ID: {{requestId}}
-# Timestamp: {{timestamp}}
-
-USER MESSAGE: "{{userMessage}}"
-
-Please analyze the CURRENT user message above and extract the relevant information.`;
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<analysis_type>specific or general or portfolio</analysis_type>
+<risk_focus>high, medium, low, or general</risk_focus>
+<investment_horizon>short, medium, long, or general</investment_horizon>
+<grade_filter>A+, A, B+, B, C+, C, D+, D, F or all</grade_filter>
+<limit>number of results requested (default 10)</limit>
+</response>`;
 
 // Enhanced schema for the extracted data
 const InvestorGradesRequestSchema = z.object({
@@ -342,7 +334,7 @@ export const getInvestorGradesAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         const requestId = generateRequestId();
         
         elizaLogger.log("🚀 Starting TokenMetrics investor grades handler (1.x)");
@@ -358,22 +350,33 @@ export const getInvestorGradesAction: Action = {
                 state = await runtime.composeState(message);
             }
 
-            // STEP 2: Extract investor grades request using AI
+            // STEP 2: Extract investor grades request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template (like getScenarioAnalysisAction does)
+            const enhancedTemplate = investorGradesTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const gradesRequest = await extractTokenMetricsRequest(
                 runtime,
                 message,
                 state,
-                investorGradesTemplate,
+                enhancedTemplate,
                 InvestorGradesRequestSchema,
                 requestId
             );
 
             elizaLogger.log("🎯 AI Extracted grades request:", gradesRequest);
-            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || 'general market'}"`);
+            elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${gradesRequest?.cryptocurrency || 'general market'}"`);
+            elizaLogger.log(`🔍 DEBUG: AI extracted cryptocurrency: "${gradesRequest?.cryptocurrency}"`);
+            console.log(`[${requestId}] Extracted request:`, gradesRequest);
 
             // STEP 3: Apply regex fallback if AI extraction failed or produced wrong results
-            let finalRequest = gradesRequest;
-            if (!gradesRequest.cryptocurrency || gradesRequest.confidence < 0.5) {
+            let finalRequest = gradesRequest || {};
+            if (!gradesRequest?.cryptocurrency || (gradesRequest?.confidence || 0) < 0.5) {
                 elizaLogger.log("🔄 Applying regex fallback for cryptocurrency extraction");
                 const regexResult = extractCryptocurrencySimple(message.content?.text || "");
                 if (regexResult) {
@@ -381,14 +384,14 @@ export const getInvestorGradesAction: Action = {
                         ...gradesRequest,
                         cryptocurrency: regexResult.cryptocurrency,
                         symbol: regexResult.symbol,
-                        confidence: Math.max(gradesRequest.confidence, 0.8)
+                        confidence: Math.max(gradesRequest?.confidence || 0, 0.8)
                     };
                     elizaLogger.log("✅ Regex fallback successful:", regexResult);
                 }
             }
 
             // STEP 4: Validate that we have sufficient information
-            if (!finalRequest.cryptocurrency && !finalRequest.grade_filter && !finalRequest.category && finalRequest.confidence < 0.3) {
+            if (!finalRequest?.cryptocurrency && !finalRequest?.grade_filter && !finalRequest?.category && (finalRequest?.confidence || 0) < 0.3) {
                 elizaLogger.log("❌ AI extraction failed or insufficient information");
                 
                 if (callback) {
@@ -413,7 +416,27 @@ Try asking something like:
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ I couldn't identify specific investor grades criteria from your request.
+
+I can get AI investor grades for:
+• Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+• Grade filters (A, B, C, D, F grades)
+• Token categories (DeFi, Layer-1, meme tokens)
+• Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+• "Get investor grades for Bitcoin"
+• "Show me A-grade investment tokens"
+• "What are the current long-term grades?"
+• "Get investment grades for DeFi tokens"`,
+                    data: { 
+                        error: "Insufficient investor grades criteria",
+                        confidence: finalRequest?.confidence || 0,
+                        request_id: requestId
+                    }
+                });
             }
 
             elizaLogger.success("🎯 Final extraction result:", finalRequest);
@@ -426,7 +449,7 @@ Try asking something like:
 
             // Handle token-specific requests
             let tokenInfo = null;
-            if (finalRequest.cryptocurrency) {
+            if (finalRequest?.cryptocurrency) {
                 elizaLogger.log(`🔍 Resolving token for: "${finalRequest.cryptocurrency}"`);
                 try {
                     tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
@@ -447,12 +470,12 @@ Try asking something like:
             }
 
             // Handle grade filtering
-            if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
+            if (finalRequest?.grade_filter && finalRequest.grade_filter !== "any") {
                 elizaLogger.log(`🔍 Grade filter requested: ${finalRequest.grade_filter} (will filter results post-API)`);
             }
 
             // Handle category filtering
-            if (finalRequest.category) {
+            if (finalRequest?.category) {
                 apiParams.category = finalRequest.category;
             }
 
@@ -482,14 +505,29 @@ Please try again in a few moments or try with different criteria.`,
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ Unable to fetch investor grades data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+• No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+                    data: { 
+                        error: "API fetch failed",
+                        request_id: requestId
+                    }
+                });
             }
 
             // Handle the response data with smart token filtering for multiple tokens with same symbol
             let grades = Array.isArray(gradesData) ? gradesData : (gradesData.data || []);
             
             // Apply grade filtering if requested (post-API filtering) - MOVED BEFORE smart token filtering
-            if (finalRequest.grade_filter && finalRequest.grade_filter !== "any") {
+            if (finalRequest?.grade_filter && finalRequest.grade_filter !== "any") {
                 elizaLogger.log(`🔍 Applying grade filter: ${finalRequest.grade_filter}`);
                 
                 const gradeRanges = {
@@ -538,7 +576,30 @@ I searched through the available tokens but couldn't find any with ${finalReques
                             }
                         });
                     }
-                    return false;
+                    return createActionResult({
+                        success: false,
+                        text: `📊 **No ${finalRequest.grade_filter}-Grade Tokens Found**
+
+I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
+
+**${finalRequest.grade_filter}-Grade Requirements:**
+• Grade range: ${minGrade} - ${maxGrade}
+• Current market conditions may not have tokens in this range
+
+**Suggestions:**
+• Try a different grade range (A, B, C, D, F)
+• Check general market grades: "Show me current investor grades"
+• Look for specific tokens: "Get investor grades for Bitcoin"
+
+📊 **Data Source**: TokenMetrics AI Investor Grades
+⏰ **Analysis Time**: ${new Date().toLocaleString()}`,
+                        data: { 
+                            error: "No tokens found for grade filter",
+                            grade_filter: finalRequest.grade_filter,
+                            grade_range: [minGrade, maxGrade],
+                            request_id: requestId
+                        }
+                    });
                 }
             }
             
@@ -617,10 +678,10 @@ I searched through the available tokens but couldn't find any with ${finalReques
                         source: "TokenMetrics AI Investor Grades",
                         request_id: requestId,
                         query_details: {
-                            original_request: finalRequest.cryptocurrency || "general market",
-                            grade_filter: finalRequest.grade_filter,
-                            category: finalRequest.category,
-                            confidence: finalRequest.confidence,
+                            original_request: finalRequest?.cryptocurrency || "general market",
+                            grade_filter: finalRequest?.grade_filter,
+                            category: finalRequest?.category,
+                            confidence: finalRequest?.confidence,
                             data_freshness: "real-time",
                             request_id: requestId,
                             extraction_method: "ai_with_cache_busting_and_regex_fallback"
@@ -629,15 +690,34 @@ I searched through the available tokens but couldn't find any with ${finalReques
                 });
             }
 
-            return true;
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    success: true,
+                    grades_data: grades,
+                    analysis: analysis,
+                    source: "TokenMetrics AI Investor Grades",
+                    request_id: requestId,
+                    query_details: {
+                        original_request: finalRequest?.cryptocurrency || "general market",
+                        grade_filter: finalRequest?.grade_filter,
+                        category: finalRequest?.category,
+                        confidence: finalRequest?.confidence,
+                        data_freshness: "real-time",
+                        request_id: requestId,
+                        extraction_method: "ai_with_cache_busting_and_regex_fallback"
+                    }
+                }
+            });
 
         } catch (error) {
             elizaLogger.error("❌ Error in TokenMetrics investor grades handler:", error);
             elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
             
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            
             if (callback) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                
                 await callback({
                     text: `❌ I encountered an error while fetching investor grades: ${errorMessage}
 
@@ -657,20 +737,24 @@ Please check your TokenMetrics API key configuration and try again.`,
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
+
         }
     },
 
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get investor grades for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll fetch the latest AI investor grades for Bitcoin from TokenMetrics.",
                     action: "GET_INVESTOR_GRADES_TOKENMETRICS"
@@ -679,13 +763,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me A-grade investment tokens"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get all A-grade tokens for long-term investment from TokenMetrics.",
                     action: "GET_INVESTOR_GRADES_TOKENMETRICS"
@@ -694,13 +778,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "What are the current long-term investment grades?"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "Let me fetch the latest AI investor grades and ratings from TokenMetrics.",
                     action: "GET_INVESTOR_GRADES_TOKENMETRICS"

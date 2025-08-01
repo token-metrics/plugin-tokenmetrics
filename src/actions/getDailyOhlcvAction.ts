@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -141,52 +142,58 @@ export const getDailyOhlcvAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get daily OHLCV data for Bitcoin"
+                    text: "Get daily OHLCV for Bitcoin"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve daily OHLCV data for Bitcoin from TokenMetrics.",
+                    text: "I'll get the daily OHLCV data for Bitcoin.",
                     action: "GET_DAILY_OHLCV_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me daily candle data for ETH for the past month"
+                    text: "Show daily price data for ETH"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get daily OHLCV data for Ethereum for the past month.",
+                    text: "I'll retrieve daily OHLCV data for Ethereum.",
                     action: "GET_DAILY_OHLCV_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Daily price data for swing trading analysis"
+                    text: "Daily candles for long-term analysis"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve daily OHLCV data optimized for swing trading analysis.",
+                    text: "I'll get daily OHLCV data for long-term analysis.",
                     action: "GET_DAILY_OHLCV_TOKENMETRICS"
                 }
             }
         ]
     ],
     
-    async handler(runtime: IAgentRuntime, message: Memory, state?: State, _options?: { [key: string]: unknown }, callback?: HandlerCallback) {
+    async handler(
+        runtime: IAgentRuntime,
+        message: Memory,
+        state?: State,
+        _options?: { [key: string]: unknown },
+        callback?: HandlerCallback
+    ): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing daily OHLCV request...`);
@@ -203,26 +210,26 @@ export const getDailyOhlcvAction: Action = {
             
             console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
             
-            // Enhanced extraction with regex fallback for better symbol support
+            // Enhanced extraction with null checking and regex fallback
             let processedRequest = {
-                cryptocurrency: ohlcvRequest.cryptocurrency,
-                token_id: ohlcvRequest.token_id,
-                symbol: ohlcvRequest.symbol,
-                token_name: ohlcvRequest.token_name,
-                startDate: ohlcvRequest.startDate,
-                endDate: ohlcvRequest.endDate,
-                limit: ohlcvRequest.limit || 50,
-                page: ohlcvRequest.page || 1,
-                analysisType: ohlcvRequest.analysisType || "all"
+                cryptocurrency: ohlcvRequest?.cryptocurrency || null,
+                token_id: ohlcvRequest?.token_id || null,
+                symbol: ohlcvRequest?.symbol || null,
+                token_name: ohlcvRequest?.token_name || null,
+                startDate: ohlcvRequest?.startDate || null,
+                endDate: ohlcvRequest?.endDate || null,
+                limit: ohlcvRequest?.limit || 50,
+                page: ohlcvRequest?.page || 1,
+                analysisType: ohlcvRequest?.analysisType || "all"
             };
             
             // Apply regex fallback if AI extraction failed or returned wrong data
             if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes('unknown')) {
                 console.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
-                const regexResult = extractCryptocurrencySimple(message.content.text);
+                const regexResult = extractCryptocurrencySimple(message.content?.text || '');
                 if (regexResult.cryptocurrency) {
                     processedRequest.cryptocurrency = regexResult.cryptocurrency;
-                    processedRequest.symbol = regexResult.symbol;
+                    processedRequest.symbol = regexResult.symbol || null;
                     console.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
                 }
             }
@@ -264,9 +271,9 @@ export const getDailyOhlcvAction: Action = {
                 try {
                     resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
                     if (resolvedToken) {
-                        processedRequest.token_id = resolvedToken.token_id;
-                        processedRequest.symbol = resolvedToken.symbol;
-                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                        processedRequest.token_id = resolvedToken.TOKEN_ID;
+                        processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+                        console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.TOKEN_SYMBOL} (ID: ${resolvedToken.TOKEN_ID})`);
                     }
                 } catch (error) {
                     console.log(`[${requestId}] Token resolution failed, proceeding with original request`);
@@ -569,7 +576,7 @@ export const getDailyOhlcvAction: Action = {
             
             // Use callback to send response to user (like working actions)
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -584,29 +591,29 @@ export const getDailyOhlcvAction: Action = {
                 });
             }
             
-            return true;
+            return createActionResult({ success: true, text: responseText });
         } catch (error) {
             console.error("Error in getDailyOhlcv action:", error);
             
-            return {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            const reqId = generateRequestId();
+            
+            if (callback) {
+                await callback({
+                    text: `❌ Error fetching daily OHLCV: ${errorMessage}`,
+                    content: { 
+                        error: errorMessage,
+                        error_type: error instanceof Error ? error.constructor.name : 'Unknown',
+                        troubleshooting: true,
+                        request_id: reqId
+                    }
+                });
+            }
+            
+            return createActionResult({
                 success: false,
-                error: error instanceof Error ? error.message : "Unknown error occurred",
-                message: "Failed to retrieve daily OHLCV data from TokenMetrics API",
-                troubleshooting: {
-                    endpoint_verification: "Ensure https://api.tokenmetrics.com/v2/daily-ohlcv is accessible",
-                    parameter_validation: [
-                        "Verify token_id is a valid number or symbol is a valid string",
-                        "Check that date parameters use startDate/endDate format (YYYY-MM-DD)",
-                        "Ensure your API key has access to OHLCV data",
-                        "Confirm the token has sufficient trading history"
-                    ],
-                    common_solutions: [
-                        "Try using a major token (BTC=3375, ETH=1027) to test functionality",
-                        "Remove date filters to get recent data",
-                        "Check if your subscription includes daily OHLCV data access"
-                    ]
-                }
-            };
+                error: errorMessage
+            });
         }
     },
 

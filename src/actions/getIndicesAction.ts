@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -54,7 +55,14 @@ Examples:
 - "What are the best performing passive indices?" → {indicesType: "passive", limit: 50, page: 1, analysisType: "performance"}
 - "Show me 20 indices focused on risk analysis" → {indicesType: null, limit: 20, page: 1, analysisType: "risk"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<indicesType>active|passive|null</indicesType>
+<limit>number of indices to return</limit>
+<page>page number for pagination</page>
+<analysisType>performance|risk|diversification|all</analysisType>
+</response>
 `;
 
 /**
@@ -80,45 +88,30 @@ export const getIndicesAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me available crypto indices"
+                    text: "Get index performance comparison"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get the available crypto indices for you, including both active and passive investment options.",
+                    text: "I'll get comprehensive index performance data for comparison.",
                     action: "GET_INDICES_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "What are the best performing crypto index funds?"
+                    text: "Show index portfolio compositions"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
-                    text: "Let me analyze the crypto indices performance data to show you the top performers.",
-                    action: "GET_INDICES_TOKENMETRICS"
-                }
-            }
-        ],
-        [
-            {
-                user: "{{user1}}",
-                content: {
-                    text: "Get me active crypto indices with risk analysis"
-                }
-            },
-            {
-                user: "{{agent}}",
-                content: {
-                    text: "I'll retrieve active crypto indices and provide detailed risk analysis for your investment decisions.",
+                    text: "I'll retrieve the detailed portfolio compositions of available indices.",
                     action: "GET_INDICES_TOKENMETRICS"
                 }
             }
@@ -128,32 +121,40 @@ export const getIndicesAction: Action = {
     async handler(
         runtime: IAgentRuntime,
         message: Memory,
-        state: State | undefined,
+        state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> {
+    ): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing indices request...`);
+            
+            // Get user message for injection
+            const userMessage = message.content?.text || "";
+            const enhancedTemplate = INDICES_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
             
             // Extract structured request using AI
             const indicesRequest = await extractTokenMetricsRequest<IndicesRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                INDICES_EXTRACTION_TEMPLATE,
+                enhancedTemplate,
                 IndicesRequestSchema,
                 requestId
             );
             
             console.log(`[${requestId}] Extracted request:`, indicesRequest);
             
-            // Apply defaults for optional fields
+            // Apply defaults for optional fields with null safety
             const processedRequest = {
-                indicesType: indicesRequest.indicesType,
-                limit: indicesRequest.limit || 50,
-                page: indicesRequest.page || 1,
-                analysisType: indicesRequest.analysisType || "all"
+                indicesType: indicesRequest?.indicesType,
+                limit: indicesRequest?.limit || 50,
+                page: indicesRequest?.page || 1,
+                analysisType: indicesRequest?.analysisType || "all"
             };
             
             // Build API parameters
@@ -256,7 +257,7 @@ export const getIndicesAction: Action = {
                 });
             }
             
-            return true;
+            return createActionResult(result);
         } catch (error) {
             console.error("Error in getIndices action:", error);
             
@@ -270,7 +271,10 @@ export const getIndicesAction: Action = {
                 });
             }
             
-            return false;
+            return createActionResult({ 
+                success: false, 
+                error: `Failed to retrieve indices data: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            });
         }
     },
 

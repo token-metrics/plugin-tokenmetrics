@@ -1,14 +1,16 @@
 import {
     type Action,
+    type ActionResult,
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
     type ActionExample,
     elizaLogger,
-    composeContext,
-    generateObject,
-    ModelClass
+    composePromptFromState,
+    parseKeyValueXml,
+    ModelType,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -21,36 +23,44 @@ import {
     resolveTokenSmart
 } from "./aiActionHelper";
 
-// Template for extracting trader grades information from conversations
-const traderGradesTemplate = `# Task: Extract Trader Grades Request Information
+// Template for extracting trader grades information (Updated to XML format)
+const traderGradesTemplate = `Extract trader grades request information from the message.
 
-Based on the conversation context, identify what trader grades information the user is requesting.
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-# Conversation Context:
-{{recentMessages}}
+Trader grades provide:
+- Short-term trading scores (A+ to F grades)
+- Quick profit potential ratings
+- Day trading recommendations
+- Swing trading assessments
+- Technical analysis scores
+- Trading momentum indicators
 
-# Instructions:
-Look for any mentions of:
-- Cryptocurrency symbols (BTC, ETH, SOL, ADA, MATIC, DOT, LINK, UNI, AVAX, etc.)
-- Cryptocurrency names (Bitcoin, Ethereum, Solana, Cardano, Polygon, Uniswap, Avalanche, Chainlink, etc.)
-- Trader grade requests ("trader grades", "trading grades", "AI grades", "token grades", "ratings")
-- Grade types ("A", "B", "C", "D", "F" grades)
-- Time periods or date ranges
-- Market filters (category, exchange, market cap, volume)
+Instructions:
+Look for TRADER GRADES requests, such as:
+- Trading grade queries ("What's the trader grade for [TOKEN]?", "Show me trading ratings")
+- Short-term trading assessment ("Good for day trading?", "Trading opportunities")
+- Quick profit queries ("Fast gains potential?", "Trading profit opportunities")
+- Technical analysis requests ("Technical grade", "Trading signals grade")
 
-The user might say things like:
-- "Get trader grades for Bitcoin"
-- "Show me AI trader grades"
-- "What are the current token grades?"
-- "Get A-grade tokens for trading"
-- "Show trading grades for DeFi tokens"
-- "Get grades for tokens with high volume"
-- "What tokens have A+ grades today?"
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
 
-Extract the relevant information for the trader grades request.
+Examples of request patterns (but extract the actual token from user's message):
+- "What's the trader grade for [TOKEN]?" → extract [TOKEN]
+- "Show me trading grades for [TOKEN]" → extract [TOKEN]
+- "Good trading opportunities in [TOKEN]?" → extract [TOKEN]
+- "Get trader grades for [TOKEN]" → extract [TOKEN]
 
-# Response Format:
-Return a structured object with the trader grades request information.`;
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<trading_style>day, swing, scalp, or general</trading_style>
+<timeframe>1h, 4h, daily, or general</timeframe>
+<grade_filter>A+, A, B+, B, C+, C, D+, D, F or all</grade_filter>
+<risk_tolerance>high, medium, low, or general</risk_tolerance>
+<limit>number of results requested (default 10)</limit>
+</response>`;
 
 // Schema for the extracted data
 const TraderGradesRequestSchema = z.object({
@@ -291,7 +301,7 @@ export const getTraderGradesAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         const requestId = generateRequestId();
         
         elizaLogger.log("🚀 Starting TokenMetrics trader grades handler (1.x)");
@@ -307,18 +317,29 @@ export const getTraderGradesAction: Action = {
                 state = await runtime.composeState(message);
             }
 
-            // STEP 2: Extract trader grades request using AI
+            // STEP 2: Extract trader grades request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template (like getScenarioAnalysisAction does)
+            const enhancedTemplate = traderGradesTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const gradesRequest = await extractTokenMetricsRequest(
                 runtime,
                 message,
                 state,
-                traderGradesTemplate,
+                enhancedTemplate,
                 TraderGradesRequestSchema,
                 requestId
             );
 
             elizaLogger.log("🎯 AI Extracted grades request:", gradesRequest);
             elizaLogger.log(`🆔 Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || 'general market'}"`);
+            elizaLogger.log(`🔍 DEBUG: AI extracted cryptocurrency: "${gradesRequest?.cryptocurrency}"`);
+            console.log(`[${requestId}] Extracted request:`, gradesRequest);
 
             // STEP 3: Validate that we have sufficient information
             if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
@@ -339,14 +360,34 @@ Try asking something like:
 • "Show me A-grade tokens"
 • "What are the current AI grades?"
 • "Get trading grades for DeFi tokens"`,
-                        content: { 
+                        data: { 
                             error: "Insufficient trader grades criteria",
                             confidence: gradesRequest?.confidence || 0,
                             request_id: requestId
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ I couldn't identify specific trader grades criteria from your request.
+
+I can get AI trader grades for:
+• Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
+• Grade filters (A, B, C, D, F grades)
+• Token categories (DeFi, Layer-1, meme tokens)
+• Market filters (high volume, large cap, etc.)
+
+Try asking something like:
+• "Get trader grades for Bitcoin"
+• "Show me A-grade tokens"
+• "What are the current AI grades?"
+• "Get trading grades for DeFi tokens"`,
+                    data: { 
+                        error: "Insufficient trader grades criteria",
+                        confidence: gradesRequest?.confidence || 0,
+                        request_id: requestId
+                    }
+                });
             }
 
             elizaLogger.success("🎯 Final extraction result:", gradesRequest);
@@ -407,13 +448,28 @@ This could be due to:
 • No grades available for the specified criteria
 
 Please try again in a few moments or try with different criteria.`,
-                        content: { 
+                        data: { 
                             error: "API fetch failed",
                             request_id: requestId
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ Unable to fetch trader grades data at the moment.
+
+This could be due to:
+• TokenMetrics API connectivity issues
+• Temporary service interruption  
+• Rate limiting
+• No grades available for the specified criteria
+
+Please try again in a few moments or try with different criteria.`,
+                    data: { 
+                        error: "API fetch failed",
+                        request_id: requestId
+                    }
+                });
             }
 
             // Handle the response data
@@ -430,7 +486,7 @@ Please try again in a few moments or try with different criteria.`,
             if (callback) {
                 await callback({
                     text: responseText,
-                    content: {
+                    data: {
                         success: true,
                         grades_data: grades,
                         analysis: analysis,
@@ -449,7 +505,26 @@ Please try again in a few moments or try with different criteria.`,
                 });
             }
 
-            return true;
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    success: true,
+                    grades_data: grades,
+                    analysis: analysis,
+                    source: "TokenMetrics AI Trader Grades",
+                    request_id: requestId,
+                    query_details: {
+                        original_request: gradesRequest.cryptocurrency || "general market",
+                        grade_filter: gradesRequest.grade_filter,
+                        category: gradesRequest.category,
+                        confidence: gradesRequest.confidence,
+                        data_freshness: "real-time",
+                        request_id: requestId,
+                        extraction_method: "ai_with_cache_busting"
+                    }
+                }
+            });
 
         } catch (error) {
             elizaLogger.error("❌ Error in TokenMetrics trader grades handler:", error);
@@ -468,7 +543,7 @@ This could be due to:
 • Temporary system overload
 
 Please check your TokenMetrics API key configuration and try again.`,
-                    content: { 
+                    data: { 
                         error: errorMessage,
                         error_type: error instanceof Error ? error.constructor.name : 'Unknown',
                         troubleshooting: true,
@@ -477,20 +552,23 @@ Please check your TokenMetrics API key configuration and try again.`,
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error occurred'
+            });
         }
     },
 
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get trader grades for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll fetch the latest AI trader grades for Bitcoin from TokenMetrics.",
                     action: "GET_TRADER_GRADES_TOKENMETRICS"
@@ -499,13 +577,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me A-grade tokens"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get all A-grade tokens from TokenMetrics AI trader grades.",
                     action: "GET_TRADER_GRADES_TOKENMETRICS"
@@ -514,13 +592,13 @@ Please check your TokenMetrics API key configuration and try again.`,
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "What are the current AI trading grades?"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "Let me fetch the latest AI trader grades and ratings from TokenMetrics.",
                     action: "GET_TRADER_GRADES_TOKENMETRICS"

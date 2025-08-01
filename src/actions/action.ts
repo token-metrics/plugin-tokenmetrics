@@ -57,9 +57,9 @@ export const LEGACY_TOKENMETRICS_ENDPOINTS = {
     // Analysis endpoints
     investorGrades: "/v2/investor-grades",
     aiReports: "/v2/ai-reports",
-    cryptoInvestors: "/v2/crypto-investors",
+    cryptoInvestors: "/v2/crypto-investors", 
     resistanceSupport: "/v2/resistance-support",
-    sentiment: "/v2/sentiments",
+    sentiment: "/v2/moonshot-tokens",
     scenarioAnalysis: "/v2/scenario-analysis",
     correlation: "/v2/correlation",
     

@@ -1,5 +1,5 @@
-import type { Action, ActionExample, HandlerCallback, IAgentRuntime, Memory, State } from "@elizaos/core";
-import { elizaLogger } from "@elizaos/core";
+import type { Action, ActionExample, ActionResult, HandlerCallback, IAgentRuntime, Memory, State } from "@elizaos/core";
+import { elizaLogger, createActionResult } from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -286,13 +286,13 @@ export const getPriceAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "What's the price of Bitcoin?"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get the current Bitcoin price from TokenMetrics for you.",
                     action: "GET_PRICE_TOKENMETRICS"
@@ -301,13 +301,13 @@ export const getPriceAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "How much is Ethereum worth right now?"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
                     text: "Let me fetch the latest Ethereum price data from TokenMetrics.",
                     action: "GET_PRICE_TOKENMETRICS"
@@ -316,20 +316,20 @@ export const getPriceAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get me Solana price trends"
                 }
             },
             {
-                user: "{{agent}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll retrieve Solana price data with trend analysis from TokenMetrics.",
                     action: "GET_PRICE_TOKENMETRICS"
                 }
             }
         ]
-    ] as ActionExample[][],
+    ],
 
     validate: async (runtime: IAgentRuntime, message: Memory, state?: State) => {
         try {
@@ -347,7 +347,7 @@ export const getPriceAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         try {
             const requestId = generateRequestId();
             elizaLogger.log(`[${requestId}] Processing price request...`);
@@ -357,16 +357,19 @@ export const getPriceAction: Action = {
             console.log(`\n🔍 PRICE ACTION DEBUG [${requestId}]:`);
             console.log(`📝 User message: "${message.content.text}"`);
 
-            // Ensure we have a proper state
-            if (!state) {
-                state = await runtime.composeState(message);
+            // Ensure we have a proper state (ElizaOS 1.x pattern)
+            let currentState = state;
+            if (!currentState) {
+                currentState = await runtime.composeState(message);
+            } else {
+                currentState = await runtime.composeState(message, ["RECENT_MESSAGES"]);
             }
 
             // Extract request using standardized AI helper
             let priceRequest: any = await extractTokenMetricsRequest(
                 runtime,
                 message,
-                state,
+                currentState,
                 PRICE_EXTRACTION_TEMPLATE,
                 PriceRequestSchema,
                 requestId
@@ -382,7 +385,7 @@ export const getPriceAction: Action = {
                 console.log(`❌ AI extraction failed, trying fallback...`);
                 
                 // Try fallback extraction if AI fails
-                const cryptoFromText = extractCryptocurrencySimple(message.content.text);
+                const cryptoFromText = extractCryptocurrencySimple(message.content?.text || '');
                 
                 if (!cryptoFromText) {
                     elizaLogger.log(`[${requestId}] ❌ DEBUG: Fallback extraction also failed`);
@@ -408,7 +411,20 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
                             }
                         });
                     }
-                    return false;
+                    return createActionResult({
+                        success: false,
+                        text: `❌ I couldn't identify which cryptocurrency you're asking about.
+
+I can get price data for any cryptocurrency supported by TokenMetrics including:
+• Bitcoin (BTC), Ethereum (ETH), Solana (SOL)
+• Cardano (ADA), Polygon (MATIC), Chainlink (LINK)
+• Uniswap (UNI), Avalanche (AVAX), Polkadot (DOT)
+• Dogecoin (DOGE), XRP, Litecoin (LTC)
+• And many more!
+
+Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
+                        error: "No cryptocurrency identified"
+                    });
                 }
                 
                 // Use fallback data
@@ -447,7 +463,20 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ I couldn't identify which cryptocurrency you're asking about.
+
+I can get price data for any cryptocurrency supported by TokenMetrics including:
+• Bitcoin (BTC), Ethereum (ETH), Solana (SOL)
+• Cardano (ADA), Polygon (MATIC), Chainlink (LINK)
+• Uniswap (UNI), Avalanche (AVAX), Polkadot (DOT)
+• Dogecoin (DOGE), XRP, Litecoin (LTC)
+• And many more!
+
+Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
+                    error: "No cryptocurrency identified"
+                });
             }
 
             // Resolve token using smart resolution
@@ -492,7 +521,21 @@ Try using the official name, such as:
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ I couldn't find information for "${cryptoToResolve}".
+
+This might be:
+• A very new token not yet in TokenMetrics database
+• An alternative name or symbol I don't recognize
+• A spelling variation
+
+Try using the official name, such as:
+• Bitcoin, Ethereum, Solana, Cardano, Dogecoin
+• Uniswap, Chainlink, Polygon, Avalanche
+• Or check the exact spelling on CoinMarketCap`,
+                    error: "Token not found"
+                });
             }
 
             elizaLogger.log(`[${requestId}] ✅ DEBUG: Successfully resolved token: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL}) - ID: ${tokenInfo.TOKEN_ID}`);
@@ -527,7 +570,18 @@ Please try again in a few moments.`,
                         }
                     });
                 }
-                return false;
+                return createActionResult({
+                    success: false,
+                    text: `❌ No price data available for ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} at the moment.
+
+This could be due to:
+• Temporary data unavailability
+• Market data processing delays
+• Token not actively traded
+
+Please try again in a few moments.`,
+                    error: "No price data"
+                });
             }
 
             // Analyze and format response
@@ -556,7 +610,17 @@ Please try again in a few moments.`,
                 });
             }
 
-            return true;
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    token_info: tokenInfo,
+                    price_data: priceData,
+                    analysis: analysis,
+                    source: "TokenMetrics Price API",
+                    request_id: requestId
+                }
+            });
 
         } catch (error) {
             elizaLogger.error("❌ Error in price action:", error);
@@ -579,7 +643,19 @@ Please check your TokenMetrics API key configuration and try again.`,
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                text: `❌ I encountered an error while fetching price data: ${error instanceof Error ? error.message : 'Unknown error'}
+
+This could be due to:
+• Network connectivity issues
+• TokenMetrics API service problems
+• Invalid API key or authentication issues
+• Temporary system overload
+
+Please check your TokenMetrics API key configuration and try again.`,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
         }
     }
 };
