@@ -58,3 +58,8 @@ coverage/
 # Build outputs
 dist/
 build/
+.env
+
+# Ignore environment files in all subdirectories
+*/.env
+tokenmetrics-test/.env
