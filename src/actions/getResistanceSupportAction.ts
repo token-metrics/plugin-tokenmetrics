@@ -1,10 +1,12 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    type ActionExample,
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -111,7 +113,16 @@ Examples:
 - "Resistance analysis for SOL" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "all"}
 - "Support levels for AVAX" → {cryptocurrency: "Avalanche", symbol: "AVAX", analysisType: "all"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>token name mentioned by user</cryptocurrency>
+<symbol>token symbol (BTC, ETH, SOL, etc.)</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<limit>number of levels to return</limit>
+<page>page number</page>
+<analysisType>trading_levels|breakout_analysis|risk_management|all</analysisType>
+</response>
 `;
 
 /**
@@ -138,50 +149,50 @@ export const getResistanceSupportAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get resistance and support levels for Bitcoin"
+                    text: "What are the support and resistance levels for Bitcoin?"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve the key resistance and support levels for Bitcoin from TokenMetrics technical analysis.",
+                    text: "I'll get the support and resistance levels for Bitcoin.",
                     action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me support and resistance levels for Ethereum"
+                    text: "Show me resistance levels for ETH"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get the technical support and resistance levels for Ethereum to help with trading decisions.",
+                    text: "I'll analyze the resistance and support levels for Ethereum.",
                     action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Risk management levels for Solana"
+                    text: "Get technical levels for Solana"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get resistance and support levels for Solana focused on risk management and stop-loss placement.",
+                    text: "I'll retrieve the technical support and resistance levels for Solana.",
                     action: "GET_RESISTANCE_SUPPORT_TOKENMETRICS"
                 }
             }
         ]
-    ],
+    ] as ActionExample[][],
     
     handler: async (
         runtime: IAgentRuntime,
@@ -189,17 +200,26 @@ export const getResistanceSupportAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing resistance and support levels request...`);
             
-            // Extract structured request using AI
+            // Extract structured request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const levelsRequest = await extractTokenMetricsRequest<ResistanceSupportRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                RESISTANCE_SUPPORT_EXTRACTION_TEMPLATE,
+                enhancedTemplate,
                 ResistanceSupportRequestSchema,
                 requestId
             );
@@ -217,7 +237,7 @@ export const getResistanceSupportAction: Action = {
             };
             
             // Apply regex fallback if AI extraction seems incorrect or incomplete
-            const userText = message.content.text || "";
+            const userText = message.content?.text || '' || "";
             const regexResult = extractCryptocurrencySimple(userText);
             
             if (regexResult) {
@@ -686,7 +706,7 @@ export const getResistanceSupportAction: Action = {
                 });
             }
             
-            return true;
+            return createActionResult({ success: true, text: responseText });
         } catch (error) {
             console.error("Error in getResistanceSupportAction:", error);
             
@@ -713,7 +733,7 @@ export const getResistanceSupportAction: Action = {
                 });
             }
             
-            return false;
+            return createActionResult({ success: false, error: "Failed to process request" });
         }
     },
     

@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -34,11 +35,14 @@ type TmaiRequest = z.infer<typeof TmaiRequestSchema>;
 const TMAI_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting TMAI (TokenMetrics AI) analysis requests from natural language.
 
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
 The user wants to get AI-powered insights and predictions from TokenMetrics' proprietary AI system. Extract the following information:
 
 1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
    - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
    - Can be a specific token or general request
+   - EXTRACTION RULE: Use the EXACT cryptocurrency mentioned by the user
 
 2. **token_id** (optional): Specific token ID if mentioned
    - Usually a number like "3375" for Bitcoin
@@ -56,11 +60,11 @@ The user wants to get AI-powered insights and predictions from TokenMetrics' pro
    - "market_analysis" - focus on AI market trend analysis
    - "all" - comprehensive TMAI analysis across all categories
 
-Examples:
-- "Get TMAI analysis for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me AI insights for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "ai_insights"}
-- "AI price predictions for crypto" → {analysisType: "price_predictions"}
-- "TokenMetrics AI market analysis" → {analysisType: "market_analysis"}
+Examples of request patterns (but extract the actual token from user's message):
+- "Get TMAI analysis for [TOKEN]" → extract [TOKEN]
+- "Show me AI insights for [TOKEN]" → extract [TOKEN]
+- "AI price predictions for [TOKEN]" → extract [TOKEN]
+- "TokenMetrics AI market analysis" → general analysis
 
 Extract the request details from the user's message.
 `;
@@ -89,28 +93,28 @@ export const getTmaiAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get TMAI analysis for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve TokenMetrics AI analysis and insights for Bitcoin.",
+                    text: "I'll get the TMAI (TokenMetrics AI) analysis for Bitcoin.",
                     action: "GET_TMAI_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me AI insights for the crypto market"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get comprehensive AI-powered market insights from TokenMetrics.",
                     action: "GET_TMAI_TOKENMETRICS"
@@ -119,13 +123,13 @@ export const getTmaiAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "AI price predictions for Ethereum"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll retrieve AI-powered price predictions for Ethereum from TokenMetrics.",
                     action: "GET_TMAI_TOKENMETRICS"
@@ -140,7 +144,7 @@ export const getTmaiAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing TMAI analysis request...`);
@@ -150,16 +154,27 @@ export const getTmaiAction: Action = {
                 state = await runtime.composeState(message);
             }
             
-            // Extract structured request using AI
+            // Extract structured request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = TMAI_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const tmaiRequest = await extractTokenMetricsRequest<TmaiRequest>(
                 runtime,
                 message,
                 state,
-                TMAI_EXTRACTION_TEMPLATE,
+                enhancedTemplate,
                 TmaiRequestSchema,
                 requestId
             );
-            
+
+            elizaLogger.log("🎯 AI Extracted TMAI request:", tmaiRequest);
+            elizaLogger.log(`🔍 DEBUG: AI extracted cryptocurrency: "${tmaiRequest?.cryptocurrency}"`);
             console.log(`[${requestId}] Extracted request:`, tmaiRequest);
             
             // Apply defaults for optional fields
@@ -262,43 +277,57 @@ export const getTmaiAction: Action = {
             // Use callback to send response to user (like working actions)
             if (callback) {
                 await callback({
-                    text: response,
-                    content: {
-                        success: true,
-                        request_id: requestId,
-                        data: result,
-                        metadata: {
-                            endpoint: "tmai",
-                            data_source: "TokenMetrics Official API",
-                            api_version: "v2"
-                        }
+                text: response,
+                content: {
+                    success: true,
+                    request_id: requestId,
+                    data: result,
+                    metadata: {
+                        endpoint: "tmai",
+                        data_source: "TokenMetrics Official API",
+                        api_version: "v2"
                     }
+                }
                 });
             }
-            return true;
+            return createActionResult({
+                success: true,
+                text: `🤖 **TMAI Analysis Results**
+
+${tmaiData && tmaiData.length > 0 ? `Found ${tmaiData.length} TMAI data points` : 'No TMAI data available'}
+
+🎯 **AI Insights**: ${tmaiAnalysis?.ai_recommendation || 'No recommendation available'}
+📈 **Analysis Type**: ${tmaiAnalysis?.analysis_type || 'General'}
+📅 **Last Updated**: ${new Date().toLocaleString()}
+
+📊 **Data Source**: TokenMetrics TMAI API`,
+                data: {
+                    tmai_data: tmaiData,
+                    analysis: tmaiAnalysis,
+                    source: "TokenMetrics TMAI API",
+                    request_id: requestId
+                }
+            });
         } catch (error) {
             console.error("Error in getTmaiAction:", error);
             
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            
             if (callback) {
                 await callback({
-                    text: `❌ I encountered an error while fetching TMAI analysis: ${error instanceof Error ? error.message : 'Unknown error'}
-
-This could be due to:
-• Network connectivity issues
-• TokenMetrics API service problems
-• Invalid API key or authentication issues
-• Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
+                    text: `❌ Error fetching TMAI analysis: ${errorMessage}`,
                     content: { 
-                        error: error instanceof Error ? error.message : 'Unknown error',
+                        error: errorMessage,
                         error_type: error instanceof Error ? error.constructor.name : 'Unknown',
                         troubleshooting: true
                     }
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
         }
     },
     

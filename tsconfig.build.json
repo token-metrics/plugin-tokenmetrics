@@ -4,11 +4,10 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "sourceMap": true,
+    "inlineSources": true,
     "declaration": true,
-    "emitDeclarationOnly": false,
-    "inlineSourceMap": false,
-    "inlineSources": true
+    "emitDeclarationOnly": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["**/*.test.ts", "src/tests/**/*"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 } 

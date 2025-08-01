@@ -1,10 +1,11 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
-    elizaLogger
+    elizaLogger,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -42,11 +43,14 @@ type HourlyTradingSignalsRequest = z.infer<typeof HourlyTradingSignalsRequestSch
 const HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE = `
 You are an AI assistant specialized in extracting hourly trading signals requests from natural language.
 
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
+
 The user wants to get AI-generated hourly trading signals for cryptocurrency analysis. Extract the following information:
 
 1. **cryptocurrency** (optional): The name or symbol of the cryptocurrency
    - Look for token names like "Bitcoin", "Ethereum", "BTC", "ETH"
    - Can be a specific token or general request
+   - EXTRACTION RULE: Use the EXACT cryptocurrency mentioned by the user
 
 2. **token_id** (optional): Specific token ID if mentioned
    - Usually a number like "3375" for Bitcoin
@@ -87,13 +91,30 @@ The user wants to get AI-generated hourly trading signals for cryptocurrency ana
     - "momentum" - focus on momentum-based signals
     - "all" - comprehensive hourly signal analysis
 
-Examples:
-- "Get hourly trading signals for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me bullish hourly signals" → {signal: 1, analysisType: "active_trading"}
-- "Hourly buy signals for ETH" → {cryptocurrency: "Ethereum", symbol: "ETH", signal: 1, analysisType: "active_trading"}
-- "Scalping signals for the past 24 hours" → {analysisType: "scalping"}
+Examples of request patterns (but extract the actual token from user's message):
+- "Get hourly trading signals for [TOKEN]" → extract [TOKEN]
+- "Show me bullish hourly signals" → general bullish signals
+- "Hourly buy signals for [TOKEN]" → extract [TOKEN] and signal type
+- "Scalping signals for the past 24 hours" → scalping analysis
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>exact token name or symbol from user's message</cryptocurrency>
+<token_id>specific token ID if mentioned</token_id>
+<symbol>token symbol if mentioned</symbol>
+<signal>1 for bullish, -1 for bearish, 0 for neutral</signal>
+<startDate>start date in YYYY-MM-DD format</startDate>
+<endDate>end date in YYYY-MM-DD format</endDate>
+<category>token category</category>
+<exchange>exchange name</exchange>
+<marketcap>minimum market cap</marketcap>
+<volume>minimum volume</volume>
+<fdv>minimum fully diluted valuation</fdv>
+<limit>number of signals to return</limit>
+<page>page number</page>
+<analysisType>active_trading|scalping|momentum|all</analysisType>
+</response>
 `;
 
 /**
@@ -120,13 +141,13 @@ export const getHourlyTradingSignalsAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get hourly trading signals for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{user2}}",
                 content: {
                     text: "I'll get the latest hourly trading signals for Bitcoin from TokenMetrics AI.",
                     action: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS"
@@ -135,13 +156,13 @@ export const getHourlyTradingSignalsAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me hourly buy signals for cryptocurrencies"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{user2}}",
                 content: {
                     text: "I'll retrieve hourly bullish trading signals for active trading opportunities.",
                     action: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS"
@@ -150,13 +171,13 @@ export const getHourlyTradingSignalsAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get scalping signals for ETH"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{user2}}",
                 content: {
                     text: "I'll get hourly scalping signals for Ethereum optimized for very short-term trading.",
                     action: "GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS"
@@ -183,93 +204,154 @@ export const getHourlyTradingSignalsAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
-        const requestId = generateRequestId();
-        
-        elizaLogger.log("🚀 Starting TokenMetrics hourly trading signals handler (1.x)");
-        elizaLogger.log(`📝 Processing user message: "${message.content?.text || "No text content"}"`);
-        elizaLogger.log(`🆔 Request ID: ${requestId}`);
-
+    ): Promise<ActionResult> => {
         try {
-            // STEP 1: Validate API key early
-            validateAndGetApiKey(runtime);
-
-            // Ensure we have a proper state
-            if (!state) {
-                state = await runtime.composeState(message);
-            }
-
-            // STEP 2: Build API parameters
-            const apiParams: any = {
-                limit: 20,
-                page: 1
-            };
-
-            // STEP 3: Fetch hourly trading signals data
-            elizaLogger.log(`📡 Fetching hourly trading signals data`);
-            const signalsData = await callTokenMetricsAPI('/v2/hourly-trading-signals', apiParams, runtime);
+            const requestId = generateRequestId();
+            console.log(`[${requestId}] Processing hourly trading signals request...`);
             
-            if (!signalsData) {
-                elizaLogger.log("❌ Failed to fetch hourly trading signals data");
-                
-                if (callback) {
-                    await callback({
-                        text: `❌ Unable to fetch hourly trading signals data at the moment.
+            // Get user message for injection
+            const userMessage = message.content?.text || "";
+            const enhancedTemplate = HOURLY_TRADING_SIGNALS_EXTRACTION_TEMPLATE + `
 
-This could be due to:
-• TokenMetrics API connectivity issues
-• Temporary service interruption  
-• Rate limiting
+USER MESSAGE: "${userMessage}"
 
-Please try again in a few moments.`,
-                        content: { 
-                            error: "API fetch failed",
-                            request_id: requestId
-                        }
-                    });
+Please analyze the CURRENT user message above and extract the relevant information.`;
+            
+            // Extract structured request using AI
+            const signalsRequest = await extractTokenMetricsRequest<HourlyTradingSignalsRequest>(
+                runtime,
+                message,
+                state || await runtime.composeState(message),
+                enhancedTemplate,
+                HourlyTradingSignalsRequestSchema,
+                requestId
+            );
+            
+            console.log(`[${requestId}] Extracted request:`, signalsRequest);
+            
+            // Apply defaults and null safety
+            let finalRequest = signalsRequest || {};
+            
+            // Enhanced token resolution if needed
+            if (finalRequest?.cryptocurrency && !finalRequest?.token_id) {
+                console.log(`[${requestId}] Resolving token: ${finalRequest.cryptocurrency}`);
+                const tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
+                if (tokenInfo?.TOKEN_ID) {
+                    finalRequest.token_id = tokenInfo.TOKEN_ID;
+                    finalRequest.symbol = tokenInfo.TOKEN_SYMBOL || finalRequest.symbol;
+                    console.log(`[${requestId}] ✅ Resolved ${finalRequest.cryptocurrency} → ID: ${tokenInfo.TOKEN_ID}, Symbol: ${tokenInfo.TOKEN_SYMBOL}`);
                 }
-                return false;
             }
-
-            // Handle the response data
-            const signals = Array.isArray(signalsData) ? signalsData : (signalsData.data || []);
             
-            elizaLogger.log(`🔍 Received ${signals.length} hourly trading signals`);
-
-            // STEP 4: Format and present the results  
+            // Build API parameters
+            const apiParams: Record<string, any> = {
+                limit: finalRequest?.limit || 20,
+                page: finalRequest?.page || 1
+            };
+            
+            // Add optional parameters if provided
+            if (finalRequest?.token_id) apiParams.token_id = finalRequest.token_id;
+            if (finalRequest?.symbol) apiParams.symbol = finalRequest.symbol;
+            if (finalRequest?.signal !== undefined) apiParams.signal = finalRequest.signal;
+            if (finalRequest?.startDate) apiParams.startDate = finalRequest.startDate;
+            if (finalRequest?.endDate) apiParams.endDate = finalRequest.endDate;
+            if (finalRequest?.category) apiParams.category = finalRequest.category;
+            if (finalRequest?.exchange) apiParams.exchange = finalRequest.exchange;
+            if (finalRequest?.marketcap) apiParams.marketcap = finalRequest.marketcap;
+            if (finalRequest?.volume) apiParams.volume = finalRequest.volume;
+            if (finalRequest?.fdv) apiParams.fdv = finalRequest.fdv;
+            
+            console.log(`[${requestId}] API parameters:`, apiParams);
+            
+            // Make API call
+            const response = await callTokenMetricsAPI(
+                "/v2/hourly-trading-signals",
+                apiParams,
+                runtime
+            );
+            
+            console.log(`[${requestId}] API response received, processing data...`);
+            
+            // Process response data
+            const signals = Array.isArray(response) ? response : response.data || [];
+            
+            // DEBUG: Log the actual API response structure to understand the data
+            console.log(`[${requestId}] 🔍 Raw API response sample:`, JSON.stringify(signals.slice(0, 2), null, 2));
+            console.log(`[${requestId}] 🔍 First signal fields:`, signals[0] ? Object.keys(signals[0]) : 'No signals');
+            
+            // Analyze the signals data
+            const signalsAnalysis = analyzeHourlyTradingSignals(signals, finalRequest?.analysisType || "all");
+            
+            const result = {
+                success: true,
+                message: `Successfully retrieved ${signals.length} hourly trading signals`,
+                request_id: requestId,
+                signals_data: signals,
+                analysis: signalsAnalysis,
+                metadata: {
+                    endpoint: "hourly-trading-signals",
+                    token_info: finalRequest?.cryptocurrency ? {
+                        requested_token: finalRequest.cryptocurrency,
+                        resolved_token_id: finalRequest?.token_id,
+                        symbol: finalRequest?.symbol
+                    } : null,
+                    filters_applied: {
+                        signal_type: finalRequest?.signal,
+                        analysis_focus: finalRequest?.analysisType || "all",
+                        date_range: {
+                            start: finalRequest?.startDate,
+                            end: finalRequest?.endDate
+                        }
+                    },
+                    pagination: {
+                        page: finalRequest?.page || 1,
+                        limit: finalRequest?.limit || 20
+                    },
+                    data_points: signals.length,
+                    api_version: "v2",
+                    data_source: "TokenMetrics Hourly Signals Engine"
+                }
+            };
+            
+            console.log(`[${requestId}] Hourly signals analysis completed successfully`);
+            
+            // Format response text for user
             const responseText = formatHourlyTradingSignalsResponse(signals);
-            const analysis = analyzeHourlyTradingSignals(signals, "comprehensive");
-
-            elizaLogger.success("✅ Successfully processed hourly trading signals request");
-
+            
+            // Use callback to send response to user
             if (callback) {
                 await callback({
                     text: responseText,
                     content: {
                         success: true,
-                        signals_data: signals,
-                        analysis: analysis,
-                        source: "TokenMetrics Hourly Trading Signals API",
                         request_id: requestId,
+                        data: result,
                         metadata: {
                             endpoint: "hourly-trading-signals",
-                            data_source: "TokenMetrics API",
-                            timestamp: new Date().toISOString(),
-                            total_signals: signals.length
+                            data_source: "TokenMetrics Official API",
+                            api_version: "v2"
                         }
                     }
                 });
             }
-
-            return true;
-
+            
+            return createActionResult({
+                success: true,
+                text: responseText,
+                data: {
+                    signals_data: signals,
+                    analysis: signalsAnalysis,
+                    source: "TokenMetrics Hourly Trading Signals API",
+                    request_id: requestId
+                }
+            });
         } catch (error) {
-            elizaLogger.error("❌ Error in TokenMetrics hourly trading signals handler:", error);
-            elizaLogger.error(`🆔 Request ${requestId}: ERROR - ${error}`);
+            console.error("Error in getHourlyTradingSignals action:", error);
+            
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            const reqId = generateRequestId();
             
             if (callback) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-                
                 await callback({
                     text: `❌ I encountered an error while fetching hourly trading signals: ${errorMessage}
 
@@ -280,22 +362,25 @@ This could be due to:
 • Temporary system overload
 
 Please check your TokenMetrics API key configuration and try again.`,
-                    content: { 
+                    content: {
                         error: errorMessage,
                         error_type: error instanceof Error ? error.constructor.name : 'Unknown',
                         troubleshooting: true,
-                        request_id: requestId
+                        request_id: reqId
                     }
                 });
             }
             
-            return false;
+            return createActionResult({
+                success: false,
+                error: errorMessage
+            });
         }
     }
 };
 
 /**
- * Format hourly trading signals response for user
+ * Format hourly trading signals response for user - Updated for correct API fields
  */
 function formatHourlyTradingSignalsResponse(signals: any[]): string {
     if (!signals || signals.length === 0) {
@@ -307,22 +392,32 @@ function formatHourlyTradingSignalsResponse(signals: any[]): string {
 
     if (signals.length > 0) {
         const recentSignals = signals.slice(0, 5);
-        response += `📈 **Recent Signals**:\n`;
+        response += `📈 **Recent Signals**:\n\n`;
         
         recentSignals.forEach((signal, index) => {
-            const symbol = signal.SYMBOL || signal.TOKEN_SYMBOL || 'N/A';
-            const action = signal.SIGNAL || signal.ACTION || 'HOLD';
-            const confidence = signal.CONFIDENCE || signal.SCORE || 'N/A';
+            // Use correct API field names from TokenMetrics documentation
+            const tokenName = signal.TOKEN_NAME || 'Unknown Token';
+            const tokenSymbol = signal.TOKEN_SYMBOL || 'N/A';
+            const signalValue = signal.SIGNAL || 'N/A';
+            const position = signal.POSITION || 'N/A';
+            const timestamp = signal.TIMESTAMP ? new Date(signal.TIMESTAMP).toLocaleString() : 'N/A';
+            const price = signal.CLOSE ? `$${parseFloat(signal.CLOSE).toFixed(4)}` : 'N/A';
             
-            response += `${index + 1}. **${symbol}**: ${action}`;
-            if (confidence !== 'N/A') {
-                response += ` (Confidence: ${confidence})`;
-            }
-            response += `\n`;
+            // Format signal type
+            let signalDisplay = signalValue;
+            if (signalValue === '1' || signalValue === 1) signalDisplay = '🟢 BUY';
+            else if (signalValue === '-1' || signalValue === -1) signalDisplay = '🔴 SELL';
+            else if (signalValue === '0' || signalValue === 0) signalDisplay = '⚪ NEUTRAL';
+            
+            response += `**${index + 1}. ${tokenName} (${tokenSymbol})**\n`;
+            response += `   Signal: ${signalDisplay}\n`;
+            response += `   Position: ${position}\n`;
+            response += `   Price: ${price}\n`;
+            response += `   Time: ${timestamp}\n\n`;
         });
     }
 
-    response += `\n📊 **Data Source**: TokenMetrics Hourly Trading Signals API\n`;
+    response += `📊 **Data Source**: TokenMetrics Hourly Trading Signals API\n`;
     response += `⏰ **Updated**: ${new Date().toLocaleString()}\n`;
     
     return response;
@@ -419,7 +514,7 @@ function analyzeHourlyTradingSignals(signalsData: any[], analysisType: string = 
 }
 
 /**
- * Analyze hourly signal distribution
+ * Analyze hourly signal distribution - Updated for correct API fields
  */
 function analyzeHourlySignalDistribution(signalsData: any[]): any {
     const distribution = { bullish: 0, bearish: 0, neutral: 0 };
@@ -427,29 +522,29 @@ function analyzeHourlySignalDistribution(signalsData: any[]): any {
     const byToken: Record<string, { bullish: number; bearish: number; neutral: number }> = {};
 
     signalsData.forEach(signal => {
-        // Count signal types
-        if (signal.TRADING_SIGNAL === 1) distribution.bullish++;
-        else if (signal.TRADING_SIGNAL === -1) distribution.bearish++;
+        // Count signal types - Use correct API field name 'SIGNAL'
+        const signalValue = parseInt(signal.SIGNAL) || 0;
+        if (signalValue === 1) distribution.bullish++;
+        else if (signalValue === -1) distribution.bearish++;
         else distribution.neutral++;
 
         // Group by hour if timestamp available
-        if (signal.TIMESTAMP || signal.DATE) {
-            const timestamp = signal.TIMESTAMP || signal.DATE;
-            const hour = new Date(timestamp).getHours();
+        if (signal.TIMESTAMP) {
+            const hour = new Date(signal.TIMESTAMP).getHours();
             if (!byHour[hour]) byHour[hour] = { bullish: 0, bearish: 0, neutral: 0 };
             
-            if (signal.TRADING_SIGNAL === 1) byHour[hour].bullish++;
-            else if (signal.TRADING_SIGNAL === -1) byHour[hour].bearish++;
+            if (signalValue === 1) byHour[hour].bullish++;
+            else if (signalValue === -1) byHour[hour].bearish++;
             else byHour[hour].neutral++;
         }
 
-        // Group by token
-        const token = signal.SYMBOL || signal.TOKEN_ID;
+        // Group by token - Use correct API field names
+        const token = signal.TOKEN_SYMBOL || signal.TOKEN_ID;
         if (token) {
             if (!byToken[token]) byToken[token] = { bullish: 0, bearish: 0, neutral: 0 };
             
-            if (signal.TRADING_SIGNAL === 1) byToken[token].bullish++;
-            else if (signal.TRADING_SIGNAL === -1) byToken[token].bearish++;
+            if (signalValue === 1) byToken[token].bullish++;
+            else if (signalValue === -1) byToken[token].bearish++;
             else byToken[token].neutral++;
         }
     });
@@ -460,6 +555,8 @@ function analyzeHourlySignalDistribution(signalsData: any[]): any {
         bullish_percentage: ((distribution.bullish / total) * 100).toFixed(1),
         bearish_percentage: ((distribution.bearish / total) * 100).toFixed(1),
         neutral_percentage: ((distribution.neutral / total) * 100).toFixed(1),
+        dominant_signal: distribution.bullish > distribution.bearish ? 'Bullish' : 
+                        distribution.bearish > distribution.bullish ? 'Bearish' : 'Neutral',
         by_hour: byHour,
         by_token: byToken,
         market_sentiment: distribution.bullish > distribution.bearish ? 'Bullish' : 
@@ -468,12 +565,12 @@ function analyzeHourlySignalDistribution(signalsData: any[]): any {
 }
 
 /**
- * Analyze hourly trends
+ * Analyze hourly trends - Updated for correct API fields
  */
 function analyzeHourlyTrends(signalsData: any[]): any {
     const sortedData = signalsData
-        .filter(signal => signal.TIMESTAMP || signal.DATE)
-        .sort((a, b) => new Date(a.TIMESTAMP || a.DATE).getTime() - new Date(b.TIMESTAMP || b.DATE).getTime());
+        .filter(signal => signal.TIMESTAMP)
+        .sort((a, b) => new Date(a.TIMESTAMP).getTime() - new Date(b.TIMESTAMP).getTime());
 
     if (sortedData.length < 2) {
         return { trend: 'Insufficient data for trend analysis' };
@@ -482,9 +579,9 @@ function analyzeHourlyTrends(signalsData: any[]): any {
     const recentSignals = sortedData.slice(-10); // Last 10 signals
     const olderSignals = sortedData.slice(0, 10); // First 10 signals
 
-    // Use TRADING_SIGNAL field (correct API field name)
-    const recentBullish = recentSignals.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
-    const olderBullish = olderSignals.filter(s => (s.TRADING_SIGNAL || s.SIGNAL) === 1).length;
+    // Use correct API field name 'SIGNAL'
+    const recentBullish = recentSignals.filter(s => parseInt(s.SIGNAL) === 1).length;
+    const olderBullish = olderSignals.filter(s => parseInt(s.SIGNAL) === 1).length;
 
     const trendDirection = recentBullish > olderBullish ? 'Increasingly Bullish' :
                           recentBullish < olderBullish ? 'Increasingly Bearish' : 'Stable';
@@ -499,7 +596,7 @@ function analyzeHourlyTrends(signalsData: any[]): any {
 }
 
 /**
- * Identify hourly opportunities
+ * Identify hourly opportunities - Updated for correct API fields
  */
 function identifyHourlyOpportunities(signalsData: any[]): any {
     const opportunities: Array<{
@@ -512,32 +609,34 @@ function identifyHourlyOpportunities(signalsData: any[]): any {
         timestamp: string;
         reasoning: string;
     }> = [];
-    const strongSignals = signalsData.filter(signal => 
-        signal.AI_CONFIDENCE && signal.AI_CONFIDENCE > 0.7 ||
-        signal.SIGNAL_STRENGTH && signal.SIGNAL_STRENGTH > 0.7
-    );
+    
+    // Filter for strong signals (non-neutral)
+    const strongSignals = signalsData.filter(signal => {
+        const signalValue = parseInt(signal.SIGNAL) || 0;
+        return signalValue !== 0; // Any non-neutral signal
+    });
 
     strongSignals.forEach(signal => {
-        const signalValue = signal.TRADING_SIGNAL || signal.SIGNAL; // Use correct field name
+        const signalValue = parseInt(signal.SIGNAL) || 0;
+        const tokenName = signal.TOKEN_NAME || signal.TOKEN_SYMBOL || signal.TOKEN_ID;
+        
         if (signalValue === 1) { // Bullish
             opportunities.push({
                 type: 'BUY_OPPORTUNITY',
-                token: signal.SYMBOL || signal.TOKEN_ID,
-                confidence: signal.AI_CONFIDENCE || signal.SIGNAL_STRENGTH || 'High',
-                entry_price: signal.ENTRY_PRICE,
-                target_price: signal.TARGET_PRICE,
-                timestamp: signal.TIMESTAMP || signal.DATE,
-                reasoning: signal.REASONING || 'Strong bullish signal detected'
+                token: tokenName,
+                confidence: signal.CONFIDENCE || 'Standard',
+                entry_price: signal.CLOSE ? parseFloat(signal.CLOSE) : undefined,
+                timestamp: signal.TIMESTAMP || 'Unknown',
+                reasoning: 'Bullish hourly signal detected'
             });
         } else if (signalValue === -1) { // Bearish
             opportunities.push({
                 type: 'SELL_OPPORTUNITY',
-                token: signal.SYMBOL || signal.TOKEN_ID,
-                confidence: signal.AI_CONFIDENCE || signal.SIGNAL_STRENGTH || 'High',
-                entry_price: signal.ENTRY_PRICE,
-                stop_loss: signal.STOP_LOSS,
-                timestamp: signal.TIMESTAMP || signal.DATE,
-                reasoning: signal.REASONING || 'Strong bearish signal detected'
+                token: tokenName,
+                confidence: signal.CONFIDENCE || 'Standard',
+                entry_price: signal.CLOSE ? parseFloat(signal.CLOSE) : undefined,
+                timestamp: signal.TIMESTAMP || 'Unknown',
+                reasoning: 'Bearish hourly signal detected'
             });
         }
     });

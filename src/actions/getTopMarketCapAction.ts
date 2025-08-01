@@ -1,4 +1,4 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -14,7 +14,8 @@ import {
     type HandlerCallback,
     type IAgentRuntime, 
     type Memory, 
-    type State 
+    type State,
+    createActionResult
 } from "@elizaos/core";
 
 // Zod schema for top market cap request validation
@@ -52,7 +53,13 @@ Examples:
 - "Get top 50 tokens with concentration analysis" → {top_k: 50, page: 1, analysisType: "concentration"}
 - "Top crypto market cap leaders" → {top_k: 10, page: 1, analysisType: "all"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<top_k>number (1-1000)</top_k>
+<page>number (default: 1)</page>
+<analysisType>ranking|concentration|performance|all</analysisType>
+</response>
 `;
 
 /**
@@ -76,28 +83,28 @@ export const getTopMarketCapAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me the top 10 cryptocurrencies by market cap"
+                    text: "Show me top market cap cryptocurrencies"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get the top 10 cryptocurrencies by market capitalization from TokenMetrics.",
+                    text: "I'll get the top cryptocurrencies by market capitalization.",
                     action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "What are the largest crypto assets right now?"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll retrieve the largest cryptocurrency assets by market cap.",
                     action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
@@ -106,13 +113,13 @@ export const getTopMarketCapAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get top 20 tokens with concentration analysis"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get the top 20 tokens by market cap and analyze market concentration.",
                     action: "GET_TOP_MARKET_CAP_TOKENMETRICS"
@@ -127,21 +134,32 @@ export const getTopMarketCapAction: Action = {
         state: State | undefined,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> {
+    ): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing top market cap request...`);
             
-            // Extract structured request using AI
+            // Extract structured request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = TOP_MARKET_CAP_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const marketCapRequest = await extractTokenMetricsRequest<TopMarketCapRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                TOP_MARKET_CAP_EXTRACTION_TEMPLATE,
+                enhancedTemplate,
                 TopMarketCapRequestSchema,
                 requestId
             );
             
+            elizaLogger.log("🎯 AI Extracted market cap request:", marketCapRequest);
+            elizaLogger.log(`🔍 DEBUG: AI extracted top_k: "${marketCapRequest?.top_k}"`);
             console.log(`[${requestId}] Extracted request:`, marketCapRequest);
             
             // Apply defaults for optional fields
@@ -157,12 +175,63 @@ export const getTopMarketCapAction: Action = {
                 page: processedRequest.page
             };
             
-            // Make API call
-            const response = await callTokenMetricsAPI(
-                "/v2/top-market-cap-tokens",
-                apiParams,
-                runtime
-            );
+            elizaLogger.log(`📡 API parameters:`, apiParams);
+            
+            // Make API call with better error handling
+            elizaLogger.log(`📡 About to call TokenMetrics API: /v2/top-market-cap-tokens`);
+            elizaLogger.log(`📊 Request params: top_k=${apiParams.top_k}, page=${apiParams.page}`);
+            
+            let response;
+            try {
+                response = await callTokenMetricsAPI(
+                    "/v2/top-market-cap-tokens",
+                    apiParams,
+                    runtime
+                );
+                elizaLogger.log(`✅ API call successful, response type: ${typeof response}`);
+                elizaLogger.log(`📊 Response keys: ${response ? Object.keys(response) : 'null response'}`);
+            } catch (error) {
+                elizaLogger.error(`❌ API call failed with error:`, error);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown API error';
+                
+                if (callback) {
+                    await callback({
+                        text: `❌ Failed to retrieve top market cap data from TokenMetrics API.
+
+**Error Details:** ${errorMessage}
+
+**Possible causes:**
+• API key doesn't have access to top-market-cap-tokens endpoint
+• TokenMetrics API service temporarily unavailable
+• Network connectivity issues
+• Rate limiting
+
+**Solutions:**
+• Verify your API key has the correct permissions
+• Check TokenMetrics service status
+• Try again in a few moments
+
+🔧 **Debug Info:** Endpoint: /v2/top-market-cap-tokens, Params: ${JSON.stringify(apiParams)}`,
+                        content: { 
+                            error: errorMessage,
+                            endpoint: "/v2/top-market-cap-tokens",
+                            params: apiParams,
+                            request_id: requestId
+                        }
+                    });
+                }
+                
+                return createActionResult({
+                    success: false,
+                    text: `❌ Failed to retrieve top market cap data: ${errorMessage}`,
+                    data: { 
+                        error: errorMessage,
+                        endpoint: "/v2/top-market-cap-tokens",
+                        params: apiParams,
+                        request_id: requestId
+                    }
+                });
+            }
             
             console.log(`[${requestId}] API response received, processing data...`);
             
@@ -212,7 +281,7 @@ export const getTopMarketCapAction: Action = {
                     content: result
                 });
             }
-            return true;
+            return createActionResult(result);
             
         } catch (error) {
             console.error("Error in getTopMarketCapAction:", error);
@@ -244,7 +313,7 @@ export const getTopMarketCapAction: Action = {
                     content: errorResult
                 });
             }
-            return false;
+            return createActionResult(errorResult);
         }
     },
     

@@ -3,9 +3,9 @@ import {
     type Memory,
     type State,
     elizaLogger,
-    composeContext,
-    generateObject,
-    ModelClass
+    composePromptFromState,
+    ModelType,
+    parseKeyValueXml
 } from "@elizaos/core";
 import { z } from "zod";
 
@@ -113,7 +113,8 @@ export async function fetchWithRetry(url: string, options: RequestInit, maxRetri
 }
 
 /**
- * Generic AI extraction function for TokenMetrics actions
+ * Generic AI extraction function for TokenMetrics actions using real ElizaOS 1.x API
+ * Following the official migration documentation exactly
  */
 export async function extractTokenMetricsRequest<T>(
     runtime: IAgentRuntime,
@@ -123,49 +124,31 @@ export async function extractTokenMetricsRequest<T>(
     schema: z.ZodSchema<T>,
     requestId: string
 ): Promise<T> {
-    elizaLogger.log("🔄 Forcing fresh state composition with cache busting...");
+    elizaLogger.log(`🔄 [${requestId}] Starting AI extraction following migration docs...`);
     
-    // Force fresh state composition without modifying message structure
-    state = await runtime.composeState(message);
-    elizaLogger.log("📊 Composed fresh state with cache busting");
+    // Step 1: Compose state properly (as per docs)
+    const composedState = await runtime.composeState(message);
+    elizaLogger.log(`📊 [${requestId}] State composed successfully`);
 
-    // Create context with cache-busting template
-    const uniqueTemplate = `${template}
-
-# Cache Busting ID: ${requestId}
-# Timestamp: ${new Date().toISOString()}
-
-USER MESSAGE: "${message.content.text}"
-
-Please analyze the CURRENT user message above and extract the relevant information.`;
-
-    const context = composeContext({
-        state,
-        template: uniqueTemplate,
+    // Step 2: Create prompt using real 1.x API (as per docs)
+    const prompt = composePromptFromState({
+        state: composedState,
+        template: template
     });
+    elizaLogger.log(`📝 [${requestId}] Prompt composed successfully`);
 
-    elizaLogger.log("🎯 Context created with cache busting, extracting information...");
-    
-    // FORCE VISIBLE LOGGING OF CONTEXT
-    console.log(`\n🔍 AI EXTRACTION CONTEXT [${requestId}]:`);
-    console.log(`📝 User message: "${message.content.text}"`);
-    console.log(`📋 Template being used:`);
-    console.log(uniqueTemplate);
-    console.log(`🔚 END CONTEXT [${requestId}]\n`);
-
-    // Use ElizaOS generateObject with LARGE model for better instruction following
-    const response = await generateObject({
-        runtime,
-        context,
-        modelClass: ModelClass.LARGE, // Changed from SMALL to LARGE for better instruction following
-        schema
+    // Step 3: Use runtime.useModel with TEXT_SMALL (as per migration docs)
+    const result = await runtime.useModel(ModelType.TEXT_SMALL, {
+        prompt: prompt
     });
+    elizaLogger.log(`🤖 [${requestId}] Model result received`);
 
-    const extractedRequest = response.object as T;
-    elizaLogger.log("🎯 AI Extracted request:", extractedRequest);
-    elizaLogger.log(`🆔 Request ${requestId}: AI Processing completed`);
+    // Step 4: Parse the result using parseKeyValueXml (as per migration docs)
+    const content = parseKeyValueXml(result);
+    elizaLogger.log(`🔍 [${requestId}] Content parsed from XML`);
 
-    return extractedRequest;
+    elizaLogger.log(`✅ [${requestId}] AI extraction completed successfully`);
+    return content as T;
 }
 
 /**

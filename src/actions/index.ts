@@ -1,33 +1,25 @@
-// ===== CORE ENDPOINTS =====
-export { getTokensAction } from "./getTokensAction";
-export { getQuantmetricsAction } from "./getQuantmetricsAction";
-export { getTraderGradesAction } from "./getTraderGradesAction";
-export { getMarketMetricsAction } from "./getMarketMetricsAction";
-export { getTradingSignalsAction } from "./getTradingSignalsAction";
-export { getHourlyTradingSignalsAction } from "./getHourlyTradingSignalsAction";
+// Re-export all action implementations
 export { getPriceAction } from "./getPriceAction";
-export { getTopMarketCapAction } from "./getTopMarketCapAction";
-
-// ===== OHLCV ENDPOINTS =====
+export { getQuantmetricsAction } from "./getQuantmetricsAction";
+export { getCorrelationAction } from "./getCorrelationAction";
+export { getHourlyTradingSignalsAction } from "./getHourlyTradingSignalsAction";
+export { getCryptoInvestorsAction } from "./getCryptoInvestorsAction";
+export { getScenarioAnalysisAction } from "./getScenarioAnalysisAction";
+export { getResistanceSupportAction } from "./getResistanceSupportAction";
+export { getTradingSignalsAction } from "./getTradingSignalsAction";
 export { getHourlyOhlcvAction } from "./getHourlyOhlcvAction";
 export { getDailyOhlcvAction } from "./getDailyOhlcvAction";
-
-// ===== ANALYSIS ENDPOINTS =====
-export { getInvestorGradesAction } from "./getInvestorGradesAction";
-export { getAiReportsAction } from "./getAiReportsAction";
-export { getCryptoInvestorsAction } from "./getCryptoInvestorsAction";
-export { getResistanceSupportAction } from "./getResistanceSupportAction";
-export { getSentimentAction } from "./getSentimentAction";
-export { getScenarioAnalysisAction } from "./getScenarioAnalysisAction";
-export { getCorrelationAction } from "./getCorrelationAction";
-
-// ===== AI ENDPOINT =====
 export { getTmaiAction } from "./getTmaiAction";
-
-// ===== INDICES ENDPOINTS =====
+export { getTokensAction } from "./getTokensAction";
+export { getTopMarketCapAction } from "./getTopMarketCapAction";
+export { getTraderGradesAction } from "./getTraderGradesAction";
+export { getInvestorGradesAction } from "./getInvestorGradesAction";
+export { getMarketMetricsAction } from "./getMarketMetricsAction";
 export { getIndicesAction } from "./getIndicesAction";
 export { getIndicesHoldingsAction } from "./getIndicesHoldingsAction";
 export { getIndicesPerformanceAction } from "./getIndicesPerformanceAction";
+export { getAiReportsAction } from "./getAiReportsAction";
+export { getMoonshotTokensAction } from "./getMoonshotTokensAction";
 
 // Export utility functions from action.ts
 export { callTokenMetricsApi, LEGACY_TOKENMETRICS_ENDPOINTS, validateApiKey } from './action';
@@ -47,7 +39,7 @@ import { getInvestorGradesAction } from "./getInvestorGradesAction";
 import { getAiReportsAction } from "./getAiReportsAction";
 import { getCryptoInvestorsAction } from "./getCryptoInvestorsAction";
 import { getResistanceSupportAction } from "./getResistanceSupportAction";
-import { getSentimentAction } from "./getSentimentAction";
+import { getMoonshotTokensAction } from "./getMoonshotTokensAction";
 import { getScenarioAnalysisAction } from "./getScenarioAnalysisAction";
 import { getCorrelationAction } from "./getCorrelationAction";
 import { getTmaiAction } from "./getTmaiAction";
@@ -70,7 +62,7 @@ export const enhancedTokenmetricsActions = [
     getAiReportsAction,
     getCryptoInvestorsAction,
     getResistanceSupportAction,
-    getSentimentAction,
+    getMoonshotTokensAction,
     getScenarioAnalysisAction,
     getCorrelationAction,
     getTmaiAction,

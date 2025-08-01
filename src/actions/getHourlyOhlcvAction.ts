@@ -1,4 +1,4 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import { z } from "zod";
 import {
     validateAndGetApiKey,
@@ -7,12 +7,13 @@ import {
     formatCurrency,
     formatPercentage,
     generateRequestId,
-    resolveTokenSmart
+    resolveTokenSmart,
+    getWellKnownTokenId
 } from "./aiActionHelper";
 import type { HourlyOhlcvResponse } from "../types";
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
 import type { HandlerCallback } from "@elizaos/core";
-import { elizaLogger } from "@elizaos/core";
+import { elizaLogger, createActionResult } from "@elizaos/core";
 
 // Zod schema for hourly OHLCV request validation
 const HourlyOhlcvRequestSchema = z.object({
@@ -29,60 +30,43 @@ const HourlyOhlcvRequestSchema = z.object({
 
 type HourlyOhlcvRequest = z.infer<typeof HourlyOhlcvRequestSchema>;
 
-// AI extraction template for natural language processing
-const HOURLY_OHLCV_EXTRACTION_TEMPLATE = `
-CRITICAL INSTRUCTION: Extract the EXACT cryptocurrency name or symbol mentioned by the user. Do NOT substitute or change it.
+// Template for extracting hourly OHLCV information (Updated to XML format)
+const hourlyOhlcvTemplate = `Extract hourly OHLCV request information from the user's message.
 
-You are an AI assistant specialized in extracting hourly OHLCV data requests from natural language.
+IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
 
-The user wants to get hourly OHLCV (Open, High, Low, Close, Volume) data for cryptocurrency analysis. Extract the following information:
+Hourly OHLCV provides:
+- Open, High, Low, Close, Volume data
+- Intraday price movement analysis
+- Volume patterns and trends
+- Technical analysis foundations
+- Short-term trading insights
+- Market microstructure data
 
-1. **cryptocurrency** (required): The EXACT name or symbol of the cryptocurrency mentioned by the user
-   - Bitcoin, BTC → "Bitcoin"
-   - Ethereum, ETH → "Ethereum" 
-   - Dogecoin, DOGE → "Dogecoin"
-   - Solana, SOL → "Solana"
-   - Avalanche, AVAX → "Avalanche"
-   - Cardano, ADA → "Cardano"
-   - Polkadot, DOT → "Polkadot"
-   - Chainlink, LINK → "Chainlink"
-   - CRITICAL: Use the EXACT name/symbol the user mentioned
+Instructions:
+Look for HOURLY OHLCV requests in the user's message, such as:
+- Price data ("Hourly price data", "OHLCV data")
+- Intraday analysis ("Hourly candles", "Intraday charts")
+- Volume analysis ("Hourly volume", "Trading activity")
+- Technical analysis ("Price action", "Candlestick data")
 
-2. **symbol** (optional): Token symbol if mentioned
-   - Extract symbols like "BTC", "ETH", "ADA", etc.
+EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
 
-3. **token_id** (optional): Specific token ID if mentioned
-   - Usually a number like "3375" for Bitcoin
+Examples of request patterns (but extract the actual token from user's message):
+- "Get hourly OHLCV for [TOKEN]" → extract [TOKEN]
+- "Show hourly price data for [TOKEN]" → extract [TOKEN]
+- "Hourly candles for [TOKEN]" → extract [TOKEN]
+- "Intraday volume analysis for [TOKEN]" → extract [TOKEN]
 
-4. **token_name** (optional): Full name of the token for API calls
+Respond with an XML block containing only the extracted values:
 
-5. **startDate** (optional): Start date for data range
-   - Look for dates in YYYY-MM-DD format
-   - Convert relative dates like "last week", "past 3 days"
-
-6. **endDate** (optional): End date for data range
-   - Look for dates in YYYY-MM-DD format
-
-7. **limit** (optional, default: 50): Number of data points to return
-   - Maximum 50 allowed by API
-
-8. **page** (optional, default: 1): Page number for pagination
-
-9. **analysisType** (optional, default: "all"): What type of analysis they want
-   - "scalping" - focus on very short-term price movements
-   - "intraday" - focus on day trading patterns
-   - "technical_patterns" - focus on technical analysis patterns
-   - "all" - comprehensive hourly analysis
-
-CRITICAL EXAMPLES:
-- "Get hourly OHLCV for Bitcoin" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Show me hourly candles for BTC" → {cryptocurrency: "Bitcoin", symbol: "BTC", analysisType: "all"}
-- "Hourly data for ETH for scalping" → {cryptocurrency: "Ethereum", symbol: "ETH", analysisType: "scalping"}
-- "DOGE hourly OHLCV" → {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
-- "Solana intraday data" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "intraday"}
-
-Extract the request details from the user's message.
-`;
+<response>
+<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
+<timeframe>1h, 4h, 12h, or default</timeframe>
+<analysis_type>price_action, volume, volatility, or all</analysis_type>
+<period>24h, 7d, 30d, or default</period>
+<focus_area>trading, technical, patterns, or general</focus_area>
+</response>`;
 
 // Regex fallback function for cryptocurrency extraction
 function extractCryptocurrencySimple(text: string): { cryptocurrency?: string; symbol?: string } {
@@ -138,45 +122,45 @@ export const getHourlyOhlcvAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get hourly OHLCV data for Bitcoin"
+                    text: "Get hourly OHLCV for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve hourly OHLCV data for Bitcoin from TokenMetrics for intraday analysis.",
+                    text: "I'll get the hourly OHLCV data for Bitcoin.",
                     action: "GET_HOURLY_OHLCV_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Show me hourly candle data for ETH for scalping"
+                    text: "Show hourly price data for ETH"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll get hourly OHLCV data for Ethereum optimized for scalping analysis.",
+                    text: "I'll retrieve hourly OHLCV data for Ethereum.",
                     action: "GET_HOURLY_OHLCV_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
-                    text: "Get intraday trading data for the past 3 days"
+                    text: "Hourly candles for scalping analysis"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve hourly OHLCV data for the past 3 days for intraday trading analysis.",
+                    text: "I'll get hourly OHLCV data optimized for scalping analysis.",
                     action: "GET_HOURLY_OHLCV_TOKENMETRICS"
                 }
             }
@@ -189,10 +173,11 @@ export const getHourlyOhlcvAction: Action = {
         state?: State,
         _options?: { [key: string]: unknown },
         callback?: HandlerCallback
-    ): Promise<boolean> => {
+    ): Promise<ActionResult> => {
         try {
             const requestId = generateRequestId();
             elizaLogger.log(`[${requestId}] Processing hourly OHLCV request...`);
+            elizaLogger.log(`[${requestId}] 🔍 DEBUG: User message: "${message.content?.text}"`);
             
             // Ensure we have a proper state
             if (!state) {
@@ -203,97 +188,110 @@ export const getHourlyOhlcvAction: Action = {
             const ohlcvRequest = await extractTokenMetricsRequest<HourlyOhlcvRequest>(
                 runtime,
                 message,
-                state,
-                HOURLY_OHLCV_EXTRACTION_TEMPLATE,
+                state || await runtime.composeState(message),
+                hourlyOhlcvTemplate,
                 HourlyOhlcvRequestSchema,
                 requestId
             );
             
-            elizaLogger.log(`[${requestId}] Extracted request:`, ohlcvRequest);
+            elizaLogger.log(`[${requestId}] 🔍 DEBUG: AI extracted cryptocurrency: "${ohlcvRequest?.cryptocurrency}"`);
+            console.log(`[${requestId}] Extracted request:`, ohlcvRequest);
             
-            // Enhanced extraction with regex fallback for better symbol support
+            // Enhanced extraction with null checking and regex fallback
             let processedRequest = {
-                cryptocurrency: ohlcvRequest.cryptocurrency,
-                token_id: ohlcvRequest.token_id,
-                symbol: ohlcvRequest.symbol,
-                token_name: ohlcvRequest.token_name,
-                startDate: ohlcvRequest.startDate,
-                endDate: ohlcvRequest.endDate,
-                limit: ohlcvRequest.limit || 50, // API maximum limit is 50
-                page: ohlcvRequest.page || 1,
-                analysisType: ohlcvRequest.analysisType || "all"
+                cryptocurrency: ohlcvRequest?.cryptocurrency || null,
+                token_id: ohlcvRequest?.token_id || null,
+                symbol: ohlcvRequest?.symbol || null,
+                token_name: ohlcvRequest?.token_name || null,
+                startDate: ohlcvRequest?.startDate || null,
+                endDate: ohlcvRequest?.endDate || null,
+                limit: ohlcvRequest?.limit || 50, // API maximum limit is 50
+                page: ohlcvRequest?.page || 1,
+                analysisType: ohlcvRequest?.analysisType || "all"
             };
             
             // Apply regex fallback if AI extraction failed or returned wrong data
             if (!processedRequest.cryptocurrency || processedRequest.cryptocurrency.toLowerCase().includes('unknown')) {
                 elizaLogger.log(`[${requestId}] AI extraction failed, applying regex fallback...`);
-                const regexResult = extractCryptocurrencySimple(message.content.text);
+                const regexResult = extractCryptocurrencySimple(message.content?.text || '');
                 if (regexResult.cryptocurrency) {
                     processedRequest.cryptocurrency = regexResult.cryptocurrency;
-                    processedRequest.symbol = regexResult.symbol;
+                    processedRequest.symbol = regexResult.symbol || null;
                     elizaLogger.log(`[${requestId}] Regex fallback found: ${regexResult.cryptocurrency} (${regexResult.symbol})`);
                 }
             }
             
-            // CRITICAL: Convert symbols to full names for API compatibility
-            // The hourly OHLCV API only accepts full cryptocurrency names, not symbols
-            if (processedRequest.cryptocurrency && processedRequest.cryptocurrency.length <= 5) {
-                // This looks like a symbol, convert to full name
-                const symbolToNameMap: Record<string, string> = {
-                    'BTC': 'Bitcoin',
-                    'ETH': 'Ethereum', 
-                    'DOGE': 'Dogecoin',
-                    'SOL': 'Solana',
-                    'AVAX': 'Avalanche',
-                    'ADA': 'Cardano',
-                    'DOT': 'Polkadot',
-                    'LINK': 'Chainlink',
-                    'BNB': 'BNB',
-                    'XRP': 'XRP',
-                    'LTC': 'Litecoin',
-                    'MATIC': 'Polygon',
-                    'UNI': 'Uniswap',
-                    'SHIB': 'Shiba Inu'
-                };
-                
-                const fullName = symbolToNameMap[processedRequest.cryptocurrency.toUpperCase()];
-                if (fullName) {
-                    elizaLogger.log(`[${requestId}] Converting symbol ${processedRequest.cryptocurrency} to full name: ${fullName}`);
-                    processedRequest.cryptocurrency = fullName;
-                    if (!processedRequest.symbol) {
-                        processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
-                    }
-                }
-            }
-            
-            // Resolve token if cryptocurrency name is provided
+            // STEP 3: Smart token resolution - hybrid approach for reliability
             let resolvedToken = null;
-            if (processedRequest.cryptocurrency && !processedRequest.token_id && !processedRequest.symbol) {
+            let finalTokenName = processedRequest.cryptocurrency;
+            
+            if (processedRequest.cryptocurrency) {
+                // First: Try dynamic resolution using TokenMetrics API
                 try {
+                    elizaLogger.log(`[${requestId}] 🔄 Step 1: Attempting dynamic token resolution for: "${processedRequest.cryptocurrency}"`);
                     resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
                     if (resolvedToken) {
-                        processedRequest.token_id = resolvedToken.token_id;
-                        processedRequest.symbol = resolvedToken.symbol;
-                        elizaLogger.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                        finalTokenName = resolvedToken.TOKEN_NAME;
+                        processedRequest.token_id = resolvedToken.TOKEN_ID;
+                        processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+                        elizaLogger.log(`[${requestId}] ✅ Dynamic resolution successful: "${processedRequest.cryptocurrency}" → ${resolvedToken.TOKEN_NAME} (ID: ${resolvedToken.TOKEN_ID})`);
+                    } else {
+                        elizaLogger.log(`[${requestId}] ⚠️ Dynamic resolution returned null for: "${processedRequest.cryptocurrency}"`);
                     }
                 } catch (error) {
-                    elizaLogger.log(`[${requestId}] Token resolution failed, proceeding with original request`);
+                    elizaLogger.log(`[${requestId}] ❌ Dynamic resolution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+                
+                // Second: Fallback to hardcoded token ID resolution for top tokens
+                if (!resolvedToken) {
+                    elizaLogger.log(`[${requestId}] 🔄 Step 2: Trying hardcoded well-known token resolution...`);
+                    const symbol = processedRequest.cryptocurrency.toLowerCase();
+                    const wellKnownTokenId = getWellKnownTokenId(symbol);
+                    if (wellKnownTokenId) {
+                        processedRequest.token_id = wellKnownTokenId;
+                        elizaLogger.log(`[${requestId}] ✅ Hardcoded resolution successful: "${symbol}" → Token ID ${wellKnownTokenId}`);
+                        
+                        // Use hardcoded symbol-to-name mapping for display
+                        const symbolToNameMap: Record<string, string> = {
+                            'btc': 'Bitcoin', 'eth': 'Ethereum', 'ada': 'Cardano',
+                            'dot': 'Polkadot', 'link': 'Chainlink', 'matic': 'Polygon',
+                            'sol': 'Solana', 'avax': 'Avalanche', 'atom': 'Cosmos',
+                            'algo': 'Algorand', 'xlm': 'Stellar', 'vet': 'VeChain',
+                            'icp': 'Internet Computer', 'ftm': 'Fantom', 'sand': 'The Sandbox',
+                            'mana': 'Decentraland', 'grt': 'The Graph', 'aave': 'Aave',
+                            'uni': 'Uniswap', 'shib': 'Shiba Inu'
+                        };
+                        finalTokenName = symbolToNameMap[symbol] || processedRequest.cryptocurrency;
+                    } else {
+                        elizaLogger.log(`[${requestId}] ⚠️ No hardcoded mapping found for: "${symbol}"`);
+                    }
                 }
             }
             
-            // Build API parameters - TokenMetrics hourly OHLCV accepts token_name parameter
+            // Update the cryptocurrency name for API call
+            processedRequest.cryptocurrency = finalTokenName;
+            
+            elizaLogger.log(`[${requestId}] 🎯 Final token for API call: "${processedRequest.cryptocurrency}"`);
+            elizaLogger.log(`[${requestId}] 🏷️ Display name will be: "${finalTokenName}"`);
+            elizaLogger.log(`[${requestId}] 🆔 Token ID: ${processedRequest.token_id || 'none'}`)
+            
+            // Build API parameters - Use token_id for precise token identification
             const apiParams: Record<string, any> = {
                 limit: processedRequest.limit,
                 page: processedRequest.page
             };
             
-            // Add token identification parameter - use the full cryptocurrency name
-            if (processedRequest.cryptocurrency) {
+            // Add token identification parameter - use token_id for precise results
+            if (resolvedToken?.TOKEN_ID) {
+                apiParams.token_id = resolvedToken.TOKEN_ID;
+                elizaLogger.log(`[${requestId}] Using token_id parameter: ${resolvedToken.TOKEN_ID} (${resolvedToken.TOKEN_NAME})`);
+            } else if (processedRequest.token_id) {
+                apiParams.token_id = processedRequest.token_id;
+                elizaLogger.log(`[${requestId}] Using provided token_id: ${processedRequest.token_id}`);
+            } else if (processedRequest.cryptocurrency) {
+                // Fallback to token_name only if no token_id available
                 apiParams.token_name = processedRequest.cryptocurrency;
-                elizaLogger.log(`[${requestId}] Using token_name parameter: ${processedRequest.cryptocurrency}`);
-            } else if (processedRequest.token_name) {
-                apiParams.token_name = processedRequest.token_name;
-                elizaLogger.log(`[${requestId}] Using provided token_name: ${processedRequest.token_name}`);
+                elizaLogger.log(`[${requestId}] Fallback to token_name parameter: ${processedRequest.cryptocurrency}`);
             }
             
             // Add date range parameters if provided
@@ -312,109 +310,26 @@ export const getHourlyOhlcvAction: Action = {
             // Process response data
             const ohlcvData = Array.isArray(response) ? response : response.data || [];
             
-            // CRITICAL FIX: Handle mixed data issue where multiple tokens share same symbol
-            // Example: BTC returns Bitcoin ($105K), batcat ($0.00003), and Osmosis allBTC ($105K)
-            let filteredByToken = ohlcvData;
-            
-            if (ohlcvData.length > 0 && processedRequest.symbol) {
-                // Group data by TOKEN_ID to identify multiple tokens with same symbol
-                const tokenGroups = ohlcvData.reduce((groups: any, item: any) => {
-                    const tokenId = item.TOKEN_ID;
-                    if (!groups[tokenId]) {
-                        groups[tokenId] = [];
-                    }
-                    groups[tokenId].push(item);
-                    return groups;
-                }, {});
-                
-                const tokenIds = Object.keys(tokenGroups);
-                elizaLogger.log(`[${requestId}] Found ${tokenIds.length} different tokens for symbol ${processedRequest.symbol}:`, 
-                    tokenIds.map(id => `${tokenGroups[id][0]?.TOKEN_NAME} (ID: ${id}, Price: ~$${tokenGroups[id][0]?.CLOSE})`));
-                
-                if (tokenIds.length > 1) {
-                    // Multiple tokens found - select the main one based on criteria
-                    let selectedTokenId = null;
-                    let maxScore = -1;
-                    
-                    for (const tokenId of tokenIds) {
-                        const tokenData = tokenGroups[tokenId];
-                        const firstItem = tokenData[0];
-                        
-                        // Scoring criteria to identify the main token
-                        let score = 0;
-                        
-                        // 1. Higher average price (main tokens usually have higher prices)
-                        const avgPrice = tokenData.reduce((sum: number, item: any) => sum + (item.CLOSE || 0), 0) / tokenData.length;
-                        if (avgPrice > 1000) score += 100;      // Very high price (like Bitcoin)
-                        else if (avgPrice > 100) score += 50;   // High price
-                        else if (avgPrice > 10) score += 20;    // Medium price
-                        else if (avgPrice > 1) score += 10;     // Low price
-                        // Very low prices (< $1) get no bonus
-                        
-                        // 2. Higher volume (main tokens have more trading activity)
-                        const avgVolume = tokenData.reduce((sum: number, item: any) => sum + (item.VOLUME || 0), 0) / tokenData.length;
-                        if (avgVolume > 1000000000) score += 50;    // Billions in volume
-                        else if (avgVolume > 100000000) score += 30; // Hundreds of millions
-                        else if (avgVolume > 10000000) score += 20;  // Tens of millions
-                        else if (avgVolume > 1000000) score += 10;   // Millions
-                        
-                        // 3. Token name matching (exact matches get priority)
-                        const tokenName = firstItem.TOKEN_NAME?.toLowerCase() || '';
-                        const symbol = processedRequest.symbol?.toLowerCase() || '';
-                        
-                        if (tokenName === symbol) score += 30;                    // Exact match (e.g., "btc" === "btc")
-                        else if (tokenName.includes(symbol)) score += 20;         // Contains symbol
-                        else if (symbol === 'btc' && tokenName === 'bitcoin') score += 40;  // Special case: BTC -> Bitcoin
-                        else if (symbol === 'eth' && tokenName === 'ethereum') score += 40; // Special case: ETH -> Ethereum
-                        else if (symbol === 'doge' && tokenName === 'dogecoin') score += 40; // Special case: DOGE -> Dogecoin
-                        
-                        // 4. Avoid derivative/wrapped tokens
-                        if (tokenName.includes('wrapped') || tokenName.includes('osmosis') || 
-                            tokenName.includes('synthetic') || tokenName.includes('bridged')) {
-                            score -= 20;
-                        }
-                        
-                        elizaLogger.log(`[${requestId}] Token ${firstItem.TOKEN_NAME} (ID: ${tokenId}) score: ${score} (price: $${avgPrice.toFixed(6)}, volume: ${avgVolume.toFixed(0)})`);
-                        
-                        if (score > maxScore) {
-                            maxScore = score;
-                            selectedTokenId = tokenId;
-                        }
-                    }
-                    
-                    if (selectedTokenId) {
-                        filteredByToken = tokenGroups[selectedTokenId];
-                        const selectedToken = filteredByToken[0];
-                        elizaLogger.log(`[${requestId}] Selected main token: ${selectedToken.TOKEN_NAME} (ID: ${selectedTokenId}) with score ${maxScore}`);
-                    } else {
-                        elizaLogger.log(`[${requestId}] No clear main token identified, using all data`);
-                    }
-                } else {
-                    elizaLogger.log(`[${requestId}] Single token found: ${tokenGroups[tokenIds[0]][0]?.TOKEN_NAME}`);
-                }
-            }
+            elizaLogger.log(`[${requestId}] API response received: ${ohlcvData.length} data points`);
             
             // Filter out invalid data points
-            const validData = filteredByToken.filter((item: any) => {
+            const validData = ohlcvData.filter((item: any) => {
                 // Remove data points with zero or null values
                 if (!item.OPEN || !item.HIGH || !item.LOW || !item.CLOSE || 
                     item.OPEN <= 0 || item.HIGH <= 0 || item.LOW <= 0 || item.CLOSE <= 0) {
-                    elizaLogger.log(`[${requestId}] Filtering out invalid data point:`, item);
                     return false;
                 }
                 
                 // Remove extreme outliers (price changes > 1000% in an hour)
                 const priceRange = (item.HIGH - item.LOW) / item.LOW;
                 if (priceRange > 10) { // 1000% hourly range is unrealistic
-                    elizaLogger.log(`[${requestId}] Filtering out extreme outlier:`, item);
                     return false;
                 }
                 
                 return true;
             });
             
-            elizaLogger.log(`[${requestId}] Token filtering: ${ohlcvData.length} → ${filteredByToken.length} data points`);
-            elizaLogger.log(`[${requestId}] Quality filtering: ${filteredByToken.length} → ${validData.length} valid points remaining`);
+            elizaLogger.log(`[${requestId}] Data filtering: ${ohlcvData.length} → ${validData.length} valid points remaining`);
             
             // Sort data chronologically (oldest first for proper analysis)
             const sortedData = validData.sort((a: any, b: any) => new Date(a.DATE || a.TIMESTAMP).getTime() - new Date(b.DATE || b.TIMESTAMP).getTime());
@@ -423,10 +338,12 @@ export const getHourlyOhlcvAction: Action = {
             const ohlcvAnalysis = analyzeHourlyOhlcvData(sortedData, processedRequest.analysisType);
             
             // Format response text for user
-            const tokenName = resolvedToken?.name || 
+            const tokenName = resolvedToken?.TOKEN_NAME || 
                              processedRequest.cryptocurrency || 
                              processedRequest.symbol || 
-                             "the requested token";
+                             "Unknown Token";
+            
+            elizaLogger.log(`[${requestId}] 🎯 Final display name: "${tokenName}"`);
             
             let responseText = `📊 **Hourly OHLCV Data for ${tokenName}**\n\n`;
             
@@ -439,16 +356,8 @@ export const getHourlyOhlcvAction: Action = {
             } else {
                 // Show data quality info if filtering occurred
                 if (ohlcvData.length > sortedData.length) {
-                    const tokenFiltered = ohlcvData.length - filteredByToken.length;
-                    const qualityFiltered = filteredByToken.length - sortedData.length;
-                    
-                    if (tokenFiltered > 0 && qualityFiltered > 0) {
-                        responseText += `🔍 **Data Quality Note**: Filtered out ${tokenFiltered} mixed token data points and ${qualityFiltered} invalid data points for accurate analysis.\n\n`;
-                    } else if (tokenFiltered > 0) {
-                        responseText += `🔍 **Data Quality Note**: Selected main token from ${tokenFiltered + sortedData.length} mixed data points for accurate analysis.\n\n`;
-                    } else if (qualityFiltered > 0) {
+                    const qualityFiltered = ohlcvData.length - sortedData.length;
                         responseText += `🔍 **Data Quality Note**: Filtered out ${qualityFiltered} invalid data points for better analysis accuracy.\n\n`;
-                    }
                 }
                 
                 // Show recent OHLCV data points (most recent first for display)
@@ -570,7 +479,7 @@ export const getHourlyOhlcvAction: Action = {
                     content: result
                 });
             }
-            return true;
+            return createActionResult({ success: true, text: responseText });
             
         } catch (error) {
             elizaLogger.error("Error in getHourlyOhlcvAction:", error);
@@ -615,7 +524,7 @@ export const getHourlyOhlcvAction: Action = {
                     content: errorResult
                 });
             }
-            return false;
+            return createActionResult({ success: false, error: "Failed to process request" });
         }
     },
     

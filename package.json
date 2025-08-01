@@ -44,32 +44,31 @@
     "dotenv": "^16.5.0"
   },
   "devDependencies": {
-    "@types/node": "^22.15.18",
     "tsup": "^8.5.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.8.3",
+    "prettier": "^3.0.0",
     "bun": "^1.2.15",
     "@types/bun": "latest",
-    "vitest": "^3.0.0"
+    "typescript": "^5.8.0"
   },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "clean": "rm -rf dist .turbo node_modules",
+    "lint": "prettier --write ./src",
+    "format:check": "prettier --check ./src",
+    "clean": "rm -rf dist .turbo node_modules .turbo-tsconfig.json tsconfig.tsbuildinfo",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write ./src",
-    "lint": "prettier --write ./src",
-    "test:build": "npm run build && node -e \"import('./dist/index.js').then(plugin => { console.log('✅ Plugin loaded successfully'); console.log('📊 Available actions:', Object.keys(plugin.default?.actions || {})); }).catch(err => { console.error('❌ Plugin load failed:', err.message); process.exit(1); })\"",
-    "verify": "npm run typecheck && npm run test:build"
+    "test:coverage": "bun test --coverage"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "agentConfig": {
     "pluginType": "elizaos:plugin:1.0.0",
     "pluginParameters": {
       "TOKENMETRICS_API_KEY": {
         "type": "string",
-        "description": "Description of what this parameter does",
+        "description": "API key for accessing TokenMetrics services",
         "required": true,
         "sensitive": true
       }

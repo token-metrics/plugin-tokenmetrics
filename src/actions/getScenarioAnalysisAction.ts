@@ -1,13 +1,14 @@
-import type { Action } from "@elizaos/core";
+import type { Action, ActionResult } from "@elizaos/core";
 import {
     type IAgentRuntime,
     type Memory,
     type State,
     type HandlerCallback,
     elizaLogger,
-    composeContext,
-    generateObject,
-    ModelClass
+    composePromptFromState,
+    parseKeyValueXml,
+    ModelType,
+    createActionResult
 } from "@elizaos/core";
 import { z } from "zod";
 import {
@@ -74,7 +75,16 @@ Based on the conversation context, identify the scenario analysis request detail
 - Do not assume or substitute different cryptocurrencies
 - If unclear, extract the exact text mentioned
 
-Extract the scenario analysis request from the user's message:`;
+Extract the scenario analysis request from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>exact cryptocurrency name mentioned by user</cryptocurrency>
+<symbol>exact symbol mentioned by user</symbol>
+<analysisType>risk_assessment|portfolio_planning|stress_testing|all</analysisType>
+<limit>number of scenarios to return</limit>
+<page>page number for pagination</page>
+</response>
+`;
 
 // Simple regex-based extraction as fallback
 function extractCryptocurrencySimple(text: string): { cryptocurrency?: string; symbol?: string } {
@@ -151,28 +161,28 @@ export const getScenarioAnalysisAction: Action = {
     examples: [
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Get scenario analysis for Bitcoin"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
-                    text: "I'll retrieve price scenario analysis for Bitcoin under different market conditions.",
+                    text: "I'll analyze potential Bitcoin scenarios and price projections using TokenMetrics.",
                     action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
                 }
             }
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Show me risk scenarios for portfolio planning"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll get comprehensive scenario analysis for portfolio risk assessment and planning.",
                     action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
@@ -181,13 +191,13 @@ export const getScenarioAnalysisAction: Action = {
         ],
         [
             {
-                user: "{{user1}}",
+                name: "{{user1}}",
                 content: {
                     text: "Stress test scenarios for market crash"
                 }
             },
             {
-                user: "{{user2}}",
+                name: "{{agent}}",
                 content: {
                     text: "I'll retrieve stress testing scenarios for extreme market conditions.",
                     action: "GET_SCENARIO_ANALYSIS_TOKENMETRICS"
@@ -196,7 +206,7 @@ export const getScenarioAnalysisAction: Action = {
         ]
     ],
     
-    async handler(runtime: IAgentRuntime, message: Memory, state?: State, _options?: { [key: string]: unknown }, callback?: HandlerCallback): Promise<boolean> {
+    async handler(runtime: IAgentRuntime, message: Memory, state?: State, _options?: { [key: string]: unknown }, callback?: HandlerCallback): Promise<ActionResult> {
         try {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing scenario analysis request...`);
@@ -222,37 +232,35 @@ USER MESSAGE: "${userMessage}"
 
 Please analyze the CURRENT user message above and extract the relevant information.`;
 
-            const scenarioRequestResult = await generateObject({
-                runtime,
-                context: composeContext({
+            const scenarioRequestResult = await runtime.useModel(ModelType.TEXT_LARGE, {
+                 prompt: composePromptFromState({
                     state: state || await runtime.composeState(message),
                     template: enhancedTemplate
-                }),
-                modelClass: ModelClass.LARGE, // Use GPT-4o for better instruction following
-                schema: ScenarioAnalysisRequestSchema,
-                mode: "json"
+                 })
             });
 
-            let scenarioRequest = scenarioRequestResult.object as ScenarioAnalysisRequest;
+             // Parse the XML response
+             const parsedResult = parseKeyValueXml(scenarioRequestResult);
+
+            let scenarioRequest = (parsedResult as ScenarioAnalysisRequest) || {};
 
             console.log(`[${requestId}] AI Extracted:`, scenarioRequest);
 
             // STEP 3: Apply regex fallback if AI extraction failed or is inconsistent
-            if (!scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+            if (!scenarioRequest?.cryptocurrency && !scenarioRequest?.symbol) {
                 console.log(`[${requestId}] AI extraction incomplete, applying regex fallback...`);
                 const regexResult = extractCryptocurrencySimple(userMessage);
                 if (regexResult.cryptocurrency || regexResult.symbol) {
                     scenarioRequest = {
                         ...scenarioRequest,
-                        cryptocurrency: regexResult.cryptocurrency,
-                        symbol: regexResult.symbol
+                        ...regexResult
                     };
-                    console.log(`[${requestId}] Regex fallback result:`, regexResult);
+                    console.log(`[${requestId}] Applied regex fallback:`, scenarioRequest);
                 }
             }
 
             // STEP 3.5: Fix misclassified AI extractions (symbols classified as cryptocurrency names)
-            if (scenarioRequest.cryptocurrency && !scenarioRequest.symbol) {
+            if (scenarioRequest?.cryptocurrency && !scenarioRequest?.symbol) {
                 const crypto = scenarioRequest.cryptocurrency.toUpperCase();
                 // Check if the "cryptocurrency" is actually a symbol
                 const commonSymbols = ['BTC', 'ETH', 'DOGE', 'AVAX', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI', 'LTC', 'XRP', 'BNB', 'USDT', 'USDC', 'ATOM', 'NEAR', 'FTM', 'ALGO', 'VET', 'ICP', 'FLOW', 'SAND', 'MANA', 'CRO', 'APE', 'SHIB', 'PEPE', 'WIF', 'BONK'];
@@ -269,7 +277,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
             }
 
             // STEP 4: Validate extraction results
-            if (scenarioRequest.cryptocurrency || scenarioRequest.symbol) {
+            if (scenarioRequest?.cryptocurrency || scenarioRequest?.symbol) {
                 console.log(`[${requestId}] ✅ Successfully extracted cryptocurrency: ${scenarioRequest.cryptocurrency || scenarioRequest.symbol}`);
             } else {
                 console.log(`[${requestId}] ⚠️ No specific cryptocurrency extracted, proceeding with general analysis`);
@@ -345,7 +353,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
                 console.log(`[${requestId}] ❌ API returned error: ${response.message || 'Unknown error'}`);
                 
                 if (callback) {
-                    callback({
+                    await callback({
                         text: `❌ No scenario analysis data available for ${processedRequest.cryptocurrency || processedRequest.symbol || 'this token'}.\n\nThis could mean:\n• Token is not covered by TokenMetrics scenario modeling\n• Insufficient historical data for scenario generation\n• Token may be too new or have limited market activity\n\nTry using the full cryptocurrency name instead of the symbol.`,
                         content: {
                             success: false,
@@ -355,7 +363,10 @@ Please analyze the CURRENT user message above and extract the relevant informati
                     });
                 }
                 
-                return false;
+                return createActionResult({
+                     success: false,
+                     error: "Failed to retrieve scenario analysis data."
+                 });
             }
             
             // Process response data - FIXED: Handle nested SCENARIO_PREDICTION structure
@@ -492,7 +503,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
             
             // Use callback to send response to user (like working actions)
             if (callback) {
-                callback({
+                await callback({
                     text: responseText,
                     content: {
                         success: true,
@@ -512,21 +523,34 @@ Please analyze the CURRENT user message above and extract the relevant informati
                 });
             }
             
-            return true;
+            return createActionResult({
+                 success: true,
+                 text: responseText,
+                 data: {
+                     scenario_analysis: scenarioData,
+                     analysis: scenarioAnalysis,
+                     source: "TokenMetrics Scenario Analysis"
+                 }
+             });
         } catch (error) {
             console.error("Error in getScenarioAnalysisAction:", error);
+             
+             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             
             if (callback) {
-                callback({
-                    text: `❌ Failed to retrieve scenario analysis: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                 await callback({
+                     text: `❌ Failed to retrieve scenario analysis: ${errorMessage}`,
                     content: {
                         success: false,
-                        error: error instanceof Error ? error.message : "Unknown error occurred"
+                         error: errorMessage
                     }
                 });
             }
             
-            return false;
+             return createActionResult({
+                 success: false,
+                 error: errorMessage
+             });
         }
     },
     

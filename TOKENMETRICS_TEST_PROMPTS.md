@@ -190,20 +190,10 @@ Show me technical levels for XRP
 Get resistance support analysis for Bitcoin
 ```
 
-### 12. **Sentiment Action** (`GET_SENTIMENT_TOKENMETRICS`)
+### 12. **Moonshot Action** (`GET_moonshots`)
 ```
-Get market sentiment
-Show me crypto sentiment
-Market sentiment analysis
-Get sentiment for Bitcoin
-Show me sentiment analysis
-Market sentiment today
-Get crypto market sentiment
-Show me sentiment data
-Market sentiment overview
-Get sentiment analysis for crypto
-Show me market sentiment trends
-Get news and sentiment analysis
+"What tokens have breakout potential?"
+"Get moonshot tokens"
 ```
 
 ## 🧠 **Advanced Analysis Actions (6)**
