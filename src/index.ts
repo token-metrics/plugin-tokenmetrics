@@ -22,8 +22,7 @@ import {
     getAiReportsAction,
     getMoonshotTokensAction,
     getScenarioAnalysisAction,
-    getCryptoInvestorsAction,
-    getTmaiAction
+    getCryptoInvestorsAction
 } from "./actions";
 
 // Import and export helper functions for testing and debugging
@@ -35,7 +34,7 @@ import {
     formatPercentage,
     generateRequestId,
     resolveTokenSmart,
-    getWellKnownTokenId,
+    
     mapSymbolToName
 } from "./actions/aiActionHelper";
 
@@ -48,7 +47,7 @@ export {
     formatPercentage,
     generateRequestId,
     resolveTokenSmart,
-    getWellKnownTokenId,
+    
     mapSymbolToName
 };
 
@@ -126,7 +125,7 @@ export const tokenmetricsPlugin: Plugin = {
         getMoonshotTokensAction,
         getScenarioAnalysisAction,
         getCryptoInvestorsAction,
-        getTmaiAction
+
     ],
     
     // Initialize provider system for 1.x compatibility

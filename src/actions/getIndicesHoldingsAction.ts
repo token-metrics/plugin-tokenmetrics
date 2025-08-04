@@ -63,7 +63,6 @@ Respond with an XML block containing only the extracted values:
 <response>
 <indexId>numeric ID of the index</indexId>
 <analysisType>composition|risk|performance|all</analysisType>
-<focusArea>allocation|diversification|concentration|general</focusArea>
 </response>`;
 
 /**
@@ -146,11 +145,17 @@ export const getIndicesHoldingsAction: Action = {
             console.log(`[${requestId}] Processing indices holdings request...`);
             
             // Extract structured request using AI
+            const userMessage = message.content?.text || "";
+            const enhancedTemplate = indicesHoldingsTemplate + `
+            
+USER MESSAGE: "${userMessage}"
+Please analyze the CURRENT user message above and extract the relevant information.`;
+            
             const holdingsRequest = await extractTokenMetricsRequest<IndicesHoldingsRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                indicesHoldingsTemplate,
+                enhancedTemplate,
                 IndicesHoldingsRequestSchema,
                 requestId
             );

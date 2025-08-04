@@ -28,7 +28,7 @@ const tokensTemplate = `Extract token search request information from the messag
 
 IMPORTANT: This is for TOKEN SEARCH/DATABASE QUERIES, NOT price requests.
 
-Based on the conversation context, identify what token information the user is requesting.
+CRITICAL: If the user asks for a GENERAL LIST of tokens (like "list all tokens", "list all available tokens", "show all tokens"), do NOT extract any specific cryptocurrency name. Leave cryptocurrency field empty for general listing requests.
 
 Instructions:
 Look for TOKEN SEARCH/DATABASE requests, such as:
@@ -38,17 +38,24 @@ Look for TOKEN SEARCH/DATABASE requests, such as:
 - Exchange filtering ("tokens on Binance", "Coinbase supported tokens")
 - Market filtering ("high market cap tokens", "tokens by volume")
 
-EXAMPLES OF TOKEN SEARCH REQUESTS:
-- "List all available tokens"
-- "Show me DeFi tokens"
-- "Find token information for Bitcoin"
-- "Search token database for Ethereum"
-- "Get supported cryptocurrencies list"
-- "Find token details for Solana"
-- "Show me tokens with high market cap"
-- "List tokens in gaming category"
-- "Search for Avalanche token information"
-- "Find SOL token details"
+GENERAL LISTING REQUESTS (cryptocurrency should be empty):
+- "List all available tokens" → cryptocurrency: empty
+- "List all tokens" → cryptocurrency: empty
+- "Show all supported tokens" → cryptocurrency: empty
+- "Get supported cryptocurrencies list" → cryptocurrency: empty
+- "Available tokens" → cryptocurrency: empty
+
+SPECIFIC TOKEN SEARCH REQUESTS (cryptocurrency should be specified):
+- "Find token information for Bitcoin" → cryptocurrency: "Bitcoin"
+- "Search token database for Ethereum" → cryptocurrency: "Ethereum"
+- "Find token details for Solana" → cryptocurrency: "Solana"
+- "Search for Avalanche token information" → cryptocurrency: "Avalanche"
+- "Find SOL token details" → cryptocurrency: "SOL"
+
+CATEGORY/FILTERED REQUESTS:
+- "Show me DeFi tokens" → category: "DeFi", cryptocurrency: empty
+- "List tokens in gaming category" → category: "gaming", cryptocurrency: empty
+- "Show me tokens with high market cap" → market_cap_filter: "high", cryptocurrency: empty
 
 DO NOT MATCH PRICE REQUESTS:
 - "What's the price of Bitcoin?" (this is a PRICE request)
@@ -338,12 +345,21 @@ export const getTokensAction: Action = {
                 state = await runtime.composeState(message);
             }
 
-            // STEP 2: Extract request using AI helper
+            // STEP 2: Extract request using AI helper with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = tokensTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const tokensRequest: any = await extractTokenMetricsRequest(
                 runtime,
                 message,
                 state,
-                tokensTemplate,
+                enhancedTemplate,
                 TokensRequestSchema,
                 requestId
             );

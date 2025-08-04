@@ -16,81 +16,170 @@ import {
  */
 
 /**
- * Simple regex-based extraction as fallback
+ * Dynamic token extraction using pure pattern matching - no hardcoding
  */
 function extractCryptocurrencySimple(text: string): string | null {
-    const message = text.toLowerCase();
+    // Look for potential cryptocurrency symbols (3-10 characters, mostly uppercase)
+    const symbolPattern = /\b([A-Z]{3,10})\b/g;
+    const symbolMatches = text.match(symbolPattern);
     
-    // Common cryptocurrency patterns
-    const patterns = [
-        // Full names
-        /\b(bitcoin|btc)\b/i,
-        /\b(ethereum|eth)\b/i,
-        /\b(dogecoin|doge)\b/i,
-        /\b(avalanche|avax)\b/i,
-        /\b(solana|sol)\b/i,
-        /\b(cardano|ada)\b/i,
-        /\b(polygon|matic)\b/i,
-        /\b(chainlink|link)\b/i,
-        /\b(uniswap|uni)\b/i,
-        /\b(polkadot|dot)\b/i,
-        /\b(litecoin|ltc)\b/i,
-        /\b(ripple|xrp)\b/i,
-        /\b(binance coin|bnb)\b/i,
-        /\b(shiba inu|shib)\b/i,
-        /\b(pepe)\b/i,
-        /\b(cosmos|atom)\b/i,
-        /\b(near protocol|near)\b/i,
-        /\b(fantom|ftm)\b/i,
-        /\b(algorand|algo)\b/i,
-        /\b(vechain|vet)\b/i,
-        /\b(internet computer|icp)\b/i,
-        /\b(flow)\b/i,
-        /\b(the sandbox|sand)\b/i,
-        /\b(decentraland|mana)\b/i,
-        /\b(cronos|cro)\b/i,
-        /\b(apecoin|ape)\b/i
-    ];
+    if (symbolMatches && symbolMatches.length > 0) {
+        // Filter out common English words that aren't crypto symbols
+        const filteredSymbols = symbolMatches.filter(symbol => 
+            !['THE', 'AND', 'FOR', 'WITH', 'GET', 'SET', 'API', 'KEY', 'USD', 'EUR', 'GBP', 'JPY'].includes(symbol)
+        );
+        
+        if (filteredSymbols.length > 0) {
+            return filteredSymbols[0];
+        }
+    }
     
-    // Mapping from regex matches to proper names
-    const nameMap: Record<string, string> = {
-        'bitcoin': 'Bitcoin', 'btc': 'Bitcoin',
-        'ethereum': 'Ethereum', 'eth': 'Ethereum',
-        'dogecoin': 'Dogecoin', 'doge': 'Dogecoin',
-        'avalanche': 'Avalanche', 'avax': 'Avalanche',
-        'solana': 'Solana', 'sol': 'Solana',
-        'cardano': 'Cardano', 'ada': 'Cardano',
-        'polygon': 'Polygon', 'matic': 'Polygon',
-        'chainlink': 'Chainlink', 'link': 'Chainlink',
-        'uniswap': 'Uniswap', 'uni': 'Uniswap',
-        'polkadot': 'Polkadot', 'dot': 'Polkadot',
-        'litecoin': 'Litecoin', 'ltc': 'Litecoin',
-        'ripple': 'XRP', 'xrp': 'XRP',
-        'binance coin': 'BNB', 'bnb': 'BNB',
-        'shiba inu': 'Shiba Inu', 'shib': 'Shiba Inu',
-        'pepe': 'Pepe',
-        'cosmos': 'Cosmos', 'atom': 'Cosmos',
-        'near protocol': 'NEAR Protocol', 'near': 'NEAR Protocol',
-        'fantom': 'Fantom', 'ftm': 'Fantom',
-        'algorand': 'Algorand', 'algo': 'Algorand',
-        'vechain': 'VeChain', 'vet': 'VeChain',
-        'internet computer': 'Internet Computer', 'icp': 'Internet Computer',
-        'flow': 'Flow',
-        'the sandbox': 'The Sandbox', 'sand': 'The Sandbox',
-        'decentraland': 'Decentraland', 'mana': 'Decentraland',
-        'cronos': 'Cronos', 'cro': 'Cronos',
-        'apecoin': 'ApeCoin', 'ape': 'ApeCoin'
-    };
+    // Look for potential cryptocurrency names (any capitalized word or pattern that might be a crypto)
+    const potentialCryptoPattern = /\b([A-Z][a-z]{3,})\b/g;
+    const nameMatches = text.match(potentialCryptoPattern);
     
-    for (const pattern of patterns) {
-        const match = message.match(pattern);
-        if (match) {
-            const found = match[0].toLowerCase();
-            return nameMap[found] || found;
+    if (nameMatches && nameMatches.length > 0) {
+        // Filter out common English words that aren't cryptos
+        const filteredNames = nameMatches.filter(word => 
+            !['The', 'What', 'How', 'Get', 'Show', 'Check', 'Price', 'Token', 'Coin', 'Much', 'Worth', 'From', 'Please', 'Hold', 'Moment', 'Today', 'This', 'That', 'Here', 'There', 'When', 'Where', 'With', 'Your'].includes(word)
+        );
+        
+        if (filteredNames.length > 0) {
+            return filteredNames[0];
         }
     }
     
     return null;
+}
+
+/**
+ * Search for token using the /tokens endpoint dynamically
+ */
+async function searchTokenDynamically(query: string, runtime: IAgentRuntime): Promise<any | null> {
+    try {
+        elizaLogger.log(`🔍 Searching for token: "${query}" using /tokens endpoint`);
+        
+        // Try searching by symbol first - get multiple results for better selection
+        let searchParams = {
+            symbol: query.toUpperCase(),
+            limit: 5  // Get multiple results to find the most popular one
+        };
+        
+        let tokenData = await callTokenMetricsAPI('/v2/tokens', searchParams, runtime);
+        
+        // DEBUG: Log the actual API response structure
+        elizaLogger.log(`🔬 API Response for symbol search:`, JSON.stringify(tokenData, null, 2));
+        
+        if (tokenData?.data && tokenData.data.length > 0) {
+            // For major cryptocurrencies, check if we have the real token among results
+            const majorCryptoMapping: Record<string, string> = {
+                'BTC': 'Bitcoin',
+                'ETH': 'Ethereum',
+                'DOGE': 'Dogecoin',
+                'ADA': 'Cardano',
+                'SOL': 'Solana',
+                'AVAX': 'Avalanche',
+                'MATIC': 'Polygon',
+                'DOT': 'Polkadot',
+                'LINK': 'Chainlink',
+                'UNI': 'Uniswap'
+            };
+            
+            const expectedName = majorCryptoMapping[query.toUpperCase()];
+            
+            // If this is a major crypto, look for the exact match first
+            if (expectedName) {
+                const exactMatch = tokenData.data.find((token: any) => 
+                    token.TOKEN_NAME?.toLowerCase() === expectedName.toLowerCase()
+                );
+                if (exactMatch) {
+                    elizaLogger.log(`🎯 Found exact major crypto match: ${exactMatch.TOKEN_NAME} (${exactMatch.TOKEN_SYMBOL}) - ID: ${exactMatch.TOKEN_ID}`);
+                    return exactMatch;
+                }
+            }
+            
+            // If multiple results, prioritize based on criteria:
+            // 1. Exact symbol match
+            // 2. More exchanges (higher liquidity)
+            // 3. More categories (more established)
+            let bestToken = tokenData.data[0];
+            
+            if (tokenData.data.length > 1) {
+                elizaLogger.log(`🔍 Multiple tokens found, selecting best match...`);
+                
+                // Sort by priority: exact symbol match, exchange count, category count
+                const sortedTokens = tokenData.data.sort((a: any, b: any) => {
+                    // Priority 1: Exact symbol match
+                    const aExactMatch = a.TOKEN_SYMBOL?.toUpperCase() === query.toUpperCase() ? 1 : 0;
+                    const bExactMatch = b.TOKEN_SYMBOL?.toUpperCase() === query.toUpperCase() ? 1 : 0;
+                    if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
+                    
+                    // Priority 2: More exchanges (higher liquidity)
+                    const aExchanges = a.EXCHANGE_LIST?.length || 0;
+                    const bExchanges = b.EXCHANGE_LIST?.length || 0;
+                    if (aExchanges !== bExchanges) return bExchanges - aExchanges;
+                    
+                    // Priority 3: More categories (more established)
+                    const aCategories = a.CATEGORY_LIST?.length || 0;
+                    const bCategories = b.CATEGORY_LIST?.length || 0;
+                    return bCategories - aCategories;
+                });
+                
+                bestToken = sortedTokens[0];
+                elizaLogger.log(`🎯 Selected best token: ${bestToken.TOKEN_NAME} (${bestToken.TOKEN_SYMBOL}) - ${bestToken.EXCHANGE_LIST?.length || 0} exchanges`);
+            }
+            
+            elizaLogger.log(`✅ Found token by symbol: ${bestToken.TOKEN_NAME} (${bestToken.TOKEN_SYMBOL}) - ID: ${bestToken.TOKEN_ID}`);
+            return bestToken;
+        }
+        
+        // If not found by symbol, try searching by name
+        // For major cryptocurrencies, also try the full name
+        const majorCryptoNames: Record<string, string> = {
+            'BTC': 'Bitcoin',
+            'ETH': 'Ethereum', 
+            'DOGE': 'Dogecoin',
+            'ADA': 'Cardano',
+            'SOL': 'Solana',
+            'AVAX': 'Avalanche',
+            'MATIC': 'Polygon',
+            'DOT': 'Polkadot',
+            'LINK': 'Chainlink',
+            'UNI': 'Uniswap'
+        };
+        
+        const searchName = majorCryptoNames[query.toUpperCase()] || query;
+        
+        searchParams = {
+            token_name: searchName,
+            limit: 10  // Get more results to find best match
+        } as any;
+        
+        tokenData = await callTokenMetricsAPI('/v2/tokens', searchParams, runtime);
+        
+        // DEBUG: Log the actual API response structure for name search
+        elizaLogger.log(`🔬 API Response for name search:`, JSON.stringify(tokenData, null, 2));
+        
+        if (tokenData?.data && tokenData.data.length > 0) {
+            // Find best match by checking if query matches token name or symbol
+            const queryLower = query.toLowerCase();
+            const bestMatch = tokenData.data.find((token: any) => 
+                token.TOKEN_NAME?.toLowerCase().includes(queryLower) ||
+                token.TOKEN_SYMBOL?.toLowerCase() === queryLower ||
+                token.TOKEN_NAME?.toLowerCase() === queryLower
+            ) || tokenData.data[0]; // Fallback to first result
+            
+            elizaLogger.log(`✅ Found token by name: ${bestMatch.TOKEN_NAME} (${bestMatch.TOKEN_SYMBOL}) - ID: ${bestMatch.TOKEN_ID}`);
+            return bestMatch;
+        }
+        
+        elizaLogger.log(`❌ No token found for query: "${query}"`);
+        return null;
+        
+    } catch (error) {
+        elizaLogger.error(`❌ Error searching for token "${query}":`, error);
+        return null;
+    }
 }
 
 // Standardized schema for price requests
@@ -114,6 +203,11 @@ ONLY MATCH PRICE REQUESTS:
 - "Bitcoin current price" ✅
 - "Check ETH price" ✅
 - "Price of Solana" ✅
+- "What's the price of BONK?" ✅
+- "DEGEN price" ✅
+- "How much is PEPE worth?" ✅
+- "Get FLOKI price" ✅
+- "Check WIF price" ✅
 
 DO NOT MATCH TOKEN SEARCH/DATABASE REQUESTS:
 - "Find token details for Ethereum" ❌ (this is TOKEN SEARCH)
@@ -129,8 +223,9 @@ ONLY extract if the user is asking for PRICE/VALUE information, not token detail
 Extract the following information for PRICE requests only:
 
 1. **cryptocurrency** (required): The EXACT cryptocurrency name or symbol they mentioned
-   - Extract whatever cryptocurrency name the user said (Bitcoin, Ethereum, Dogecoin, Avalanche, etc.)
-   - Extract whatever symbol the user said (BTC, ETH, DOGE, AVAX, etc.)
+   - Extract whatever cryptocurrency name the user said (Bitcoin, Ethereum, Dogecoin, Avalanche, BONK, DEGEN, PEPE, FLOKI, WIF, etc.)
+   - Extract whatever symbol the user said (BTC, ETH, DOGE, AVAX, BONK, DEGEN, PEPE, FLOKI, WIF, etc.)
+   - Accept ANY cryptocurrency name or symbol mentioned, including meme coins and new tokens
    - DO NOT change or substitute the cryptocurrency name
 
 2. **symbol** (optional): The cryptocurrency symbol if mentioned or mappable
@@ -144,7 +239,19 @@ Extract the following information for PRICE requests only:
 
 CRITICAL: Only extract if this is clearly a PRICE request, not a token search/database request.
 
-Extract the price request details from the user's message.
+IMPORTANT: Accept ANY cryptocurrency name or symbol mentioned by the user, including:
+- Major coins: Bitcoin, Ethereum, Solana, etc.
+- Altcoins: Cardano, Polygon, Chainlink, etc.  
+- Meme coins: DOGE, SHIB, PEPE, BONK, FLOKI, DEGEN, WIF, etc.
+- New/obscure tokens: Any symbol or name the user mentions
+
+Extract the price request details from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>exact cryptocurrency name or symbol from user's message</cryptocurrency>
+<symbol>token symbol if mentioned</symbol>
+<analysisType>current|trend|technical|all</analysisType>
+</response>
 `;
 
 /**
@@ -365,12 +472,21 @@ export const getPriceAction: Action = {
                 currentState = await runtime.composeState(message, ["RECENT_MESSAGES"]);
             }
 
-            // Extract request using standardized AI helper
+            // Extract request using standardized AI helper with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = PRICE_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             let priceRequest: any = await extractTokenMetricsRequest(
                 runtime,
                 message,
                 currentState,
-                PRICE_EXTRACTION_TEMPLATE,
+                enhancedTemplate,
                 PriceRequestSchema,
                 requestId
             );
@@ -384,7 +500,7 @@ export const getPriceAction: Action = {
                 elizaLogger.log(`[${requestId}] ❌ DEBUG: AI extraction returned null - analyzing with fallback...`);
                 console.log(`❌ AI extraction failed, trying fallback...`);
                 
-                // Try fallback extraction if AI fails
+                // Try fallback extraction using dynamic pattern matching
                 const cryptoFromText = extractCryptocurrencySimple(message.content?.text || '');
                 
                 if (!cryptoFromText) {
@@ -479,21 +595,21 @@ Try asking: "What's the price of Bitcoin?" or "How much is ETH worth?"`,
                 });
             }
 
-            // Resolve token using smart resolution
-            elizaLogger.log(`[${requestId}] 🔍 DEBUG: Starting token resolution for: "${cryptoToResolve}"`);
-            console.log(`🔍 Starting token resolution for: "${cryptoToResolve}"`);
+            // Use FULLY DYNAMIC token search via /tokens endpoint
+            elizaLogger.log(`[${requestId}] 🔍 DEBUG: Starting DYNAMIC token search for: "${cryptoToResolve}"`);
+            console.log(`🔍 Starting DYNAMIC token search for: "${cryptoToResolve}"`);
             
-            const tokenInfo = await resolveTokenSmart(cryptoToResolve, runtime);
-            elizaLogger.log(`[${requestId}] 🎯 DEBUG: Token resolution result:`, tokenInfo ? {
-                name: tokenInfo.TOKEN_NAME || tokenInfo.NAME,
-                symbol: tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL,
+            const tokenInfo = await searchTokenDynamically(cryptoToResolve, runtime);
+            elizaLogger.log(`[${requestId}] 🎯 DEBUG: Dynamic token search result:`, tokenInfo ? {
+                name: tokenInfo.TOKEN_NAME,
+                symbol: tokenInfo.TOKEN_SYMBOL,
                 id: tokenInfo.TOKEN_ID
             } : 'null');
             
             // FORCE VISIBLE LOGGING
-            console.log(`🎯 Token resolved:`, tokenInfo ? {
-                name: tokenInfo.TOKEN_NAME || tokenInfo.NAME,
-                symbol: tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL,
+            console.log(`🎯 Token found dynamically:`, tokenInfo ? {
+                name: tokenInfo.TOKEN_NAME,
+                symbol: tokenInfo.TOKEN_SYMBOL,
                 id: tokenInfo.TOKEN_ID
             } : 'null');
             console.log(`🔚 END DEBUG [${requestId}]\n`);

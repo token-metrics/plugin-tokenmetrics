@@ -86,7 +86,19 @@ CRITICAL EXAMPLES:
 - "DOGE daily OHLCV" → {cryptocurrency: "Dogecoin", symbol: "DOGE", analysisType: "all"}
 - "Solana trend analysis" → {cryptocurrency: "Solana", symbol: "SOL", analysisType: "trend_analysis"}
 
-Extract the request details from the user's message.
+Extract the request details from the user's message and respond in XML format:
+
+<response>
+<cryptocurrency>exact cryptocurrency name or symbol from user's message</cryptocurrency>
+<symbol>token symbol if mentioned</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<token_name>full name of the token</token_name>
+<startDate>start date in YYYY-MM-DD format</startDate>
+<endDate>end date in YYYY-MM-DD format</endDate>
+<limit>number of data points to return</limit>
+<page>page number</page>
+<analysisType>swing_trading|trend_analysis|technical_indicators|all</analysisType>
+</response>
 `;
 
 // Regex fallback function for cryptocurrency extraction
@@ -198,12 +210,21 @@ export const getDailyOhlcvAction: Action = {
             const requestId = generateRequestId();
             console.log(`[${requestId}] Processing daily OHLCV request...`);
             
-            // Extract structured request using AI
+            // Extract structured request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = DAILY_OHLCV_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const ohlcvRequest = await extractTokenMetricsRequest<DailyOhlcvRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                DAILY_OHLCV_EXTRACTION_TEMPLATE,
+                enhancedTemplate,
                 DailyOhlcvRequestSchema,
                 requestId
             );

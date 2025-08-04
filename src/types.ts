@@ -413,24 +413,7 @@ export interface ResistanceSupportResponse extends TokenMetricsBaseResponse {
   data: ResistanceSupportData[];
 }
 
-// TMAIRequest/Response (POST endpoint)
-export interface TMAIRequest {
-  messages: Array<{
-    user: string;
-  }>;
-}
 
-export interface TMAIData {
-  response: string;
-  confidence?: number;
-  related_tokens?: TokenInfo[];
-  analysis?: any;
-  timestamp?: string;
-}
-
-export interface TMAIResponse extends TokenMetricsBaseResponse {
-  data: TMAIData;
-}
 
 // SentimentRequest/Response
 export interface SentimentRequest {
