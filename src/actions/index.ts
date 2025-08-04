@@ -9,7 +9,7 @@ export { getResistanceSupportAction } from "./getResistanceSupportAction";
 export { getTradingSignalsAction } from "./getTradingSignalsAction";
 export { getHourlyOhlcvAction } from "./getHourlyOhlcvAction";
 export { getDailyOhlcvAction } from "./getDailyOhlcvAction";
-export { getTmaiAction } from "./getTmaiAction";
+
 export { getTokensAction } from "./getTokensAction";
 export { getTopMarketCapAction } from "./getTopMarketCapAction";
 export { getTraderGradesAction } from "./getTraderGradesAction";
@@ -42,7 +42,7 @@ import { getResistanceSupportAction } from "./getResistanceSupportAction";
 import { getMoonshotTokensAction } from "./getMoonshotTokensAction";
 import { getScenarioAnalysisAction } from "./getScenarioAnalysisAction";
 import { getCorrelationAction } from "./getCorrelationAction";
-import { getTmaiAction } from "./getTmaiAction";
+
 import { getIndicesAction } from "./getIndicesAction";
 import { getIndicesHoldingsAction } from "./getIndicesHoldingsAction";
 import { getIndicesPerformanceAction } from "./getIndicesPerformanceAction";
@@ -65,7 +65,7 @@ export const enhancedTokenmetricsActions = [
     getMoonshotTokensAction,
     getScenarioAnalysisAction,
     getCorrelationAction,
-    getTmaiAction,
+
     getIndicesAction,
     getIndicesHoldingsAction,
     getIndicesPerformanceAction,

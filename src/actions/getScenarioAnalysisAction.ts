@@ -262,11 +262,12 @@ Please analyze the CURRENT user message above and extract the relevant informati
             // STEP 3.5: Fix misclassified AI extractions (symbols classified as cryptocurrency names)
             if (scenarioRequest?.cryptocurrency && !scenarioRequest?.symbol) {
                 const crypto = scenarioRequest.cryptocurrency.toUpperCase();
-                // Check if the "cryptocurrency" is actually a symbol
-                const commonSymbols = ['BTC', 'ETH', 'DOGE', 'AVAX', 'SOL', 'ADA', 'DOT', 'MATIC', 'LINK', 'UNI', 'LTC', 'XRP', 'BNB', 'USDT', 'USDC', 'ATOM', 'NEAR', 'FTM', 'ALGO', 'VET', 'ICP', 'FLOW', 'SAND', 'MANA', 'CRO', 'APE', 'SHIB', 'PEPE', 'WIF', 'BONK'];
+                // Check if the "cryptocurrency" is actually a symbol using pattern matching
+                // Symbols are typically 3-10 characters, all uppercase, alphanumeric
+                const symbolPattern = /^[A-Z0-9]{3,10}$/;
                 
-                if (commonSymbols.includes(crypto)) {
-                    console.log(`[${requestId}] 🔧 Fixing misclassified extraction: "${scenarioRequest.cryptocurrency}" is a symbol, not a cryptocurrency name`);
+                if (symbolPattern.test(crypto)) {
+                    console.log(`[${requestId}] 🔧 Fixing misclassified extraction: "${scenarioRequest.cryptocurrency}" appears to be a symbol, not a cryptocurrency name`);
                     scenarioRequest = {
                         ...scenarioRequest,
                         cryptocurrency: undefined,

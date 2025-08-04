@@ -3,14 +3,14 @@
 <div align="center">
   <h3>🎯 Comprehensive Cryptocurrency Analysis Plugin</h3>
   <p>Professional-grade crypto market data, AI insights, and trading signals for ElizaOS agents</p>
-  <p><strong>✅ ElizaOS 1.x Compatible</strong> | <strong>🔥 21 Comprehensive Endpoints</strong> | <strong>🧠 AI-Powered Analysis</strong></p>
+  <p><strong>✅ ElizaOS 1.x Compatible</strong> | <strong>🔥 19 Comprehensive Endpoints</strong> | <strong>🧠 AI-Powered Analysis</strong></p>
 </div>
 
 ---
 
 ## 🌟 Overview
 
-The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **21 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
+The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **19 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
 
 **🎯 Perfect for**: Trading bots, portfolio management agents, research assistants, and crypto analysis tools.
 
@@ -59,7 +59,7 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 | Feature | Benefit | Icon |
 |---------|---------|------|
 | **ElizaOS 1.x Compatible** | Latest architecture with async callbacks & enhanced state management | ✅ |
-| **Most Comprehensive** | 21 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
+| **Most Comprehensive** | 19 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
 | **AI-Powered** | Natural language understanding + TokenMetrics AI integration | 🧠 |
 | **Professional Grade** | Investment-grade analysis, not just raw data | 📊 |
 | **Zero Learning Curve** | Natural language queries, no API knowledge needed | ⚡ |
@@ -75,21 +75,21 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 - 💰 **Real-time Prices**: Live cryptocurrency price data with 24h changes
 - 👑 **Market Cap Rankings**: Top cryptocurrencies by market capitalization
 - 📡 **Trading Signals**: AI-generated BUY/SELL/HOLD recommendations with confidence scores
-- 📊 **Market Metrics**: Overall market sentiment, volume, and trend analysis
+- 📊 **Market Metrics**: Overall market volume and trend analysis
 - 📉 **Technical Analysis**: Resistance/support levels, OHLCV data (hourly/daily)
 - 🎯 **Investment Grades**: Long-term investment recommendations (percentage-based scoring)
 - ⚠️ **Risk Assessment**: Quantitative risk metrics, volatility analysis, and risk scores
-- 😊 **Sentiment Analysis**: Social media and news sentiment from Twitter, Reddit, News
+
 - 🔗 **Correlation Analysis**: Portfolio diversification insights and correlation matrices
 - 📉 **Hourly Trading Signals**: Frequent AI signals for active trading and scalping
 - 🔢 **Quantmetrics**: Risk metrics (Sharpe ratio, volatility, max drawdown)
-- 🌍 **Market Metrics**: Overall market sentiment and dominance data
+- 🌍 **Market Metrics**: Overall market dominance data
 
 ### 📈 Advanced Analysis
 - 📉 **Technical Analysis**: Resistance/support levels, OHLCV data (hourly/daily)
 - 🎯 **Investment Grades**: Long-term investment recommendations (percentage-based scoring)
 - ⚠️ **Risk Assessment**: Quantitative risk metrics, volatility analysis, and risk scores
-- 😊 **Sentiment Analysis**: Social media and news sentiment from Twitter, Reddit, News
+
 - 🔗 **Correlation Analysis**: Portfolio diversification insights and correlation matrices
 
 ### 🆕 **NEW: Crypto Indices Features**
@@ -111,7 +111,7 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 
 ## 🔌 API Endpoints Coverage
 
-### 📊 Complete TokenMetrics Integration (21 Endpoints)
+### 📊 Complete TokenMetrics Integration (19 Endpoints)
 
 | Category | Endpoint | Action | Description |
 |----------|----------|---------|-------------|
@@ -126,14 +126,14 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 | **📊 Technical Analysis** | `/daily-ohlcv` | `getDailyOhlcvAction` | Daily OHLCV price data |
 | | `/hourly-ohlcv` | `getHourlyOhlcvAction` | Hourly OHLCV price data |
 | | `/resistance-support` | `getResistanceSupportAction` | Technical support/resistance levels |
-| **🏦 Market & Indices** | `/market-metrics` | `getMarketMetricsAction` | Overall market sentiment and metrics |
+| **🏦 Market & Indices** | `/market-metrics` | `getMarketMetricsAction` | Overall market metrics |
 | | `/indices` | `getIndicesAction` | Crypto market indices |
 | | `/indices-holdings` | `getIndicesHoldingsAction` | Index composition and holdings |
 | | `/indices-performance` | `getIndicesPerformanceAction` | Historical index performance |
 | **🤖 AI & Analytics** | `/ai-reports` | `getAiReportsAction` | AI-generated comprehensive reports |
-| | `/tmai` | `getTmaiAction` | TokenMetrics AI assistant |
+
 | | `/scenario-analysis` | `getScenarioAnalysisAction` | Price prediction scenarios |
-| **📰 Market Intelligence** | `/sentiment` | `getSentimentAction` | Social media and news sentiment |
+
 | | `/crypto-investors` | `getCryptoInvestorsAction` | Influential crypto investors data |
 | **🔗 Portfolio Analysis** | `/correlation` | `getCorrelationAction` | Token correlation for diversification |
 
@@ -159,7 +159,7 @@ Each endpoint supports intelligent natural language processing:
 "Get daily OHLCV data for Ethereum"
 
 // Market Intelligence
-"What's the overall crypto market sentiment?"
+"What are the overall crypto market metrics?"
 "Show me AI analysis for the current market"
 ```
 
@@ -187,7 +187,7 @@ plugin-tokenmetrics/
 │   ├── 📄 index.ts                 # Main plugin entry point (1.x compatible)
 │   ├── 📄 types.ts                 # TypeScript type definitions
 │   │
-│   ├── 📂 actions/                 # Action implementations (21 endpoints)
+│   ├── 📂 actions/                 # Action implementations (19 endpoints)
 │   │   ├── 📄 aiActionHelper.ts    # Shared AI helper functions
 │   │   ├── 📄 getPriceAction.ts    # Real-time price data
 │   │   ├── 📄 getTradingSignalsAction.ts      # Trading signals
@@ -199,7 +199,7 @@ plugin-tokenmetrics/
 │   │   ├── 📄 getIndicesHoldingsAction.ts     # Index holdings
 │   │   ├── 📄 getIndicesPerformanceAction.ts  # Index performance
 │   │   ├── 📄 getAiReportsAction.ts           # AI-generated reports
-│   │   ├── 📄 getSentimentAction.ts           # Sentiment analysis
+
 │   │   ├── 📄 getCorrelationAction.ts         # Correlation analysis
 │   │   ├── 📄 getDailyOhlcvAction.ts          # Daily OHLCV data
 │   │   ├── 📄 getHourlyOhlcvAction.ts         # Hourly OHLCV data
@@ -207,7 +207,7 @@ plugin-tokenmetrics/
 │   │   ├── 📄 getResistanceSupportAction.ts   # Technical levels
 │   │   ├── 📄 getScenarioAnalysisAction.ts    # Price scenarios
 │   │   ├── 📄 getCryptoInvestorsAction.ts     # Investor data
-│   │   ├── 📄 getTmaiAction.ts                # TokenMetrics AI
+
 │   │   ├── 📄 getTokensAction.ts              # Token database
 │   │   └── 📄 getTopMarketCapAction.ts        # Top tokens
 │   │
@@ -230,7 +230,7 @@ plugin-tokenmetrics/
 ### 🏗️ Architecture Overview
 
 #### **Core Components**
-- **`src/index.ts`**: Main plugin export with all 21 actions (1.x compatible)
+- **`src/index.ts`**: Main plugin export with all 19 actions (1.x compatible)
 - **`src/types.ts`**: Comprehensive TypeScript definitions
 - **`src/actions/`**: Individual action implementations for each TokenMetrics endpoint
 - **`src/core/`**: Advanced features like NLP processing and memory management
@@ -481,7 +481,7 @@ Your ElizaOS agent can now understand and respond to queries like:
 📊 "Should I buy Ethereum? Show me the trading signals"
 ⏰ "Get hourly trading signals for Bitcoin"
 ⚠️ "How risky is Solana? Show me the volatility metrics"
-😊 "What's the overall crypto market sentiment today?"
+📊 "What are the overall crypto market metrics today?"
 🔗 "Compare Bitcoin and Ethereum correlation"
 📈 "Show me resistance and support levels for BTC"
 📝 "Generate an AI report for Bitcoin analysis"
@@ -489,7 +489,7 @@ Your ElizaOS agent can now understand and respond to queries like:
 📉 "Analyze the hourly OHLCV data for Bitcoin"
 🔮 "Show me scenario analysis for Ethereum price predictions"
 💼 "Which crypto investors are buying Bitcoin?"
-😊 "What's the sentiment around Dogecoin on social media?"
+📈 "What's the AI analysis for Dogecoin?"
 📊 "Show me available crypto indices"
 🏦 "What are the holdings of crypto index 1?"
 📈 "Show me the performance history of index 2"
@@ -542,15 +542,13 @@ import { tokenmetricsPlugin } from "@elizaos/plugin-tokenmetrics";
 | 12 | **getAiReports** | AI | AI-generated reports | Research | 📝 |
 | 13 | **getCryptoInvestors** | Investment | Investor insights | Market intelligence | 💼 |
 | 14 | **getResistanceSupport** | Technical | Key price levels | Technical trading | 📈 |
-| 15 | **getSentiment** | AI | Social sentiment | Sentiment analysis | 😊 |
-| 16 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
-| 17 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
-| 18 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
-| 19 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
-| 20 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
-| 21 | **getTMAI** | AI | TMAI AI insights | Advanced AI analysis | 🤖 |
+| 15 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
+| 16 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
+| 17 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
+| 18 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
+| 19 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
 
-**🎯 Total: 21 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
+**🎯 Total: 19 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
 
 ---
 
@@ -683,13 +681,13 @@ npm install @elizaos/core @elizaos/agent
 ```
 
 ### 🧪 Manual Testing Procedures
-Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 21 endpoints:
+Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 19 endpoints:
 
 ```bash
 # Test basic functionality
 "What's Bitcoin's price?"
 "Show me trading signals for Ethereum"
-"Get market sentiment data"
+"Get market metrics data"
 
 # Test advanced features  
 "Compare BTC and ETH correlation"
@@ -729,7 +727,7 @@ npm run format
 - 📡 **Real-time trading signals** with confidence scores
 - ⏰ **Hourly trading signals** for active trading and scalping strategies
 - 📊 **Resistance and support levels** for entry/exit points
-- 😊 **Market sentiment tracking** for timing decisions
+- 📊 **Market metrics tracking** for timing decisions
 
 ### 💼 Portfolio Managers
 - 🎯 **Investment grades** for long-term holdings assessment
@@ -746,7 +744,7 @@ npm run format
 ### 👨‍💼 Casual Investors
 - 💰 **Simple price queries** in natural language
 - 💡 **Easy-to-understand recommendations** with explanations
-- 📊 **Market overview and sentiment** for general awareness
+- 📊 **Market overview and metrics** for general awareness
 - 📚 **Educational explanations** for learning about crypto metrics
 
 ### 🤖 AI Agent Developers
@@ -903,7 +901,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 - 📱 **Mobile optimization** for mobile ElizaOS clients
 
 ### 📅 Version History
-- **v1.0.0**: Initial release with 21 TokenMetrics endpoints
+- **v1.0.0**: Initial release with 19 TokenMetrics endpoints
 - **v0.9.0**: Beta release with core functionality
 - **v0.8.0**: Alpha release for testing
 

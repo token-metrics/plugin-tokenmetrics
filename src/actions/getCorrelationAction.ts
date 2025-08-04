@@ -14,7 +14,8 @@ import {
     callTokenMetricsAPI,
     formatCurrency,
     formatPercentage,
-    generateRequestId
+    generateRequestId,
+    resolveTokenSmart
 } from "./aiActionHelper";
 import type { CorrelationResponse } from "../types";
 
@@ -30,6 +31,34 @@ const CorrelationRequestSchema = z.object({
 });
 
 type CorrelationRequest = z.infer<typeof CorrelationRequestSchema>;
+
+// AI extraction template for correlation requests
+const CORRELATION_EXTRACTION_TEMPLATE = `Extract correlation analysis request information from the user's message.
+
+The user wants to analyze correlations between a specific cryptocurrency and other tokens in the market.
+
+Instructions:
+Look for CORRELATION requests, such as:
+- Token correlation analysis ("Get correlation for Bitcoin", "BTC correlations")
+- Cross-asset correlation ("How does ETH correlate with other tokens?")
+- Portfolio diversification ("Show me DOGE correlation analysis")
+- Risk analysis ("Correlation data for Solana")
+
+EXAMPLES:
+- "Get correlation analysis for DEGEN?" → cryptocurrency: "DEGEN"
+- "Show me ETH correlations" → cryptocurrency: "ETH" 
+- "How does Bitcoin correlate with other tokens?" → cryptocurrency: "Bitcoin"
+- "BONK correlation data" → cryptocurrency: "BONK"
+- "Correlation analysis for Solana" → cryptocurrency: "Solana"
+
+Extract the request details from the user's message and respond in XML format:
+<response>
+<cryptocurrency>exact cryptocurrency name or symbol from user's message</cryptocurrency>
+<symbol>token symbol if mentioned</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<analysisType>general|diversification|hedging|risk_management</analysisType>
+<limit>number of correlations to return (default: 20)</limit>
+</response>`;
 
 // Template for extracting correlation information (Updated to XML format)
 const correlationTemplate = `Extract correlation analysis request information from the message.
@@ -168,14 +197,56 @@ export const getCorrelationAction: Action = {
                 state = await runtime.composeState(message);
             }
 
-            // STEP 2: Build API parameters
+            // STEP 2: Extract token information from user message
+            const userMessage = message.content?.text || "";
+            const enhancedTemplate = CORRELATION_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
+            let correlationRequest: any = null;
+            try {
+                correlationRequest = await extractTokenMetricsRequest<CorrelationRequest>(
+                    runtime,
+                    message,
+                    state,
+                    enhancedTemplate,
+                    CorrelationRequestSchema,
+                    requestId
+                );
+            } catch (error) {
+                elizaLogger.log(`⚠️ AI extraction failed, proceeding with general correlation data`);
+            }
+
+            // STEP 3: Resolve token if specified
+            let tokenId = null;
+            if (correlationRequest?.cryptocurrency) {
+                try {
+                    const resolvedToken = await resolveTokenSmart(correlationRequest.cryptocurrency, runtime);
+                    if (resolvedToken?.TOKEN_ID) {
+                        tokenId = resolvedToken.TOKEN_ID;
+                        elizaLogger.log(`✅ Resolved "${correlationRequest.cryptocurrency}" to token ID: ${tokenId}`);
+                    }
+                } catch (error) {
+                    elizaLogger.log(`⚠️ Token resolution failed for "${correlationRequest.cryptocurrency}"`);
+                }
+            }
+
+            // STEP 4: Build API parameters
             const apiParams: any = {
-                limit: 20,
-                page: 1
+                limit: correlationRequest?.limit || 20,
+                page: correlationRequest?.page || 1
             };
             
-            // STEP 3: Fetch correlation data
-            elizaLogger.log(`📡 Fetching correlation data`);
+            // Add token_id if we have one
+            if (tokenId) {
+                apiParams.token_id = tokenId;
+                elizaLogger.log(`🎯 Fetching correlation data for token ID: ${tokenId}`);
+            } else {
+                elizaLogger.log(`📡 Fetching general correlation data`);
+            }
+            
+            // STEP 5: Fetch correlation data
             const correlationData = await callTokenMetricsAPI('/v2/correlation', apiParams, runtime);
             
             if (!correlationData) {
@@ -211,6 +282,11 @@ Please try again in a few moments.`,
             const correlations = Array.isArray(correlationData) ? correlationData : (correlationData.data || []);
             
             elizaLogger.log(`🔍 Received ${correlations.length} correlation data points`);
+            
+            // Debug: Log first correlation item to understand structure
+            if (correlations.length > 0) {
+                elizaLogger.log(`🔬 Sample correlation data structure:`, JSON.stringify(correlations[0], null, 2));
+            }
 
             // STEP 4: Format and present the results
             const responseText = formatCorrelationResponse(correlations);
@@ -296,12 +372,31 @@ function formatCorrelationResponse(correlations: any[]): string {
         const topCorrelations = correlations.slice(0, 10);
         response += `📈 **Top Correlations**:\n`;
         
-        topCorrelations.forEach((corr, index) => {
-            const token1 = corr.TOKEN1_SYMBOL || corr.SYMBOL1 || 'TOKEN1';
-            const token2 = corr.TOKEN2_SYMBOL || corr.SYMBOL2 || 'TOKEN2';
-            const correlation = corr.CORRELATION || corr.CORR_VALUE || 0;
+        let correlationCount = 0;
+        
+        topCorrelations.forEach((corrData, index) => {
+            const mainToken = corrData.TOKEN_NAME || corrData.TOKEN_SYMBOL || 'Unknown Token';
+            const topCorrelations = corrData.TOP_CORRELATION || [];
             
-            response += `${index + 1}. **${token1}** ↔ **${token2}**: ${correlation.toFixed(3)}\n`;
+            if (mainToken === 'Unknown Token' || !Array.isArray(topCorrelations) || topCorrelations.length === 0) {
+                elizaLogger.log(`⚠️ Skipping correlation entry ${index + 1}: Invalid data for ${mainToken}`);
+                return;
+            }
+            
+            // Show top 3 correlations for this token
+            const topThree = topCorrelations.slice(0, 3);
+            topThree.forEach((corrItem, subIndex) => {
+                if (correlationCount >= 10) return; // Limit total display to 10
+                
+                const correlatedToken = corrItem.token || 'Unknown Token';
+                const correlationValue = corrItem.correlation || 0;
+                
+                if (correlatedToken !== 'Unknown Token' && correlationValue !== 0) {
+                    correlationCount++;
+                    const direction = correlationValue > 0 ? '📈' : '📉';
+                    response += `${correlationCount}. ${direction} **${mainToken}** ↔ **${correlatedToken}**: ${correlationValue.toFixed(3)}\n`;
+                }
+            });
         });
     }
 

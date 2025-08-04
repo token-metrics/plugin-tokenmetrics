@@ -7,8 +7,7 @@ import {
     formatCurrency,
     formatPercentage,
     generateRequestId,
-    resolveTokenSmart,
-    getWellKnownTokenId
+    resolveTokenSmart
 } from "./aiActionHelper";
 import type { HourlyOhlcvResponse } from "../types";
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
@@ -184,12 +183,21 @@ export const getHourlyOhlcvAction: Action = {
                 state = await runtime.composeState(message);
             }
             
-            // Extract structured request using AI
+            // Extract structured request using AI with user message injection
+            const userMessage = message.content?.text || "";
+            
+            // Inject user message directly into template
+            const enhancedTemplate = hourlyOhlcvTemplate + `
+
+USER MESSAGE: "${userMessage}"
+
+Please analyze the CURRENT user message above and extract the relevant information.`;
+
             const ohlcvRequest = await extractTokenMetricsRequest<HourlyOhlcvRequest>(
                 runtime,
                 message,
                 state || await runtime.composeState(message),
-                hourlyOhlcvTemplate,
+                enhancedTemplate,
                 HourlyOhlcvRequestSchema,
                 requestId
             );
@@ -242,38 +250,48 @@ export const getHourlyOhlcvAction: Action = {
                     elizaLogger.log(`[${requestId}] ❌ Dynamic resolution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 }
                 
-                // Second: Fallback to hardcoded token ID resolution for top tokens
+                // Second: Fallback to dynamic token search using /tokens endpoint
                 if (!resolvedToken) {
-                    elizaLogger.log(`[${requestId}] 🔄 Step 2: Trying hardcoded well-known token resolution...`);
+                    elizaLogger.log(`[${requestId}] 🔄 Step 2: Trying dynamic token search via /tokens endpoint...`);
                     const symbol = processedRequest.cryptocurrency.toLowerCase();
-                    const wellKnownTokenId = getWellKnownTokenId(symbol);
-                    if (wellKnownTokenId) {
-                        processedRequest.token_id = wellKnownTokenId;
-                        elizaLogger.log(`[${requestId}] ✅ Hardcoded resolution successful: "${symbol}" → Token ID ${wellKnownTokenId}`);
-                        
-                        // Use hardcoded symbol-to-name mapping for display
-                        const symbolToNameMap: Record<string, string> = {
-                            'btc': 'Bitcoin', 'eth': 'Ethereum', 'ada': 'Cardano',
-                            'dot': 'Polkadot', 'link': 'Chainlink', 'matic': 'Polygon',
-                            'sol': 'Solana', 'avax': 'Avalanche', 'atom': 'Cosmos',
-                            'algo': 'Algorand', 'xlm': 'Stellar', 'vet': 'VeChain',
-                            'icp': 'Internet Computer', 'ftm': 'Fantom', 'sand': 'The Sandbox',
-                            'mana': 'Decentraland', 'grt': 'The Graph', 'aave': 'Aave',
-                            'uni': 'Uniswap', 'shib': 'Shiba Inu'
+                    
+                    try {
+                        // Search for token using the /tokens endpoint dynamically
+                        const tokenSearchParams = {
+                            symbol: symbol.toUpperCase(),
+                            limit: 1
                         };
-                        finalTokenName = symbolToNameMap[symbol] || processedRequest.cryptocurrency;
-                    } else {
-                        elizaLogger.log(`[${requestId}] ⚠️ No hardcoded mapping found for: "${symbol}"`);
+                        const tokenSearchData = await callTokenMetricsAPI('/v2/tokens', tokenSearchParams, runtime);
+                        
+                        if (tokenSearchData?.data && tokenSearchData.data.length > 0) {
+                            const foundToken = tokenSearchData.data[0];
+                            processedRequest.token_id = foundToken.TOKEN_ID || foundToken.ID;
+                            elizaLogger.log(`[${requestId}] ✅ Dynamic search successful: "${symbol}" → Token ID ${processedRequest.token_id}`);
+                            
+                            // Set resolved token data for display
+                            resolvedToken = {
+                                TOKEN_ID: foundToken.TOKEN_ID || foundToken.ID,
+                                TOKEN_NAME: foundToken.TOKEN_NAME || foundToken.NAME,
+                                TOKEN_SYMBOL: foundToken.TOKEN_SYMBOL || foundToken.SYMBOL
+                            };
                     }
+                } catch (error) {
+                        elizaLogger.log(`[${requestId}] ❌ Dynamic token search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
+                }
+                
+                // Third: Final fallback - use symbol for API call
+                if (!resolvedToken) {
+                    elizaLogger.log(`[${requestId}] 🔄 Step 3: Using symbol-based API call as final fallback...`);
+                    // Set up for symbol-based API call - no hardcoded mappings
+                    processedRequest.symbol = processedRequest.cryptocurrency.toUpperCase();
+                    elizaLogger.log(`[${requestId}] 📝 Will use symbol parameter: ${processedRequest.symbol}`);
                 }
             }
             
-            // Update the cryptocurrency name for API call
-            processedRequest.cryptocurrency = finalTokenName;
-            
             elizaLogger.log(`[${requestId}] 🎯 Final token for API call: "${processedRequest.cryptocurrency}"`);
-            elizaLogger.log(`[${requestId}] 🏷️ Display name will be: "${finalTokenName}"`);
-            elizaLogger.log(`[${requestId}] 🆔 Token ID: ${processedRequest.token_id || 'none'}`)
+            elizaLogger.log(`[${requestId}] 🆔 Token ID: ${processedRequest.token_id || 'none'}`);
+            elizaLogger.log(`[${requestId}] 🔤 Symbol: ${processedRequest.symbol || 'none'}`)
             
             // Build API parameters - Use token_id for precise token identification
             const apiParams: Record<string, any> = {

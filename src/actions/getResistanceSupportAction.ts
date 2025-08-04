@@ -15,10 +15,135 @@ import {
     callTokenMetricsAPI,
     formatCurrency,
     formatPercentage,
-    generateRequestId,
-    resolveTokenSmart
+    generateRequestId
 } from "./aiActionHelper";
 import type { ResistanceSupportResponse } from "../types";
+
+/**
+ * Search for token using the /tokens endpoint dynamically with improved prioritization
+ */
+async function searchTokenDynamically(query: string, runtime: IAgentRuntime): Promise<any | null> {
+    try {
+        elizaLogger.log(`🔍 Searching for token: "${query}" using /tokens endpoint`);
+        
+        // Try searching by symbol first - get multiple results for better selection
+        let searchParams: any = {
+            symbol: query.toUpperCase(),
+            limit: 5  // Get multiple results to find the most popular one
+        };
+        
+        let tokenData = await callTokenMetricsAPI('/v2/tokens', searchParams, runtime);
+        
+        if (tokenData?.data && tokenData.data.length > 0) {
+            // For major cryptocurrencies, check if we have the real token among results
+            const majorCryptoMapping: Record<string, string> = {
+                'BTC': 'Bitcoin',
+                'ETH': 'Ethereum',
+                'DOGE': 'Dogecoin',
+                'ADA': 'Cardano',
+                'SOL': 'Solana',
+                'AVAX': 'Avalanche',
+                'MATIC': 'Polygon',
+                'DOT': 'Polkadot',
+                'LINK': 'Chainlink',
+                'UNI': 'Uniswap',
+                'BONK': 'Bonk'
+            };
+            
+            const expectedName = majorCryptoMapping[query.toUpperCase()];
+            
+            // If this is a major crypto, look for the exact match first
+            if (expectedName) {
+                const exactMatch = tokenData.data.find((token: any) => 
+                    token.TOKEN_NAME?.toLowerCase() === expectedName.toLowerCase()
+                );
+                if (exactMatch) {
+                    elizaLogger.log(`🎯 Found exact major crypto match: ${exactMatch.TOKEN_NAME} (${exactMatch.TOKEN_SYMBOL}) - ID: ${exactMatch.TOKEN_ID}`);
+                    return exactMatch;
+                }
+            }
+            
+            // If multiple results, prioritize based on criteria:
+            // 1. Exact symbol match
+            // 2. More exchanges (higher liquidity)
+            // 3. More categories (more established)
+            let bestToken = tokenData.data[0];
+            
+            if (tokenData.data.length > 1) {
+                elizaLogger.log(`🔍 Multiple tokens found, selecting best match...`);
+                
+                // Sort by priority: exact symbol match, exchange count, category count
+                const sortedTokens = tokenData.data.sort((a: any, b: any) => {
+                    // Priority 1: Exact symbol match
+                    const aExactMatch = a.TOKEN_SYMBOL?.toUpperCase() === query.toUpperCase() ? 1 : 0;
+                    const bExactMatch = b.TOKEN_SYMBOL?.toUpperCase() === query.toUpperCase() ? 1 : 0;
+                    if (aExactMatch !== bExactMatch) return bExactMatch - aExactMatch;
+                    
+                    // Priority 2: More exchanges (higher liquidity)
+                    const aExchanges = a.EXCHANGE_LIST?.length || 0;
+                    const bExchanges = b.EXCHANGE_LIST?.length || 0;
+                    if (aExchanges !== bExchanges) return bExchanges - aExchanges;
+                    
+                    // Priority 3: More categories (more established)
+                    const aCategories = a.CATEGORY_LIST?.length || 0;
+                    const bCategories = b.CATEGORY_LIST?.length || 0;
+                    return bCategories - aCategories;
+                });
+                
+                bestToken = sortedTokens[0];
+                elizaLogger.log(`🎯 Selected best token: ${bestToken.TOKEN_NAME} (${bestToken.TOKEN_SYMBOL}) - ${bestToken.EXCHANGE_LIST?.length || 0} exchanges`);
+            }
+            
+            elizaLogger.log(`✅ Found token by symbol: ${bestToken.TOKEN_NAME} (${bestToken.TOKEN_SYMBOL}) - ID: ${bestToken.TOKEN_ID}`);
+            return bestToken;
+        }
+        
+        // If not found by symbol, try searching by name
+        // For major cryptocurrencies, also try the full name
+        const majorCryptoNames: Record<string, string> = {
+            'BTC': 'Bitcoin',
+            'ETH': 'Ethereum', 
+            'DOGE': 'Dogecoin',
+            'ADA': 'Cardano',
+            'SOL': 'Solana',
+            'AVAX': 'Avalanche',
+            'MATIC': 'Polygon',
+            'DOT': 'Polkadot',
+            'LINK': 'Chainlink',
+            'UNI': 'Uniswap',
+            'BONK': 'Bonk'
+        };
+        
+        const searchName = majorCryptoNames[query.toUpperCase()] || query;
+        
+        searchParams = {
+            token_name: searchName,
+            limit: 10  // Get more results to find best match
+        } as any;
+        
+        tokenData = await callTokenMetricsAPI('/v2/tokens', searchParams, runtime);
+        
+        if (tokenData?.data && tokenData.data.length > 0) {
+            // Find best match by checking if query matches token name or symbol
+            const queryLower = query.toLowerCase();
+            const bestMatch = tokenData.data.find((token: any) => 
+                token.TOKEN_NAME?.toLowerCase().includes(queryLower) ||
+                token.TOKEN_SYMBOL?.toLowerCase() === queryLower ||
+                token.TOKEN_NAME?.toLowerCase() === queryLower
+            ) || tokenData.data[0]; // Fallback to first result
+            
+            elizaLogger.log(`✅ Found token by name: ${bestMatch.TOKEN_NAME} (${bestMatch.TOKEN_SYMBOL}) - ID: ${bestMatch.TOKEN_ID}`);
+            return bestMatch;
+        }
+        
+        elizaLogger.log(`❌ No token found for query: "${query}"`);
+        return null;
+        
+    } catch (error) {
+        elizaLogger.error(`❌ Error searching for token "${query}":`, error);
+        return null;
+    }
+}
 
 // Zod schema for resistance support request validation
 const ResistanceSupportRequestSchema = z.object({
@@ -263,26 +388,25 @@ Please analyze the CURRENT user message above and extract the relevant informati
                 }
             }
             
-            // Fix symbol-as-cryptocurrency issue: if cryptocurrency looks like a symbol, convert it
+            // Fix symbol-as-cryptocurrency issue: if cryptocurrency looks like a symbol, resolve it dynamically
             if (processedRequest.cryptocurrency && !processedRequest.symbol) {
-                const symbolMapping: Record<string, { name: string; symbol: string }> = {
-                    'btc': { name: 'Bitcoin', symbol: 'BTC' },
-                    'eth': { name: 'Ethereum', symbol: 'ETH' },
-                    'doge': { name: 'Dogecoin', symbol: 'DOGE' },
-                    'sol': { name: 'Solana', symbol: 'SOL' },
-                    'avax': { name: 'Avalanche', symbol: 'AVAX' },
-                    'ada': { name: 'Cardano', symbol: 'ADA' },
-                    'dot': { name: 'Polkadot', symbol: 'DOT' },
-                    'link': { name: 'Chainlink', symbol: 'LINK' },
-                    'matic': { name: 'Polygon', symbol: 'MATIC' },
-                    'bnb': { name: 'BNB', symbol: 'BNB' }
-                };
+                // Check if it looks like a symbol (short, uppercase)
+                const isLikelySymbol = processedRequest.cryptocurrency.length <= 5 && 
+                                     processedRequest.cryptocurrency.toUpperCase() === processedRequest.cryptocurrency;
                 
-                const cryptoLower = processedRequest.cryptocurrency.toLowerCase();
-                if (symbolMapping[cryptoLower]) {
-                    console.log(`[${requestId}] Converting symbol "${processedRequest.cryptocurrency}" to full name "${symbolMapping[cryptoLower].name}"`);
-                    processedRequest.cryptocurrency = symbolMapping[cryptoLower].name;
-                    processedRequest.symbol = symbolMapping[cryptoLower].symbol;
+                if (isLikelySymbol) {
+                    try {
+                        console.log(`[${requestId}] Cryptocurrency "${processedRequest.cryptocurrency}" looks like a symbol, resolving dynamically...`);
+                        
+                        const foundToken = await searchTokenDynamically(processedRequest.cryptocurrency, runtime);
+                        if (foundToken) {
+                            console.log(`[${requestId}] ✅ Resolved symbol "${processedRequest.cryptocurrency}" to "${foundToken.TOKEN_NAME}" (${foundToken.TOKEN_SYMBOL})`);
+                            processedRequest.cryptocurrency = foundToken.TOKEN_NAME;
+                            processedRequest.symbol = foundToken.TOKEN_SYMBOL;
+                        }
+                    } catch (error) {
+                        console.log(`[${requestId}] ❌ Dynamic symbol resolution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
                 }
             }
             
@@ -297,11 +421,11 @@ Please analyze the CURRENT user message above and extract the relevant informati
                 
                 if (!isLikelySymbol) {
                     try {
-                        resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+                        resolvedToken = await searchTokenDynamically(processedRequest.cryptocurrency, runtime);
                         if (resolvedToken) {
-                            processedRequest.token_id = resolvedToken.token_id;
-                            processedRequest.symbol = resolvedToken.symbol;
-                            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.symbol} (ID: ${resolvedToken.token_id})`);
+                            processedRequest.token_id = resolvedToken.TOKEN_ID;
+                            processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+                            console.log(`[${requestId}] Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.TOKEN_SYMBOL} (ID: ${resolvedToken.TOKEN_ID})`);
                         } else {
                             console.log(`[${requestId}] Token resolution returned null for "${processedRequest.cryptocurrency}"`);
                         }
@@ -327,27 +451,20 @@ Please analyze the CURRENT user message above and extract the relevant informati
                 apiParams.symbol = processedRequest.symbol;
                 console.log(`[${requestId}] Using symbol parameter: ${processedRequest.symbol}`);
             } else if (processedRequest.cryptocurrency) {
-                // Fallback: try to map cryptocurrency name to symbol
-                const symbolMapping: Record<string, string> = {
-                    'bitcoin': 'BTC',
-                    'ethereum': 'ETH', 
-                    'dogecoin': 'DOGE',
-                    'solana': 'SOL',
-                    'avalanche': 'AVAX',
-                    'cardano': 'ADA',
-                    'polkadot': 'DOT',
-                    'chainlink': 'LINK',
-                    'polygon': 'MATIC',
-                    'binance coin': 'BNB',
-                    'bnb': 'BNB'
-                };
-                
-                const mappedSymbol = symbolMapping[processedRequest.cryptocurrency.toLowerCase()];
-                if (mappedSymbol) {
-                    apiParams.symbol = mappedSymbol;
-                    console.log(`[${requestId}] Mapped ${processedRequest.cryptocurrency} to symbol: ${mappedSymbol}`);
-                } else {
-                    console.log(`[${requestId}] No symbol mapping found for: ${processedRequest.cryptocurrency}`);
+                // Fallback: use dynamic /tokens endpoint to resolve any cryptocurrency
+                try {
+                    console.log(`[${requestId}] Attempting dynamic token search for: ${processedRequest.cryptocurrency}`);
+                    
+                    const foundToken = await searchTokenDynamically(processedRequest.cryptocurrency, runtime);
+                    if (foundToken) {
+                        apiParams.token_id = foundToken.TOKEN_ID;
+                        apiParams.symbol = foundToken.TOKEN_SYMBOL;
+                        console.log(`[${requestId}] ✅ Dynamic search successful: ${foundToken.TOKEN_NAME} (${foundToken.TOKEN_SYMBOL}) - ID: ${foundToken.TOKEN_ID}`);
+                    } else {
+                        console.log(`[${requestId}] ❌ Dynamic token search failed for: ${processedRequest.cryptocurrency}`);
+                    }
+                } catch (error) {
+                    console.log(`[${requestId}] ❌ Error in dynamic token search: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 }
             }
             

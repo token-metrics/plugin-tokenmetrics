@@ -64,7 +64,7 @@ export const LEGACY_TOKENMETRICS_ENDPOINTS = {
     correlation: "/v2/correlation",
     
     // AI endpoint
-    tmai: "/v2/tmai",
+
     
     // Indices endpoints
     indices: "/v2/indices",
@@ -139,12 +139,7 @@ export function validateTokenMetricsParams(params: Record<string, any>): void {
         }
     }
 
-    // Validate messages for TMAI endpoint
-    if (params.messages !== undefined) {
-        if (!Array.isArray(params.messages) || params.messages.length === 0) {
-            throw new Error("messages must be a non-empty array for TMAI endpoint");
-        }
-    }
+
 }
 
 function isValidDateFormat(dateString: string): boolean {
@@ -320,35 +315,34 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
     if (typeof messageContent.text === 'string') {
         const text = messageContent.text;
         
-        // Look for known crypto symbols in the text
-        const knownSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'MATIC', 'LINK', 'UNI', 'AVAX', 'DOT', 'ATOM', 'XRP', 'LTC', 'BCH', 'ETC', 'XLM', 'TRX', 'VET', 'FIL', 'THETA', 'EOS'];
+        // Look for any cryptocurrency symbols (3-10 characters, alphanumeric)
+        // This finds any potential crypto symbol in the text without hardcoded restrictions
+        const cryptoSymbolPattern = /\b[A-Z]{3,10}\b/gi;
+        const potentialSymbols = text.match(cryptoSymbolPattern);
         
-        for (const symbol of knownSymbols) {
-            // Look for symbol as whole word (case insensitive)
-            const regex = new RegExp(`\\b${symbol}\\b`, 'i');
-            if (regex.test(text)) {
-                result.symbol = symbol;
-                break; // Take the first match
-            }
+        if (potentialSymbols && potentialSymbols.length > 0) {
+            // Take the first potential symbol found
+            result.symbol = potentialSymbols[0].toUpperCase();
         }
         
-        // Look for full coin names
-        const coinNamePatterns = [
-            { pattern: /\bbitcoin\b/i, symbol: 'BTC', id: 3375 },
-            { pattern: /\bethereum\b/i, symbol: 'ETH', id: 3306 },
-            { pattern: /\bcardano\b/i, symbol: 'ADA', id: 2010 },
-            { pattern: /\bsolana\b/i, symbol: 'SOL', id: 5426 },
-            { pattern: /\bpolygon\b/i, symbol: 'MATIC', id: 3890 },
-            { pattern: /\bchainlink\b/i, symbol: 'LINK', id: 1975 },
-            { pattern: /\buniswap\b/i, symbol: 'UNI', id: 7083 },
-            { pattern: /\bavalanche\b/i, symbol: 'AVAX', id: 5805 }
-        ];
+        // Look for common cryptocurrency names using dynamic pattern matching
+        // Extract any word that might be a cryptocurrency name (no hardcoded list)
+        const cryptoNamePattern = /\b([a-zA-Z]+(?:coin|token|cash)?)\b/gi;
+        const potentialNames = text.match(cryptoNamePattern);
         
-        for (const { pattern, symbol, id } of coinNamePatterns) {
-            if (pattern.test(text)) {
-                result.symbol = symbol;
-                result.token_id = id;
-                break;
+        if (potentialNames && potentialNames.length > 0) {
+            // Filter for words that look like cryptocurrency names
+            const likelyCryptoNames = potentialNames.filter((name: string) => 
+                name.length >= 3 && 
+                !['the', 'and', 'for', 'with', 'token', 'coin', 'price', 'get', 'show', 'what', 'how'].includes(name.toLowerCase())
+            );
+            
+            if (likelyCryptoNames.length > 0) {
+                // Use the first likely cryptocurrency name found
+                const cryptoName = likelyCryptoNames[0];
+                if (!result.symbol) {
+                    result.symbol = cryptoName.toUpperCase();
+                }
             }
         }
     }
@@ -357,17 +351,14 @@ export function extractTokenIdentifier(messageContent: any): { token_id?: number
 }
 
 /**
- * Check if a symbol is a known cryptocurrency symbol
+ * Check if a symbol is a valid cryptocurrency symbol format
+ * Now accepts any properly formatted crypto symbol instead of hardcoded list
  */
 function isKnownCryptoSymbol(symbol: string): boolean {
-    const knownSymbols = [
-        'BTC', 'ETH', 'ADA', 'SOL', 'MATIC', 'LINK', 'UNI', 'AVAX', 'DOT', 'ATOM', 
-        'XRP', 'LTC', 'BCH', 'ETC', 'XLM', 'TRX', 'VET', 'FIL', 'THETA', 'EOS',
-        'DOGE', 'SHIB', 'USDT', 'USDC', 'BNB', 'BUSD', 'DAI', 'WBTC', 'STETH',
-        'MATIC', 'CRO', 'NEAR', 'ALGO', 'MANA', 'SAND', 'APE', 'LRC', 'ENJ',
-        'COMP', 'MKR', 'AAVE', 'SNX', 'UMA', 'BAL', 'YFI', 'SUSHI', 'CRV'
-    ];
-    return knownSymbols.includes(symbol);
+    // Accept any symbol that follows cryptocurrency naming conventions
+    // 2-10 characters, alphanumeric, typically uppercase
+    const cryptoSymbolPattern = /^[A-Z0-9]{2,10}$/;
+    return cryptoSymbolPattern.test(symbol.toUpperCase());
 }
 
 // Utility functions remain the same

@@ -210,7 +210,12 @@ export function formatCurrency(value: number | undefined | null): string {
     } else if (numValue >= 1) {
         return `$${numValue.toFixed(2)}`;
     } else if (numValue > 0) {
-        return `$${numValue.toFixed(6)}`;
+        // Handle micro-prices with scientific notation for very small numbers
+        if (numValue < 0.000001) {
+            return `$${numValue.toExponential(3)}`;
+        } else {
+            return `$${numValue.toFixed(6)}`;
+        }
     } else {
         return "$0.00";
     }
@@ -284,73 +289,9 @@ export function mapSymbolToName(input: string): string {
 }
 
 /**
- * Common token ID mapping for major cryptocurrencies
- * @deprecated This function uses hardcoded token IDs which may become outdated.
- * Use resolveTokenSmart() instead for dynamic API-based token resolution.
+ * @deprecated This function has been removed. Use resolveTokenSmart() for dynamic API-based token resolution.
+ * This function previously used hardcoded token IDs which became outdated and limited token support.
  */
-export function getWellKnownTokenId(input: string): number | null {
-    elizaLogger.warn("⚠️ getWellKnownTokenId is deprecated - use resolveTokenSmart() for dynamic resolution");
-    
-    const tokenIdMap: Record<string, number> = {
-        // Major cryptocurrencies with known TokenMetrics IDs
-        'BITCOIN': 3375,
-        'BTC': 3375,
-        'ETHEREUM': 3306,
-        'ETH': 3306,
-        'SOLANA': 3408,
-        'SOL': 3408,
-        'CARDANO': 3321,
-        'ADA': 3321,
-        'POLYGON': 3390,
-        'MATIC': 3390,
-        'POLKADOT': 3394,
-        'DOT': 3394,
-        'CHAINLINK': 3327,
-        'LINK': 3327,
-        'UNISWAP': 3424,
-        'UNI': 3424,
-        'AVALANCHE': 3315,
-        'AVAX': 3315,
-        'LITECOIN': 3373,
-        'LTC': 3373,
-        'DOGECOIN': 3340,
-        'DOGE': 3340,
-        'XRP': 3430,
-        'RIPPLE': 3430,
-        'BNB': 3318,
-        'BINANCE COIN': 3318,
-        'TETHER': 3420,
-        'USDT': 3420,
-        'USD COIN': 3423,
-        'USDC': 3423,
-        'COSMOS': 3333,
-        'ATOM': 3333,
-        'NEAR PROTOCOL': 3385,
-        'NEAR': 3385,
-        'FANTOM': 3348,
-        'FTM': 3348,
-        'ALGORAND': 3309,
-        'ALGO': 3309,
-        'VECHAIN': 3427,
-        'VET': 3427,
-        'INTERNET COMPUTER': 3364,
-        'ICP': 3364,
-        'FLOW': 3351,
-        'THE SANDBOX': 3412,
-        'SAND': 3412,
-        'DECENTRALAND': 3336,
-        'MANA': 3336,
-        'CRONOS': 3334,
-        'CRO': 3334,
-        'APECOIN': 3312,
-        'APE': 3312,
-        'SHIBA INU': 3409,
-        'SHIB': 3409
-    };
-    
-    const upperInput = input.toUpperCase().trim();
-    return tokenIdMap[upperInput] || null;
-}
 
 /**
  * Smart token resolution using TokenMetrics API (Pure API-based approach with search parameters)
@@ -537,7 +478,22 @@ function applySmartTokenFiltering(tokens: any[], searchInput: string): any | nul
         }
     }
     
-    // Fallback: use the first token but log the issue
-    elizaLogger.log(`⚠️ No main token identified for "${searchInput}", using first token: ${tokens[0].TOKEN_NAME} (${tokens[0].TOKEN_SYMBOL})`);
-    return tokens[0];
+    // Fallback: prioritize by exchange count (liquidity) like getPriceAction
+    elizaLogger.log(`🔍 No main token selector matched, using exchange count priority for "${searchInput}"`);
+    
+    const sortedTokens = tokens.sort((a: any, b: any) => {
+        // Priority 1: More exchanges (higher liquidity)
+        const aExchanges = a.EXCHANGE_LIST?.length || 0;
+        const bExchanges = b.EXCHANGE_LIST?.length || 0;
+        if (aExchanges !== bExchanges) return bExchanges - aExchanges;
+        
+        // Priority 2: More categories (more established)
+        const aCategories = a.CATEGORY_LIST?.length || 0;
+        const bCategories = b.CATEGORY_LIST?.length || 0;
+        return bCategories - aCategories;
+    });
+    
+    const bestToken = sortedTokens[0];
+    elizaLogger.log(`✅ Exchange priority selected: ${bestToken.TOKEN_NAME} (${bestToken.TOKEN_SYMBOL}) - ${bestToken.EXCHANGE_LIST?.length || 0} exchanges`);
+    return bestToken;
 } 
