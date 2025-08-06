@@ -149,16 +149,15 @@ jobs:
             -Dsonar.projectKey=plugin-tokenmetrics
             -Dsonar.projectName=${{ github.repository }}
             -Dsonar.projectVersion=${{ github.sha }}
-            -Dsonar.sources=src,tokenmetrics-test/src
-            -Dsonar.tests=src/__tests__,src/tests,tokenmetrics-test/src/__tests__
-            -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/*.cy.ts,**/*.cy.tsx
+            -Dsonar.sources=.
+            -Dsonar.test.inclusions=src/tests/**/*.js,tokenmetrics-test/src/__tests__/**/*.test.ts,tokenmetrics-test/src/__tests__/**/*.cy.ts,tokenmetrics-test/src/__tests__/**/*.cy.tsx
             -Dsonar.typescript.tsconfigPaths=tsconfig.json,tokenmetrics-test/tsconfig.json
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.security.sources.javascriptsecurity=true
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/.git/**,**/security-env/**,tree.txt,bun.lockb,**/*.config.ts,**/*.config.js
-            -Dsonar.coverage.exclusions=**/*.test.ts,**/*.spec.ts,**/*.cy.ts,**/*.cy.tsx,**/*.config.ts,**/*.config.js
-            -Dsonar.cpd.exclusions=**/tests/**,**/__tests__/**
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/.git/**,**/security-env/**,tree.txt,bun.lockb,**/*.config.ts,**/*.config.js,src/tests/**,tokenmetrics-test/src/__tests__/**
+            -Dsonar.coverage.exclusions=**/*.test.ts,**/*.spec.ts,**/*.cy.ts,**/*.cy.tsx,**/*.config.ts,**/*.config.js,src/tests/**/*.js
+            -Dsonar.cpd.exclusions=src/tests/**,tokenmetrics-test/src/__tests__/**
             -Dsonar.qualitygate.wait=true
 
       # ----- Quality Gate Check -----
@@ -181,7 +180,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Results:" >> $GITHUB_STEP_SUMMARY
           echo "- SonarQube Quality Gate: ${{ steps.sonarqube-quality-gate.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- View results: http://sonarqube.tokenmetrics.com/dashboard?id=tokenmetrics-mcp" >> $GITHUB_STEP_SUMMARY
+          echo "- View results: http://sonarqube.tokenmetrics.com/dashboard?id=${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
 
       # ----- Cleanup -----
       - name: Cleanup
