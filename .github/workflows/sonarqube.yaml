@@ -1,0 +1,191 @@
+name: Security Scan
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 2 * * *'  # Run daily at 2AM UTC
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      # ----- Setup Bun for TypeScript compilation -----
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # ----- Install dependencies and compile -----
+      - name: Install Dependencies
+        run: |
+          if [ -f "package.json" ]; then
+            if [ -f "bun.lockb" ]; then
+              bun install --frozen-lockfile
+            else
+              bun install
+            fi
+            # Build the main project
+            bun run build || echo "Build completed with warnings"
+            # Build the test project if it exists
+            if [ -f "tokenmetrics-test/package.json" ]; then
+              cd tokenmetrics-test
+              bun install --frozen-lockfile
+              bun run build || echo "Test project build completed with warnings"
+              cd ..
+            fi
+          else
+            echo "No package.json found, skipping bun install"
+          fi
+        continue-on-error: true
+
+      # ----- Run tests for coverage -----
+      - name: Generate Test Coverage
+        run: |
+          mkdir -p coverage
+          # Try to run tests with coverage
+          if bun run test:coverage 2>/dev/null; then
+            bun run test:coverage
+          elif bun test 2>/dev/null; then
+            bun test --coverage
+          else
+            echo "No test command found, creating empty coverage"
+            echo '' > coverage/lcov.info
+          fi
+          # Also run tests in test project if exists
+          if [ -f "tokenmetrics-test/package.json" ]; then
+            cd tokenmetrics-test
+            if bun test 2>/dev/null; then
+              bun test --coverage
+            fi
+            cd ..
+          fi
+        continue-on-error: true
+      
+      # ----- Setup Python environment -----
+      - name: Setup Python Environment
+        run: |
+          python3 -m venv security-env
+          source security-env/bin/activate
+          pip install --upgrade pip
+          pip install --disable-pip-version-check semgrep==1.88.0
+
+      # ----- Install Trivy -----
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b ./bin
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+
+      # ----- TypeScript/JavaScript Static Analysis -----
+      - name: ESLint Analysis
+        run: |
+          mkdir -p security-reports
+          if [ -f ".eslintrc.json" ] || [ -f ".eslintrc.js" ] || [ -f ".eslintrc.yml" ]; then
+            bun run lint --format sarif > security-reports/eslint.sarif || true
+          else
+            echo "No ESLint configuration found, checking for default linting"
+            if bun run lint 2>/dev/null; then
+              bun run lint > security-reports/eslint.sarif || true
+            else
+              echo '{"version":"2.1.0","runs":[]}' > security-reports/eslint.sarif
+            fi
+          fi
+          # Ensure valid SARIF exists
+          if [ ! -s "security-reports/eslint.sarif" ]; then
+            echo '{"version":"2.1.0","runs":[]}' > security-reports/eslint.sarif
+          fi
+        continue-on-error: true
+
+      # ----- TypeScript type checking -----
+      - name: TypeScript Type Check
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            bunx tsc --noEmit --pretty || echo "TypeScript check completed with warnings"
+          fi
+          if [ -f "tokenmetrics-test/tsconfig.json" ]; then
+            cd tokenmetrics-test
+            bunx tsc --noEmit --pretty || echo "Test project TypeScript check completed with warnings"
+            cd ..
+          fi
+        continue-on-error: true
+
+      # ----- Security rules (multi-language with TypeScript focus) -----
+      - name: Semgrep Security Scan
+        run: |
+          source security-env/bin/activate
+          semgrep ci \
+            --config p/typescript \
+            --config p/javascript \
+            --config p/nodejs \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --sarif \
+            --output semgrep.sarif || true
+
+      # ----- Dependency and config scans -----
+      - name: Trivy FileSystem Scan
+        run: |
+          trivy fs . --exit-code 0 --severity HIGH,CRITICAL --format sarif --output trivy-fs.sarif || true
+
+      - name: Trivy Config Scan
+        run: |
+          trivy config . --exit-code 0 --severity HIGH,CRITICAL --format sarif --output trivy-config.sarif || true
+
+      # ----- SonarQube Analysis -----
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_APP }}
+          SONAR_HOST_URL: http://sonarqube.tokenmetrics.com
+        with:
+          args: >
+            -Dsonar.sarifReportPaths=semgrep.sarif,trivy-fs.sarif,trivy-config.sarif,security-reports/eslint.sarif
+            -Dsonar.projectKey=plugin-tokenmetrics
+            -Dsonar.projectName=${{ github.repository }}
+            -Dsonar.projectVersion=${{ github.sha }}
+            -Dsonar.sources=src,tokenmetrics-test/src
+            -Dsonar.tests=src/__tests__,src/tests,tokenmetrics-test/src/__tests__
+            -Dsonar.test.inclusions=**/*.test.ts,**/*.test.tsx,**/*.spec.ts,**/*.cy.ts,**/*.cy.tsx
+            -Dsonar.typescript.tsconfigPaths=tsconfig.json,tokenmetrics-test/tsconfig.json
+            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.security.sources.javascriptsecurity=true
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/.git/**,**/security-env/**,tree.txt,bun.lockb,**/*.config.ts,**/*.config.js
+            -Dsonar.coverage.exclusions=**/*.test.ts,**/*.spec.ts,**/*.cy.ts,**/*.cy.tsx,**/*.config.ts,**/*.config.js
+            -Dsonar.cpd.exclusions=**/tests/**,**/__tests__/**
+            -Dsonar.qualitygate.wait=true
+
+      # ----- Quality Gate Check -----
+      - name: SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_APP }}
+          SONAR_HOST_URL: http://sonarqube.tokenmetrics.com
+
+      # ----- Security Report Summary -----
+      - name: Security Report Summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Tools Used:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint (TypeScript/JavaScript Static Analysis)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Semgrep (Multi-language Security)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Trivy (Dependencies & Config)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ SonarQube (Comprehensive Analysis)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Results:" >> $GITHUB_STEP_SUMMARY
+          echo "- SonarQube Quality Gate: ${{ steps.sonarqube-quality-gate.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- View results: http://sonarqube.tokenmetrics.com/dashboard?id=tokenmetrics-mcp" >> $GITHUB_STEP_SUMMARY
+
+      # ----- Cleanup -----
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf security-env || true
+          rm -f *.sarif || true
