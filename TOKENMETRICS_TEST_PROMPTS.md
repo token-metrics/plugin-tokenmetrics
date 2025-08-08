@@ -1,6 +1,6 @@
 # TokenMetrics Plugin - Test Prompts
 
-This file contains test prompts for all 21 TokenMetrics actions/endpoints.
+This file contains test prompts for all 20 TokenMetrics actions/endpoints.
 
 ## 🔧 **Core Market Data Actions (4)**
 
@@ -24,51 +24,73 @@ Get hourly price data for Bitcoin
 List all available tokens
 ```
 
-## 📊 **Trading Intelligence Actions (4)**
+## 📊 **Trading Intelligence Actions (5)**
 
 ### 5. **Trading Signals Action** (`GET_TRADING_SIGNALS_TOKENMETRICS`)
 ```
 Get trading signals for Bitcoin
 ```
 
-### 6. **Trader Grades Action** (`GET_TRADER_GRADES_TOKENMETRICS`)
+### 6. **TM Grade Action** (`GET_TM_GRADE_TOKENMETRICS`)
 ```
-Get trader grades for Bitcoin
+What's Bitcoin's TM grade?
+Get TM grades for ETH
+Show me TM grade analysis for BONK
+TM grade for Solana
+Get fundamental grades for Dogecoin
 ```
 
-### 7. **Investor Grades Action** (`GET_INVESTOR_GRADES_TOKENMETRICS`)
+### 7. **TM Grade History Action** (`GET_TM_GRADE_HISTORY_TOKENMETRICS`)
 ```
-Get investor grades for Bitcoin
+Bitcoin TM grade history
+ETH grade trends over time
+Show me BONK grade performance
+Historical TM grades for Solana
+Grade history for the last month
 ```
 
-### 8. **Quantmetrics Action** (`GET_QUANTMETRICS_TOKENMETRICS`)
+### 8. **Technology Grade Action** (`GET_TECHNOLOGY_GRADE_TOKENMETRICS`)
+```
+Bitcoin tech grade
+ETH technology analysis
+Development activity for Solana
+Security scores for BONK
+Repository quality for Dogecoin
+Technology metrics for Ethereum
+```
+
+### 9. **Quantmetrics Action** (`GET_QUANTMETRICS_TOKENMETRICS`)
 ```
 Get quantmetrics for Bitcoin
 ```
 
 ## 📈 **Market Analytics Actions (4)**
 
-### 9. **Top Market Cap Action** (`GET_TOP_MARKET_CAP_TOKENMETRICS`)
+### 10. **Top Market Cap Action** (`GET_TOP_MARKET_CAP_TOKENMETRICS`)
 ```
 Get top market cap tokens
 ```
 
-### 10. **Market Metrics Action** (`GET_MARKET_METRICS_TOKENMETRICS`)
+### 11. **Market Metrics Action** (`GET_MARKET_METRICS_TOKENMETRICS`)
 ```
 Get market metrics
+
+Show market metrics from 2025-03-02 to 2025-06-02
+
+
 ```
 
-### 11. **Resistance Support Action** (`GET_RESISTANCE_SUPPORT_TOKENMETRICS`)
+### 12. **Resistance Support Action** (`GET_RESISTANCE_SUPPORT_TOKENMETRICS`)
 ```
 Get resistance and support levels for Bitcoin
 ```
 
-### 12. **Moonshot Action** (`GET_MOONSHOT_TOKENS_TOKENMETRICS`)
+### 13. **Moonshot Action** (`GET_MOONSHOT_TOKENS_TOKENMETRICS`)
 ```
 Get moonshot tokens
 ```
 
-## 🧠 **Advanced Analysis Actions (6)**
+## 🧠 **Advanced Analysis Actions (5)**
 
 ### 13. **Scenario Analysis Action** (`GET_SCENARIO_ANALYSIS_TOKENMETRICS`)
 ```
@@ -93,6 +115,7 @@ Get crypto indices
 ### 17. **Indices Holdings Action** (`GET_INDICES_HOLDINGS_TOKENMETRICS`)
 ```
 Get indices holdings
+Show me holdings of index 2
 ```
 
 ### 18. **Indices Performance Action** (`GET_INDICES_PERFORMANCE_TOKENMETRICS`)
@@ -100,19 +123,16 @@ Get indices holdings
 Get indices performance
 ```
 
-## ⚡ **Real-time Trading Actions (3)**
+## ⚡ **Real-time Trading Actions (2)**
 
 ### 19. **Hourly Trading Signals Action** (`GET_HOURLY_TRADING_SIGNALS_TOKENMETRICS`)
 ```
 Get hourly trading signals for Bitcoin
 ```
 
-### 20. **TMAI Action** (`GET_TMAI_TOKENMETRICS`)
-```
-Get TMAI for Bitcoin
-```
-
-### 21. **Correlation Action** (`GET_CORRELATION_TOKENMETRICS`)
+### 20. **Correlation Action** (`GET_CORRELATION_TOKENMETRICS`)
 ```
 Get correlation analysis for Bitcoin
+Get correlation analysis for DEGEN
+Show me token correlations for ETH
 ```

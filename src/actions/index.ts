@@ -12,8 +12,9 @@ export { getDailyOhlcvAction } from "./getDailyOhlcvAction";
 
 export { getTokensAction } from "./getTokensAction";
 export { getTopMarketCapAction } from "./getTopMarketCapAction";
-export { getTraderGradesAction } from "./getTraderGradesAction";
-export { getInvestorGradesAction } from "./getInvestorGradesAction";
+export { getTmGradeAction } from "./getTmGradeAction";
+export { getTmGradeHistoryAction } from "./getTmGradeHistoryAction";
+export { getTechnologyGradeAction } from "./getTechnologyGradeAction";
 export { getMarketMetricsAction } from "./getMarketMetricsAction";
 export { getIndicesAction } from "./getIndicesAction";
 export { getIndicesHoldingsAction } from "./getIndicesHoldingsAction";
@@ -27,7 +28,9 @@ export { callTokenMetricsApi, LEGACY_TOKENMETRICS_ENDPOINTS, validateApiKey } fr
 // ===== ENHANCED TOKENMETRICS ACTIONS ARRAY =====
 import { getTokensAction } from "./getTokensAction";
 import { getQuantmetricsAction } from "./getQuantmetricsAction";
-import { getTraderGradesAction } from "./getTraderGradesAction";
+import { getTmGradeAction } from "./getTmGradeAction";
+import { getTmGradeHistoryAction } from "./getTmGradeHistoryAction";
+import { getTechnologyGradeAction } from "./getTechnologyGradeAction";
 import { getMarketMetricsAction } from "./getMarketMetricsAction";
 import { getTradingSignalsAction } from "./getTradingSignalsAction";
 import { getHourlyTradingSignalsAction } from "./getHourlyTradingSignalsAction";
@@ -35,7 +38,7 @@ import { getPriceAction } from "./getPriceAction";
 import { getTopMarketCapAction } from "./getTopMarketCapAction";
 import { getHourlyOhlcvAction } from "./getHourlyOhlcvAction";
 import { getDailyOhlcvAction } from "./getDailyOhlcvAction";
-import { getInvestorGradesAction } from "./getInvestorGradesAction";
+
 import { getAiReportsAction } from "./getAiReportsAction";
 import { getCryptoInvestorsAction } from "./getCryptoInvestorsAction";
 import { getResistanceSupportAction } from "./getResistanceSupportAction";
@@ -50,7 +53,9 @@ import { getIndicesPerformanceAction } from "./getIndicesPerformanceAction";
 export const enhancedTokenmetricsActions = [
     getTokensAction,
     getQuantmetricsAction,
-    getTraderGradesAction,
+    getTmGradeAction,
+    getTmGradeHistoryAction,
+    getTechnologyGradeAction,
     getMarketMetricsAction,
     getTradingSignalsAction,
     getHourlyTradingSignalsAction,
@@ -58,7 +63,7 @@ export const enhancedTokenmetricsActions = [
     getTopMarketCapAction,
     getHourlyOhlcvAction,
     getDailyOhlcvAction,
-    getInvestorGradesAction,
+
     getAiReportsAction,
     getCryptoInvestorsAction,
     getResistanceSupportAction,
