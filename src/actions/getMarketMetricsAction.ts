@@ -34,14 +34,22 @@ Look for MARKET METRICS requests, such as:
 - Volume analysis ("Market volume trends", "Trading volume analysis")
 - Market sentiment ("Market sentiment today", "Fear and greed index")
 - Market trends ("Market trend analysis", "Overall market performance")
+- Date range requests ("Market metrics from 2025-03-02 to 2025-06-02", "Show market data between March and June")
 
 EXAMPLES:
-- "How's the crypto market performing today?"
-- "What's the total market cap?"
-- "Show me market volume trends"
-- "Get market sentiment analysis"
-- "Market metrics overview"
-- "Current market trends"
+- "How's the crypto market performing today?" → analysis_type: "general"
+- "What's the total market cap?" → metrics_requested: "cap"
+- "Show me market volume trends" → analysis_type: "volume"
+- "Get market sentiment analysis" → analysis_type: "sentiment"
+- "Market metrics overview" → analysis_type: "general"
+- "Current market trends" → analysis_type: "trends"
+- "Show market metrics from 2025-03-02 to 2025-06-02" → start_date: "2025-03-02", end_date: "2025-06-02"
+- "Market data between March 1 and June 30, 2025" → start_date: "2025-03-01", end_date: "2025-06-30"
+
+IMPORTANT: Extract date ranges if mentioned in formats like:
+- "from YYYY-MM-DD to YYYY-MM-DD"
+- "between DATE and DATE" 
+- "from March to June" (convert to YYYY-MM-DD format)
 
 Respond with an XML block containing only the extracted values:
 
@@ -51,10 +59,17 @@ Respond with an XML block containing only the extracted values:
 <market_focus>total or defi or layer1 or altcoins or all</market_focus>
 <metrics_requested>cap, volume, sentiment, trends, volatility, or all</metrics_requested>
 <comparison_period>24h or 7d or 30d or 1y or none</comparison_period>
+<start_date>YYYY-MM-DD format if date range mentioned</start_date>
+<end_date>YYYY-MM-DD format if date range mentioned</end_date>
 </response>`;
 
-// Zod schema for market metrics requests
+// Zod schema for market metrics requests  
 const MarketMetricsRequestSchema = z.object({
+    analysis_type: z.string().optional().describe("Type of analysis requested"),
+    timeframe: z.string().optional().describe("Time frame for analysis"),
+    market_focus: z.string().optional().describe("Market focus area"),
+    metrics_requested: z.string().optional().describe("Specific metrics requested"),
+    comparison_period: z.string().optional().describe("Comparison period"),
     start_date: z.string().optional().describe("Start date in YYYY-MM-DD format"),
     end_date: z.string().optional().describe("End date in YYYY-MM-DD format"),
     limit: z.number().min(1).max(100).optional().describe("Number of data points to return"),
@@ -80,12 +95,18 @@ const handler = async (
     elizaLogger.info("🏢 Starting TokenMetrics Market Metrics Action");
     
     try {
-        // Extract request using AI
+        // Extract request using AI with user message injection
+        const userMessage = message.content?.text || "";
+        const enhancedTemplate = marketMetricsTemplate + `
+
+USER MESSAGE: "${userMessage}"
+Please analyze the CURRENT user message above and extract the relevant information.`;
+        
         const extractedRequest = await extractTokenMetricsRequest<MarketMetricsRequest>(
             runtime,
             message,
             state || await runtime.composeState(message),
-            marketMetricsTemplate,
+            enhancedTemplate,
             MarketMetricsRequestSchema,
             generateRequestId()
         );

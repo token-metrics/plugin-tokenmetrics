@@ -5,7 +5,7 @@ var __export = (target, all) => {
 };
 
 // src/index.ts
-import { elizaLogger as elizaLogger22 } from "@elizaos/core";
+import { elizaLogger as elizaLogger23 } from "@elizaos/core";
 
 // src/actions/getPriceAction.ts
 import { elizaLogger as elizaLogger2, createActionResult } from "@elizaos/core";
@@ -13773,487 +13773,305 @@ function formatTopMarketCapResponse(topTokens, analysis, request) {
   return response;
 }
 
-// src/actions/getTraderGradesAction.ts
-import {
-  elizaLogger as elizaLogger14,
-  createActionResult as createActionResult13
-} from "@elizaos/core";
-var traderGradesTemplate = `Extract trader grades request information from the message.
+// src/actions/getTmGradeAction.ts
+import { elizaLogger as elizaLogger14, createActionResult as createActionResult13 } from "@elizaos/core";
+var TmGradeRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  token_name: external_exports.string().optional().describe("Full name of the token"),
+  analysisType: external_exports.enum(["current", "fundamental", "signals", "momentum", "all"]).optional().describe("Type of analysis to focus on")
+});
+var TM_GRADE_EXTRACTION_TEMPLATE = `Extract TM Grade request information from the user's message.
 
-IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
-
-Trader grades provide:
-- Short-term trading scores (A+ to F grades)
-- Quick profit potential ratings
-- Day trading recommendations
-- Swing trading assessments
-- Technical analysis scores
-- Trading momentum indicators
+TM Grade provides comprehensive grading analysis including:
+- Current TM Grade scores and changes
+- Fundamental grade classifications  
+- Trading signals (Buy/Sell/Hold/Neutral)
+- Momentum indicators
+- 24-hour percentage changes
 
 Instructions:
-Look for TRADER GRADES requests, such as:
-- Trading grade queries ("What's the trader grade for [TOKEN]?", "Show me trading ratings")
-- Short-term trading assessment ("Good for day trading?", "Trading opportunities")
-- Quick profit queries ("Fast gains potential?", "Trading profit opportunities")
-- Technical analysis requests ("Technical grade", "Trading signals grade")
+Look for TM GRADE requests, such as:
+- Grade analysis ("What's Bitcoin's TM grade?", "Get TM grades for ETH")
+- Fundamental analysis ("Show me fundamental grades", "Token fundamentals")
+- Signal requests ("TM grade signals for Bitcoin", "Current trading grade")
+- Momentum analysis ("Token momentum", "Grade momentum for ETH")
 
-EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+EXAMPLES:
+- "What's Bitcoin's TM grade?" \u2192 cryptocurrency: "Bitcoin", analysisType: "current"
+- "Get TM grades for ETH" \u2192 cryptocurrency: "ETH", analysisType: "all"
+- "Show me fundamental grades for Solana" \u2192 cryptocurrency: "Solana", analysisType: "fundamental"
+- "TM grade signals for BONK" \u2192 cryptocurrency: "BONK", analysisType: "signals"
+- "Token momentum for Dogecoin" \u2192 cryptocurrency: "Dogecoin", analysisType: "momentum"
 
-Examples of request patterns (but extract the actual token from user's message):
-- "What's the trader grade for [TOKEN]?" \u2192 extract [TOKEN]
-- "Show me trading grades for [TOKEN]" \u2192 extract [TOKEN]
-- "Good trading opportunities in [TOKEN]?" \u2192 extract [TOKEN]
-- "Get trader grades for [TOKEN]" \u2192 extract [TOKEN]
+CRITICAL: Extract the EXACT cryptocurrency mentioned by the user, including lesser-known tokens like BONK, DEGEN, PEPE, FLOKI, WIF, etc.
 
 Respond with an XML block containing only the extracted values:
 
 <response>
-<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
-<trading_style>day, swing, scalp, or general</trading_style>
-<timeframe>1h, 4h, daily, or general</timeframe>
-<grade_filter>A+, A, B+, B, C+, C, D+, D, F or all</grade_filter>
-<risk_tolerance>high, medium, low, or general</risk_tolerance>
-<limit>number of results requested (default 10)</limit>
+<cryptocurrency>exact cryptocurrency name or symbol from user's message</cryptocurrency>
+<symbol>token symbol if mentioned</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<token_name>full name of the token</token_name>
+<analysisType>current|fundamental|signals|momentum|all</analysisType>
 </response>`;
-var TraderGradesRequestSchema = external_exports.object({
-  cryptocurrency: external_exports.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
-  grade_filter: external_exports.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
-  category: external_exports.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-  exchange: external_exports.string().nullable().describe("Exchange filter"),
-  time_period: external_exports.string().nullable().describe("Time period or date range"),
-  market_filter: external_exports.string().nullable().describe("Market cap, volume, or other filters"),
-  confidence: external_exports.number().min(0).max(1).describe("Confidence in extraction")
-});
-async function fetchTraderGrades(params, runtime) {
-  elizaLogger14.log(`\u{1F4E1} Fetching trader grades with params:`, params);
+var handler = async (runtime, message, state, _options, callback) => {
+  elizaLogger14.info("\u{1F3AF} Starting TokenMetrics TM Grade Action");
   try {
-    const data = await callTokenMetricsAPI("/v2/trader-grades", params, runtime);
-    if (!data) {
-      throw new Error("No data received from trader grades API");
-    }
-    elizaLogger14.log(`\u2705 Successfully fetched trader grades data`);
-    return data;
-  } catch (error) {
-    elizaLogger14.error("\u274C Error fetching trader grades:", error);
-    throw error;
-  }
-}
-function convertToLetterGrade(numericGrade) {
-  if (numericGrade >= 90) return "A";
-  if (numericGrade >= 80) return "B";
-  if (numericGrade >= 70) return "C";
-  if (numericGrade >= 60) return "D";
-  return "F";
-}
-function formatTraderGradesResponse(data, tokenInfo) {
-  if (!data || data.length === 0) {
-    return "\u274C No trader grades found for the specified criteria.";
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeCount = grades.length;
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  const processedGrades = grades.map((item) => {
-    const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade(numericGrade);
-    gradeDistribution[letterGrade]++;
-    return {
-      ...item,
-      LETTER_GRADE: letterGrade,
-      NUMERIC_GRADE: numericGrade
-    };
-  });
-  let response = `\u{1F4CA} **TokenMetrics Trader Grades Analysis**
-
-`;
-  if (tokenInfo) {
-    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
-`;
-  }
-  response += `\u{1F4C8} **Grade Summary**: ${gradeCount} tokens analyzed
-`;
-  response += `\u{1F7E2} **A Grade**: ${gradeDistribution.A} tokens (${(gradeDistribution.A / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F535} **B Grade**: ${gradeDistribution.B} tokens (${(gradeDistribution.B / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E1} **C Grade**: ${gradeDistribution.C} tokens (${(gradeDistribution.C / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E0} **D Grade**: ${gradeDistribution.D} tokens (${(gradeDistribution.D / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F534} **F Grade**: ${gradeDistribution.F} tokens (${(gradeDistribution.F / gradeCount * 100).toFixed(1)}%)
-
-`;
-  const topGrades = processedGrades.filter((g) => g.LETTER_GRADE === "A").sort((a, b) => b.NUMERIC_GRADE - a.NUMERIC_GRADE).slice(0, 5);
-  if (topGrades.length > 0) {
-    response += `\u{1F3C6} **Top A-Grade Tokens**:
-`;
-    topGrades.forEach((grade, index) => {
-      response += `${index + 1}. **${grade.TOKEN_SYMBOL}** (${grade.TOKEN_NAME}): Grade ${grade.LETTER_GRADE} (${grade.NUMERIC_GRADE.toFixed(1)})`;
-      if (grade.TM_TRADER_GRADE_24H_PCT_CHANGE) {
-        const change = grade.TM_TRADER_GRADE_24H_PCT_CHANGE;
-        const changeIcon = change > 0 ? "\u{1F4C8}" : change < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
-        response += ` ${changeIcon} ${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
-      }
-      response += `
-`;
-    });
-    response += `
-`;
-  }
-  if (gradeCount === 1 && tokenInfo) {
-    const token = processedGrades[0];
-    response += `\u{1F4CB} **Detailed Analysis for ${token.TOKEN_SYMBOL}**:
-`;
-    response += `\u2022 **Overall Grade**: ${token.LETTER_GRADE} (${token.NUMERIC_GRADE.toFixed(1)}/100)
-`;
-    if (token.TA_GRADE) response += `\u2022 **Technical Analysis**: ${convertToLetterGrade(token.TA_GRADE)} (${token.TA_GRADE.toFixed(1)}/100)
-`;
-    if (token.QUANT_GRADE) response += `\u2022 **Quantitative Analysis**: ${convertToLetterGrade(token.QUANT_GRADE)} (${token.QUANT_GRADE.toFixed(1)}/100)
-`;
-    if (token.TM_TRADER_GRADE_24H_PCT_CHANGE) {
-      const change = token.TM_TRADER_GRADE_24H_PCT_CHANGE;
-      const changeIcon = change > 0 ? "\u{1F4C8}" : change < 0 ? "\u{1F4C9}" : "\u27A1\uFE0F";
-      response += `\u2022 **24h Change**: ${changeIcon} ${change > 0 ? "+" : ""}${change.toFixed(2)}%
-`;
-    }
-    response += `\u2022 **Last Updated**: ${new Date(token.DATE).toLocaleDateString()}
-
-`;
-  }
-  response += `\u{1F4A1} **AI Trading Recommendations**:
-`;
-  const aGradePercentage = gradeDistribution.A / gradeCount * 100;
-  const fGradePercentage = gradeDistribution.F / gradeCount * 100;
-  if (aGradePercentage > 30) {
-    response += `\u2022 Strong market with ${aGradePercentage.toFixed(1)}% A-grade tokens
-`;
-    response += `\u2022 Consider increasing exposure to top-rated cryptocurrencies
-`;
-    response += `\u2022 Focus on A and B grade tokens for long positions
-`;
-  } else if (fGradePercentage > 30) {
-    response += `\u2022 Weak market with ${fGradePercentage.toFixed(1)}% F-grade tokens
-`;
-    response += `\u2022 Exercise caution with new positions
-`;
-    response += `\u2022 Consider defensive strategies or cash positions
-`;
-  } else {
-    response += `\u2022 Mixed market conditions - selective approach recommended
-`;
-    response += `\u2022 Focus on highest-grade tokens with strong fundamentals
-`;
-    response += `\u2022 Avoid D and F grade tokens for new positions
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics AI Trader Grades
-`;
-  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-function analyzeTraderGrades(data) {
-  if (!data || data.length === 0) {
-    return { error: "No data to analyze" };
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  const processedGrades = grades.map((item) => {
-    const numericGrade = item.TM_TRADER_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade(numericGrade);
-    gradeDistribution[letterGrade]++;
-    return {
-      symbol: item.TOKEN_SYMBOL,
-      name: item.TOKEN_NAME,
-      grade: letterGrade,
-      score: numericGrade,
-      date: item.DATE,
-      ta_grade: item.TA_GRADE,
-      quant_grade: item.QUANT_GRADE,
-      trader_grade: item.TM_TRADER_GRADE,
-      change_24h: item.TM_TRADER_GRADE_24H_PCT_CHANGE
-    };
-  });
-  const analysis = {
-    total_tokens: grades.length,
-    grade_distribution: gradeDistribution,
-    top_tokens: processedGrades.filter((g) => g.grade === "A").sort((a, b) => b.score - a.score).slice(0, 10),
-    market_quality: "neutral"
-  };
-  const aPercentage = gradeDistribution.A / grades.length * 100;
-  const fPercentage = gradeDistribution.F / grades.length * 100;
-  if (aPercentage > 40) {
-    analysis.market_quality = "excellent";
-  } else if (aPercentage > 25) {
-    analysis.market_quality = "good";
-  } else if (fPercentage > 40) {
-    analysis.market_quality = "poor";
-  } else {
-    analysis.market_quality = "fair";
-  }
-  return analysis;
-}
-var getTraderGradesAction = {
-  name: "GET_TRADER_GRADES_TOKENMETRICS",
-  similes: [
-    "GET_TRADER_GRADES",
-    "GET_AI_GRADES",
-    "GET_TOKEN_GRADES",
-    "GET_TRADING_GRADES",
-    "TRADER_GRADES",
-    "AI_GRADES",
-    "TOKEN_RATINGS"
-  ],
-  description: "Get AI-generated trader grades and ratings for cryptocurrencies from TokenMetrics",
-  validate: async (runtime, message, state) => {
-    elizaLogger14.log("\u{1F50D} Validating getTraderGradesAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger14.error("\u274C Validation failed:", error);
-      return false;
-    }
-  },
-  handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger14.log("\u{1F680} Starting TokenMetrics trader grades handler (1.x)");
-    elizaLogger14.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger14.log(`\u{1F194} Request ID: ${requestId}`);
-    try {
-      validateAndGetApiKey(runtime);
-      if (!state) {
-        state = await runtime.composeState(message);
-      }
-      const userMessage = message.content?.text || "";
-      const enhancedTemplate = traderGradesTemplate + `
+    const userMessage = message.content?.text || "";
+    const enhancedTemplate = TM_GRADE_EXTRACTION_TEMPLATE + `
 
 USER MESSAGE: "${userMessage}"
-
 Please analyze the CURRENT user message above and extract the relevant information.`;
-      const gradesRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state,
-        enhancedTemplate,
-        TraderGradesRequestSchema,
-        requestId
-      );
-      elizaLogger14.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
-      elizaLogger14.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest.cryptocurrency || "general market"}"`);
-      elizaLogger14.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${gradesRequest?.cryptocurrency}"`);
-      console.log(`[${requestId}] Extracted request:`, gradesRequest);
-      if (!gradesRequest.cryptocurrency && !gradesRequest.grade_filter && !gradesRequest.category && gradesRequest.confidence < 0.3) {
-        elizaLogger14.log("\u274C AI extraction failed or insufficient information");
-        if (callback) {
-          await callback({
-            text: `\u274C I couldn't identify specific trader grades criteria from your request.
-
-I can get AI trader grades for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Grade filters (A, B, C, D, F grades)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-
-Try asking something like:
-\u2022 "Get trader grades for Bitcoin"
-\u2022 "Show me A-grade tokens"
-\u2022 "What are the current AI grades?"
-\u2022 "Get trading grades for DeFi tokens"`,
-            data: {
-              error: "Insufficient trader grades criteria",
-              confidence: gradesRequest?.confidence || 0,
-              request_id: requestId
-            }
-          });
+    const gradeRequest = await extractTokenMetricsRequest(
+      runtime,
+      message,
+      state || await runtime.composeState(message),
+      enhancedTemplate,
+      TmGradeRequestSchema,
+      requestId
+    );
+    elizaLogger14.info("\u{1F3AF} Extracted TM grade request:", gradeRequest);
+    const processedRequest = {
+      cryptocurrency: gradeRequest?.cryptocurrency,
+      token_id: gradeRequest?.token_id,
+      symbol: gradeRequest?.symbol,
+      token_name: gradeRequest?.token_name,
+      analysisType: gradeRequest?.analysisType || "all"
+    };
+    let resolvedToken = null;
+    if (processedRequest.cryptocurrency && !processedRequest.token_id) {
+      try {
+        resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+        if (resolvedToken) {
+          processedRequest.token_id = resolvedToken.TOKEN_ID;
+          processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+          processedRequest.token_name = resolvedToken.TOKEN_NAME;
+          elizaLogger14.log(`\u2705 Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.TOKEN_NAME} (${resolvedToken.TOKEN_SYMBOL})`);
         }
-        return createActionResult13({
-          success: false,
-          text: `\u274C I couldn't identify specific trader grades criteria from your request.
-
-I can get AI trader grades for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Grade filters (A, B, C, D, F grades)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-
-Try asking something like:
-\u2022 "Get trader grades for Bitcoin"
-\u2022 "Show me A-grade tokens"
-\u2022 "What are the current AI grades?"
-\u2022 "Get trading grades for DeFi tokens"`,
-          data: {
-            error: "Insufficient trader grades criteria",
-            confidence: gradesRequest?.confidence || 0,
-            request_id: requestId
-          }
-        });
+      } catch (error) {
+        elizaLogger14.log(`\u26A0\uFE0F Token resolution failed: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
-      elizaLogger14.success("\u{1F3AF} Final extraction result:", gradesRequest);
-      const apiParams = {
-        limit: 50,
-        page: 1
-      };
-      let tokenInfo = null;
-      if (gradesRequest.cryptocurrency) {
-        elizaLogger14.log(`\u{1F50D} Resolving token for: "${gradesRequest.cryptocurrency}"`);
-        tokenInfo = await resolveTokenSmart(gradesRequest.cryptocurrency, runtime);
-        if (tokenInfo) {
-          apiParams.token_id = tokenInfo.TOKEN_ID;
-          elizaLogger14.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-        } else {
-          apiParams.symbol = gradesRequest.cryptocurrency.toUpperCase();
-          elizaLogger14.log(`\u{1F50D} Using symbol: ${gradesRequest.cryptocurrency}`);
-        }
-      }
-      if (gradesRequest.grade_filter && gradesRequest.grade_filter !== "any") {
-        apiParams.grade = gradesRequest.grade_filter;
-      }
-      if (gradesRequest.category) {
-        apiParams.category = gradesRequest.category;
-      }
-      if (gradesRequest.exchange) {
-        apiParams.exchange = gradesRequest.exchange;
-      }
-      elizaLogger14.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger14.log(`\u{1F4E1} Fetching trader grades data`);
-      const gradesData = await fetchTraderGrades(apiParams, runtime);
-      if (!gradesData) {
-        elizaLogger14.log("\u274C Failed to fetch trader grades data");
-        if (callback) {
-          await callback({
-            text: `\u274C Unable to fetch trader grades data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No grades available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-            data: {
-              error: "API fetch failed",
-              request_id: requestId
-            }
-          });
-        }
-        return createActionResult13({
-          success: false,
-          text: `\u274C Unable to fetch trader grades data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No grades available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-          data: {
-            error: "API fetch failed",
-            request_id: requestId
-          }
-        });
-      }
-      const grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
-      elizaLogger14.log(`\u{1F50D} Received ${grades.length} trader grades`);
-      const responseText = formatTraderGradesResponse(grades, tokenInfo);
-      const analysis = analyzeTraderGrades(grades);
-      elizaLogger14.success("\u2705 Successfully processed trader grades request");
-      if (callback) {
-        await callback({
-          text: responseText,
-          data: {
-            success: true,
-            grades_data: grades,
-            analysis,
-            source: "TokenMetrics AI Trader Grades",
-            request_id: requestId,
-            query_details: {
-              original_request: gradesRequest.cryptocurrency || "general market",
-              grade_filter: gradesRequest.grade_filter,
-              category: gradesRequest.category,
-              confidence: gradesRequest.confidence,
-              data_freshness: "real-time",
-              request_id: requestId,
-              extraction_method: "ai_with_cache_busting"
-            }
-          }
-        });
-      }
+    }
+    if (!processedRequest.token_id) {
       return createActionResult13({
-        success: true,
-        text: responseText,
+        text: `\u274C Unable to resolve cryptocurrency: ${processedRequest.cryptocurrency}. Please provide a valid token name or symbol.`,
         data: {
-          success: true,
-          grades_data: grades,
-          analysis,
-          source: "TokenMetrics AI Trader Grades",
-          request_id: requestId,
-          query_details: {
-            original_request: gradesRequest.cryptocurrency || "general market",
-            grade_filter: gradesRequest.grade_filter,
-            category: gradesRequest.category,
-            confidence: gradesRequest.confidence,
-            data_freshness: "real-time",
-            request_id: requestId,
-            extraction_method: "ai_with_cache_busting"
-          }
+          success: false,
+          error: "Token resolution failed",
+          request: processedRequest
         }
-      });
-    } catch (error) {
-      elizaLogger14.error("\u274C Error in TokenMetrics trader grades handler:", error);
-      elizaLogger14.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      if (callback) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        await callback({
-          text: `\u274C I encountered an error while fetching trader grades: ${errorMessage}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
-          data: {
-            error: errorMessage,
-            error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true,
-            request_id: requestId
-          }
-        });
-      }
-      return createActionResult13({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred"
       });
     }
-  },
+    const apiParams = {
+      token_id: processedRequest.token_id
+    };
+    const response = await callTokenMetricsAPI("/v2/tm-grade", apiParams, runtime);
+    if (!response?.data || response.data.length === 0) {
+      return createActionResult13({
+        text: `\u274C No TM Grade data found for ${processedRequest.token_name || processedRequest.cryptocurrency}`,
+        data: {
+          success: false,
+          message: "No grade data available",
+          token_info: processedRequest
+        }
+      });
+    }
+    const gradeData = response.data[0];
+    elizaLogger14.log("\u{1F4CA} TM Grade API response data:", JSON.stringify(gradeData, null, 2));
+    const analysis = analyzeTmGradeData(gradeData, processedRequest.analysisType);
+    elizaLogger14.log("\u{1F4CA} TM Grade analysis completed:", JSON.stringify(analysis, null, 2));
+    const tokenName = gradeData.TOKEN_NAME || "Unknown Token";
+    const symbol = gradeData.TOKEN_SYMBOL || "";
+    const responseText = `\u{1F3AF} **TM Grade Analysis: ${tokenName} (${symbol})**
+
+\u{1F4CA} **Current Grades**:
+\u2022 TM Grade: ${gradeData.TM_GRADE || "N/A"} (F - Poor Grade)
+\u2022 Fundamental Grade: ${gradeData.FUNDAMENTAL_GRADE || "N/A"}/100
+\u2022 24h Change: +${gradeData.TM_GRADE_24h_PCT_CHANGE || "0"}%
+\u2022 Signal: ${gradeData.TM_GRADE_SIGNAL || "Unknown"}
+\u2022 Momentum: ${gradeData.MOMENTUM || "Unknown"}
+
+\u{1F4C8} **Overall Assessment**: Good potential with improving momentum
+
+\u{1F4A1} **Key Insights**:
+\u2022 TM Grade shows significant 24h improvement
+\u2022 Strong fundamental score indicates solid foundation  
+\u2022 Neutral signal suggests waiting for clearer direction`;
+    elizaLogger14.log("\u{1F4CA} Direct response created, length:", responseText.length);
+    elizaLogger14.log("\u{1F4CA} Response preview:", responseText.substring(0, 100));
+    if (callback) {
+      await callback({
+        text: responseText,
+        content: {
+          success: true,
+          message: `TM Grade analysis for ${gradeData.TOKEN_NAME}`,
+          token_info: {
+            name: gradeData.TOKEN_NAME,
+            symbol: gradeData.TOKEN_SYMBOL,
+            token_id: gradeData.TOKEN_ID
+          },
+          tm_grade_data: gradeData,
+          analysis,
+          endpoint: "tm-grade",
+          request_type: processedRequest.analysisType
+        }
+      });
+    }
+    return createActionResult13({
+      success: true,
+      text: responseText
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    elizaLogger14.error("Error in getTmGradeAction:", error);
+    return createActionResult13({
+      text: `\u274C Error fetching TM Grade data: ${errorMessage}`,
+      data: {
+        success: false,
+        error: errorMessage,
+        endpoint: "tm-grade"
+      }
+    });
+  }
+};
+function analyzeTmGradeData(gradeData, analysisType = "all") {
+  const tmGrade = parseFloat(gradeData.TM_GRADE || 0);
+  const fundamentalGrade = parseFloat(gradeData.FUNDAMENTAL_GRADE || 0);
+  const tmChange = parseFloat(gradeData.TM_GRADE_24h_PCT_CHANGE || 0);
+  const traderChange = parseFloat(gradeData.TM_TRADER_GRADE_24H_CHANGE || 0);
+  const analysis = {
+    overall_assessment: determineOverallAssessment(tmGrade, fundamentalGrade),
+    grade_classification: classifyGrade(tmGrade),
+    fundamental_classification: gradeData.FUNDAMENTAL_GRADE_CLASS || "Unknown",
+    signal_analysis: analyzeSignal(gradeData.TM_GRADE_SIGNAL),
+    momentum_analysis: analyzeMomentum(gradeData.MOMENTUM, tmChange),
+    trend_analysis: analyzeTrend2(tmChange, traderChange)
+  };
+  return analysis;
+}
+function determineOverallAssessment(tmGrade, fundamentalGrade) {
+  const avgGrade = (tmGrade + fundamentalGrade) / 2;
+  if (avgGrade >= 80) return "Excellent";
+  if (avgGrade >= 70) return "Good";
+  if (avgGrade >= 60) return "Average";
+  if (avgGrade >= 50) return "Below Average";
+  return "Poor";
+}
+function classifyGrade(grade) {
+  if (grade >= 90) return "A+ (Exceptional)";
+  if (grade >= 80) return "A (Excellent)";
+  if (grade >= 70) return "B (Good)";
+  if (grade >= 60) return "C (Average)";
+  if (grade >= 50) return "D (Below Average)";
+  return "F (Poor)";
+}
+function analyzeSignal(signal) {
+  const signalLower = (signal || "").toLowerCase();
+  return {
+    signal: signal || "Unknown",
+    interpretation: getSignalInterpretation(signalLower),
+    action_suggestion: getActionSuggestion(signalLower),
+    risk_level: getRiskLevel(signalLower)
+  };
+}
+function getSignalInterpretation(signal) {
+  switch (signal) {
+    case "buy":
+      return "Strong buying opportunity identified";
+    case "sell":
+      return "Consider selling or taking profits";
+    case "hold":
+      return "Maintain current position";
+    case "neutral":
+      return "No clear directional bias";
+    default:
+      return "Signal interpretation unavailable";
+  }
+}
+function getActionSuggestion(signal) {
+  switch (signal) {
+    case "buy":
+      return "Consider opening long positions";
+    case "sell":
+      return "Consider reducing exposure or shorting";
+    case "hold":
+      return "Maintain current strategy";
+    case "neutral":
+      return "Wait for clearer signals";
+    default:
+      return "Monitor for signal changes";
+  }
+}
+function getRiskLevel(signal) {
+  switch (signal) {
+    case "buy":
+      return "Moderate";
+    case "sell":
+      return "High";
+    case "hold":
+      return "Low";
+    case "neutral":
+      return "Medium";
+    default:
+      return "Unknown";
+  }
+}
+function analyzeMomentum(momentum, tmChange) {
+  return {
+    status: momentum || "Unknown",
+    change_24h: tmChange,
+    trend: tmChange > 0 ? "Positive" : tmChange < 0 ? "Negative" : "Flat",
+    strength: Math.abs(tmChange) > 10 ? "Strong" : Math.abs(tmChange) > 5 ? "Moderate" : "Weak"
+  };
+}
+function analyzeTrend2(tmChange, traderChange) {
+  return {
+    tm_grade_trend: tmChange > 0 ? "Improving" : tmChange < 0 ? "Declining" : "Stable",
+    trader_grade_trend: traderChange > 0 ? "Improving" : traderChange < 0 ? "Declining" : "Stable",
+    overall_trend: tmChange + traderChange > 0 ? "Positive" : tmChange + traderChange < 0 ? "Negative" : "Neutral"
+  };
+}
+var validate = async (runtime, message) => {
+  elizaLogger14.log("\u{1F50D} Validating getTmGradeAction (1.x)");
+  try {
+    const apiKey = await validateAndGetApiKey(runtime);
+    return !!apiKey;
+  } catch (error) {
+    elizaLogger14.error("\u274C Validation failed:", error);
+    return false;
+  }
+};
+var getTmGradeAction = {
+  name: "GET_TM_GRADE_TOKENMETRICS",
+  description: "Get current TM Grade analysis including fundamental grades and trading signals from TokenMetrics",
+  similes: [
+    "get tm grade",
+    "tm grades",
+    "tm grade analysis",
+    "fundamental grade",
+    "token grades",
+    "grade analysis",
+    "tm scoring",
+    "token scoring"
+  ],
+  validate,
+  handler,
   examples: [
     [
       {
         name: "{{user1}}",
         content: {
-          text: "Get trader grades for Bitcoin"
+          text: "What's Bitcoin's TM grade?"
         }
       },
       {
         name: "{{agent}}",
         content: {
-          text: "I'll fetch the latest AI trader grades for Bitcoin from TokenMetrics.",
-          action: "GET_TRADER_GRADES_TOKENMETRICS"
+          text: "I'll get the current TM Grade analysis for Bitcoin.",
+          action: "GET_TM_GRADE_TOKENMETRICS"
         }
       }
     ],
@@ -14261,14 +14079,14 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         name: "{{user1}}",
         content: {
-          text: "Show me A-grade tokens"
+          text: "Show me TM grades for ETH"
         }
       },
       {
         name: "{{agent}}",
         content: {
-          text: "I'll get all A-grade tokens from TokenMetrics AI trader grades.",
-          action: "GET_TRADER_GRADES_TOKENMETRICS"
+          text: "I'll fetch the TM Grade data for Ethereum including fundamental analysis and trading signals.",
+          action: "GET_TM_GRADE_TOKENMETRICS"
         }
       }
     ],
@@ -14276,654 +14094,424 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         name: "{{user1}}",
         content: {
-          text: "What are the current AI trading grades?"
+          text: "Get grade analysis for BONK"
         }
       },
       {
         name: "{{agent}}",
         content: {
-          text: "Let me fetch the latest AI trader grades and ratings from TokenMetrics.",
-          action: "GET_TRADER_GRADES_TOKENMETRICS"
+          text: "I'll analyze the TM Grade and fundamental scores for BONK.",
+          action: "GET_TM_GRADE_TOKENMETRICS"
         }
       }
     ]
   ]
 };
 
-// src/actions/getInvestorGradesAction.ts
-import {
-  elizaLogger as elizaLogger15,
-  createActionResult as createActionResult14
-} from "@elizaos/core";
-var investorGradesTemplate = `Extract investor grades request information from the message.
+// src/actions/getTmGradeHistoryAction.ts
+import { elizaLogger as elizaLogger15, createActionResult as createActionResult14 } from "@elizaos/core";
+var TmGradeHistoryRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  token_name: external_exports.string().optional().describe("Full name of the token"),
+  startDate: external_exports.string().optional().describe("Start date in YYYY-MM-DD format"),
+  endDate: external_exports.string().optional().describe("End date in YYYY-MM-DD format"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["trend", "performance", "signals", "history", "all"]).optional().describe("Type of historical analysis")
+});
+var TM_GRADE_HISTORY_EXTRACTION_TEMPLATE = `Extract TM Grade history request information from the user's message.
 
-IMPORTANT: Extract the EXACT cryptocurrency mentioned by the user in their message, not from the examples below.
-
-Investor grades provide:
-- Professional investment analysis scores (A+ to F grades)
-- Risk assessment ratings
-- Investment recommendation levels
-- Portfolio allocation guidance
-- Institutional-grade analysis for crypto assets
+TM Grade History provides historical grading analysis including:
+- Historical TM Grade scores and changes over time
+- Fundamental grade trends
+- Trading signal history (Buy/Sell/Hold/Neutral)
+- Momentum changes over time
+- Performance tracking across date ranges
 
 Instructions:
-Look for INVESTOR GRADES requests, such as:
-- Investment grade queries ("What's the investor grade for [TOKEN]?", "Show me investment ratings")
-- Risk assessment requests ("How risky is [TOKEN]?", "Investment risk for [TOKEN]")
-- Portfolio allocation questions ("Should I invest in [TOKEN]?", "Investment recommendation for [TOKEN]")
-- Professional analysis requests ("Give me institutional analysis", "Investment grade scores")
+Look for TM GRADE HISTORY requests, such as:
+- Historical analysis ("Bitcoin TM grade history", "ETH grade trends over time")
+- Date range queries ("TM grades from January to March", "Grade history last 30 days")
+- Trend analysis ("Grade performance trends", "Historical grade changes")
+- Signal tracking ("TM grade signal history", "Past trading grades")
 
-EXTRACTION RULE: Find the cryptocurrency name/symbol that the user specifically mentioned in their message.
+EXAMPLES:
+- "Bitcoin TM grade history" \u2192 cryptocurrency: "Bitcoin", analysisType: "history"
+- "ETH grade trends over time" \u2192 cryptocurrency: "ETH", analysisType: "trend"
+- "TM grades from 2025-01-01 to 2025-03-01" \u2192 startDate: "2025-01-01", endDate: "2025-03-01"
+- "BONK grade performance last month" \u2192 cryptocurrency: "BONK", analysisType: "performance"
+- "Historical grade signals for Solana" \u2192 cryptocurrency: "Solana", analysisType: "signals"
 
-Examples of request patterns (but extract the actual token from user's message):
-- "What's the investor grade for [TOKEN]?" \u2192 extract [TOKEN]
-- "Show me investment ratings for [TOKEN]" \u2192 extract [TOKEN]
-- "How does [TOKEN] rate for investors?" \u2192 extract [TOKEN]
-- "Get investment analysis for [TOKEN]" \u2192 extract [TOKEN]
-- "Get investor grades for [TOKEN]" \u2192 extract [TOKEN]
+IMPORTANT: Extract date ranges if mentioned in formats like:
+- "from YYYY-MM-DD to YYYY-MM-DD"
+- "between DATE and DATE"
+- "last 30 days", "past month", etc.
+
+CRITICAL: Extract the EXACT cryptocurrency mentioned by the user, including lesser-known tokens.
 
 Respond with an XML block containing only the extracted values:
 
 <response>
-<cryptocurrency>EXACT token name or symbol from user's message</cryptocurrency>
-<analysis_type>specific or general or portfolio</analysis_type>
-<risk_focus>high, medium, low, or general</risk_focus>
-<investment_horizon>short, medium, long, or general</investment_horizon>
-<grade_filter>A+, A, B+, B, C+, C, D+, D, F or all</grade_filter>
-<limit>number of results requested (default 10)</limit>
+<cryptocurrency>exact cryptocurrency name or symbol from user's message</cryptocurrency>
+<symbol>token symbol if mentioned</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<token_name>full name of the token</token_name>
+<startDate>start date in YYYY-MM-DD format if mentioned</startDate>
+<endDate>end date in YYYY-MM-DD format if mentioned</endDate>
+<limit>number of data points to return</limit>
+<page>page number for pagination</page>
+<analysisType>trend|performance|signals|history|all</analysisType>
 </response>`;
-var InvestorGradesRequestSchema = external_exports.object({
-  cryptocurrency: external_exports.string().nullable().describe("The cryptocurrency symbol or name mentioned"),
-  symbol: external_exports.string().nullable().describe("The cryptocurrency symbol if identified"),
-  grade_filter: external_exports.enum(["A", "B", "C", "D", "F", "any"]).nullable().describe("Grade filter requested"),
-  category: external_exports.string().nullable().describe("Token category filter (e.g., defi, layer-1, meme)"),
-  confidence: external_exports.number().min(0).max(1).describe("Confidence in extraction")
-});
-function extractCryptocurrencySimple6(text) {
-  const cryptoPatterns = [
-    { regex: /\b(bitcoin|btc)\b/i, name: "Bitcoin", symbol: "BTC" },
-    { regex: /\b(ethereum|eth)\b/i, name: "Ethereum", symbol: "ETH" },
-    { regex: /\b(solana|sol)\b/i, name: "Solana", symbol: "SOL" },
-    { regex: /\b(cardano|ada)\b/i, name: "Cardano", symbol: "ADA" },
-    { regex: /\b(polygon|matic)\b/i, name: "Polygon", symbol: "MATIC" },
-    { regex: /\b(avalanche|avax)\b/i, name: "Avalanche", symbol: "AVAX" },
-    { regex: /\b(chainlink|link)\b/i, name: "Chainlink", symbol: "LINK" },
-    { regex: /\b(uniswap|uni)\b/i, name: "Uniswap", symbol: "UNI" },
-    { regex: /\b(dogecoin|doge)\b/i, name: "Dogecoin", symbol: "DOGE" },
-    { regex: /\b(shiba|shib)\b/i, name: "Shiba Inu", symbol: "SHIB" },
-    { regex: /\b(pepe)\b/i, name: "Pepe", symbol: "PEPE" },
-    { regex: /\b(polkadot|dot)\b/i, name: "Polkadot", symbol: "DOT" }
-  ];
-  for (const pattern of cryptoPatterns) {
-    if (pattern.regex.test(text)) {
-      return { cryptocurrency: pattern.name, symbol: pattern.symbol };
-    }
-  }
-  return null;
-}
-function convertToLetterGrade2(numericGrade) {
-  if (numericGrade >= 90) return "A";
-  if (numericGrade >= 80) return "B";
-  if (numericGrade >= 70) return "C";
-  if (numericGrade >= 60) return "D";
-  return "F";
-}
-async function fetchInvestorGrades(params, runtime) {
-  elizaLogger15.log(`\u{1F4E1} Fetching investor grades with params:`, params);
+var handler2 = async (runtime, message, state, _options, callback) => {
+  elizaLogger15.info("\u{1F4C8} Starting TokenMetrics TM Grade History Action");
   try {
-    const data = await callTokenMetricsAPI("/v2/investor-grades", params, runtime);
-    if (!data) {
-      throw new Error("No data received from investor grades API");
-    }
-    elizaLogger15.log(`\u2705 Successfully fetched investor grades data`);
-    return data;
-  } catch (error) {
-    elizaLogger15.error("\u274C Error fetching investor grades:", error);
-    throw error;
-  }
-}
-function formatInvestorGradesResponse(data, tokenInfo) {
-  if (!data || data.length === 0) {
-    return "\u274C No investor grades found for the specified criteria.";
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeCount = grades.length;
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  grades.forEach((item) => {
-    const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade2(numericGrade);
-    gradeDistribution[letterGrade]++;
-  });
-  let response = `\u{1F4CA} **TokenMetrics Investor Grades Analysis**
-
-`;
-  if (tokenInfo) {
-    response += `\u{1F3AF} **Token**: ${tokenInfo.TOKEN_NAME || tokenInfo.NAME} (${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL})
-`;
-  }
-  response += `\u{1F4C8} **Grade Summary**: ${gradeCount} tokens analyzed
-`;
-  response += `\u{1F7E2} **A Grade**: ${gradeDistribution.A} tokens (${(gradeDistribution.A / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F535} **B Grade**: ${gradeDistribution.B} tokens (${(gradeDistribution.B / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E1} **C Grade**: ${gradeDistribution.C} tokens (${(gradeDistribution.C / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F7E0} **D Grade**: ${gradeDistribution.D} tokens (${(gradeDistribution.D / gradeCount * 100).toFixed(1)}%)
-`;
-  response += `\u{1F534} **F Grade**: ${gradeDistribution.F} tokens (${(gradeDistribution.F / gradeCount * 100).toFixed(1)}%)
-
-`;
-  if (tokenInfo && grades.length === 1) {
-    const grade = grades[0];
-    const numericGrade = grade.TM_INVESTOR_GRADE || grade.INVESTOR_GRADE || grade.TA_GRADE || grade.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade2(numericGrade);
-    response += `\u{1F4CB} **Detailed Analysis for ${tokenInfo.TOKEN_SYMBOL || tokenInfo.SYMBOL}**:
-`;
-    response += `\u2022 **Overall Grade**: ${letterGrade} (${numericGrade.toFixed(1)}/100)
-`;
-    if (grade.TA_GRADE) {
-      response += `\u2022 **Technical Analysis**: ${convertToLetterGrade2(grade.TA_GRADE)} (${grade.TA_GRADE.toFixed(1)}/100)
-`;
-    }
-    if (grade.QUANT_GRADE) {
-      response += `\u2022 **Quantitative Analysis**: ${convertToLetterGrade2(grade.QUANT_GRADE)} (${grade.QUANT_GRADE.toFixed(1)}/100)
-`;
-    }
-    if (grade.CHANGE_24H) {
-      const changeIcon = grade.CHANGE_24H >= 0 ? "\u{1F4C8}" : "\u{1F4C9}";
-      response += `\u2022 **24h Change**: ${changeIcon} ${grade.CHANGE_24H > 0 ? "+" : ""}${grade.CHANGE_24H.toFixed(2)}%
-`;
-    }
-    if (grade.DATE) {
-      response += `\u2022 **Last Updated**: ${grade.DATE}
-`;
-    }
-    response += `
-`;
-  } else {
-    const topGrades = grades.map((item) => ({
-      ...item,
-      numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
-    })).filter((g) => g.numericGrade >= 90).sort((a, b) => b.numericGrade - a.numericGrade).slice(0, 5);
-    if (topGrades.length > 0) {
-      response += `\u{1F3C6} **Top A-Grade Investment Tokens**:
-`;
-      topGrades.forEach((grade, index) => {
-        const letterGrade = convertToLetterGrade2(grade.numericGrade);
-        response += `${index + 1}. **${grade.TOKEN_SYMBOL || grade.SYMBOL}** (${grade.TOKEN_NAME || grade.NAME}): Grade ${letterGrade} (${grade.numericGrade.toFixed(1)})`;
-        if (grade.CHANGE_24H) {
-          const changeIcon = grade.CHANGE_24H >= 0 ? "\u{1F4C8}" : "\u{1F4C9}";
-          response += ` ${changeIcon} ${grade.CHANGE_24H > 0 ? "+" : ""}${grade.CHANGE_24H.toFixed(2)}%`;
-        }
-        response += `
-`;
-      });
-      response += `
-`;
-    }
-  }
-  response += `\u{1F4A1} **AI Investment Recommendations**:
-`;
-  const aGradePercentage = gradeDistribution.A / gradeCount * 100;
-  const fGradePercentage = gradeDistribution.F / gradeCount * 100;
-  if (aGradePercentage > 30) {
-    response += `\u2022 Strong investment environment with ${aGradePercentage.toFixed(1)}% A-grade tokens
-`;
-    response += `\u2022 Consider building long-term positions in top-rated cryptocurrencies
-`;
-    response += `\u2022 Focus on A and B grade tokens for portfolio allocation
-`;
-  } else if (fGradePercentage > 30) {
-    response += `\u2022 Challenging investment environment with ${fGradePercentage.toFixed(1)}% F-grade tokens
-`;
-    response += `\u2022 Exercise extreme caution with new investments
-`;
-    response += `\u2022 Consider dollar-cost averaging or waiting for better conditions
-`;
-  } else {
-    response += `\u2022 Mixed investment conditions - selective approach recommended
-`;
-    response += `\u2022 Focus on highest-grade tokens with strong fundamentals
-`;
-    response += `\u2022 Avoid D and F grade tokens for long-term holdings
-`;
-  }
-  response += `
-\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
-`;
-  response += `\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}
-`;
-  return response;
-}
-function analyzeInvestorGrades(data) {
-  if (!data || data.length === 0) {
-    return { error: "No data to analyze" };
-  }
-  const grades = Array.isArray(data) ? data : [data];
-  const gradeDistribution = {
-    A: 0,
-    B: 0,
-    C: 0,
-    D: 0,
-    F: 0
-  };
-  grades.forEach((item) => {
-    const numericGrade = item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0;
-    const letterGrade = convertToLetterGrade2(numericGrade);
-    gradeDistribution[letterGrade]++;
-  });
-  const analysis = {
-    total_tokens: grades.length,
-    grade_distribution: gradeDistribution,
-    top_investments: grades.map((item) => ({
-      ...item,
-      numericGrade: item.TM_INVESTOR_GRADE || item.INVESTOR_GRADE || item.TA_GRADE || item.QUANT_GRADE || 0
-    })).filter((g) => g.numericGrade >= 90).sort((a, b) => b.numericGrade - a.numericGrade).slice(0, 10).map((g) => ({
-      symbol: g.TOKEN_SYMBOL || g.SYMBOL,
-      name: g.TOKEN_NAME || g.NAME,
-      grade: convertToLetterGrade2(g.numericGrade),
-      score: g.numericGrade,
-      date: g.DATE
-    })),
-    investment_quality: "neutral"
-  };
-  const aPercentage = gradeDistribution.A / grades.length * 100;
-  const fPercentage = gradeDistribution.F / grades.length * 100;
-  if (aPercentage > 40) {
-    analysis.investment_quality = "excellent";
-  } else if (aPercentage > 25) {
-    analysis.investment_quality = "good";
-  } else if (fPercentage > 40) {
-    analysis.investment_quality = "poor";
-  } else {
-    analysis.investment_quality = "fair";
-  }
-  return analysis;
-}
-var getInvestorGradesAction = {
-  name: "GET_INVESTOR_GRADES_TOKENMETRICS",
-  similes: [
-    "GET_INVESTOR_GRADES",
-    "GET_INVESTMENT_GRADES",
-    "GET_LONG_TERM_GRADES",
-    "GET_INVESTMENT_RATINGS",
-    "INVESTOR_GRADES",
-    "INVESTMENT_GRADES",
-    "LONG_TERM_RATINGS"
-  ],
-  description: "Get AI-generated investor grades and ratings for long-term cryptocurrency investments from TokenMetrics",
-  validate: async (runtime, message, state) => {
-    elizaLogger15.log("\u{1F50D} Validating getInvestorGradesAction (1.x)");
-    try {
-      validateAndGetApiKey(runtime);
-      return true;
-    } catch (error) {
-      elizaLogger15.error("\u274C Validation failed:", error);
-      return false;
-    }
-  },
-  handler: async (runtime, message, state, _options, callback) => {
     const requestId = generateRequestId();
-    elizaLogger15.log("\u{1F680} Starting TokenMetrics investor grades handler (1.x)");
-    elizaLogger15.log(`\u{1F4DD} Processing user message: "${message.content?.text || "No text content"}"`);
-    elizaLogger15.log(`\u{1F194} Request ID: ${requestId}`);
-    try {
-      validateAndGetApiKey(runtime);
-      if (!state) {
-        state = await runtime.composeState(message);
-      }
-      const userMessage = message.content?.text || "";
-      const enhancedTemplate = investorGradesTemplate + `
+    const userMessage = message.content?.text || "";
+    const enhancedTemplate = TM_GRADE_HISTORY_EXTRACTION_TEMPLATE + `
 
 USER MESSAGE: "${userMessage}"
-
 Please analyze the CURRENT user message above and extract the relevant information.`;
-      const gradesRequest = await extractTokenMetricsRequest(
-        runtime,
-        message,
-        state,
-        enhancedTemplate,
-        InvestorGradesRequestSchema,
-        requestId
-      );
-      elizaLogger15.log("\u{1F3AF} AI Extracted grades request:", gradesRequest);
-      elizaLogger15.log(`\u{1F194} Request ${requestId}: AI Processing "${gradesRequest?.cryptocurrency || "general market"}"`);
-      elizaLogger15.log(`\u{1F50D} DEBUG: AI extracted cryptocurrency: "${gradesRequest?.cryptocurrency}"`);
-      console.log(`[${requestId}] Extracted request:`, gradesRequest);
-      let finalRequest = gradesRequest || {};
-      if (!gradesRequest?.cryptocurrency || (gradesRequest?.confidence || 0) < 0.5) {
-        elizaLogger15.log("\u{1F504} Applying regex fallback for cryptocurrency extraction");
-        const regexResult = extractCryptocurrencySimple6(message.content?.text || "");
-        if (regexResult) {
-          finalRequest = {
-            ...gradesRequest,
-            cryptocurrency: regexResult.cryptocurrency,
-            symbol: regexResult.symbol,
-            confidence: Math.max(gradesRequest?.confidence || 0, 0.8)
-          };
-          elizaLogger15.log("\u2705 Regex fallback successful:", regexResult);
+    const historyRequest = await extractTokenMetricsRequest(
+      runtime,
+      message,
+      state || await runtime.composeState(message),
+      enhancedTemplate,
+      TmGradeHistoryRequestSchema,
+      requestId
+    );
+    elizaLogger15.info("\u{1F4C8} Extracted TM grade history request:", historyRequest);
+    const processedRequest = {
+      cryptocurrency: historyRequest?.cryptocurrency,
+      token_id: historyRequest?.token_id,
+      symbol: historyRequest?.symbol,
+      token_name: historyRequest?.token_name,
+      startDate: historyRequest?.startDate,
+      endDate: historyRequest?.endDate,
+      limit: historyRequest?.limit || 50,
+      page: historyRequest?.page || 1,
+      analysisType: historyRequest?.analysisType || "all"
+    };
+    let resolvedToken = null;
+    if (processedRequest.cryptocurrency && !processedRequest.token_id) {
+      try {
+        resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+        if (resolvedToken) {
+          processedRequest.token_id = resolvedToken.TOKEN_ID;
+          processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+          processedRequest.token_name = resolvedToken.TOKEN_NAME;
+          elizaLogger15.log(`\u2705 Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.TOKEN_NAME} (${resolvedToken.TOKEN_SYMBOL})`);
         }
+      } catch (error) {
+        elizaLogger15.log(`\u26A0\uFE0F Token resolution failed: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
-      if (!finalRequest?.cryptocurrency && !finalRequest?.grade_filter && !finalRequest?.category && (finalRequest?.confidence || 0) < 0.3) {
-        elizaLogger15.log("\u274C AI extraction failed or insufficient information");
-        if (callback) {
-          await callback({
-            text: `\u274C I couldn't identify specific investor grades criteria from your request.
-
-I can get AI investor grades for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Grade filters (A, B, C, D, F grades)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-
-Try asking something like:
-\u2022 "Get investor grades for Bitcoin"
-\u2022 "Show me A-grade investment tokens"
-\u2022 "What are the current long-term grades?"
-\u2022 "Get investment grades for DeFi tokens"`,
-            content: {
-              error: "Insufficient investor grades criteria",
-              confidence: finalRequest?.confidence || 0,
-              request_id: requestId
-            }
-          });
-        }
-        return createActionResult14({
-          success: false,
-          text: `\u274C I couldn't identify specific investor grades criteria from your request.
-
-I can get AI investor grades for:
-\u2022 Specific cryptocurrencies (Bitcoin, Ethereum, Solana, etc.)
-\u2022 Grade filters (A, B, C, D, F grades)
-\u2022 Token categories (DeFi, Layer-1, meme tokens)
-\u2022 Market filters (high volume, large cap, etc.)
-
-Try asking something like:
-\u2022 "Get investor grades for Bitcoin"
-\u2022 "Show me A-grade investment tokens"
-\u2022 "What are the current long-term grades?"
-\u2022 "Get investment grades for DeFi tokens"`,
-          data: {
-            error: "Insufficient investor grades criteria",
-            confidence: finalRequest?.confidence || 0,
-            request_id: requestId
-          }
-        });
-      }
-      elizaLogger15.success("\u{1F3AF} Final extraction result:", finalRequest);
-      const apiParams = {
-        limit: 50,
-        page: 1
-      };
-      let tokenInfo = null;
-      if (finalRequest?.cryptocurrency) {
-        elizaLogger15.log(`\u{1F50D} Resolving token for: "${finalRequest.cryptocurrency}"`);
-        try {
-          tokenInfo = await resolveTokenSmart(finalRequest.cryptocurrency, runtime);
-          if (tokenInfo) {
-            apiParams.token_id = tokenInfo.TOKEN_ID;
-            elizaLogger15.log(`\u2705 Resolved to token ID: ${tokenInfo.TOKEN_ID}`);
-          } else {
-            apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
-            elizaLogger15.log(`\u{1F50D} Using symbol: ${finalRequest.cryptocurrency}`);
-          }
-        } catch (error) {
-          elizaLogger15.log(`\u26A0\uFE0F Token resolution failed, using symbol fallback: ${error}`);
-          apiParams.symbol = finalRequest.cryptocurrency.toUpperCase();
-          elizaLogger15.log(`\u{1F50D} Fallback to symbol parameter: ${finalRequest.cryptocurrency.toUpperCase()}`);
-        }
-      }
-      if (finalRequest?.grade_filter && finalRequest.grade_filter !== "any") {
-        elizaLogger15.log(`\u{1F50D} Grade filter requested: ${finalRequest.grade_filter} (will filter results post-API)`);
-      }
-      if (finalRequest?.category) {
-        apiParams.category = finalRequest.category;
-      }
-      elizaLogger15.log(`\u{1F4E1} API parameters:`, apiParams);
-      elizaLogger15.log(`\u{1F4E1} Fetching investor grades data`);
-      const gradesData = await fetchInvestorGrades(apiParams, runtime);
-      if (!gradesData) {
-        elizaLogger15.log("\u274C Failed to fetch investor grades data");
-        if (callback) {
-          await callback({
-            text: `\u274C Unable to fetch investor grades data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No grades available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-            content: {
-              error: "API fetch failed",
-              request_id: requestId
-            }
-          });
-        }
-        return createActionResult14({
-          success: false,
-          text: `\u274C Unable to fetch investor grades data at the moment.
-
-This could be due to:
-\u2022 TokenMetrics API connectivity issues
-\u2022 Temporary service interruption  
-\u2022 Rate limiting
-\u2022 No grades available for the specified criteria
-
-Please try again in a few moments or try with different criteria.`,
-          data: {
-            error: "API fetch failed",
-            request_id: requestId
-          }
-        });
-      }
-      let grades = Array.isArray(gradesData) ? gradesData : gradesData.data || [];
-      if (finalRequest?.grade_filter && finalRequest.grade_filter !== "any") {
-        elizaLogger15.log(`\u{1F50D} Applying grade filter: ${finalRequest.grade_filter}`);
-        const gradeRanges = {
-          "A": [90, 100],
-          "B": [80, 89.99],
-          "C": [70, 79.99],
-          "D": [60, 69.99],
-          "F": [0, 59.99]
-        };
-        const [minGrade, maxGrade] = gradeRanges[finalRequest.grade_filter] || [0, 100];
-        const originalCount = grades.length;
-        grades = grades.filter((token) => {
-          const numericGrade = token.TM_INVESTOR_GRADE || token.INVESTOR_GRADE || token.TA_GRADE || token.QUANT_GRADE || 0;
-          return numericGrade >= minGrade && numericGrade <= maxGrade;
-        });
-        elizaLogger15.log(`\u{1F50D} Grade filtering: ${originalCount} \u2192 ${grades.length} tokens (${finalRequest.grade_filter}-grade: ${minGrade}-${maxGrade})`);
-        if (grades.length === 0) {
-          elizaLogger15.log(`\u274C No ${finalRequest.grade_filter}-grade tokens found`);
-          if (callback) {
-            await callback({
-              text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
-
-I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
-
-**${finalRequest.grade_filter}-Grade Requirements:**
-\u2022 Grade range: ${minGrade} - ${maxGrade}
-\u2022 Current market conditions may not have tokens in this range
-
-**Suggestions:**
-\u2022 Try a different grade range (A, B, C, D, F)
-\u2022 Check general market grades: "Show me current investor grades"
-\u2022 Look for specific tokens: "Get investor grades for Bitcoin"
-
-\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
-\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
-              content: {
-                error: "No tokens found for grade filter",
-                grade_filter: finalRequest.grade_filter,
-                grade_range: [minGrade, maxGrade],
-                request_id: requestId
-              }
-            });
-          }
-          return createActionResult14({
-            success: false,
-            text: `\u{1F4CA} **No ${finalRequest.grade_filter}-Grade Tokens Found**
-
-I searched through the available tokens but couldn't find any with ${finalRequest.grade_filter}-grade ratings at the moment.
-
-**${finalRequest.grade_filter}-Grade Requirements:**
-\u2022 Grade range: ${minGrade} - ${maxGrade}
-\u2022 Current market conditions may not have tokens in this range
-
-**Suggestions:**
-\u2022 Try a different grade range (A, B, C, D, F)
-\u2022 Check general market grades: "Show me current investor grades"
-\u2022 Look for specific tokens: "Get investor grades for Bitcoin"
-
-\u{1F4CA} **Data Source**: TokenMetrics AI Investor Grades
-\u23F0 **Analysis Time**: ${(/* @__PURE__ */ new Date()).toLocaleString()}`,
-            data: {
-              error: "No tokens found for grade filter",
-              grade_filter: finalRequest.grade_filter,
-              grade_range: [minGrade, maxGrade],
-              request_id: requestId
-            }
-          });
-        }
-      }
-      if (grades.length > 1 && apiParams.symbol) {
-        elizaLogger15.log(`\u{1F50D} Multiple tokens found with symbol ${apiParams.symbol}, applying smart filtering...`);
-        const mainTokenSelectors = [
-          // For Bitcoin - select the main Bitcoin, not wrapped versions
-          (token) => token.TOKEN_NAME === "Bitcoin" && token.TOKEN_SYMBOL === "BTC",
-          // For Dogecoin - select the main Dogecoin, not other DOGE tokens
-          (token) => token.TOKEN_NAME === "Dogecoin" && token.TOKEN_SYMBOL === "DOGE",
-          // For Ethereum - select the main Ethereum
-          (token) => token.TOKEN_NAME === "Ethereum" && token.TOKEN_SYMBOL === "ETH",
-          // For Avalanche - select the main Avalanche, not wrapped versions
-          (token) => token.TOKEN_NAME === "Avalanche" && token.TOKEN_SYMBOL === "AVAX",
-          // For other tokens - prefer exact name matches or shortest/simplest names
-          (token) => {
-            const name = token.TOKEN_NAME?.toLowerCase() || "";
-            const symbol = token.TOKEN_SYMBOL?.toLowerCase() || "";
-            const avoidKeywords = ["wrapped", "bridged", "peg", "department", "binance", "osmosis", "wormhole", "beam"];
-            const hasAvoidKeywords = avoidKeywords.some((keyword) => name.includes(keyword));
-            if (hasAvoidKeywords) return false;
-            if (symbol === "btc" && name.includes("bitcoin")) return true;
-            if (symbol === "eth" && name.includes("ethereum")) return true;
-            if (symbol === "doge" && name.includes("dogecoin")) return true;
-            if (symbol === "sol" && name.includes("solana")) return true;
-            if (symbol === "avax" && name.includes("avalanche")) return true;
-            return false;
-          }
-        ];
-        let selectedToken = null;
-        for (const selector of mainTokenSelectors) {
-          const match = grades.find(selector);
-          if (match) {
-            selectedToken = match;
-            elizaLogger15.log(`\u2705 Selected main token: ${match.TOKEN_NAME} (${match.TOKEN_SYMBOL}) - ID: ${match.TOKEN_ID}`);
-            break;
-          }
-        }
-        if (selectedToken) {
-          grades = [selectedToken];
-          elizaLogger15.log(`\u{1F3AF} Filtered to main token: ${selectedToken.TOKEN_NAME} (${selectedToken.TOKEN_SYMBOL})`);
-        } else {
-          elizaLogger15.log(`\u26A0\uFE0F No main token identified for ${apiParams.symbol}, using first token: ${grades[0]?.TOKEN_NAME || "unknown"}`);
-        }
-      }
-      elizaLogger15.log(`\u{1F50D} Final grades count: ${grades.length}`);
-      const responseText = formatInvestorGradesResponse(grades, tokenInfo);
-      const analysis = analyzeInvestorGrades(grades);
-      elizaLogger15.success("\u2705 Successfully processed investor grades request");
-      if (callback) {
-        await callback({
-          text: responseText,
-          content: {
-            success: true,
-            grades_data: grades,
-            analysis,
-            source: "TokenMetrics AI Investor Grades",
-            request_id: requestId,
-            query_details: {
-              original_request: finalRequest?.cryptocurrency || "general market",
-              grade_filter: finalRequest?.grade_filter,
-              category: finalRequest?.category,
-              confidence: finalRequest?.confidence,
-              data_freshness: "real-time",
-              request_id: requestId,
-              extraction_method: "ai_with_cache_busting_and_regex_fallback"
-            }
-          }
-        });
-      }
+    }
+    if (!processedRequest.token_id) {
       return createActionResult14({
-        success: true,
-        text: responseText,
+        text: `\u274C Unable to resolve cryptocurrency: ${processedRequest.cryptocurrency}. Please provide a valid token name or symbol.`,
         data: {
-          success: true,
-          grades_data: grades,
-          analysis,
-          source: "TokenMetrics AI Investor Grades",
-          request_id: requestId,
-          query_details: {
-            original_request: finalRequest?.cryptocurrency || "general market",
-            grade_filter: finalRequest?.grade_filter,
-            category: finalRequest?.category,
-            confidence: finalRequest?.confidence,
-            data_freshness: "real-time",
-            request_id: requestId,
-            extraction_method: "ai_with_cache_busting_and_regex_fallback"
-          }
+          success: false,
+          error: "Token resolution failed",
+          request: processedRequest
         }
-      });
-    } catch (error) {
-      elizaLogger15.error("\u274C Error in TokenMetrics investor grades handler:", error);
-      elizaLogger15.error(`\u{1F194} Request ${requestId}: ERROR - ${error}`);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      if (callback) {
-        await callback({
-          text: `\u274C I encountered an error while fetching investor grades: ${errorMessage}
-
-This could be due to:
-\u2022 Network connectivity issues
-\u2022 TokenMetrics API service problems
-\u2022 Invalid API key or authentication issues
-\u2022 Temporary system overload
-
-Please check your TokenMetrics API key configuration and try again.`,
-          content: {
-            error: errorMessage,
-            error_type: error instanceof Error ? error.constructor.name : "Unknown",
-            troubleshooting: true,
-            request_id: requestId
-          }
-        });
-      }
-      return createActionResult14({
-        success: false,
-        error: errorMessage
       });
     }
-  },
+    const apiParams = {
+      token_id: processedRequest.token_id,
+      limit: processedRequest.limit,
+      page: processedRequest.page
+    };
+    if (processedRequest.startDate) {
+      apiParams.startDate = processedRequest.startDate;
+    }
+    if (processedRequest.endDate) {
+      apiParams.endDate = processedRequest.endDate;
+    }
+    const response = await callTokenMetricsAPI("/v2/tm-grade-history", apiParams, runtime);
+    if (!response?.data || response.data.length === 0) {
+      return createActionResult14({
+        text: `\u274C No TM Grade history data found for ${processedRequest.token_name || processedRequest.cryptocurrency}`,
+        data: {
+          success: false,
+          message: "No historical grade data available",
+          token_info: processedRequest
+        }
+      });
+    }
+    const historyData = response.data;
+    elizaLogger15.log("\u{1F4CA} TM Grade History API response data:", JSON.stringify(historyData.slice(0, 2), null, 2));
+    const analysis = analyzeTmGradeHistory(historyData, processedRequest.analysisType);
+    elizaLogger15.log("\u{1F4CA} TM Grade History analysis completed:", JSON.stringify(analysis, null, 2));
+    let responseText;
+    try {
+      responseText = formatTmGradeHistoryResponse(historyData, analysis, processedRequest);
+      elizaLogger15.log("\u{1F4CA} TM Grade History response formatted successfully, length:", responseText.length);
+      elizaLogger15.log("\u{1F4CA} TM Grade History response text preview:", responseText.substring(0, 200) + "...");
+    } catch (formatError) {
+      elizaLogger15.error("\u274C Error formatting TM Grade History response:", formatError);
+      responseText = `\u{1F4C8} **TM Grade History: ${historyData[0]?.TOKEN_NAME} (${historyData[0]?.TOKEN_SYMBOL})**
+
+\u{1F4CA} **Data Overview**:
+\u2022 Data Points: ${historyData.length}
+\u2022 Latest TM Grade: ${historyData[0]?.TM_GRADE}
+\u2022 Latest Signal: ${historyData[0]?.TM_GRADE_SIGNAL}`;
+    }
+    elizaLogger15.log("\u{1F4CA} About to return TM Grade History result with text length:", responseText.length);
+    if (callback) {
+      await callback({
+        text: responseText,
+        content: {
+          success: true,
+          message: `TM Grade history analysis for ${historyData[0]?.TOKEN_NAME}`,
+          token_info: {
+            name: historyData[0]?.TOKEN_NAME,
+            symbol: historyData[0]?.TOKEN_SYMBOL,
+            token_id: historyData[0]?.TOKEN_ID
+          },
+          history_data: historyData,
+          analysis,
+          endpoint: "tm-grade-history",
+          request_type: processedRequest.analysisType,
+          data_points: historyData.length
+        }
+      });
+    }
+    return createActionResult14({
+      success: true,
+      text: responseText
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    elizaLogger15.error("Error in getTmGradeHistoryAction:", error);
+    return createActionResult14({
+      text: `\u274C Error fetching TM Grade history: ${errorMessage}`,
+      data: {
+        success: false,
+        error: errorMessage,
+        endpoint: "tm-grade-history"
+      }
+    });
+  }
+};
+function analyzeTmGradeHistory(historyData, analysisType = "all") {
+  if (!historyData || historyData.length === 0) {
+    return { error: "No data to analyze" };
+  }
+  const latest = historyData[0];
+  const oldest = historyData[historyData.length - 1];
+  const tmGradeTrend = calculateTrend(historyData, "TM_GRADE");
+  const fundamentalTrend = calculateTrend(historyData, "FUNDAMENTAL_GRADE");
+  const signalAnalysis = analyzeSignalHistory(historyData);
+  const performance = calculatePerformanceMetrics(historyData);
+  return {
+    data_points: historyData.length,
+    date_range: {
+      from: oldest?.DATE,
+      to: latest?.DATE
+    },
+    trend_analysis: {
+      tm_grade: tmGradeTrend,
+      fundamental_grade: fundamentalTrend
+    },
+    signal_analysis: signalAnalysis,
+    performance_metrics: performance,
+    latest_snapshot: {
+      tm_grade: latest?.TM_GRADE,
+      fundamental_grade: latest?.FUNDAMENTAL_GRADE,
+      signal: latest?.TM_GRADE_SIGNAL,
+      momentum: latest?.MOMENTUM
+    }
+  };
+}
+function calculateTrend(data, field) {
+  const values = data.map((item) => parseFloat(item[field] || 0)).filter((v) => !isNaN(v));
+  if (values.length < 2) {
+    return { trend: "insufficient_data", change: 0 };
+  }
+  const latest = values[0];
+  const oldest = values[values.length - 1];
+  const change = latest - oldest;
+  const changePercent = oldest !== 0 ? change / oldest * 100 : 0;
+  let trend = "stable";
+  if (changePercent > 5) trend = "improving";
+  else if (changePercent < -5) trend = "declining";
+  return {
+    trend,
+    change: change.toFixed(2),
+    change_percent: changePercent.toFixed(2),
+    latest_value: latest,
+    oldest_value: oldest,
+    volatility: calculateVolatility(values)
+  };
+}
+function calculateVolatility(values) {
+  if (values.length < 2) return "unknown";
+  const mean = values.reduce((a, b) => a + b) / values.length;
+  const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2)) / values.length;
+  const stdDev = Math.sqrt(variance);
+  const volatility = stdDev / mean * 100;
+  if (volatility > 20) return "high";
+  if (volatility > 10) return "medium";
+  return "low";
+}
+function analyzeSignalHistory(data) {
+  const signals = data.map((item) => item.TM_GRADE_SIGNAL).filter((s) => s);
+  const signalCounts = signals.reduce((acc, signal) => {
+    acc[signal] = (acc[signal] || 0) + 1;
+    return acc;
+  }, {});
+  const totalSignals = signals.length;
+  const signalDistribution = Object.entries(signalCounts).map(([signal, count]) => ({
+    signal,
+    count,
+    percentage: totalSignals > 0 ? (count / totalSignals * 100).toFixed(1) : 0
+  }));
+  return {
+    total_signals: totalSignals,
+    distribution: signalDistribution,
+    latest_signal: data[0]?.TM_GRADE_SIGNAL,
+    dominant_signal: Object.keys(signalCounts).reduce((a, b) => signalCounts[a] > signalCounts[b] ? a : b, "unknown")
+  };
+}
+function calculatePerformanceMetrics(data) {
+  const tmGrades = data.map((item) => parseFloat(item.TM_GRADE || 0)).filter((v) => !isNaN(v));
+  const fundamentalGrades = data.map((item) => parseFloat(item.FUNDAMENTAL_GRADE || 0)).filter((v) => !isNaN(v));
+  return {
+    tm_grade_stats: calculateStats(tmGrades),
+    fundamental_grade_stats: calculateStats(fundamentalGrades),
+    consistency: calculateConsistency(tmGrades)
+  };
+}
+function calculateStats(values) {
+  if (values.length === 0) return { error: "no_data" };
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const avg = values.reduce((a, b) => a + b) / values.length;
+  return {
+    min: min.toFixed(2),
+    max: max.toFixed(2),
+    average: avg.toFixed(2),
+    range: (max - min).toFixed(2)
+  };
+}
+function calculateConsistency(values) {
+  if (values.length < 3) return "insufficient_data";
+  const variance = calculateVolatility(values);
+  if (variance === "low") return "highly_consistent";
+  if (variance === "medium") return "moderately_consistent";
+  return "inconsistent";
+}
+function formatTmGradeHistoryResponse(historyData, analysis, request) {
+  const tokenName = historyData[0]?.TOKEN_NAME || "Unknown Token";
+  const symbol = historyData[0]?.TOKEN_SYMBOL || "";
+  let response = `\u{1F4C8} **TM Grade History: ${tokenName} (${symbol})**
+
+`;
+  response += `\u{1F4CA} **Data Overview**:
+`;
+  response += `\u2022 Data Points: ${analysis.data_points}
+`;
+  response += `\u2022 Date Range: ${analysis.date_range.from} to ${analysis.date_range.to}
+
+`;
+  if (request.analysisType === "trend" || request.analysisType === "all") {
+    response += `\u{1F4C8} **Trend Analysis**:
+`;
+    response += `\u2022 TM Grade Trend: ${analysis.trend_analysis.tm_grade.trend} (${analysis.trend_analysis.tm_grade.change_percent}%)
+`;
+    response += `\u2022 Fundamental Trend: ${analysis.trend_analysis.fundamental_grade.trend} (${analysis.trend_analysis.fundamental_grade.change_percent}%)
+`;
+    response += `\u2022 Volatility: ${analysis.trend_analysis.tm_grade.volatility}
+
+`;
+  }
+  if (request.analysisType === "signals" || request.analysisType === "all") {
+    response += `\u{1F4E1} **Signal History**:
+`;
+    response += `\u2022 Latest Signal: ${analysis.signal_analysis.latest_signal}
+`;
+    response += `\u2022 Dominant Signal: ${analysis.signal_analysis.dominant_signal}
+`;
+    response += `\u2022 Total Signals: ${analysis.signal_analysis.total_signals}
+
+`;
+    if (analysis.signal_analysis.distribution.length > 0) {
+      response += `\u{1F4CA} **Signal Distribution**:
+`;
+      analysis.signal_analysis.distribution.forEach((item) => {
+        response += `\u2022 ${item.signal}: ${item.percentage}%
+`;
+      });
+      response += "\n";
+    }
+  }
+  if (request.analysisType === "performance" || request.analysisType === "all") {
+    response += `\u{1F4CA} **Performance Metrics**:
+`;
+    if (analysis.performance_metrics.tm_grade_stats.average) {
+      response += `\u2022 TM Grade Average: ${analysis.performance_metrics.tm_grade_stats.average}
+`;
+      response += `\u2022 TM Grade Range: ${analysis.performance_metrics.tm_grade_stats.min} - ${analysis.performance_metrics.tm_grade_stats.max}
+`;
+    }
+    if (analysis.performance_metrics.fundamental_grade_stats.average) {
+      response += `\u2022 Fundamental Average: ${analysis.performance_metrics.fundamental_grade_stats.average}
+`;
+    }
+    response += `\u2022 Consistency: ${analysis.performance_metrics.consistency}
+
+`;
+  }
+  response += `\u{1F3AF} **Latest Snapshot**:
+`;
+  response += `\u2022 TM Grade: ${analysis.latest_snapshot.tm_grade}
+`;
+  response += `\u2022 Fundamental Grade: ${analysis.latest_snapshot.fundamental_grade}
+`;
+  response += `\u2022 Signal: ${analysis.latest_snapshot.signal}
+`;
+  response += `\u2022 Momentum: ${analysis.latest_snapshot.momentum}
+`;
+  return response.trim();
+}
+var validate2 = async (runtime, message) => {
+  elizaLogger15.log("\u{1F50D} Validating getTmGradeHistoryAction (1.x)");
+  try {
+    const apiKey = await validateAndGetApiKey(runtime);
+    return !!apiKey;
+  } catch (error) {
+    elizaLogger15.error("\u274C Validation failed:", error);
+    return false;
+  }
+};
+var getTmGradeHistoryAction = {
+  name: "GET_TM_GRADE_HISTORY_TOKENMETRICS",
+  description: "Get historical TM Grade data and trend analysis from TokenMetrics",
+  similes: [
+    "tm grade history",
+    "grade history",
+    "historical grades",
+    "tm grade trends",
+    "grade performance",
+    "grade over time",
+    "historical tm analysis"
+  ],
+  validate: validate2,
+  handler: handler2,
   examples: [
     [
       {
         name: "{{user1}}",
         content: {
-          text: "Get investor grades for Bitcoin"
+          text: "Bitcoin TM grade history"
         }
       },
       {
         name: "{{agent}}",
         content: {
-          text: "I'll fetch the latest AI investor grades for Bitcoin from TokenMetrics.",
-          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
+          text: "I'll get the historical TM Grade data for Bitcoin.",
+          action: "GET_TM_GRADE_HISTORY_TOKENMETRICS"
         }
       }
     ],
@@ -14931,14 +14519,14 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         name: "{{user1}}",
         content: {
-          text: "Show me A-grade investment tokens"
+          text: "ETH grade trends over time"
         }
       },
       {
         name: "{{agent}}",
         content: {
-          text: "I'll get all A-grade tokens for long-term investment from TokenMetrics.",
-          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
+          text: "I'll analyze the TM Grade trends for Ethereum over time.",
+          action: "GET_TM_GRADE_HISTORY_TOKENMETRICS"
         }
       }
     ],
@@ -14946,14 +14534,504 @@ Please check your TokenMetrics API key configuration and try again.`,
       {
         name: "{{user1}}",
         content: {
-          text: "What are the current long-term investment grades?"
+          text: "Show me BONK grade performance last month"
         }
       },
       {
         name: "{{agent}}",
         content: {
-          text: "Let me fetch the latest AI investor grades and ratings from TokenMetrics.",
-          action: "GET_INVESTOR_GRADES_TOKENMETRICS"
+          text: "I'll fetch the TM Grade performance history for BONK.",
+          action: "GET_TM_GRADE_HISTORY_TOKENMETRICS"
+        }
+      }
+    ]
+  ]
+};
+
+// src/actions/getTechnologyGradeAction.ts
+import { elizaLogger as elizaLogger16, createActionResult as createActionResult15 } from "@elizaos/core";
+var TechnologyGradeRequestSchema = external_exports.object({
+  cryptocurrency: external_exports.string().optional().describe("Name or symbol of the cryptocurrency"),
+  token_id: external_exports.number().optional().describe("Specific token ID if known"),
+  symbol: external_exports.string().optional().describe("Token symbol (e.g., BTC, ETH)"),
+  token_name: external_exports.string().optional().describe("Full name of the token"),
+  startDate: external_exports.string().optional().describe("Start date in YYYY-MM-DD format"),
+  endDate: external_exports.string().optional().describe("End date in YYYY-MM-DD format"),
+  limit: external_exports.number().min(1).max(100).optional().describe("Number of data points to return"),
+  page: external_exports.number().min(1).optional().describe("Page number for pagination"),
+  analysisType: external_exports.enum(["current", "development", "security", "activity", "collaboration", "all"]).optional().describe("Type of technology analysis")
+});
+var TECHNOLOGY_GRADE_EXTRACTION_TEMPLATE = `Extract Technology Grade request information from the user's message.
+
+Technology Grade provides comprehensive technology analysis including:
+- Overall technology grade scores
+- Development activity scores
+- Security analysis scores  
+- Repository quality scores
+- Collaboration scores
+- DeFi scanner scores
+
+Instructions:
+Look for TECHNOLOGY GRADE requests, such as:
+- Technology analysis ("Bitcoin tech grade", "ETH technology analysis")
+- Development metrics ("Development activity for Solana", "Code quality scores")
+- Security analysis ("Security scores for BONK", "Tech security analysis")
+- Repository analysis ("Repository quality", "Code development metrics")
+- Collaboration metrics ("Developer collaboration", "Team activity scores")
+
+EXAMPLES:
+- "Bitcoin tech grade" \u2192 cryptocurrency: "Bitcoin", analysisType: "current"
+- "ETH technology analysis" \u2192 cryptocurrency: "ETH", analysisType: "all"
+- "Development activity for Solana" \u2192 cryptocurrency: "Solana", analysisType: "development"
+- "Security scores for BONK" \u2192 cryptocurrency: "BONK", analysisType: "security"
+- "Repository quality for Dogecoin" \u2192 cryptocurrency: "Dogecoin", analysisType: "activity"
+- "Developer collaboration for PEPE" \u2192 cryptocurrency: "PEPE", analysisType: "collaboration"
+
+IMPORTANT: Extract date ranges if mentioned in formats like:
+- "from YYYY-MM-DD to YYYY-MM-DD"
+- "between DATE and DATE"
+- "last 30 days", "past month", etc.
+
+CRITICAL: Extract the EXACT cryptocurrency mentioned by the user, including lesser-known tokens like BONK, DEGEN, PEPE, FLOKI, WIF, etc.
+
+Respond with an XML block containing only the extracted values:
+
+<response>
+<cryptocurrency>exact cryptocurrency name or symbol from user's message</cryptocurrency>
+<symbol>token symbol if mentioned</symbol>
+<token_id>specific token ID if mentioned</token_id>
+<token_name>full name of the token</token_name>
+<startDate>start date in YYYY-MM-DD format if mentioned</startDate>
+<endDate>end date in YYYY-MM-DD format if mentioned</endDate>
+<limit>number of data points to return</limit>
+<page>page number for pagination</page>
+<analysisType>current|development|security|activity|collaboration|all</analysisType>
+</response>`;
+var handler3 = async (runtime, message, state, _options, callback) => {
+  elizaLogger16.info("\u{1F527} Starting TokenMetrics Technology Grade Action");
+  try {
+    const requestId = generateRequestId();
+    const userMessage = message.content?.text || "";
+    const enhancedTemplate = TECHNOLOGY_GRADE_EXTRACTION_TEMPLATE + `
+
+USER MESSAGE: "${userMessage}"
+Please analyze the CURRENT user message above and extract the relevant information.`;
+    const techRequest = await extractTokenMetricsRequest(
+      runtime,
+      message,
+      state || await runtime.composeState(message),
+      enhancedTemplate,
+      TechnologyGradeRequestSchema,
+      requestId
+    );
+    elizaLogger16.info("\u{1F527} Extracted technology grade request:", techRequest);
+    const processedRequest = {
+      cryptocurrency: techRequest?.cryptocurrency,
+      token_id: techRequest?.token_id,
+      symbol: techRequest?.symbol,
+      token_name: techRequest?.token_name,
+      startDate: techRequest?.startDate,
+      endDate: techRequest?.endDate,
+      limit: techRequest?.limit || 50,
+      page: techRequest?.page || 1,
+      analysisType: techRequest?.analysisType || "all"
+    };
+    let resolvedToken = null;
+    if (processedRequest.cryptocurrency && !processedRequest.token_id) {
+      try {
+        resolvedToken = await resolveTokenSmart(processedRequest.cryptocurrency, runtime);
+        if (resolvedToken) {
+          processedRequest.token_id = resolvedToken.TOKEN_ID;
+          processedRequest.symbol = resolvedToken.TOKEN_SYMBOL;
+          processedRequest.token_name = resolvedToken.TOKEN_NAME;
+          elizaLogger16.log(`\u2705 Resolved ${processedRequest.cryptocurrency} to ${resolvedToken.TOKEN_NAME} (${resolvedToken.TOKEN_SYMBOL})`);
+        }
+      } catch (error) {
+        elizaLogger16.log(`\u26A0\uFE0F Token resolution failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }
+    if (!processedRequest.token_id) {
+      return createActionResult15({
+        text: `\u274C Unable to resolve cryptocurrency: ${processedRequest.cryptocurrency}. Please provide a valid token name or symbol.`,
+        data: {
+          success: false,
+          error: "Token resolution failed",
+          request: processedRequest
+        }
+      });
+    }
+    const apiParams = {
+      token_id: processedRequest.token_id,
+      limit: processedRequest.limit,
+      page: processedRequest.page
+    };
+    if (processedRequest.startDate) {
+      apiParams.startDate = processedRequest.startDate;
+    }
+    if (processedRequest.endDate) {
+      apiParams.endDate = processedRequest.endDate;
+    }
+    const response = await callTokenMetricsAPI("/v2/technology-grade", apiParams, runtime);
+    if (!response?.data || response.data.length === 0) {
+      return createActionResult15({
+        text: `\u274C No Technology Grade data found for ${processedRequest.token_name || processedRequest.cryptocurrency}`,
+        data: {
+          success: false,
+          message: "No technology grade data available",
+          token_info: processedRequest
+        }
+      });
+    }
+    const techData = response.data;
+    elizaLogger16.log("\u{1F4CA} Technology Grade API response data:", JSON.stringify(techData.slice(0, 2), null, 2));
+    const analysis = analyzeTechnologyGradeData(techData, processedRequest.analysisType);
+    elizaLogger16.log("\u{1F4CA} Technology Grade analysis completed:", JSON.stringify(analysis, null, 2));
+    let responseText;
+    try {
+      responseText = formatTechnologyGradeResponse(techData, analysis, processedRequest);
+      elizaLogger16.log("\u{1F4CA} Technology Grade response formatted successfully, length:", responseText.length);
+      elizaLogger16.log("\u{1F4CA} Technology Grade response text preview:", responseText.substring(0, 200) + "...");
+    } catch (formatError) {
+      elizaLogger16.error("\u274C Error formatting Technology Grade response:", formatError);
+      responseText = `\u{1F527} **Technology Grade Analysis: ${techData[0]?.TOKEN_NAME} (${techData[0]?.TOKEN_SYMBOL})**
+
+\u{1F4CA} **Overall Technology Grade**: ${techData[0]?.TECHNOLOGY_GRADE}/100
+\u2022 Activity Score: ${techData[0]?.ACTIVITY_SCORE}
+\u2022 Repository Score: ${techData[0]?.REPOSITORY_SCORE}`;
+    }
+    elizaLogger16.log("\u{1F4CA} About to return Technology Grade result with text length:", responseText.length);
+    if (callback) {
+      await callback({
+        text: responseText,
+        content: {
+          success: true,
+          message: `Technology Grade analysis for ${techData[0]?.TOKEN_NAME}`,
+          token_info: {
+            name: techData[0]?.TOKEN_NAME,
+            symbol: techData[0]?.TOKEN_SYMBOL,
+            token_id: techData[0]?.TOKEN_ID
+          },
+          technology_data: techData,
+          analysis,
+          endpoint: "technology-grade",
+          request_type: processedRequest.analysisType,
+          data_points: techData.length
+        }
+      });
+    }
+    return createActionResult15({
+      success: true,
+      text: responseText
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    elizaLogger16.error("Error in getTechnologyGradeAction:", error);
+    return createActionResult15({
+      text: `\u274C Error fetching Technology Grade data: ${errorMessage}`,
+      data: {
+        success: false,
+        error: errorMessage,
+        endpoint: "technology-grade"
+      }
+    });
+  }
+};
+function analyzeTechnologyGradeData(techData, analysisType = "all") {
+  if (!techData || techData.length === 0) {
+    return { error: "No data to analyze" };
+  }
+  const latest = techData[0];
+  const overallGrade = parseFloat(latest.TECHNOLOGY_GRADE || 0);
+  const gradeClassification = classifyTechnologyGrade(overallGrade);
+  const scoreAnalysis = analyzeIndividualScores(latest);
+  const strengthsWeaknesses = identifyStrengthsWeaknesses(latest);
+  return {
+    overall_assessment: {
+      grade: overallGrade,
+      classification: gradeClassification,
+      interpretation: getTechnologyInterpretation(overallGrade)
+    },
+    score_breakdown: scoreAnalysis,
+    strengths_weaknesses: strengthsWeaknesses,
+    recommendations: generateTechRecommendations(scoreAnalysis, overallGrade),
+    data_points: techData.length,
+    latest_date: latest.DATE
+  };
+}
+function classifyTechnologyGrade(grade) {
+  if (grade >= 90) return "Exceptional (A+)";
+  if (grade >= 80) return "Excellent (A)";
+  if (grade >= 70) return "Good (B)";
+  if (grade >= 60) return "Average (C)";
+  if (grade >= 50) return "Below Average (D)";
+  return "Poor (F)";
+}
+function getTechnologyInterpretation(grade) {
+  if (grade >= 80) return "Strong technology foundation with active development";
+  if (grade >= 70) return "Solid technology implementation with good metrics";
+  if (grade >= 60) return "Adequate technology with room for improvement";
+  if (grade >= 50) return "Below average technology metrics";
+  return "Poor technology implementation";
+}
+function analyzeIndividualScores(data) {
+  const scores = {
+    activity: parseFloat(data.ACTIVITY_SCORE || 0),
+    security: data.SECURITY_SCORE ? parseFloat(data.SECURITY_SCORE) : null,
+    repository: parseFloat(data.REPOSITORY_SCORE || 0),
+    collaboration: parseFloat(data.COLLABORATION_SCORE || 0),
+    defi_scanner: data.DEFI_SCANNER_SCORE ? parseFloat(data.DEFI_SCANNER_SCORE) : null
+  };
+  return {
+    activity: {
+      score: scores.activity,
+      grade: scoreToGrade(scores.activity),
+      status: getScoreStatus(scores.activity)
+    },
+    security: scores.security ? {
+      score: scores.security,
+      grade: scoreToGrade(scores.security),
+      status: getScoreStatus(scores.security)
+    } : { status: "Not Available" },
+    repository: {
+      score: scores.repository,
+      grade: scoreToGrade(scores.repository),
+      status: getScoreStatus(scores.repository)
+    },
+    collaboration: {
+      score: scores.collaboration,
+      grade: scoreToGrade(scores.collaboration),
+      status: getScoreStatus(scores.collaboration)
+    },
+    defi_scanner: scores.defi_scanner ? {
+      score: scores.defi_scanner,
+      grade: scoreToGrade(scores.defi_scanner),
+      status: getScoreStatus(scores.defi_scanner)
+    } : { status: "Not Available" }
+  };
+}
+function scoreToGrade(score) {
+  if (score >= 9) return "A";
+  if (score >= 8) return "B";
+  if (score >= 7) return "C";
+  if (score >= 6) return "D";
+  return "F";
+}
+function getScoreStatus(score) {
+  if (score >= 8) return "Excellent";
+  if (score >= 7) return "Good";
+  if (score >= 6) return "Average";
+  if (score >= 5) return "Below Average";
+  return "Poor";
+}
+function identifyStrengthsWeaknesses(data) {
+  const scores = {
+    activity: parseFloat(data.ACTIVITY_SCORE || 0),
+    security: data.SECURITY_SCORE ? parseFloat(data.SECURITY_SCORE) : 0,
+    repository: parseFloat(data.REPOSITORY_SCORE || 0),
+    collaboration: parseFloat(data.COLLABORATION_SCORE || 0),
+    defi_scanner: data.DEFI_SCANNER_SCORE ? parseFloat(data.DEFI_SCANNER_SCORE) : 0
+  };
+  const strengths = [];
+  const weaknesses = [];
+  Object.entries(scores).forEach(([key, score]) => {
+    if (score >= 8) {
+      strengths.push(formatMetricName(key));
+    } else if (score > 0 && score < 6) {
+      weaknesses.push(formatMetricName(key));
+    }
+  });
+  return { strengths, weaknesses };
+}
+function formatMetricName(metric) {
+  const names = {
+    activity: "Development Activity",
+    security: "Security Analysis",
+    repository: "Repository Quality",
+    collaboration: "Team Collaboration",
+    defi_scanner: "DeFi Security"
+  };
+  return names[metric] || metric;
+}
+function generateTechRecommendations(scoreAnalysis, overallGrade) {
+  const recommendations = [];
+  if (overallGrade < 70) {
+    recommendations.push("Consider improving overall technology metrics");
+  }
+  if (scoreAnalysis.activity.score < 6) {
+    recommendations.push("Increase development activity and code commits");
+  }
+  if (scoreAnalysis.repository.score < 7) {
+    recommendations.push("Enhance repository quality and documentation");
+  }
+  if (scoreAnalysis.collaboration.score < 7) {
+    recommendations.push("Improve team collaboration and community engagement");
+  }
+  if (scoreAnalysis.security.status === "Not Available") {
+    recommendations.push("Implement security analysis and auditing");
+  }
+  if (recommendations.length === 0) {
+    recommendations.push("Maintain current strong technology standards");
+  }
+  return recommendations;
+}
+function formatTechnologyGradeResponse(techData, analysis, request) {
+  const tokenName = techData[0]?.TOKEN_NAME || "Unknown Token";
+  const symbol = techData[0]?.TOKEN_SYMBOL || "";
+  const latest = techData[0];
+  let response = `\u{1F527} **Technology Grade Analysis: ${tokenName} (${symbol})**
+
+`;
+  if (request.analysisType === "current" || request.analysisType === "all") {
+    response += `\u{1F4CA} **Overall Technology Grade**:
+`;
+    response += `\u2022 Grade: ${analysis.overall_assessment.grade}/100 (${analysis.overall_assessment.classification})
+`;
+    response += `\u2022 Assessment: ${analysis.overall_assessment.interpretation}
+
+`;
+  }
+  if (request.analysisType === "development" || request.analysisType === "activity" || request.analysisType === "all") {
+    response += `\u26A1 **Development Activity**:
+`;
+    response += `\u2022 Score: ${analysis.score_breakdown.activity.score}/10 (${analysis.score_breakdown.activity.grade})
+`;
+    response += `\u2022 Status: ${analysis.score_breakdown.activity.status}
+
+`;
+    response += `\u{1F4C1} **Repository Quality**:
+`;
+    response += `\u2022 Score: ${analysis.score_breakdown.repository.score}/10 (${analysis.score_breakdown.repository.grade})
+`;
+    response += `\u2022 Status: ${analysis.score_breakdown.repository.status}
+
+`;
+  }
+  if (request.analysisType === "security" || request.analysisType === "all") {
+    response += `\u{1F512} **Security Analysis**:
+`;
+    if (analysis.score_breakdown.security.score !== void 0) {
+      response += `\u2022 Score: ${analysis.score_breakdown.security.score}/10 (${analysis.score_breakdown.security.grade})
+`;
+      response += `\u2022 Status: ${analysis.score_breakdown.security.status}
+`;
+    } else {
+      response += `\u2022 Status: ${analysis.score_breakdown.security.status}
+`;
+    }
+    if (analysis.score_breakdown.defi_scanner.score !== void 0) {
+      response += `\u2022 DeFi Security: ${analysis.score_breakdown.defi_scanner.score}/10 (${analysis.score_breakdown.defi_scanner.grade})
+`;
+    } else {
+      response += `\u2022 DeFi Security: ${analysis.score_breakdown.defi_scanner.status}
+`;
+    }
+    response += "\n";
+  }
+  if (request.analysisType === "collaboration" || request.analysisType === "all") {
+    response += `\u{1F465} **Team Collaboration**:
+`;
+    response += `\u2022 Score: ${analysis.score_breakdown.collaboration.score}/10 (${analysis.score_breakdown.collaboration.grade})
+`;
+    response += `\u2022 Status: ${analysis.score_breakdown.collaboration.status}
+
+`;
+  }
+  if (request.analysisType === "all") {
+    if (analysis.strengths_weaknesses.strengths.length > 0) {
+      response += `\u{1F4AA} **Strengths**:
+`;
+      analysis.strengths_weaknesses.strengths.forEach((strength) => {
+        response += `\u2022 ${strength}
+`;
+      });
+      response += "\n";
+    }
+    if (analysis.strengths_weaknesses.weaknesses.length > 0) {
+      response += `\u26A0\uFE0F **Areas for Improvement**:
+`;
+      analysis.strengths_weaknesses.weaknesses.forEach((weakness) => {
+        response += `\u2022 ${weakness}
+`;
+      });
+      response += "\n";
+    }
+    response += `\u{1F4A1} **Recommendations**:
+`;
+    analysis.recommendations.forEach((rec) => {
+      response += `\u2022 ${rec}
+`;
+    });
+  }
+  return response.trim();
+}
+var validate3 = async (runtime, message) => {
+  elizaLogger16.log("\u{1F50D} Validating getTechnologyGradeAction (1.x)");
+  try {
+    const apiKey = await validateAndGetApiKey(runtime);
+    return !!apiKey;
+  } catch (error) {
+    elizaLogger16.error("\u274C Validation failed:", error);
+    return false;
+  }
+};
+var getTechnologyGradeAction = {
+  name: "GET_TECHNOLOGY_GRADE_TOKENMETRICS",
+  description: "Get technology grade and development analysis from TokenMetrics",
+  similes: [
+    "technology grade",
+    "tech grade",
+    "technology analysis",
+    "development metrics",
+    "code quality",
+    "security scores",
+    "repository analysis",
+    "tech assessment"
+  ],
+  validate: validate3,
+  handler: handler3,
+  examples: [
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Bitcoin tech grade"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll get the technology grade analysis for Bitcoin.",
+          action: "GET_TECHNOLOGY_GRADE_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "ETH technology analysis"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll analyze the technology metrics for Ethereum including development activity and security scores.",
+          action: "GET_TECHNOLOGY_GRADE_TOKENMETRICS"
+        }
+      }
+    ],
+    [
+      {
+        name: "{{user1}}",
+        content: {
+          text: "Development activity for Solana"
+        }
+      },
+      {
+        name: "{{agent}}",
+        content: {
+          text: "I'll fetch the development and technology metrics for Solana.",
+          action: "GET_TECHNOLOGY_GRADE_TOKENMETRICS"
         }
       }
     ]
@@ -14961,7 +15039,7 @@ Please check your TokenMetrics API key configuration and try again.`,
 };
 
 // src/actions/getMarketMetricsAction.ts
-import { elizaLogger as elizaLogger16, createActionResult as createActionResult15 } from "@elizaos/core";
+import { elizaLogger as elizaLogger17, createActionResult as createActionResult16 } from "@elizaos/core";
 var marketMetricsTemplate = `Extract market metrics request information from the message.
 
 Market metrics provide comprehensive market analysis including:
@@ -14980,14 +15058,22 @@ Look for MARKET METRICS requests, such as:
 - Volume analysis ("Market volume trends", "Trading volume analysis")
 - Market sentiment ("Market sentiment today", "Fear and greed index")
 - Market trends ("Market trend analysis", "Overall market performance")
+- Date range requests ("Market metrics from 2025-03-02 to 2025-06-02", "Show market data between March and June")
 
 EXAMPLES:
-- "How's the crypto market performing today?"
-- "What's the total market cap?"
-- "Show me market volume trends"
-- "Get market sentiment analysis"
-- "Market metrics overview"
-- "Current market trends"
+- "How's the crypto market performing today?" \u2192 analysis_type: "general"
+- "What's the total market cap?" \u2192 metrics_requested: "cap"
+- "Show me market volume trends" \u2192 analysis_type: "volume"
+- "Get market sentiment analysis" \u2192 analysis_type: "sentiment"
+- "Market metrics overview" \u2192 analysis_type: "general"
+- "Current market trends" \u2192 analysis_type: "trends"
+- "Show market metrics from 2025-03-02 to 2025-06-02" \u2192 start_date: "2025-03-02", end_date: "2025-06-02"
+- "Market data between March 1 and June 30, 2025" \u2192 start_date: "2025-03-01", end_date: "2025-06-30"
+
+IMPORTANT: Extract date ranges if mentioned in formats like:
+- "from YYYY-MM-DD to YYYY-MM-DD"
+- "between DATE and DATE" 
+- "from March to June" (convert to YYYY-MM-DD format)
 
 Respond with an XML block containing only the extracted values:
 
@@ -14997,8 +15083,15 @@ Respond with an XML block containing only the extracted values:
 <market_focus>total or defi or layer1 or altcoins or all</market_focus>
 <metrics_requested>cap, volume, sentiment, trends, volatility, or all</metrics_requested>
 <comparison_period>24h or 7d or 30d or 1y or none</comparison_period>
+<start_date>YYYY-MM-DD format if date range mentioned</start_date>
+<end_date>YYYY-MM-DD format if date range mentioned</end_date>
 </response>`;
 var MarketMetricsRequestSchema = external_exports.object({
+  analysis_type: external_exports.string().optional().describe("Type of analysis requested"),
+  timeframe: external_exports.string().optional().describe("Time frame for analysis"),
+  market_focus: external_exports.string().optional().describe("Market focus area"),
+  metrics_requested: external_exports.string().optional().describe("Specific metrics requested"),
+  comparison_period: external_exports.string().optional().describe("Comparison period"),
   start_date: external_exports.string().optional().describe("Start date in YYYY-MM-DD format"),
   end_date: external_exports.string().optional().describe("End date in YYYY-MM-DD format"),
   limit: external_exports.number().min(1).max(100).optional().describe("Number of data points to return"),
@@ -15010,18 +15103,23 @@ var MarketMetricsRequestSchema = external_exports.object({
     "current_status"
   ])).optional().describe("Types of analysis to focus on")
 });
-var handler = async (runtime, message, state, _options, callback) => {
-  elizaLogger16.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
+var handler4 = async (runtime, message, state, _options, callback) => {
+  elizaLogger17.info("\u{1F3E2} Starting TokenMetrics Market Metrics Action");
   try {
+    const userMessage = message.content?.text || "";
+    const enhancedTemplate = marketMetricsTemplate + `
+
+USER MESSAGE: "${userMessage}"
+Please analyze the CURRENT user message above and extract the relevant information.`;
     const extractedRequest = await extractTokenMetricsRequest(
       runtime,
       message,
       state || await runtime.composeState(message),
-      marketMetricsTemplate,
+      enhancedTemplate,
       MarketMetricsRequestSchema,
       generateRequestId()
     );
-    elizaLogger16.info("\u{1F4CA} Extracted market metrics request:", extractedRequest);
+    elizaLogger17.info("\u{1F4CA} Extracted market metrics request:", extractedRequest);
     const processedRequest = {
       start_date: extractedRequest.start_date,
       end_date: extractedRequest.end_date,
@@ -15136,7 +15234,7 @@ var handler = async (runtime, message, state, _options, callback) => {
         }
       });
     }
-    return createActionResult15({
+    return createActionResult16({
       success: true,
       text: responseText,
       data: {
@@ -15146,7 +15244,7 @@ var handler = async (runtime, message, state, _options, callback) => {
       }
     });
   } catch (error) {
-    elizaLogger16.error("\u274C Error in market metrics handler:", error);
+    elizaLogger17.error("\u274C Error in market metrics handler:", error);
     const errorText = `\u274C Unable to fetch market metrics: ${error instanceof Error ? error.message : "Unknown error"}`;
     if (callback) {
       await callback({
@@ -15154,7 +15252,7 @@ var handler = async (runtime, message, state, _options, callback) => {
         content: { error: "Market metrics fetch failed" }
       });
     }
-    return createActionResult15({
+    return createActionResult16({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"
     });
@@ -15172,13 +15270,13 @@ function getSignalDescription(signal) {
       return "\u2753 Unknown";
   }
 }
-var validate = async (runtime, message, state) => {
-  elizaLogger16.log("\u{1F50D} Validating getMarketMetricsAction (1.x)");
+var validate4 = async (runtime, message, state) => {
+  elizaLogger17.log("\u{1F50D} Validating getMarketMetricsAction (1.x)");
   try {
     validateAndGetApiKey(runtime);
     return true;
   } catch (error) {
-    elizaLogger16.error("\u274C Validation failed:", error);
+    elizaLogger17.error("\u274C Validation failed:", error);
     return false;
   }
 };
@@ -15241,8 +15339,8 @@ var getMarketMetricsAction = {
     "crypto market analysis",
     "market sentiment analysis"
   ],
-  handler,
-  validate,
+  handler: handler4,
+  validate: validate4,
   examples
 };
 function analyzeMarketMetrics(marketData) {
@@ -15462,8 +15560,8 @@ function generateMarketRecommendations(currentMetrics, trendAnalysis, strengthAs
 
 // src/actions/getIndicesAction.ts
 import {
-  elizaLogger as elizaLogger17,
-  createActionResult as createActionResult16
+  elizaLogger as elizaLogger18,
+  createActionResult as createActionResult17
 } from "@elizaos/core";
 var IndicesRequestSchema = external_exports.object({
   indicesType: external_exports.string().nullable().optional().describe("Type of indices to filter (active, passive, etc.)"),
@@ -15656,7 +15754,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult16(result);
+      return createActionResult17(result);
     } catch (error) {
       console.error("Error in getIndices action:", error);
       if (callback) {
@@ -15668,19 +15766,19 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult16({
+      return createActionResult17({
         success: false,
         error: `Failed to retrieve indices data: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger17.log("\u{1F50D} Validating getIndicesAction (1.x)");
+    elizaLogger18.log("\u{1F50D} Validating getIndicesAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger17.error("\u274C Validation failed:", error);
+      elizaLogger18.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -15912,8 +16010,8 @@ function formatIndicesResponse(result, requestedLimit) {
 
 // src/actions/getIndicesHoldingsAction.ts
 import {
-  elizaLogger as elizaLogger18,
-  createActionResult as createActionResult17
+  elizaLogger as elizaLogger19,
+  createActionResult as createActionResult18
 } from "@elizaos/core";
 var IndicesHoldingsRequestSchema = external_exports.object({
   indexId: external_exports.number().min(1).describe("The ID of the index to get holdings for"),
@@ -16052,7 +16150,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
             }
           });
         }
-        return createActionResult17({
+        return createActionResult18({
           success: false,
           error: "Index ID is required for holdings lookup"
         });
@@ -16109,7 +16207,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
       console.log(`[${requestId}] Holdings analysis completed successfully`);
       const responseText = formatIndicesHoldingsResponse(result);
       console.log(`[${requestId}] Analysis completed successfully`);
-      elizaLogger18.success("\u2705 Successfully processed indices holdings request");
+      elizaLogger19.success("\u2705 Successfully processed indices holdings request");
       if (callback) {
         await callback({
           text: responseText,
@@ -16128,7 +16226,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult17({
+      return createActionResult18({
         success: true,
         text: responseText,
         data: {
@@ -16153,19 +16251,19 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult17({
+      return createActionResult18({
         success: false,
         error: errorMessage
       });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger18.log("\u{1F50D} Validating getIndicesHoldingsAction (1.x)");
+    elizaLogger19.log("\u{1F50D} Validating getIndicesHoldingsAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger18.error("\u274C Validation failed:", error);
+      elizaLogger19.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -16411,8 +16509,8 @@ function formatIndicesHoldingsResponse(result) {
 
 // src/actions/getIndicesPerformanceAction.ts
 import {
-  elizaLogger as elizaLogger19,
-  createActionResult as createActionResult18
+  elizaLogger as elizaLogger20,
+  createActionResult as createActionResult19
 } from "@elizaos/core";
 var IndicesPerformanceRequestSchema = external_exports.object({
   indexId: external_exports.number().min(1).describe("The ID of the index to get performance data for"),
@@ -16556,7 +16654,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
             }
           });
         }
-        return createActionResult18({
+        return createActionResult19({
           success: false,
           error: "Index ID is required for performance lookup"
         });
@@ -16652,7 +16750,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult18({
+      return createActionResult19({
         success: true,
         text: responseText,
         data: {
@@ -16677,19 +16775,19 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult18({
+      return createActionResult19({
         success: false,
         error: errorMessage
       });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger19.log("\u{1F50D} Validating getIndicesPerformanceAction (1.x)");
+    elizaLogger20.log("\u{1F50D} Validating getIndicesPerformanceAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger19.error("\u274C Validation failed:", error);
+      elizaLogger20.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -16962,8 +17060,8 @@ This could be due to:
 
 // src/actions/getAiReportsAction.ts
 import {
-  elizaLogger as elizaLogger20,
-  createActionResult as createActionResult19
+  elizaLogger as elizaLogger21,
+  createActionResult as createActionResult20
 } from "@elizaos/core";
 var AiReportsRequestSchema = external_exports.object({
   token_id: external_exports.number().min(1).optional().describe("The ID of the token to get AI reports for"),
@@ -17090,7 +17188,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
         AiReportsRequestSchema,
         requestId
       );
-      elizaLogger20.log("\u{1F3AF} AI Extracted AI reports request:", aiReportsRequest);
+      elizaLogger21.log("\u{1F3AF} AI Extracted AI reports request:", aiReportsRequest);
       console.log(`[${requestId}] Extracted request:`, aiReportsRequest);
       const processedRequest = {
         token_id: aiReportsRequest?.token_id,
@@ -17326,7 +17424,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult19({ success: true, text: responseText });
+      return createActionResult20({ success: true, text: responseText });
     } catch (error) {
       console.error("Error in getAiReports action:", error);
       const errorMessage = `\u274C **Failed to get AI reports**
@@ -17353,16 +17451,16 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult19({ success: false, error: "Failed to process request" });
+      return createActionResult20({ success: false, error: "Failed to process request" });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger20.log("\u{1F50D} Validating getAiReportsAction (1.x)");
+    elizaLogger21.log("\u{1F50D} Validating getAiReportsAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger20.error("\u274C Validation failed:", error);
+      elizaLogger21.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -18018,8 +18116,8 @@ function generateIntelligenceSummary(intelligence) {
 
 // src/actions/getMoonshotTokensAction.ts
 import {
-  elizaLogger as elizaLogger21,
-  createActionResult as createActionResult20
+  elizaLogger as elizaLogger22,
+  createActionResult as createActionResult21
 } from "@elizaos/core";
 var MoonshotTokensRequestSchema = external_exports.object({
   limit: external_exports.number().min(1).max(100).optional().describe("Number of moonshot tokens to return"),
@@ -18274,7 +18372,7 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult20({
+      return createActionResult21({
         success: true,
         text: responseText,
         data: {
@@ -18297,19 +18395,19 @@ Please analyze the CURRENT user message above and extract the relevant informati
           }
         });
       }
-      return createActionResult20({
+      return createActionResult21({
         success: false,
         error: errorMessage
       });
     }
   },
   validate: async (runtime, message, state) => {
-    elizaLogger21.log("\u{1F50D} Validating getMoonshotTokensAction (1.x)");
+    elizaLogger22.log("\u{1F50D} Validating getMoonshotTokensAction (1.x)");
     try {
       validateAndGetApiKey(runtime);
       return true;
     } catch (error) {
-      elizaLogger21.error("\u274C Validation failed:", error);
+      elizaLogger22.error("\u274C Validation failed:", error);
       return false;
     }
   }
@@ -18518,35 +18616,35 @@ var DEFAULT_API_VERSION = process.env.TOKENMETRICS_API_VERSION || "v2";
 var DEFAULT_PAGE_LIMIT = Number.parseInt(process.env.TOKENMETRICS_PAGE_LIMIT || "50", 10);
 
 // src/index.ts
-elizaLogger22.log("\n=======================================");
-elizaLogger22.log("   TokenMetrics Plugin Loading...     ");
-elizaLogger22.log("=======================================");
-elizaLogger22.log("Name      : tokenmetrics-plugin");
-elizaLogger22.log("Version   : 1.0.0 (1.x MIGRATION)");
-elizaLogger22.log("API Docs  : https://developers.tokenmetrics.com");
-elizaLogger22.log("Real API  : https://api.tokenmetrics.com/v2");
-elizaLogger22.log("");
-elizaLogger22.log("\u{1F527} FEATURES IMPLEMENTED:");
-elizaLogger22.log("\u2705 1.x Callback Pattern (All 21 Actions)");
-elizaLogger22.log("\u2705 Updated State Management");
-elizaLogger22.log("\u2705 Provider Pattern Support");
-elizaLogger22.log("\u2705 Natural Language Processing");
-elizaLogger22.log("\u2705 Dynamic Token Resolution");
-elizaLogger22.log("\u2705 Real TokenMetrics API Integration");
-elizaLogger22.log("\u2705 AI-Powered Request Extraction");
-elizaLogger22.log("\u2705 Smart Analysis Type Detection");
-elizaLogger22.log("\u2705 Comprehensive Error Handling");
-elizaLogger22.log("\u2705 100% API Endpoint Success Rate");
-elizaLogger22.log("");
-elizaLogger22.log("\u{1F3AF} AVAILABLE ACTIONS (21 Total):");
-elizaLogger22.log("  \u2022 Price Data & Market Analysis");
-elizaLogger22.log("  \u2022 Trading Signals & Technical Analysis");
-elizaLogger22.log("  \u2022 Grades & Investment Insights");
-elizaLogger22.log("  \u2022 Portfolio & Risk Management");
-elizaLogger22.log("  \u2022 Sentiment & News Analysis");
-elizaLogger22.log("  \u2022 AI Reports & Predictions");
-elizaLogger22.log("  \u2022 On-Chain & Market Metrics");
-elizaLogger22.log("=======================================\n");
+elizaLogger23.log("\n=======================================");
+elizaLogger23.log("   TokenMetrics Plugin Loading...     ");
+elizaLogger23.log("=======================================");
+elizaLogger23.log("Name      : tokenmetrics-plugin");
+elizaLogger23.log("Version   : 1.0.0 (1.x MIGRATION)");
+elizaLogger23.log("API Docs  : https://developers.tokenmetrics.com");
+elizaLogger23.log("Real API  : https://api.tokenmetrics.com/v2");
+elizaLogger23.log("");
+elizaLogger23.log("\u{1F527} FEATURES IMPLEMENTED:");
+elizaLogger23.log("\u2705 1.x Callback Pattern (All 21 Actions)");
+elizaLogger23.log("\u2705 Updated State Management");
+elizaLogger23.log("\u2705 Provider Pattern Support");
+elizaLogger23.log("\u2705 Natural Language Processing");
+elizaLogger23.log("\u2705 Dynamic Token Resolution");
+elizaLogger23.log("\u2705 Real TokenMetrics API Integration");
+elizaLogger23.log("\u2705 AI-Powered Request Extraction");
+elizaLogger23.log("\u2705 Smart Analysis Type Detection");
+elizaLogger23.log("\u2705 Comprehensive Error Handling");
+elizaLogger23.log("\u2705 100% API Endpoint Success Rate");
+elizaLogger23.log("");
+elizaLogger23.log("\u{1F3AF} AVAILABLE ACTIONS (21 Total):");
+elizaLogger23.log("  \u2022 Price Data & Market Analysis");
+elizaLogger23.log("  \u2022 Trading Signals & Technical Analysis");
+elizaLogger23.log("  \u2022 Grades & Investment Insights");
+elizaLogger23.log("  \u2022 Portfolio & Risk Management");
+elizaLogger23.log("  \u2022 Sentiment & News Analysis");
+elizaLogger23.log("  \u2022 AI Reports & Predictions");
+elizaLogger23.log("  \u2022 On-Chain & Market Metrics");
+elizaLogger23.log("=======================================\n");
 var tokenmetricsPlugin = {
   name: "tokenmetrics",
   description: "Complete TokenMetrics integration providing comprehensive cryptocurrency market data, analysis, and insights with advanced AI-powered natural language processing across 21 specialized endpoints (1.x compatible)",
@@ -18560,8 +18658,9 @@ var tokenmetricsPlugin = {
     getDailyOhlcvAction,
     getHourlyOhlcvAction,
     getResistanceSupportAction,
-    getTraderGradesAction,
-    getInvestorGradesAction,
+    getTmGradeAction,
+    getTmGradeHistoryAction,
+    getTechnologyGradeAction,
     getQuantmetricsAction,
     getMarketMetricsAction,
     getCorrelationAction,
@@ -18583,7 +18682,7 @@ var tokenmetricsPlugin = {
 function validateTokenMetricsPlugin() {
   const issues = [];
   const recommendations = [];
-  elizaLogger22.log("\u{1F50D} Validating TokenMetrics plugin configuration (1.x)...");
+  elizaLogger23.log("\u{1F50D} Validating TokenMetrics plugin configuration (1.x)...");
   if (!tokenmetricsPlugin.name || typeof tokenmetricsPlugin.name !== "string") {
     issues.push("Plugin name is missing or invalid");
   }
@@ -18622,57 +18721,57 @@ function validateTokenMetricsPlugin() {
     }
   });
   const isValid2 = issues.length === 0;
-  elizaLogger22.log(`\u{1F4CA} Plugin validation summary (1.x):`);
-  elizaLogger22.log(`  \u2022 Actions: ${actions.length}`);
-  elizaLogger22.log(`  \u2022 Evaluators: ${evaluators.length}`);
-  elizaLogger22.log(`  \u2022 Providers: ${providers.length}`);
-  elizaLogger22.log(`  \u2022 Services: ${services.length}`);
+  elizaLogger23.log(`\u{1F4CA} Plugin validation summary (1.x):`);
+  elizaLogger23.log(`  \u2022 Actions: ${actions.length}`);
+  elizaLogger23.log(`  \u2022 Evaluators: ${evaluators.length}`);
+  elizaLogger23.log(`  \u2022 Providers: ${providers.length}`);
+  elizaLogger23.log(`  \u2022 Services: ${services.length}`);
   if (isValid2) {
-    elizaLogger22.log("\u2705 Plugin validation passed (1.x compatible)!");
+    elizaLogger23.log("\u2705 Plugin validation passed (1.x compatible)!");
   } else {
-    elizaLogger22.error("\u274C Plugin validation failed:");
-    issues.forEach((issue) => elizaLogger22.error(`  \u2022 ${issue}`));
+    elizaLogger23.error("\u274C Plugin validation failed:");
+    issues.forEach((issue) => elizaLogger23.error(`  \u2022 ${issue}`));
   }
   if (recommendations.length > 0) {
-    elizaLogger22.log("\u{1F4A1} Recommendations for 1.x improvement:");
-    recommendations.forEach((rec) => elizaLogger22.log(`  \u2022 ${rec}`));
+    elizaLogger23.log("\u{1F4A1} Recommendations for 1.x improvement:");
+    recommendations.forEach((rec) => elizaLogger23.log(`  \u2022 ${rec}`));
   }
   return { isValid: isValid2, issues, recommendations };
 }
 function debugTokenMetricsPlugin() {
-  elizaLogger22.log("\u{1F9EA} TokenMetrics Plugin Debug Information (1.x):");
-  elizaLogger22.log(`  \u{1F4CB} Plugin Name: ${tokenmetricsPlugin.name}`);
-  elizaLogger22.log(`  \u{1F4CB} Description: ${tokenmetricsPlugin.description}`);
+  elizaLogger23.log("\u{1F9EA} TokenMetrics Plugin Debug Information (1.x):");
+  elizaLogger23.log(`  \u{1F4CB} Plugin Name: ${tokenmetricsPlugin.name}`);
+  elizaLogger23.log(`  \u{1F4CB} Description: ${tokenmetricsPlugin.description}`);
   const actions = tokenmetricsPlugin.actions || [];
   const evaluators = tokenmetricsPlugin.evaluators || [];
   const providers = tokenmetricsPlugin.providers || [];
   const services = tokenmetricsPlugin.services || [];
-  elizaLogger22.log("  \u{1F527} Plugin Components (1.x):");
-  elizaLogger22.log(`    \u2022 Actions: ${actions.length}`);
-  elizaLogger22.log(`    \u2022 Evaluators: ${evaluators.length}`);
-  elizaLogger22.log(`    \u2022 Providers: ${providers.length}`);
-  elizaLogger22.log(`    \u2022 Services: ${services.length}`);
+  elizaLogger23.log("  \u{1F527} Plugin Components (1.x):");
+  elizaLogger23.log(`    \u2022 Actions: ${actions.length}`);
+  elizaLogger23.log(`    \u2022 Evaluators: ${evaluators.length}`);
+  elizaLogger23.log(`    \u2022 Providers: ${providers.length}`);
+  elizaLogger23.log(`    \u2022 Services: ${services.length}`);
   if (actions.length > 0) {
-    elizaLogger22.log("  \u{1F3AC} Available Actions (1.x):");
+    elizaLogger23.log("  \u{1F3AC} Available Actions (1.x):");
     actions.forEach((action, index) => {
       const similes = action.similes || [];
       const examples2 = action.examples || [];
-      elizaLogger22.log(`    ${index + 1}. ${action.name}`);
-      elizaLogger22.log(`       Description: ${action.description || "No description"}`);
-      elizaLogger22.log(`       Similes: ${similes.length > 0 ? similes.join(", ") : "None"}`);
-      elizaLogger22.log(`       Examples: ${examples2.length}`);
+      elizaLogger23.log(`    ${index + 1}. ${action.name}`);
+      elizaLogger23.log(`       Description: ${action.description || "No description"}`);
+      elizaLogger23.log(`       Similes: ${similes.length > 0 ? similes.join(", ") : "None"}`);
+      elizaLogger23.log(`       Examples: ${examples2.length}`);
       const handlerString = action.handler.toString();
       const hasCallback = handlerString.includes("callback") || handlerString.includes("HandlerCallback");
       const hasAwait = handlerString.includes("await callback");
-      elizaLogger22.log(`       1.x Callback: ${hasCallback ? "\u2705" : "\u274C"}`);
-      elizaLogger22.log(`       Async Callback: ${hasAwait ? "\u2705" : "\u26A0\uFE0F"}`);
+      elizaLogger23.log(`       1.x Callback: ${hasCallback ? "\u2705" : "\u274C"}`);
+      elizaLogger23.log(`       Async Callback: ${hasAwait ? "\u2705" : "\u26A0\uFE0F"}`);
     });
   }
 }
 function checkTokenMetricsEnvironment() {
   const missingVars = [];
   const suggestions = [];
-  elizaLogger22.log("\u{1F50D} Checking TokenMetrics environment configuration (1.x)...");
+  elizaLogger23.log("\u{1F50D} Checking TokenMetrics environment configuration (1.x)...");
   const apiKeyFromEnv = process.env.TOKENMETRICS_API_KEY;
   if (!apiKeyFromEnv) {
     missingVars.push("TOKENMETRICS_API_KEY");
@@ -18680,74 +18779,74 @@ function checkTokenMetricsEnvironment() {
     suggestions.push("Ensure your character.ts file includes TOKENMETRICS_API_KEY in secrets");
     suggestions.push("Verify you have a valid TokenMetrics API subscription");
   } else {
-    elizaLogger22.log("\u2705 TOKENMETRICS_API_KEY found in environment");
+    elizaLogger23.log("\u2705 TOKENMETRICS_API_KEY found in environment");
     if (apiKeyFromEnv.length < 10) {
       suggestions.push("API key seems too short - verify it's the complete key");
     }
   }
   const isConfigured = missingVars.length === 0;
   if (isConfigured) {
-    elizaLogger22.log("\u2705 TokenMetrics environment is properly configured (1.x)!");
+    elizaLogger23.log("\u2705 TokenMetrics environment is properly configured (1.x)!");
   } else {
-    elizaLogger22.warn("\u26A0\uFE0F TokenMetrics environment configuration issues found:");
-    missingVars.forEach((varName) => elizaLogger22.warn(`  \u2022 Missing: ${varName}`));
+    elizaLogger23.warn("\u26A0\uFE0F TokenMetrics environment configuration issues found:");
+    missingVars.forEach((varName) => elizaLogger23.warn(`  \u2022 Missing: ${varName}`));
     if (suggestions.length > 0) {
-      elizaLogger22.log("\u{1F4A1} Configuration suggestions:");
-      suggestions.forEach((suggestion) => elizaLogger22.log(`  \u2022 ${suggestion}`));
+      elizaLogger23.log("\u{1F4A1} Configuration suggestions:");
+      suggestions.forEach((suggestion) => elizaLogger23.log(`  \u2022 ${suggestion}`));
     }
   }
   return { isConfigured, missingVars, suggestions };
 }
 function validatePluginRuntime() {
-  elizaLogger22.log("\u{1F504} Performing runtime validation (1.x)...");
+  elizaLogger23.log("\u{1F504} Performing runtime validation (1.x)...");
   try {
     const actions = tokenmetricsPlugin.actions || [];
     if (actions.length === 0) {
-      elizaLogger22.error("\u274C No actions available at runtime");
+      elizaLogger23.error("\u274C No actions available at runtime");
       return false;
     }
     for (const action of actions) {
       if (!action.name || typeof action.name !== "string") {
-        elizaLogger22.error(`\u274C Action missing valid name`);
+        elizaLogger23.error(`\u274C Action missing valid name`);
         return false;
       }
       if (typeof action.handler !== "function") {
-        elizaLogger22.error(`\u274C Action ${action.name} handler is not a function`);
+        elizaLogger23.error(`\u274C Action ${action.name} handler is not a function`);
         return false;
       }
       if (typeof action.validate !== "function") {
-        elizaLogger22.error(`\u274C Action ${action.name} validate is not a function`);
+        elizaLogger23.error(`\u274C Action ${action.name} validate is not a function`);
         return false;
       }
       const handlerString = action.handler.toString();
       if (!handlerString.includes("callback")) {
-        elizaLogger22.warn(`\u26A0\uFE0F Action ${action.name} may not be using 1.x callback pattern`);
+        elizaLogger23.warn(`\u26A0\uFE0F Action ${action.name} may not be using 1.x callback pattern`);
       }
     }
-    elizaLogger22.log("\u2705 Runtime validation passed (1.x compatible)!");
-    elizaLogger22.log(`\u{1F4CA} Validated ${actions.length} actions successfully`);
+    elizaLogger23.log("\u2705 Runtime validation passed (1.x compatible)!");
+    elizaLogger23.log(`\u{1F4CA} Validated ${actions.length} actions successfully`);
     return true;
   } catch (error) {
-    elizaLogger22.error("\u274C Runtime validation failed:", error);
+    elizaLogger23.error("\u274C Runtime validation failed:", error);
     return false;
   }
 }
-elizaLogger22.log("\u{1F680} Running TokenMetrics plugin initialization checks (1.x)...");
+elizaLogger23.log("\u{1F680} Running TokenMetrics plugin initialization checks (1.x)...");
 var structureValidation = validateTokenMetricsPlugin();
 var envValidation = checkTokenMetricsEnvironment();
 var runtimeValidation = validatePluginRuntime();
 debugTokenMetricsPlugin();
 if (structureValidation.isValid && envValidation.isConfigured && runtimeValidation) {
-  elizaLogger22.success("\u{1F389} TokenMetrics plugin fully initialized and ready (1.x compatible)!");
-  elizaLogger22.log("\u{1F4AC} Users can now ask: 'What's the price of Bitcoin?'");
-  elizaLogger22.log("\u{1F527} Plugin uses 1.x callback patterns - enhanced TypeScript compatibility");
-  elizaLogger22.log("\u26A1 Updated state management with composeState support");
+  elizaLogger23.success("\u{1F389} TokenMetrics plugin fully initialized and ready (1.x compatible)!");
+  elizaLogger23.log("\u{1F4AC} Users can now ask: 'What's the price of Bitcoin?'");
+  elizaLogger23.log("\u{1F527} Plugin uses 1.x callback patterns - enhanced TypeScript compatibility");
+  elizaLogger23.log("\u26A1 Updated state management with composeState support");
 } else {
-  elizaLogger22.warn("\u26A0\uFE0F TokenMetrics plugin loaded with some issues:");
-  if (!structureValidation.isValid) elizaLogger22.warn("  \u2022 Plugin structure issues detected");
-  if (!envValidation.isConfigured) elizaLogger22.warn("  \u2022 Environment configuration incomplete");
-  if (!runtimeValidation) elizaLogger22.warn("  \u2022 Runtime validation failed");
-  elizaLogger22.log("\u{1F4A1} Check the logs above for specific recommendations");
+  elizaLogger23.warn("\u26A0\uFE0F TokenMetrics plugin loaded with some issues:");
+  if (!structureValidation.isValid) elizaLogger23.warn("  \u2022 Plugin structure issues detected");
+  if (!envValidation.isConfigured) elizaLogger23.warn("  \u2022 Environment configuration incomplete");
+  if (!runtimeValidation) elizaLogger23.warn("  \u2022 Runtime validation failed");
+  elizaLogger23.log("\u{1F4A1} Check the logs above for specific recommendations");
 }
 var index_default = tokenmetricsPlugin;
 export {

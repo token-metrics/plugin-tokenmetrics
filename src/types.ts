@@ -415,6 +415,85 @@ export interface ResistanceSupportResponse extends TokenMetricsBaseResponse {
 
 
 
+// TM Grade Request/Response
+export interface TmGradeRequest {
+    token_id?: number;
+    symbol?: string;
+}
+
+export interface TmGradeData {
+    TOKEN_ID: number;
+    TOKEN_NAME: string;
+    TOKEN_SYMBOL: string;
+    FUNDAMENTAL_GRADE: string;
+    TM_GRADE: string;
+    TM_GRADE_24h_PCT_CHANGE: string;
+    TM_TRADER_GRADE_24H_CHANGE: string;
+    FUNDAMENTAL_GRADE_CLASS: string;
+    TM_GRADE_SIGNAL: string;
+    MOMENTUM: string;
+}
+
+export interface TmGradeResponse extends TokenMetricsBaseResponse {
+    data: TmGradeData[];
+}
+
+// TM Grade History Request/Response
+export interface TmGradeHistoryRequest {
+    token_id?: number;
+    symbol?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    page?: number;
+}
+
+export interface TmGradeHistoryData {
+    TOKEN_ID: number;
+    TOKEN_NAME: string;
+    TOKEN_SYMBOL: string;
+    DATE: string;
+    TRADING_SIGNAL: number;
+    TM_GRADE: number;
+    TM_GRADE_24h_PCT_CHANGE: number;
+    TM_TRADER_GRADE_24H_CHANGE: number;
+    FUNDAMENTAL_GRADE: number;
+    FUNDAMENTAL_GRADE_CLASS: string;
+    TM_GRADE_SIGNAL: string;
+    MOMENTUM: string;
+}
+
+export interface TmGradeHistoryResponse extends TokenMetricsBaseResponse {
+    data: TmGradeHistoryData[];
+}
+
+// Technology Grade Request/Response
+export interface TechnologyGradeRequest {
+    token_id?: number;
+    symbol?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    page?: number;
+}
+
+export interface TechnologyGradeData {
+    TOKEN_ID: number;
+    TOKEN_NAME: string;
+    TOKEN_SYMBOL: string;
+    DATE: string;
+    TECHNOLOGY_GRADE: number;
+    ACTIVITY_SCORE: number;
+    SECURITY_SCORE: number | null;
+    REPOSITORY_SCORE: number;
+    COLLABORATION_SCORE: number;
+    DEFI_SCANNER_SCORE: number | null;
+}
+
+export interface TechnologyGradeResponse extends TokenMetricsBaseResponse {
+    data: TechnologyGradeData[];
+}
+
 // SentimentRequest/Response
 export interface SentimentRequest {
   limit?: number;

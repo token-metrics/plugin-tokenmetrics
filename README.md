@@ -3,14 +3,14 @@
 <div align="center">
   <h3>🎯 Comprehensive Cryptocurrency Analysis Plugin</h3>
   <p>Professional-grade crypto market data, AI insights, and trading signals for ElizaOS agents</p>
-  <p><strong>✅ ElizaOS 1.x Compatible</strong> | <strong>🔥 19 Comprehensive Endpoints</strong> | <strong>🧠 AI-Powered Analysis</strong></p>
+  <p><strong>✅ ElizaOS 1.x Compatible</strong> | <strong>🔥 20 Comprehensive Endpoints</strong> | <strong>🧠 AI-Powered Analysis</strong></p>
 </div>
 
 ---
 
 ## 🌟 Overview
 
-The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **19 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
+The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **20 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
 
 **🎯 Perfect for**: Trading bots, portfolio management agents, research assistants, and crypto analysis tools.
 
@@ -59,7 +59,7 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 | Feature | Benefit | Icon |
 |---------|---------|------|
 | **ElizaOS 1.x Compatible** | Latest architecture with async callbacks & enhanced state management | ✅ |
-| **Most Comprehensive** | 19 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
+| **Most Comprehensive** | 20 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
 | **AI-Powered** | Natural language understanding + TokenMetrics AI integration | 🧠 |
 | **Professional Grade** | Investment-grade analysis, not just raw data | 📊 |
 | **Zero Learning Curve** | Natural language queries, no API knowledge needed | ⚡ |
@@ -111,7 +111,7 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 
 ## 🔌 API Endpoints Coverage
 
-### 📊 Complete TokenMetrics Integration (19 Endpoints)
+### 📊 Complete TokenMetrics Integration (20 Endpoints)
 
 | Category | Endpoint | Action | Description |
 |----------|----------|---------|-------------|
@@ -120,8 +120,9 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 | | `/top-market-cap` | `getTopMarketCapAction` | Top cryptocurrencies by market cap |
 | **📈 Trading & Signals** | `/trading-signals` | `getTradingSignalsAction` | AI-powered buy/sell/hold recommendations |
 | | `/hourly-trading-signals` | `getHourlyTradingSignalsAction` | Frequent trading signals for active trading |
-| | `/trader-grades` | `getTraderGradesAction` | Short-term trading grades (A-F scale) |
-| **🎯 Investment Analysis** | `/investor-grades` | `getInvestorGradesAction` | Long-term investment grades |
+| | `/tm-grade` | `getTmGradeAction` | Current TM Grade and fundamental analysis |
+| **🎯 Investment Analysis** | `/tm-grade-history` | `getTmGradeHistoryAction` | Historical TM Grade trends and performance |
+| | `/technology-grade` | `getTechnologyGradeAction` | Technology development and security analysis |
 | | `/quantmetrics` | `getQuantmetricsAction` | Risk metrics (Sharpe ratio, volatility, drawdown) |
 | **📊 Technical Analysis** | `/daily-ohlcv` | `getDailyOhlcvAction` | Daily OHLCV price data |
 | | `/hourly-ohlcv` | `getHourlyOhlcvAction` | Hourly OHLCV price data |
@@ -187,12 +188,13 @@ plugin-tokenmetrics/
 │   ├── 📄 index.ts                 # Main plugin entry point (1.x compatible)
 │   ├── 📄 types.ts                 # TypeScript type definitions
 │   │
-│   ├── 📂 actions/                 # Action implementations (19 endpoints)
+│   ├── 📂 actions/                 # Action implementations (20 endpoints)
 │   │   ├── 📄 aiActionHelper.ts    # Shared AI helper functions
 │   │   ├── 📄 getPriceAction.ts    # Real-time price data
 │   │   ├── 📄 getTradingSignalsAction.ts      # Trading signals
-│   │   ├── 📄 getTraderGradesAction.ts        # Short-term grades
-│   │   ├── 📄 getInvestorGradesAction.ts      # Long-term grades
+│   │   ├── 📄 getTmGradeAction.ts              # TM Grade analysis
+│   │   ├── 📄 getTmGradeHistoryAction.ts       # Historical TM grades
+│   │   ├── 📄 getTechnologyGradeAction.ts      # Technology analysis
 │   │   ├── 📄 getQuantmetricsAction.ts        # Risk metrics
 │   │   ├── 📄 getMarketMetricsAction.ts       # Market overview
 │   │   ├── 📄 getIndicesAction.ts             # Market indices
@@ -230,7 +232,7 @@ plugin-tokenmetrics/
 ### 🏗️ Architecture Overview
 
 #### **Core Components**
-- **`src/index.ts`**: Main plugin export with all 19 actions (1.x compatible)
+- **`src/index.ts`**: Main plugin export with all 20 actions (1.x compatible)
 - **`src/types.ts`**: Comprehensive TypeScript definitions
 - **`src/actions/`**: Individual action implementations for each TokenMetrics endpoint
 - **`src/core/`**: Advanced features like NLP processing and memory management
@@ -531,24 +533,25 @@ import { tokenmetricsPlugin } from "@elizaos/plugin-tokenmetrics";
 | 1 | **getTokens** | Core | Token database search | Token discovery | 🪙 |
 | 2 | **getTopMarketCap** | Core | Top cryptocurrencies | Market overview | 👑 |
 | 3 | **getPrice** | Core | Real-time prices | Price tracking | 💰 |
-| 4 | **getTraderGrades** | Core | Short-term grades | Day trading | 🏆 |
-| 5 | **getInvestorGrades** | Investment | Long-term grades | Portfolio building | 🎯 |
-| 6 | **getTradingSignals** | Core | BUY/SELL/HOLD signals | Trading decisions | 📡 |
-| 7 | **getHourlyTradingSignals** | Core | Hourly AI signals | Active trading | ⏰ |
-| 8 | **getMarketMetrics** | Core | Market sentiment | Market timing | 📊 |
-| 9 | **getQuantmetrics** | Risk | Risk assessment | Risk management | ⚠️ |
-| 10 | **getHourlyOhlcv** | Technical | Hourly price data | Technical analysis | ⏰ |
-| 11 | **getDailyOhlcv** | Technical | Daily price data | Swing trading | 📅 |
-| 12 | **getAiReports** | AI | AI-generated reports | Research | 📝 |
-| 13 | **getCryptoInvestors** | Investment | Investor insights | Market intelligence | 💼 |
-| 14 | **getResistanceSupport** | Technical | Key price levels | Technical trading | 📈 |
-| 15 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
-| 16 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
-| 17 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
-| 18 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
-| 19 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
+| 4 | **getTmGrade** | Investment | TM Grade analysis | Current token assessment | 🎯 |
+| 5 | **getTmGradeHistory** | Investment | Historical TM grades | Grade trend analysis | 📈 |
+| 6 | **getTechnologyGrade** | Technical | Technology analysis | Development metrics | 🔧 |
+| 7 | **getTradingSignals** | Core | BUY/SELL/HOLD signals | Trading decisions | 📡 |
+| 8 | **getHourlyTradingSignals** | Core | Hourly AI signals | Active trading | ⏰ |
+| 9 | **getMarketMetrics** | Core | Market sentiment | Market timing | 📊 |
+| 10 | **getQuantmetrics** | Risk | Risk assessment | Risk management | ⚠️ |
+| 11 | **getHourlyOhlcv** | Technical | Hourly price data | Technical analysis | ⏰ |
+| 12 | **getDailyOhlcv** | Technical | Daily price data | Swing trading | 📅 |
+| 13 | **getAiReports** | AI | AI-generated reports | Research | 📝 |
+| 14 | **getCryptoInvestors** | Investment | Investor insights | Market intelligence | 💼 |
+| 15 | **getResistanceSupport** | Technical | Key price levels | Technical trading | 📈 |
+| 16 | **getScenarioAnalysis** | AI | Price predictions | Forecasting | 🔮 |
+| 17 | **getCorrelation** | Investment | Token correlations | Portfolio optimization | 🔗 |
+| 18 | **getIndices** | Indices | Crypto indices data | Index discovery | 📊 |
+| 19 | **getIndicesHoldings** | Indices | Index composition | Portfolio analysis | 🏦 |
+| 20 | **getIndicesPerformance** | Indices | Index performance | Performance tracking | 📈 |
 
-**🎯 Total: 19 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
+**🎯 Total: 20 comprehensive endpoints** covering every aspect of cryptocurrency analysis.
 
 ---
 
@@ -681,7 +684,7 @@ npm install @elizaos/core @elizaos/agent
 ```
 
 ### 🧪 Manual Testing Procedures
-Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 19 endpoints:
+Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify all 20 endpoints:
 
 ```bash
 # Test basic functionality
