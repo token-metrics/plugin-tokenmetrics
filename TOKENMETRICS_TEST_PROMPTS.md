@@ -51,12 +51,7 @@ Grade history for the last month
 
 ### 8. **Technology Grade Action** (`GET_TECHNOLOGY_GRADE_TOKENMETRICS`)
 ```
-Bitcoin tech grade
-ETH technology analysis
-Development activity for Solana
-Security scores for BONK
-Repository quality for Dogecoin
-Technology metrics for Ethereum
+Show me Technology Grades for BTC
 ```
 
 ### 9. **Quantmetrics Action** (`GET_QUANTMETRICS_TOKENMETRICS`)
