@@ -1,4 +1,4 @@
-# 🚀 TokenMetrics Plugin for ElizaOS
+# 🚀 Token Metrics Plugin for ElizaOS
 
 <div align="center">
   <h3>🎯 Comprehensive Cryptocurrency Analysis Plugin</h3>
@@ -10,7 +10,7 @@
 
 ## 🌟 Overview
 
-The TokenMetrics plugin provides complete integration with the TokenMetrics API, offering **20 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
+The Token Metrics plugin provides complete integration with the Token Metrics API, offering **20 comprehensive endpoints** for cryptocurrency analysis, trading signals, and AI-powered market insights. Built specifically for ElizaOS agents with natural language processing capabilities.
 
 **🎯 Perfect for**: Trading bots, portfolio management agents, research assistants, and crypto analysis tools.
 
@@ -26,7 +26,7 @@ The TokenMetrics plugin provides complete integration with the TokenMetrics API,
 # 1️⃣ Install the plugin
 npm install @elizaos/plugin-tokenmetrics
 
-# 2️⃣ Get your TokenMetrics API key from https://app.tokenmetrics.com/en/api?tab=api
+# 2️⃣ Get your Token Metrics API key from https://app.tokenmetrics.com/en/api?tab=api
 
 # 3️⃣ Set up environment variables
 # Create a .env file in your project root:
@@ -65,7 +65,7 @@ This plugin has been **comprehensively tested and verified** with the ElizaOS au
 - **🔄 Context Management**: Memory and conversation context properly maintained across sessions
 - **🛡️ Error Handling**: Robust error handling and recovery mechanisms verified
 - **⚡ Performance**: Optimized response times and resource usage confirmed
-- **📊 Data Accuracy**: All TokenMetrics API responses validated for accuracy and completeness
+- **📊 Data Accuracy**: All Token Metrics API responses validated for accuracy and completeness
 
 ### 🎯 Testing Coverage
 
@@ -83,7 +83,7 @@ This plugin has been **comprehensively tested and verified** with the ElizaOS au
 
 The plugin underwent rigorous testing using:
 - **Automated Test Suites**: Comprehensive unit and integration tests
-- **Manual Endpoint Testing**: All 20 TokenMetrics endpoints verified individually
+- **Manual Endpoint Testing**: All 20 Token Metrics endpoints verified individually
 - **ElizaOS Agent Integration**: Full integration testing with autonomous agents
 - **Real-world Scenarios**: Complex crypto analysis queries and workflows
 - **Performance Benchmarks**: Response time and resource usage optimization
@@ -98,7 +98,7 @@ The plugin underwent rigorous testing using:
 |---------|---------|------|
 | **ElizaOS 1.x Compatible** | Latest architecture with async callbacks & enhanced state management | ✅ |
 | **Most Comprehensive** | 20 endpoints vs typical 3-5 in other crypto plugins | 🔥 |
-| **AI-Powered** | Natural language understanding + TokenMetrics AI integration | 🧠 |
+| **AI-Powered** | Natural language understanding + Token Metrics AI integration | 🧠 |
 | **Professional Grade** | Investment-grade analysis, not just raw data | 📊 |
 | **Zero Learning Curve** | Natural language queries, no API knowledge needed | ⚡ |
 | **Context Aware** | Remembers conversations and user preferences | 🔄 |
@@ -149,7 +149,7 @@ The plugin underwent rigorous testing using:
 
 ## 🔌 API Endpoints Coverage
 
-### 📊 Complete TokenMetrics Integration (20 Endpoints)
+### 📊 Complete Token Metrics Integration (20 Endpoints)
 
 | Category | Endpoint | Action | Description |
 |----------|----------|---------|-------------|
@@ -272,7 +272,7 @@ plugin-tokenmetrics/
 #### **Core Components**
 - **`src/index.ts`**: Main plugin export with all 20 actions (1.x compatible)
 - **`src/types.ts`**: Comprehensive TypeScript definitions
-- **`src/actions/`**: Individual action implementations for each TokenMetrics endpoint
+- **`src/actions/`**: Individual action implementations for each Token Metrics endpoint
 - **`src/core/`**: Advanced features like NLP processing and memory management
 
 #### **Action System (1.x Architecture)**
@@ -282,7 +282,7 @@ Each action follows the 1.x pattern:
 - **State Management**: Uses `runtime.composeState(message)` for state composition
 - **Natural Language Processing**: Understands user queries in plain English
 - **Smart Token Resolution**: Resolves token names/symbols intelligently
-- **API Integration**: Calls TokenMetrics API with proper error handling
+- **API Integration**: Calls Token Metrics API with proper error handling
 - **Response Formatting**: Returns structured, user-friendly responses
 
 #### **Key Features (Enhanced in 1.x)**
@@ -296,10 +296,10 @@ Each action follows the 1.x pattern:
 
 ## 💰 Pricing & Requirements
 
-### TokenMetrics API Costs
-- 🆓 **Free Tier**: Limited requests (check TokenMetrics for current limits)
+### Token Metrics API Costs
+- 🆓 **Free Tier**: Limited requests (check Token Metrics for current limits)
 - 💳 **Paid Plans**: Starting from $99.99/month for extended access
-- ⚠️ **Note**: This plugin requires a TokenMetrics API key
+- ⚠️ **Note**: This plugin requires a Token Metrics API key
 
 ### System Requirements
 - 🟢 **Node.js**: 18.0.0 or higher (for ElizaOS 1.x compatibility)
@@ -313,7 +313,7 @@ Each action follows the 1.x pattern:
 ## 📊 Performance Metrics
 
 ### 🚦 Rate Limits
-- **TokenMetrics API**: Varies by subscription tier
+- **Token Metrics API**: Varies by subscription tier
 - **Plugin Handling**: Automatic retry with exponential backoff
 
 ### 🔄 Data Freshness
@@ -351,8 +351,8 @@ Or add to package.json:
 }
 ```
 
-### 2️⃣ Get TokenMetrics API Key
-1. 📝 **Sign up** at [TokenMetrics API Portal](https://app.tokenmetrics.com/en/api?tab=api)
+### 2️⃣ Get Token Metrics API Key
+1. 📝 **Sign up** at [Token Metrics API Portal](https://app.tokenmetrics.com/en/api?tab=api)
 2. 💳 **Choose a plan** that fits your usage needs
 3. 🚀 **Navigate** to API section in your dashboard
 4. 🔑 **Generate** your API key
@@ -392,7 +392,7 @@ export const character: Character = {
       TOKENMETRICS_API_KEY: process.env.TOKENMETRICS_API_KEY, // 🔑 This loads from .env
     }
   },
-  system: "You are a crypto analysis assistant with access to real-time TokenMetrics data.",
+  system: "You are a crypto analysis assistant with access to real-time Token Metrics data.",
   // ... rest of your character config
 };
 ```
@@ -430,7 +430,7 @@ export const character: Character = {
       "favoriteTokens": ["BTC", "ETH", "SOL"]
     }
   },
-  "system": "You are a crypto analysis assistant with access to real-time TokenMetrics data."
+  "system": "You are a crypto analysis assistant with access to real-time Token Metrics data."
 }
 ```
 
@@ -444,7 +444,7 @@ import { createAgent } from "./src/index.ts";
 import { character } from "./src/character.ts";
 
 async function testTokenMetrics() {
-  console.log("🧪 Testing TokenMetrics plugin (1.x)...");
+  console.log("🧪 Testing Token Metrics plugin (1.x)...");
   
   // Check if API key is configured
   if (!character.settings?.secrets?.TOKENMETRICS_API_KEY) {
@@ -502,8 +502,8 @@ file dist/index.js  # Should show: ASCII text
 head -5 dist/index.js  # Should show ESM imports
 ```
 
-### 3️⃣ Get TokenMetrics API Key
-1. 📝 **Sign up** at [TokenMetrics API Portal](https://app.tokenmetrics.com/en/api?tab=api)
+### 3️⃣ Get Token Metrics API Key
+1. 📝 **Sign up** at [Token Metrics API Portal](https://app.tokenmetrics.com/en/api?tab=api)
 2. 💳 **Choose a plan** that fits your usage needs
 3. 🚀 **Navigate** to API section in your dashboard
 4. 🔑 **Generate** your API key
@@ -556,7 +556,7 @@ import { tokenmetricsPlugin } from "@elizaos/plugin-tokenmetrics";
 // The plugin automatically handles:
 // - Intent recognition from natural language
 // - Parameter extraction and validation
-// - API calls to TokenMetrics
+// - API calls to Token Metrics
 // - Response formatting and analysis
 // - Error handling and retries
 // - Context management and memory
@@ -597,7 +597,7 @@ import { tokenmetricsPlugin } from "@elizaos/plugin-tokenmetrics";
 
 ### 🔑 Required Environment Variables
 ```bash
-# Required for TokenMetrics plugin
+# Required for Token Metrics plugin
 TOKENMETRICS_API_KEY=your_tokenmetrics_api_key
 
 # Required for AI model (choose one)
@@ -638,9 +638,9 @@ The plugin automatically loads when:
 // The plugin loading logic (handled automatically)
 if (character.settings?.secrets?.TOKENMETRICS_API_KEY) {
   plugins.push(tokenmetricsPlugin);
-  console.log("✅ TokenMetrics plugin loaded");
+  console.log("✅ Token Metrics plugin loaded");
 } else {
-  console.log("⚠️ TokenMetrics plugin skipped (no API key)");
+  console.log("⚠️ Token Metrics plugin skipped (no API key)");
 }
 ```
 
@@ -743,7 +743,7 @@ Follow the comprehensive testing guide in `manual-endpoint-tests.md` to verify a
 ### 📊 Plugin Verification Checklist
 - ✅ **Build Success**: `npm run build` completes without errors
 - ✅ **Plugin Loading**: Plugin loads in ElizaOS without errors
-- ✅ **API Connectivity**: Can make successful TokenMetrics API calls
+- ✅ **API Connectivity**: Can make successful Token Metrics API calls
 - ✅ **Natural Language**: Understands and responds to crypto queries
 - ✅ **Error Handling**: Gracefully handles invalid queries and API errors
 - ✅ **Memory Management**: Maintains conversation context properly
@@ -809,7 +809,7 @@ npm run format
 - 🚦 **Rate Limiting**: Prevents abuse and protects API quotas
 
 ### 🔐 Privacy Considerations
-- 📋 **TokenMetrics Privacy**: Subject to TokenMetrics privacy policy
+- 📋 **Token Metrics Privacy**: Subject to Token Metrics privacy policy
 - 💻 **Local Processing**: NLP and context management happen locally
 - 🚫 **No Tracking**: Plugin doesn't track user behavior or analytics
 - ⚙️ **Configurable**: Users control what data is requested and how it's used
@@ -819,12 +819,12 @@ npm run format
 ## 📚 API Documentation & Resources
 
 ### 📖 Official Documentation
-- **[TokenMetrics API Docs](https://developers.tokenmetrics.com)** - Complete API reference
+- **[Token Metrics API Docs](https://developers.tokenmetrics.com)** - Complete API reference
 - **[Plugin Integration Guide](./ELIZAOS_INTEGRATION_GUIDE.md)** - Detailed setup instructions
 - **[Manual Testing Guide](./manual-endpoint-tests.md)** - Endpoint testing procedures
 
 ### 🎓 Learning Resources
-- **[TokenMetrics Academy](https://tokenmetrics.com/academy)** - Learn about crypto metrics
+- **[Token Metrics Academy](https://tokenmetrics.com/academy)** - Learn about crypto metrics
 - **[ElizaOS Documentation](https://github.com/elizaos/eliza)** - ElizaOS plugin development
 - **[Crypto Trading Basics](https://tokenmetrics.com/blog)** - Understanding trading signals
 
@@ -836,7 +836,7 @@ npm run format
 1. 📖 **Check the [Integration Guide](./ELIZAOS_INTEGRATION_GUIDE.md)** for setup issues
 2. 🔍 **Review [Manual Testing Guide](./manual-endpoint-tests.md)** for functionality verification
 3. 🔧 **Run diagnostic tests**: `npm run verify` to verify API connectivity
-4. 🌐 **Check TokenMetrics status** at their official status page
+4. 🌐 **Check Token Metrics status** at their official status page
 5. 🐛 **Open an issue on GitHub** with detailed error information
 
 ### 🔧 Common Issues & Solutions
@@ -851,13 +851,13 @@ npm run verify
 #### 🚦 Rate Limiting
 ```bash
 # Error: "Rate limit exceeded"
-# Solution: Plugin handles this automatically, but check your TokenMetrics plan limits
+# Solution: Plugin handles this automatically, but check your Token Metrics plan limits
 ```
 
 #### 🌐 Network Connectivity
 ```bash
 # Error: "Network timeout"
-# Solution: Check internet connection and TokenMetrics API status
+# Solution: Check internet connection and Token Metrics API status
 curl -I https://api.tokenmetrics.com/v2/health
 ```
 
@@ -909,7 +909,7 @@ npm run dev
 6. 📤 **Submit a pull request** with clear description
 
 ### 🎯 Areas for Contribution
-- 🔌 **New endpoint integrations** as TokenMetrics adds APIs
+- 🔌 **New endpoint integrations** as Token Metrics adds APIs
 - 🧠 **Enhanced NLP processing** for better query understanding
 - 📊 **Additional analysis features** and insights
 - ⚡ **Performance optimizations** and caching improvements
@@ -922,7 +922,7 @@ npm run dev
 MIT License - see [LICENSE](./LICENSE) file for details.
 
 ### 📋 Third-Party Licenses
-- **TokenMetrics API**: Subject to TokenMetrics Terms of Service
+- **Token Metrics API**: Subject to Token Metrics Terms of Service
 - **ElizaOS**: MIT License
 - **Dependencies**: Various open-source licenses (see package.json)
 
@@ -946,7 +946,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 - 📱 **Mobile optimization** for mobile ElizaOS clients
 
 ### 📅 Version History
-- **v1.0.0**: Initial release with 19 TokenMetrics endpoints
+- **v1.0.0**: Initial release with 19 Token Metrics endpoints
 - **v0.9.0**: Beta release with core functionality
 - **v0.8.0**: Alpha release for testing
 
@@ -955,7 +955,7 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 <div align="center">
   <p>Built with ❤️ for the ElizaOS and crypto community</p>
   <p>
-    <a href="https://tokenmetrics.com/api">TokenMetrics</a> •
+    <a href="https://tokenmetrics.com/api">Token Metrics</a> •
     <a href="https://github.com/elizaos/eliza">ElizaOS</a> •
     <a href="https://elizaos.github.io/registry/">Plugin Registry</a>
   </p>
