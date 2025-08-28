@@ -1,5 +1,5 @@
 {
-  "name": "@elizaos/plugin-tokenmetrics",
+  "name": "@token-metrics/plugin-tokenmetrics",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",
@@ -20,8 +20,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/elizaos/eliza.git",
-    "directory": "packages/plugin-tokenmetrics"
+    "url": "https://github.com/token-metrics/plugin-tokenmetrics.git"
   },
   "keywords": [
     "elizaos",
@@ -35,7 +34,7 @@
     "market-data",
     "trading-signals"
   ],
-  "author": "ElizaOS Contributors",
+  "author": "Token Metrics Team",
   "license": "MIT",
   "dependencies": {
     "@elizaos/core": "latest",
