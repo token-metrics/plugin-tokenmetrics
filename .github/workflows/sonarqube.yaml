@@ -4,16 +4,33 @@ on:
   schedule:
     - cron: '0 2 * * *'  # Run daily at 2AM UTC
   workflow_dispatch:
+  pull_request:
 
 jobs:
-  security-scan:
-    name: Security Analysis
+  security-tools:
+    name: Security Tools Scan
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
     
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
+
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=security-${{ github.sha }}-${{ hashFiles('package-lock.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache security artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            security-env
+            bin
+            *.sarif
+            coverage
+          key: ${{ steps.cache-key.outputs.key }}
 
       # ----- Setup Bun for TypeScript compilation -----
       - name: Setup Bun
@@ -136,12 +153,40 @@ jobs:
         run: |
           trivy config . --exit-code 0 --severity HIGH,CRITICAL --format sarif --output trivy-config.sarif || true
 
-      # ----- SonarQube Analysis -----
-      - name: SonarQube Scan
+  sonarqube-analysis:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest-l-s
+    needs: security-tools
+    strategy:
+      matrix:
+        instance:
+          - name: "DO"
+            token: "SONAR_TOKEN_APP"
+            url: "http://sonarqube.tokenmetrics.com"
+          - name: "AKS"
+            token: "SONAR_AKS_TOKEN"
+            url: "http://sonarqube-aks.tokenmetrics.com"
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore security artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            security-env
+            bin
+            *.sarif
+            coverage
+          key: ${{ needs.security-tools.outputs.cache-key }}
+
+      - name: SonarQube Scan - ${{ matrix.instance.name }}
         uses: SonarSource/sonarqube-scan-action@v5
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_APP }}
-          SONAR_HOST_URL: http://sonarqube.tokenmetrics.com
+          SONAR_TOKEN: ${{ secrets[matrix.instance.token] }}
+          SONAR_HOST_URL: ${{ matrix.instance.url }}
         with:
           args: >
             -Dsonar.sarifReportPaths=semgrep.sarif,trivy-fs.sarif,trivy-config.sarif,security-reports/eslint.sarif
@@ -164,10 +209,16 @@ jobs:
         uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_APP }}
-          SONAR_HOST_URL: http://sonarqube.tokenmetrics.com
+          SONAR_TOKEN: ${{ secrets[matrix.instance.token] }}
+          SONAR_HOST_URL: ${{ matrix.instance.url }}
 
-      # ----- Security Report Summary -----
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest-l-s
+    needs: [security-tools, sonarqube-analysis]
+    if: always()
+    
+    steps:
       - name: Security Report Summary
         run: |
           echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
@@ -179,7 +230,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Results:" >> $GITHUB_STEP_SUMMARY
           echo "- SonarQube Quality Gate: ${{ steps.sonarqube-quality-gate.outputs.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- View results: http://sonarqube.tokenmetrics.com/dashboard?id=${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- View DO results: http://sonarqube.tokenmetrics.com/dashboard?id=${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- View AKS results: http://sonarqube-aks.tokenmetrics.com/dashboard?id=${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
 
       # ----- Cleanup -----
       - name: Cleanup
