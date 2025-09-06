@@ -16,7 +16,10 @@
     }
   },
   "files": [
-    "dist"
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "package.json"
   ],
   "repository": {
     "type": "git",
@@ -34,8 +37,13 @@
     "market-data",
     "trading-signals"
   ],
-  "author": "Token Metrics Team",
+  "author": "Token Metrics <support@tokenmetrics.com> (https://www.tokenmetrics.com/)",
   "license": "MIT",
+  "description": "ElizaOS plugin for TokenMetrics API - provides comprehensive cryptocurrency data, AI insights, and trading signals for ElizaOS agents",
+  "homepage": "https://github.com/token-metrics/plugin-tokenmetrics#readme",
+  "bugs": {
+    "url": "https://github.com/token-metrics/plugin-tokenmetrics/issues"
+  },
   "dependencies": {
     "@elizaos/core": "latest",
     "axios": "^1.6.0",
@@ -57,7 +65,8 @@
     "clean": "rm -rf dist .turbo node_modules .turbo-tsconfig.json tsconfig.tsbuildinfo",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:coverage": "bun test --coverage"
+    "test:coverage": "bun test --coverage",
+    "prepublishOnly": "npm run build"
   },
   "publishConfig": {
     "access": "public"
