@@ -1,5 +1,5 @@
 {
-  "name": "@token-metrics/plugin-tokenmetrics",
+  "name": "@token-metrics-ai/plugin-tokenmetrics",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",

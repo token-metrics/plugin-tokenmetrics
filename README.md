@@ -24,7 +24,7 @@ The Token Metrics plugin provides complete integration with the Token Metrics AP
 
 ```bash
 # 1️⃣ Install the plugin
-npm install @token-metrics/plugin-tokenmetrics
+npm install @token-metrics-ai/plugin-tokenmetrics
 
 # 2️⃣ Get your Token Metrics API key from https://app.tokenmetrics.com/en/api?tab=api
 
@@ -34,7 +34,7 @@ echo "TOKENMETRICS_API_KEY=your_api_key_here" >> .env
 
 # 4️⃣ Add to your ElizaOS 1.x character config
 {
-  "plugins": ["@token-metrics/plugin-tokenmetrics"]
+  "plugins": ["@token-metrics-ai/plugin-tokenmetrics"]
 }
 
 # 5️⃣ Configure API key in character settings
@@ -335,10 +335,10 @@ Each action follows the 1.x pattern:
 ### 1️⃣ Add to your project
 ```bash
 # For ElizaOS 1.x projects
-npm install @token-metrics/plugin-tokenmetrics
+npm install @token-metrics-ai/plugin-tokenmetrics
 
 # Verify installation
-npm list @token-metrics/plugin-tokenmetrics
+npm list @token-metrics-ai/plugin-tokenmetrics
 ```
 
 Or add to package.json:
@@ -346,7 +346,7 @@ Or add to package.json:
 {
   "dependencies": {
     "@elizaos/core": "latest",
-    "@token-metrics/plugin-tokenmetrics": "latest"
+    "@token-metrics-ai/plugin-tokenmetrics": "latest"
   }
 }
 ```
@@ -384,7 +384,7 @@ import { Character, ModelProviderName } from "@elizaos/core";
 
 export const character: Character = {
   name: "CryptoAnalyst",
-  plugins: ["@token-metrics/plugin-tokenmetrics"],
+  plugins: ["@token-metrics-ai/plugin-tokenmetrics"],
   modelProvider: ModelProviderName.OPENAI,
   settings: {
     secrets: {
@@ -402,7 +402,7 @@ export const character: Character = {
 // character.ts - Only for development/testing
 export const character: Character = {
   name: "CryptoAnalyst",
-  plugins: ["@token-metrics/plugin-tokenmetrics"],
+  plugins: ["@token-metrics-ai/plugin-tokenmetrics"],
   settings: {
     secrets: {
       TOKENMETRICS_API_KEY: "your_api_key_here", // ⚠️ Not secure for production
@@ -416,7 +416,7 @@ export const character: Character = {
 ```json
 {
   "name": "CryptoAnalyst",
-  "plugins": ["@token-metrics/plugin-tokenmetrics"],
+  "plugins": ["@token-metrics-ai/plugin-tokenmetrics"],
   "modelProvider": "openai",
   "settings": {
     "secrets": {
@@ -468,7 +468,7 @@ testTokenMetrics();
 **Plugin not loading in ElizaOS 1.x:**
 ```typescript
 // Check if plugin is properly exported
-import { tokenmetricsPlugin } from "@token-metrics/plugin-tokenmetrics";
+import { tokenmetricsPlugin } from "@token-metrics-ai/plugin-tokenmetrics";
 console.log("Plugin:", tokenmetricsPlugin);
 console.log("Actions:", Object.keys(tokenmetricsPlugin.actions || {}));
 console.log("1.x Compatible:", !!tokenmetricsPlugin.providers);
@@ -551,7 +551,7 @@ Your ElizaOS agent can now understand and respond to queries like:
 
 ### 💻 Programmatic Usage
 ```typescript
-import { tokenmetricsPlugin } from "@token-metrics/plugin-tokenmetrics";
+import { tokenmetricsPlugin } from "@token-metrics-ai/plugin-tokenmetrics";
 
 // The plugin automatically handles:
 // - Intent recognition from natural language
@@ -720,7 +720,7 @@ npm run build
 mkdir test-eliza && cd test-eliza
 npm init -y
 npm install @elizaos/core @elizaos/agent
-# Copy your built plugin: cp -r ../dist ./node_modules/@token-metrics/plugin-tokenmetrics/
+# Copy your built plugin: cp -r ../dist ./node_modules/@token-metrics-ai/plugin-tokenmetrics/
 
 # 6. Create test character and verify plugin loads
 ```
@@ -865,7 +865,7 @@ curl -I https://api.tokenmetrics.com/v2/health
 ```bash
 # Error: "Plugin not found"
 # Solution: Ensure plugin is properly installed and configured
-npm list @token-metrics/plugin-tokenmetrics
+npm list @token-metrics-ai/plugin-tokenmetrics
 ```
 
 ### ⚡ Performance Optimization
