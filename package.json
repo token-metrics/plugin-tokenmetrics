@@ -51,7 +51,7 @@
     "dotenv": "^16.5.0"
   },
   "devDependencies": {
-    "tsup": "^8.5.0",
+    "tsup": "^8.5.1",
     "prettier": "^3.0.0",
     "bun": "^1.2.15",
     "@types/bun": "latest",
@@ -81,5 +81,10 @@
         "sensitive": true
       }
     }
+  },
+  "overrides": {
+    "axios": "1.12.0",
+    "glob": "10.5.0",
+    "js-yaml": "4.1.1"
   }
 }
