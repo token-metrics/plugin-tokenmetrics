@@ -46,15 +46,15 @@
   },
   "dependencies": {
     "@elizaos/core": "latest",
-    "axios": "^1.6.0",
+    "axios": "^1.13.2",
     "chalk": "^5.3.0",
     "dotenv": "^16.5.0"
   },
   "devDependencies": {
-    "tsup": "^8.5.0",
-    "prettier": "^3.0.0",
-    "bun": "^1.2.15",
     "@types/bun": "latest",
+    "bun": "^1.2.15",
+    "prettier": "^3.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.8.0"
   },
   "scripts": {
